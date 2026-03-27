@@ -8,12 +8,12 @@
       "destination": "/api.js"
     },
     {
-      "source": "/smsadmin/(.*)",
-      "destination": "/smsadmin/$1"
+      "source": "/smsuser/(.*)",
+      "destination": "/smsuser/$1.html"
     },
     {
-      "source": "/smsuser/(.*)",
-      "destination": "/smsuser/$1"
+      "source": "/smsadmin/(.*)",
+      "destination": "/smsadmin/$1.html"
     },
     {
       "source": "/((?!smsuser|smsadmin|api).*)",

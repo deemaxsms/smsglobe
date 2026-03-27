@@ -16,6 +16,8 @@ app.use(express.json());
 // This tells Express to serve your .html, .css, and .js files automatically
 app.use(express.static(__dirname)); 
 
+app.use('/smsadmin', express.static(path.join(__dirname, 'smsadmin')));
+
 // --- 2. CONFIGURATION & SCHEMA ---
 const JWT_SECRET = process.env.JWT_SECRET;
 

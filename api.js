@@ -36,6 +36,27 @@ const adminSchema = new mongoose.Schema({
 
 const Admin = mongoose.models.Admin || mongoose.model('Admin', adminSchema);
 
+const vpnSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    provider: String,
+    region: String,
+    image: String,
+    deviceLimit: { type: Number, default: 0 },
+    // Array of objects for multiple pricing tiers
+    plans: [{
+        duration: String, // e.g., "1 Month"
+        price: Number     // e.g., 29.99
+    }],
+    // Credentials & Instructions
+    username: String,
+    password: { type: String, select: false }, // Good practice: hide pass from general queries
+    instructions: String,
+    // Legacy support
+    price: Number 
+}, { timestamps: true });
+
+const VPN = mongoose.models.VPN || mongoose.model('VPN', vpnSchema);
+
 // --- 3. OPTIMIZED MONGOOSE CONNECTION ---
 let isConnected = false;
 const connectDB = async () => {
@@ -90,8 +111,15 @@ app.all('/api/:action', async (req, res) => {
         case 'google-login': return handleGoogleLogin(req, res);
         case 'dashboard-stats': return handleDashboardStats(req, res);
         case 'get-users': return handleGetUsers(req, res);
-        case 'get-products': return handleGetProducts(req, res);
-        case 'add-product': return handleAddProduct(req, res);
+        case 'products': 
+            if (req.method === 'GET') return handleGetVPNs(req, res);
+            if (req.method === 'POST') return handleAddVPN(req, res);
+            if (req.method === 'PATCH') return handleUpdateVPN(req, res);
+            if (req.method === 'DELETE') return handleDeleteVPN(req, res);
+            break;
+            
+        case 'status':
+
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
         default:
@@ -235,28 +263,90 @@ async function handleGetUsers(req, res) {
         return res.status(500).json({ success: false, message: "Database Error" });
     }
 }
+// --- Updated Handlers for VPN Management ---
 
-async function handleGetProducts(req, res) {
-    const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({}, { strict: false }), 'products');
-    const products = await Product.find({}).sort({ createdAt: -1 });
-    res.json({ success: true, products });
+async function handleGetVPNs(req, res) {
+    try {
+        const vpns = await VPN.find({}).sort({ createdAt: -1 });
+        // Keeping 'products' key for frontend compatibility
+        res.json({ success: true, products: vpns }); 
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Fetch failed" });
+    }
 }
 
-async function handleAddProduct(req, res) {
+async function handleAddVPN(req, res) {
     try {
-        const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({}, { strict: false }), 'products');
-        const newProduct = new Product({
-            ...req.body,
-            price: parseFloat(req.body.price),
-            createdAt: new Date()
+        const data = req.body;
+
+        // Ensure plans are formatted correctly (numbers are stored as numbers)
+        if (data.plans && Array.isArray(data.plans)) {
+            data.plans = data.plans.map(p => ({
+                duration: p.duration,
+                price: parseFloat(p.price) || 0
+            }));
+        }
+
+        const newVPN = new VPN({
+            ...data,
+            deviceLimit: parseInt(data.deviceLimit) || 0,
+            // Fallback for legacy price field if your schema still requires it
+            price: data.plans && data.plans.length > 0 ? parseFloat(data.plans[0].price) : 0
         });
-        await newProduct.save();
-        res.json({ success: true });
+
+        await newVPN.save();
+        res.json({ success: true, message: "VPN Node Synced Successfully" });
     } catch (err) {
+        console.error("Add VPN Error:", err);
         res.status(500).json({ success: false, message: "Upload failed" });
     }
 }
 
+async function handleUpdateVPN(req, res) {
+    try {
+        const { vpnId, ...updateData } = req.body;
+        
+        // Clean up data before update
+        if (updateData.plans && Array.isArray(updateData.plans)) {
+            updateData.plans = updateData.plans.map(p => ({
+                duration: p.duration,
+                price: parseFloat(p.price) || 0
+            }));
+            
+            // Sync the main price field with the first plan for legacy support
+            if (updateData.plans.length > 0) {
+                updateData.price = updateData.plans[0].price;
+            }
+        }
+
+        if (updateData.deviceLimit) {
+            updateData.deviceLimit = parseInt(updateData.deviceLimit);
+        }
+        
+        const updated = await VPN.findByIdAndUpdate(vpnId, updateData, { new: true });
+        
+        if (!updated) {
+            return res.status(404).json({ success: false, message: "VPN node not found" });
+        }
+
+        res.json({ success: true, message: "VPN Configuration Updated" });
+    } catch (err) {
+        console.error("Update VPN Error:", err);
+        res.status(500).json({ success: false, message: "Update failed" });
+    }
+}
+
+async function handleDeleteVPN(req, res) {
+    try {
+        const { id } = req.query;
+        if (!id) return res.status(400).json({ success: false, message: "ID is required" });
+        
+        await VPN.findByIdAndDelete(id);
+        res.json({ success: true, message: "VPN Node Deleted" });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Delete failed" });
+    }
+}
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

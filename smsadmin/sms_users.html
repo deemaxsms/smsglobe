@@ -41,18 +41,18 @@
 <body class="min-h-screen font-sans text-brand-darkText">
 
     <div class="lg:hidden flex items-center justify-between bg-white px-4 py-3 border-b border-brand-border sticky top-0 z-[60]">
-        <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-7">
-        <button onclick="toggleSidebar()" class="p-2 text-brand-midText hover:bg-brand-background rounded-lg">
+        <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-6">
+        <button onclick="toggleSidebar()" class="p-2 text-brand-midText hover:bg-brand-background rounded-lg active:scale-95 transition-transform">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/></svg>
         </button>
     </div>
 
-    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/40 z-40 hidden lg:hidden backdrop-blur-sm"></div>
+    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/40 z-[70] hidden lg:hidden backdrop-blur-sm"></div>
 
     <div class="flex">
-        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-brand-border transform -translate-x-full lg:translate-x-0 sidebar-transition lg:static lg:block min-h-screen">
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-[80] w-64 bg-white border-r border-brand-border transform -translate-x-full lg:translate-x-0 sidebar-transition lg:static lg:block min-h-screen">
             <div class="flex flex-col h-full">
-                <div class="p-5 flex-1 overflow-y-auto pt-10 lg:pt-5">
+                <div class="p-5 flex-1 overflow-y-auto pt-20 lg:pt-5">
                     <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-9 mb-8 hidden lg:block">
                     
                     <nav class="space-y-1">
@@ -64,9 +64,9 @@
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                             Users
                         </a>
-                        <a href="sms_products.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
+                        <a href="sms_vpn.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-                            Products
+                            VPN
                         </a>
                     </nav>
                 </div>
@@ -81,26 +81,26 @@
         </aside>
 
         <main class="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full">
-            <header class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-                <div>
-                    <h2 class="text-2xl font-bold tracking-tight">User Management</h2>
-                    <p class="text-brand-lightText">Manage your database of registered users.</p>
+            <header class="grid grid-cols-1 md:flex md:items-center md:justify-between mb-8 gap-4">
+                <div class="max-w-[calc(100%-60px)] md:max-w-none">
+                    <h2 class="text-xl md:text-2xl font-bold tracking-tight">User Management</h2>
+                    <p class="text-brand-lightText text-xs md:text-sm">Manage your database of registered users.</p>
                 </div>
                 <div class="relative w-full md:w-80">
-                    <input type="text" id="userSearch" onkeyup="filterUsers()" placeholder="Search by email or name..." class="w-full bg-white border border-brand-border px-4 py-3 rounded-xl text-sm outline-none focus:border-brand-blue transition-all shadow-sm">
-                    <svg class="w-4 h-4 absolute right-4 top-3.5 text-brand-lightText" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <input type="text" id="userSearch" onkeyup="filterUsers()" placeholder="Search users..." class="w-full bg-white border border-brand-border px-4 py-2.5 md:py-3 rounded-xl text-sm outline-none focus:border-brand-blue transition-all shadow-sm">
+                    <svg class="w-4 h-4 absolute right-4 top-3 md:top-3.5 text-brand-lightText" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 </div>
             </header>
 
             <div class="bg-white rounded-2xl border border-brand-border shadow-sm overflow-hidden">
                 <div class="overflow-x-auto custom-scrollbar">
-                    <table class="w-full text-left">
-                        <thead class="bg-gray-50 border-b border-brand-border">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-50/50 border-b border-brand-border">
                             <tr>
-                                <th class="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-brand-lightText">User Identity</th>
-                                <th class="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Join Date</th>
-                                <th class="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Account Status</th>
-                                <th class="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-brand-lightText text-right">Credits</th>
+                                <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">User Identity</th>
+                                <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Join Date</th>
+                                <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Account Status</th>
+                                <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText text-right">Credits</th>
                             </tr>
                         </thead>
                         <tbody id="users-table-body" class="divide-y divide-brand-border">
@@ -108,7 +108,7 @@
                                 <td colspan="4" class="px-6 py-20 text-center">
                                     <div class="flex flex-col items-center gap-3">
                                         <svg class="animate-spin h-6 w-6 text-brand-blue" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                        <p class="text-brand-lightText font-medium">Fetching users from database...</p>
+                                        <p class="text-brand-lightText font-medium text-xs">Accessing User Records...</p>
                                     </div>
                                 </td>
                             </tr>
@@ -161,18 +161,18 @@
 
             return `
                 <tr class="hover:bg-brand-background/30 transition-colors">
-                    <td class="px-6 py-5">
-                        <div class="font-bold text-brand-darkText truncate max-w-[150px] sm:max-w-none">${user.fullName || 'Member'}</div>
-                        <div class="text-[11px] text-brand-lightText truncate max-w-[150px] sm:max-w-none">${user.email}</div>
+                    <td class="px-4 md:px-6 py-4">
+                        <div class="font-bold text-brand-darkText truncate max-w-[120px] md:max-w-none">${user.fullName || 'Member'}</div>
+                        <div class="text-[10px] md:text-[11px] text-brand-lightText truncate max-w-[120px] md:max-w-none">${user.email}</div>
                     </td>
-                    <td class="px-6 py-5 text-brand-midText font-medium">
+                    <td class="px-4 md:px-6 py-4 text-brand-midText font-medium whitespace-nowrap">
                         ${date}
                     </td>
-                    <td class="px-6 py-5">
-                        <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase bg-green-50 text-green-600 border border-green-100">Active</span>
+                    <td class="px-4 md:px-6 py-4">
+                        <span class="px-2 py-0.5 md:py-1 rounded-lg text-[9px] md:text-[10px] font-bold uppercase bg-green-50 text-green-600 border border-green-100">Active</span>
                     </td>
-                    <td class="px-6 py-5 text-right">
-                        <span class="font-bold text-brand-blue text-sm">$${parseFloat(user.balance || 0).toFixed(2)}</span>
+                    <td class="px-4 md:px-6 py-4 text-right">
+                        <span class="font-bold text-brand-blue text-xs md:text-sm">$${parseFloat(user.balance || 0).toFixed(2)}</span>
                     </td>
                 </tr>
             `;

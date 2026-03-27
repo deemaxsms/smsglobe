@@ -39,20 +39,20 @@
 <body class="min-h-screen font-sans text-brand-darkText">
 
     <div class="lg:hidden flex items-center justify-between bg-white px-4 py-3 border-b border-brand-border sticky top-0 z-[60]">
-        <img src="https://imgur.com/8YeZgfx.png" alt="Logo" class="h-7">
-        <button onclick="toggleSidebar()" class="p-2 text-brand-midText hover:bg-brand-background rounded-lg">
+        <img src="https://imgur.com/8YeZgfx.png" alt="Logo" class="h-6">
+        <button onclick="toggleSidebar()" class="p-2 text-brand-midText hover:bg-brand-background rounded-lg active:scale-95 transition-transform">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
             </svg>
         </button>
     </div>
 
-    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden backdrop-blur-sm"></div>
+    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-[70] hidden lg:hidden backdrop-blur-sm"></div>
 
     <div class="flex">
-        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-brand-border transform -translate-x-full lg:translate-x-0 sidebar-transition lg:static lg:block min-h-screen">
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-[80] w-64 bg-white border-r border-brand-border transform -translate-x-full lg:translate-x-0 sidebar-transition lg:static lg:block min-h-screen">
             <div class="flex flex-col h-full">
-                <div class="p-5 flex-1 overflow-y-auto pt-10 lg:pt-5">
+                <div class="p-5 flex-1 overflow-y-auto pt-20 lg:pt-5">
                     <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-9 mb-8 hidden lg:block">
                     
                     <nav class="space-y-1">
@@ -64,9 +64,9 @@
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                             Users
                         </a>
-                        <a href="sms_products.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
+                        <a href="sms_vpn.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-                            Products
+                            VPN
                         </a>
                     </nav>
                 </div>
@@ -81,55 +81,61 @@
         </aside>
 
         <main class="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full">
-            <header class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
-                <div>
-                    <h2 class="text-2xl font-bold tracking-tight">Financial Overview</h2>
-                    <p class="text-brand-lightText">Real-time data from MongoDB</p>
+            <header class="grid grid-cols-1 md:flex md:items-center md:justify-between mb-8 gap-4">
+                <div class="max-w-[calc(100%-60px)] md:max-w-none">
+                    <h2 class="text-xl md:text-2xl font-bold tracking-tight">Financial Overview</h2>
+                    <p class="text-brand-lightText text-xs md:text-sm">Real-time data from MongoDB</p>
                 </div>
-                <button onclick="fetchDashboardData()" class="bg-brand-blue text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2 w-fit">
+                <button onclick="fetchDashboardData()" class="bg-brand-blue text-white px-5 py-2 rounded-xl text-xs md:text-sm font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2 w-fit">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                     Refresh
                 </button>
             </header>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
-                <div class="bg-white p-6 rounded-2xl border border-brand-border shadow-sm">
-                    <p class="text-brand-lightText text-[11px] font-bold uppercase tracking-widest">Active Users</p>
-                    <h3 id="total-users" class="text-3xl font-bold mt-2 text-brand-blue">0</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-8">
+                <div class="bg-white p-5 md:p-6 rounded-2xl border border-brand-border shadow-sm">
+                    <p class="text-brand-lightText text-[10px] md:text-[11px] font-bold uppercase tracking-widest">Active Users</p>
+                    <h3 id="total-users" class="text-2xl md:text-3xl font-bold mt-1 md:mt-2 text-brand-blue">0</h3>
                 </div>
-                <div class="bg-white p-6 rounded-2xl border border-brand-border shadow-sm">
-                    <p class="text-brand-lightText text-[11px] font-bold uppercase tracking-widest">Total Revenue</p>
-                    <h3 id="total-revenue" class="text-3xl font-bold mt-2 text-brand-darkText">$0.00</h3>
+                <div class="bg-white p-5 md:p-6 rounded-2xl border border-brand-border shadow-sm">
+                    <p class="text-brand-lightText text-[10px] md:text-[11px] font-bold uppercase tracking-widest">Total Revenue</p>
+                    <h3 id="total-revenue" class="text-2xl md:text-3xl font-bold mt-1 md:mt-2 text-brand-darkText">$0.00</h3>
                 </div>
             </div>
 
-            <h3 class="font-bold text-xs mb-4 text-brand-midText uppercase tracking-widest px-1">Growth Metrics</h3>
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <div class="bg-white p-4 rounded-xl border border-brand-border">
-                    <p class="text-brand-lightText text-[10px] font-bold uppercase">Daily</p>
-                    <h4 id="rev-daily" class="text-lg font-bold">$0.00</h4>
+            <h3 class="font-bold text-[10px] mb-4 text-brand-midText uppercase tracking-widest px-1">Growth Metrics</h3>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-8">
+                <div class="bg-white p-3 md:p-4 rounded-xl border border-brand-border">
+                    <p class="text-brand-lightText text-[9px] font-bold uppercase">Daily</p>
+                    <h4 id="rev-daily" class="text-base md:text-lg font-bold">$0.00</h4>
                 </div>
-                <div class="bg-white p-4 rounded-xl border border-brand-border">
-                    <p class="text-brand-lightText text-[10px] font-bold uppercase">Weekly</p>
-                    <h4 id="rev-weekly" class="text-lg font-bold">$0.00</h4>
+                <div class="bg-white p-3 md:p-4 rounded-xl border border-brand-border">
+                    <p class="text-brand-lightText text-[9px] font-bold uppercase">Weekly</p>
+                    <h4 id="rev-weekly" class="text-base md:text-lg font-bold">$0.00</h4>
                 </div>
-                <div class="bg-white p-4 rounded-xl border border-brand-border">
-                    <p class="text-brand-lightText text-[10px] font-bold uppercase">Monthly</p>
-                    <h4 id="rev-monthly" class="text-lg font-bold">$0.00</h4>
+                <div class="bg-white p-3 md:p-4 rounded-xl border border-brand-border">
+                    <p class="text-brand-lightText text-[9px] font-bold uppercase">Monthly</p>
+                    <h4 id="rev-monthly" class="text-base md:text-lg font-bold">$0.00</h4>
                 </div>
-                <div class="bg-white p-4 rounded-xl border border-brand-border">
-                    <p class="text-brand-lightText text-[10px] font-bold uppercase">Yearly</p>
-                    <h4 id="rev-yearly" class="text-lg font-bold">$0.00</h4>
+                <div class="bg-white p-3 md:p-4 rounded-xl border border-brand-border">
+                    <p class="text-brand-lightText text-[9px] font-bold uppercase">Yearly</p>
+                    <h4 id="rev-yearly" class="text-base md:text-lg font-bold">$0.00</h4>
                 </div>
             </div>
 
             <div class="bg-white rounded-2xl border border-brand-border shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-brand-border bg-gray-50/30 flex justify-between items-center">
-                    <h4 class="font-bold text-sm">Recent Activity</h4>
-                    <span class="text-[10px] text-green-500 font-bold uppercase tracking-tighter">● Live Sync</span>
+                <div class="px-5 py-3 border-b border-brand-border bg-gray-50/30 flex justify-between items-center">
+                    <h4 class="font-bold text-xs md:text-sm">Recent Activity</h4>
+                    <span class="text-[9px] md:text-[10px] text-green-500 font-bold uppercase tracking-tighter flex items-center gap-1.5">
+                        <span class="relative flex h-2 w-2">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                        </span>
+                        Live Sync
+                    </span>
                 </div>
-                <div id="sales-container" class="p-10 h-40 flex items-center justify-center text-brand-lightText text-xs italic">
-                    Connecting to Vercel...
+                <div id="sales-container" class="p-10 h-40 flex items-center justify-center text-brand-lightText text-xs italic text-center">
+                    Connecting to Vercel Infrastructure...
                 </div>
             </div>
         </main>
@@ -167,7 +173,7 @@
 
                 if (container) container.innerHTML = '<span class="text-brand-blue font-bold">System Status: Optimized</span>';
             } catch (err) {
-                if (container) container.innerHTML = '<span class="text-red-400">Database Connection Timeout</span>';
+                if (container) container.innerHTML = '<span class="text-red-400 px-4">Database Connection Timeout. Check API Route.</span>';
             }
         }
 

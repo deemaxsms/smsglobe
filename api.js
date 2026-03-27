@@ -44,7 +44,6 @@ const userSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    balance: { type: Number, default: 0 }
 }, { timestamps: true });
 
 const User = mongoose.models.User || mongoose.model('User', userSchema);
@@ -53,18 +52,16 @@ const vpnSchema = new mongoose.Schema({
     name: { type: String, required: true },
     provider: String,
     region: String,
-    image: String,
+    image: String, // URL for the node image
+    stock: { type: Number, default: 0 }, // Added stock field
     deviceLimit: { type: Number, default: 0 },
-    // Array of objects for multiple pricing tiers
     plans: [{
-        duration: String, // e.g., "1 Month"
-        price: Number     // e.g., 29.99
+        duration: String, 
+        price: Number     
     }],
-    // Credentials & Instructions
     username: String,
-    password: { type: String, select: false }, // Good practice: hide pass from general queries
+    password: { type: String, select: false },
     instructions: String,
-    // Legacy support
     price: Number 
 }, { timestamps: true });
 
@@ -150,6 +147,7 @@ app.all('/api/:action', async (req, res) => {
         case 'user-login': return handleUserLogin(req, res);
         case 'user-profile': return handleGetUserProfile(req, res);
         case 'user-messages': return handleGetUserMessages(req, res);
+        case 'purchase-vpn': return handlePurchaseVPN(req, res);
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
         default:
@@ -182,6 +180,7 @@ async function handleLogin(req, res) {
 // --- Updated Google Login Handler ---
 async function handleGoogleLogin(req, res) {
     const { idToken, loginType } = req.body; // 'admin' or 'user'
+    
     try {
         const ticket = await googleClient.verifyIdToken({
             idToken,
@@ -189,28 +188,36 @@ async function handleGoogleLogin(req, res) {
         });
         const { email, name } = ticket.getPayload();
 
-        let targetAccount;
         let Model = (loginType === 'admin') ? Admin : User;
-
-        targetAccount = await Model.findOne({ email });
+        let targetAccount = await Model.findOne({ email: email.toLowerCase() });
         
         if (!targetAccount) {
+            // Create a new account if it doesn't exist
             targetAccount = new Model({
                 fullName: name,
-                email: email,
-                password: await bcrypt.hash(Math.random().toString(36), 12),
-                ...(loginType !== 'admin' && { balance: 0 }) // Only users get balance
+                email: email.toLowerCase(),
+                // Secure random password for social login users
+                password: await bcrypt.hash(Math.random().toString(36), 12)
+                // Balance logic removed from here
             });
             await targetAccount.save();
         }
 
+        // Generate Token
         const token = jwt.sign(
             { id: targetAccount._id, email: targetAccount.email, role: loginType }, 
             JWT_SECRET, 
             { expiresIn: '24h' }
         );
-        return res.json({ success: true, token });
+
+        return res.json({ 
+            success: true, 
+            token,
+            user: { name: targetAccount.fullName, email: targetAccount.email }
+        });
+        
     } catch (err) {
+        console.error("Google Auth Error:", err);
         return res.status(401).json({ success: false, message: "Google Auth Failed" });
     }
 }
@@ -304,8 +311,8 @@ async function handleGetUsers(req, res) {
 
 async function handleGetVPNs(req, res) {
     try {
-        const vpns = await VPN.find({}).sort({ createdAt: -1 });
-        // Keeping 'products' key for frontend compatibility
+        // Fetch all VPNs, including the hidden password field for the admin to see/edit
+        const vpns = await VPN.find({}).sort({ createdAt: -1 }).select('+password');
         res.json({ success: true, products: vpns }); 
     } catch (err) {
         res.status(500).json({ success: false, message: "Fetch failed" });
@@ -316,7 +323,7 @@ async function handleAddVPN(req, res) {
     try {
         const data = req.body;
 
-        // Ensure plans are formatted correctly (numbers are stored as numbers)
+        // 1. Format plans and ensure prices are numbers
         if (data.plans && Array.isArray(data.plans)) {
             data.plans = data.plans.map(p => ({
                 duration: p.duration,
@@ -326,13 +333,15 @@ async function handleAddVPN(req, res) {
 
         const newVPN = new VPN({
             ...data,
+            // 2. Ensure Stock and Device Limit are stored as Integers
+            stock: parseInt(data.stock) || 0, 
             deviceLimit: parseInt(data.deviceLimit) || 0,
-            // Fallback for legacy price field if your schema still requires it
+            // Sync legacy price field with the first plan
             price: data.plans && data.plans.length > 0 ? parseFloat(data.plans[0].price) : 0
         });
 
         await newVPN.save();
-        res.json({ success: true, message: "VPN Node Synced Successfully" });
+        res.json({ success: true, message: "VPN Node & Stock Synced Successfully" });
     } catch (err) {
         console.error("Add VPN Error:", err);
         res.status(500).json({ success: false, message: "Upload failed" });
@@ -343,21 +352,25 @@ async function handleUpdateVPN(req, res) {
     try {
         const { vpnId, ...updateData } = req.body;
         
-        // Clean up data before update
+        // 1. Clean up plans data
         if (updateData.plans && Array.isArray(updateData.plans)) {
             updateData.plans = updateData.plans.map(p => ({
                 duration: p.duration,
                 price: parseFloat(p.price) || 0
             }));
             
-            // Sync the main price field with the first plan for legacy support
             if (updateData.plans.length > 0) {
                 updateData.price = updateData.plans[0].price;
             }
         }
 
-        if (updateData.deviceLimit) {
-            updateData.deviceLimit = parseInt(updateData.deviceLimit);
+        // 2. Parse Numeric Fields
+        if (updateData.stock !== undefined) {
+            updateData.stock = parseInt(updateData.stock) || 0;
+        }
+
+        if (updateData.deviceLimit !== undefined) {
+            updateData.deviceLimit = parseInt(updateData.deviceLimit) || 0;
         }
         
         const updated = await VPN.findByIdAndUpdate(vpnId, updateData, { new: true });
@@ -366,7 +379,7 @@ async function handleUpdateVPN(req, res) {
             return res.status(404).json({ success: false, message: "VPN node not found" });
         }
 
-        res.json({ success: true, message: "VPN Configuration Updated" });
+        res.json({ success: true, message: "VPN Configuration & Stock Updated" });
     } catch (err) {
         console.error("Update VPN Error:", err);
         res.status(500).json({ success: false, message: "Update failed" });
@@ -388,7 +401,6 @@ async function handleDeleteVPN(req, res) {
 async function handleUserLogin(req, res) {
     const { email, password, captchaToken } = req.body;
 
-    // Safety check: Ensure token exists before calling helper
     if (!captchaToken) {
         return res.status(400).json({ success: false, message: "reCAPTCHA token missing." });
     }
@@ -399,14 +411,12 @@ async function handleUserLogin(req, res) {
     }
 
     try {
-        // Find user and explicitly select password if your schema has it hidden
         const user = await User.findOne({ email: email.toLowerCase().trim() });
         
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ success: false, message: "Invalid email or password." });
         }
 
-        // Generate JWT Token with specific user role
         const token = jwt.sign(
             { id: user._id, email: user.email, type: 'user' }, 
             JWT_SECRET, 
@@ -416,7 +426,7 @@ async function handleUserLogin(req, res) {
         return res.json({ 
             success: true, 
             token,
-            user: { name: user.fullName, email: user.email } // Optional: send basic info back
+            user: { name: user.fullName, email: user.email } 
         });
     } catch (err) {
         console.error("Login Error:", err);
@@ -438,7 +448,6 @@ async function handleUserRegister(req, res) {
     }
 
     try {
-        // Standardize email to prevent duplicate accounts with different casing
         const normalizedEmail = email.toLowerCase().trim();
 
         const existingUser = await User.findOne({ email: normalizedEmail });
@@ -446,14 +455,13 @@ async function handleUserRegister(req, res) {
             return res.status(400).json({ success: false, message: "This email is already registered." });
         }
 
-        // Using 12 rounds for better security in production
         const hashedPassword = await bcrypt.hash(password, 12);
         
         const newUser = new User({ 
             fullName: fullName.trim(), 
             email: normalizedEmail, 
-            password: hashedPassword,
-            balance: 0 // Explicitly set starting balance
+            password: hashedPassword
+            // balance: 0 <--- REMOVED
         });
         
         await newUser.save();
@@ -464,7 +472,7 @@ async function handleUserRegister(req, res) {
         });
     } catch (err) {
         console.error("Registration Error:", err);
-        return res.status(500).json({ success: false, message: "Failed to create account. Please try again later." });
+        return res.status(500).json({ success: false, message: "Failed to create account." });
     }
 }
 
@@ -514,7 +522,50 @@ async function handleGetUserMessages(req, res) {
         return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 }
+async function handlePurchaseVPN(req, res) {
+    const { vpnId, planIndex } = req.body;
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
 
+    try {
+        // We still verify the token to ensure the user is logged in
+        const decoded = jwt.verify(token, JWT_SECRET);
+        
+        // 1. Fetch VPN and include password
+        const vpn = await VPN.findById(vpnId).select('+password'); 
+
+        // 2. Validate VPN and Plan existence
+        if (!vpn || !vpn.plans[planIndex]) {
+            return res.status(404).json({ success: false, message: "VPN Node or Plan not found." });
+        }
+
+        // 3. Check Stock availability
+        if (vpn.stock <= 0) {
+            return res.status(400).json({ success: false, message: "This VPN node is currently out of stock." });
+        }
+
+        // 4. Update Inventory Only
+        // We decrement the stock because the user "claimed" a spot
+        vpn.stock -= 1;
+        await vpn.save();
+
+        // 5. Return Credentials
+        return res.json({ 
+            success: true, 
+            message: "Access granted successfully!",
+            credentials: {
+                username: vpn.username,
+                password: vpn.password,
+                instructions: vpn.instructions
+            },
+            remainingStock: vpn.stock
+        });
+        
+    } catch (err) {
+        console.error("VPN Access Error:", err);
+        return res.status(401).json({ success: false, message: "Unauthorized or Session Expired" });
+    }
+}
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

@@ -54,7 +54,6 @@
             <div class="flex flex-col h-full">
                 <div class="p-5 flex-1 overflow-y-auto pt-20 lg:pt-5">
                     <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-9 mb-8 hidden lg:block">
-                    
                     <nav class="space-y-1">
                         <a href="sms_dashboard.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
@@ -70,7 +69,6 @@
                         </a>
                     </nav>
                 </div>
-
                 <div class="p-5 border-t border-brand-border bg-gray-50/50">
                     <button onclick="logout()" class="flex items-center gap-3 px-3 py-2.5 w-full text-red-500 hover:bg-red-50 rounded-xl font-bold transition-all">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
@@ -98,6 +96,7 @@
                             <tr>
                                 <th class="px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">VPN Server Detail</th>
                                 <th class="px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Provider</th>
+                                <th class="px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText text-center">In Stock</th>
                                 <th class="px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Pricing Tiers</th>
                                 <th class="px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText text-right">Actions</th>
                             </tr>
@@ -134,6 +133,16 @@
                     <input type="text" id="region" name="region" required placeholder="United States" class="w-full bg-brand-background/30 border border-brand-border p-3 rounded-xl outline-none focus:border-brand-blue transition-all">
                 </div>
 
+                <div class="md:col-span-1">
+                    <label class="block text-[10px] font-bold text-brand-midText mb-1.5 uppercase tracking-widest">Available in Stock</label>
+                    <input type="number" id="stock" name="stock" required placeholder="0" class="w-full bg-brand-background/30 border border-brand-border p-3 rounded-xl outline-none focus:border-brand-blue transition-all">
+                </div>
+
+                <div class="md:col-span-1">
+                    <label class="block text-[10px] font-bold text-brand-midText mb-1.5 uppercase tracking-widest">Max Concurrent Devices</label>
+                    <input type="number" id="deviceLimit" name="deviceLimit" placeholder="e.g. 5" class="w-full bg-brand-background/30 border border-brand-border p-3 rounded-xl outline-none focus:border-brand-blue transition-all">
+                </div>
+
                 <div class="md:col-span-2">
                     <label class="block text-[10px] font-bold text-brand-midText mb-1.5 uppercase tracking-widest">Server Flag/Image URL</label>
                     <input type="text" id="image" name="image" placeholder="https://imgur.com/..." class="w-full bg-brand-background/30 border border-brand-border p-3 rounded-xl outline-none focus:border-brand-blue transition-all" oninput="previewImage(this.value)">
@@ -142,15 +151,9 @@
                     </div>
                 </div>
 
-                <div class="md:col-span-2">
-                    <label class="block text-[10px] font-bold text-brand-midText mb-1.5 uppercase tracking-widest">Max Concurrent Devices</label>
-                    <input type="number" id="deviceLimit" name="deviceLimit" placeholder="e.g. 5" class="w-full bg-brand-background/30 border border-brand-border p-3 rounded-xl outline-none focus:border-brand-blue transition-all">
-                </div>
-
                 <div class="md:col-span-2 bg-gray-50 p-4 rounded-2xl border border-brand-border">
                     <label class="block text-[10px] font-bold text-brand-midText mb-3 uppercase tracking-widest">Pricing Plans (Duration & Price)</label>
-                    <div id="pricingContainer" class="space-y-3">
-                        </div>
+                    <div id="pricingContainer" class="space-y-3"></div>
                     <button type="button" onclick="addPriceRow()" class="mt-4 text-brand-blue font-bold text-[11px] uppercase flex items-center gap-1 hover:text-blue-700">
                         <span class="text-base">+</span> Add Plan Option
                     </button>
@@ -189,7 +192,6 @@
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
 
-    // Dynamic Pricing Row Manager
     function addPriceRow(duration = '', price = '') {
         const container = document.getElementById('pricingContainer');
         const row = document.createElement('div');
@@ -219,16 +221,18 @@
             allVPNs = data.products || [];
             
             if (allVPNs.length === 0) {
-                list.innerHTML = '<tr><td colspan="4" class="p-12 text-center text-brand-lightText italic text-xs">No VPN nodes found.</td></tr>';
+                list.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-brand-lightText italic text-xs">No VPN nodes found.</td></tr>';
                 return;
             }
 
             list.innerHTML = allVPNs.map(v => {
-                // Display the primary plan (first one) or a summary
                 const plans = v.plans || [];
                 const planDisplay = plans.length > 0 
                     ? `<span class="text-brand-blue font-bold">${plans[0].duration} - $${parseFloat(plans[0].price).toFixed(2)}</span> ${plans.length > 1 ? `<span class="text-[10px] text-brand-lightText block">+ ${plans.length - 1} more tiers</span>` : ''}`
                     : '<span class="text-gray-400">Not set</span>';
+
+                const stockCount = v.stock !== undefined ? v.stock : 0;
+                const stockColor = stockCount > 5 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
 
                 return `
                     <tr class="hover:bg-brand-background/30 transition-colors">
@@ -247,6 +251,11 @@
                             <div class="text-sm font-medium whitespace-nowrap">${v.provider}</div>
                             <div class="text-[10px] text-brand-orange font-bold uppercase tracking-wider">${v.region}</div>
                         </td>
+                        <td class="px-6 py-5 text-center">
+                            <span class="px-2.5 py-1 rounded-full font-bold text-xs ${stockColor}">
+                                ${stockCount}
+                            </span>
+                        </td>
                         <td class="px-6 py-5 whitespace-nowrap">${planDisplay}</td>
                         <td class="px-6 py-5 text-right">
                             <div class="flex justify-end gap-3">
@@ -258,7 +267,7 @@
                 `;
             }).join('');
         } catch (err) {
-            list.innerHTML = '<tr><td colspan="4" class="p-10 text-center text-red-500">Connection error.</td></tr>';
+            list.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-red-500">Connection error.</td></tr>';
         }
     }
 
@@ -277,7 +286,7 @@
         document.getElementById('vpnForm').reset();
         document.getElementById('vpnId').value = '';
         document.getElementById('pricingContainer').innerHTML = '';
-        addPriceRow(); // Add one empty row by default
+        addPriceRow();
         document.getElementById('imgPreviewContainer').classList.add('hidden');
         document.getElementById('modalTitle').innerText = 'New VPN Configuration';
         document.getElementById('submitBtn').innerText = 'Sync VPN Data';
@@ -293,12 +302,12 @@
         document.getElementById('image').value = v.image || '';
         document.getElementById('provider').value = v.provider;
         document.getElementById('region').value = v.region;
+        document.getElementById('stock').value = v.stock || 0; // Populate Stock
         document.getElementById('deviceLimit').value = v.deviceLimit || '';
         document.getElementById('username').value = v.username || '';
         document.getElementById('password').value = v.password || '';
         document.getElementById('instructions').value = v.instructions || '';
 
-        // Handle pricing plans
         const container = document.getElementById('pricingContainer');
         container.innerHTML = '';
         if (v.plans && v.plans.length > 0) {
@@ -336,16 +345,15 @@
         const token = localStorage.getItem('smsglobe_admin_token');
         const id = document.getElementById('vpnId').value;
         
-        // 1. Collect basic form data
         const formData = new FormData(e.target);
         const vpnData = Object.fromEntries(formData.entries());
 
-        // 2. Collect dynamic pricing plans
+        // Dynamic pricing plans
         const planRows = document.querySelectorAll('.pricing-row');
         vpnData.plans = Array.from(planRows).map(row => ({
             duration: row.querySelector('.plan-duration').value,
             price: row.querySelector('.plan-price').value
-        })).filter(p => p.duration && p.price); // filter out incomplete rows
+        })).filter(p => p.duration && p.price);
 
         const method = id ? 'PATCH' : 'POST';
         const btn = document.getElementById('submitBtn');
@@ -366,7 +374,7 @@
                 closeModal();
                 fetchVPNs();
             } else {
-                alert('Sync failed. Check API compatibility.');
+                alert('Sync failed.');
             }
         } catch (e) {
             alert('Network error.');

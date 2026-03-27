@@ -3,11 +3,11 @@
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/",
-      "destination": "/index.html"
+      "source": "/api/(.*)",
+      "destination": "/api.js"
     },
     {
-      "source": "/api/:path*",
+      "source": "/(.*)",
       "destination": "/api.js"
     }
   ]

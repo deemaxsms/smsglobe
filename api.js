@@ -148,6 +148,8 @@ app.all('/api/:action', async (req, res) => {
             break;
         case 'user-register': return handleUserRegister(req, res);
         case 'user-login': return handleUserLogin(req, res);
+        case 'user-profile': return handleGetUserProfile(req, res);
+        case 'user-messages': return handleGetUserMessages(req, res);
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
         default:
@@ -465,6 +467,54 @@ async function handleUserRegister(req, res) {
         return res.status(500).json({ success: false, message: "Failed to create account. Please try again later." });
     }
 }
+
+// Fetch profile for the logged-in user
+async function handleGetUserProfile(req, res) {
+    // 1. Manually verify token since this is inside the general API router
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const user = await User.findById(decoded.id).select('-password');
+        
+        if (!user) return res.status(404).json({ success: false, message: "User not found" });
+        
+        return res.json({ 
+            success: true, 
+            full_name: user.fullName, 
+            email: user.email, 
+            balance: user.balance 
+        });
+    } catch (err) {
+        return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+}
+
+// Fetch SMS messages for the logged-in user
+async function handleGetUserMessages(req, res) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        
+        // Ensure you have a Message model defined
+        const Message = mongoose.models.Message || mongoose.model('Message', new mongoose.Schema({
+            userId: mongoose.Schema.Types.ObjectId,
+            service: String,
+            number: String,
+            code: String,
+            createdAt: { type: Date, default: Date.now }
+        }), 'messages');
+
+        const messages = await Message.find({ userId: decoded.id }).sort({ createdAt: -1 }).limit(10);
+        return res.json(messages); 
+    } catch (err) {
+        return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+}
+
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

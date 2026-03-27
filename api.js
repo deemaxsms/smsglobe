@@ -16,6 +16,12 @@ app.use(express.json());
 // This tells Express to serve your .html, .css, and .js files automatically
 app.use(express.static(__dirname)); 
 
+// Change this to match the new filename
+app.get('/smsadmin/sms_login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'smsadmin', 'sms_login.html'));
+});
+
+// Ensure this is still there to catch the other files (sms_create, sms_forgot)
 app.use('/smsadmin', express.static(path.join(__dirname, 'smsadmin')));
 
 // --- 2. CONFIGURATION & SCHEMA ---

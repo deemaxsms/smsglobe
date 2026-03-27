@@ -88,6 +88,7 @@ app.all('/api/:action', async (req, res) => {
         case 'login': return handleLogin(req, res);
         case 'register': return handleRegister(req, res);
         case 'google-login': return handleGoogleLogin(req, res);
+        case 'dashboard-stats': return handleDashboardStats(req, res);
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
         default:
@@ -162,6 +163,51 @@ async function handleRegister(req, res) {
         return res.status(201).json({ success: true, message: "Registered" });
     } catch (err) {
         return res.status(500).json({ success: false, message: "Registration failed" });
+    }
+}
+
+async function handleDashboardStats(req, res) {
+    try {
+        // You'll need to make sure you have a User and Order model defined
+        // If they aren't defined in this file, ensure they are imported
+        const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({}, { strict: false }), 'users');
+        const Order = mongoose.models.Order || mongoose.model('Order', new mongoose.Schema({}, { strict: false }), 'orders');
+
+        const totalUsers = await User.countDocuments();
+        
+        // Define Time Ranges
+        const now = new Date();
+        const startOfDay = new Date(new Date().setHours(0,0,0,0));
+        const startOfWeek = new Date(new Date().setDate(now.getDate() - 7));
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+        // Fetch all completed orders (adjust 'status' string to match your DB)
+        const orders = await Order.find({ status: 'completed' });
+
+        let stats = {
+            totalRevenue: 0,
+            daily: 0,
+            weekly: 0,
+            monthly: 0,
+            yearly: 0
+        };
+
+        orders.forEach(order => {
+            const amt = parseFloat(order.amount || 0);
+            const date = new Date(order.createdAt || order.timestamp);
+
+            stats.totalRevenue += amt;
+            if (date >= startOfDay) stats.daily += amt;
+            if (date >= startOfWeek) stats.weekly += amt;
+            if (date >= startOfMonth) stats.monthly += amt;
+            if (date >= startOfYear) stats.yearly += amt;
+        });
+
+        return res.json({ success: true, totalUsers, ...stats });
+    } catch (err) {
+        console.error("Dashboard Stats Error:", err);
+        return res.status(500).json({ success: false, message: "Failed to fetch stats" });
     }
 }
 

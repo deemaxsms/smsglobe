@@ -88,13 +88,29 @@ const connectDB = async () => {
 // --- 4. HELPERS ---
 async function verifyRecaptcha(token) {
     if (!token) return false;
+
     try {
-        const response = await fetch(`https://www.google.com/recaptcha/api/siteverify?secret=${RECAPTCHA_SECRET}&response=${token}`, {
-            method: 'POST'
+        // Google expects 'secret' and 'response' in the body for POST requests
+        const params = new URLSearchParams();
+        params.append('secret', process.env.RECAPTCHA_SECRET_KEY);
+        params.append('response', token);
+
+        const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: params.toString()
         });
+
         const data = await response.json();
+        if (!data.success) {
+            console.error("reCAPTCHA Error Codes:", data['error-codes']);
+        }
+
         return data.success;
     } catch (err) {
+        console.error("reCAPTCHA Network/System Error:", err);
         return false;
     }
 }
@@ -161,8 +177,9 @@ async function handleLogin(req, res) {
     }
 }
 
+// --- Updated Google Login Handler ---
 async function handleGoogleLogin(req, res) {
-    const { idToken } = req.body;
+    const { idToken, loginType } = req.body; // 'admin' or 'user'
     try {
         const ticket = await googleClient.verifyIdToken({
             idToken,
@@ -170,22 +187,28 @@ async function handleGoogleLogin(req, res) {
         });
         const { email, name } = ticket.getPayload();
 
-        let admin = await Admin.findOne({ email });
+        let targetAccount;
+        let Model = (loginType === 'admin') ? Admin : User;
+
+        targetAccount = await Model.findOne({ email });
         
-        // If admin doesn't exist, create a profile (adjust security if you want to restrict this)
-        if (!admin) {
-            admin = new Admin({
+        if (!targetAccount) {
+            targetAccount = new Model({
                 fullName: name,
                 email: email,
-                password: await bcrypt.hash(Math.random().toString(36), 12)
+                password: await bcrypt.hash(Math.random().toString(36), 12),
+                ...(loginType !== 'admin' && { balance: 0 }) // Only users get balance
             });
-            await admin.save();
+            await targetAccount.save();
         }
 
-        const token = jwt.sign({ id: admin._id, email: admin.email }, JWT_SECRET, { expiresIn: '24h' });
+        const token = jwt.sign(
+            { id: targetAccount._id, email: targetAccount.email, role: loginType }, 
+            JWT_SECRET, 
+            { expiresIn: '24h' }
+        );
         return res.json({ success: true, token });
     } catch (err) {
-        console.error("Google Auth Error:", err);
         return res.status(401).json({ success: false, message: "Google Auth Failed" });
     }
 }
@@ -359,58 +382,89 @@ async function handleDeleteVPN(req, res) {
         res.status(500).json({ success: false, message: "Delete failed" });
     }
 }
-
+// --- 1. User Login Handler ---
 async function handleUserLogin(req, res) {
     const { email, password, captchaToken } = req.body;
 
+    // Safety check: Ensure token exists before calling helper
+    if (!captchaToken) {
+        return res.status(400).json({ success: false, message: "reCAPTCHA token missing." });
+    }
+
     const isHuman = await verifyRecaptcha(captchaToken);
     if (!isHuman) {
-        return res.status(400).json({ success: false, message: "reCAPTCHA failed." });
+        return res.status(400).json({ success: false, message: "Security verification failed. Please try again." });
     }
 
     try {
-        // Find user by email
-        const user = await User.findOne({ email });
+        // Find user and explicitly select password if your schema has it hidden
+        const user = await User.findOne({ email: email.toLowerCase().trim() });
         
-        // Check user existence and compare password
         if (!user || !(await bcrypt.compare(password, user.password))) {
-            return res.status(401).json({ success: false, message: "Invalid email or password" });
+            return res.status(401).json({ success: false, message: "Invalid email or password." });
         }
 
-        // Generate JWT Token
+        // Generate JWT Token with specific user role
         const token = jwt.sign(
             { id: user._id, email: user.email, type: 'user' }, 
             JWT_SECRET, 
             { expiresIn: '24h' }
         );
 
-        return res.json({ success: true, token });
+        return res.json({ 
+            success: true, 
+            token,
+            user: { name: user.fullName, email: user.email } // Optional: send basic info back
+        });
     } catch (err) {
-        console.error("User Login Error:", err);
-        return res.status(500).json({ success: false, message: "Server error during login" });
+        console.error("Login Error:", err);
+        return res.status(500).json({ success: false, message: "An internal server error occurred." });
     }
 }
 
+// --- 2. User Registration Handler ---
 async function handleUserRegister(req, res) {
     const { fullName, email, password, captchaToken } = req.body;
 
+    if (!captchaToken) {
+        return res.status(400).json({ success: false, message: "reCAPTCHA token missing." });
+    }
+
     const isHuman = await verifyRecaptcha(captchaToken);
-    if (!isHuman) return res.status(400).json({ success: false, message: "reCAPTCHA failed." });
+    if (!isHuman) {
+        return res.status(400).json({ success: false, message: "reCAPTCHA verification failed." });
+    }
 
     try {
-        const existingUser = await User.findOne({ email });
-        if (existingUser) return res.status(400).json({ success: false, message: "User already exists." });
+        // Standardize email to prevent duplicate accounts with different casing
+        const normalizedEmail = email.toLowerCase().trim();
 
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ fullName, email, password: hashedPassword });
+        const existingUser = await User.findOne({ email: normalizedEmail });
+        if (existingUser) {
+            return res.status(400).json({ success: false, message: "This email is already registered." });
+        }
+
+        // Using 12 rounds for better security in production
+        const hashedPassword = await bcrypt.hash(password, 12);
+        
+        const newUser = new User({ 
+            fullName: fullName.trim(), 
+            email: normalizedEmail, 
+            password: hashedPassword,
+            balance: 0 // Explicitly set starting balance
+        });
         
         await newUser.save();
-        return res.status(201).json({ success: true, message: "User created" });
+        
+        return res.status(201).json({ 
+            success: true, 
+            message: "Account created successfully! You can now log in." 
+        });
     } catch (err) {
-        return res.status(500).json({ success: false, message: "Server error" });
+        console.error("Registration Error:", err);
+        return res.status(500).json({ success: false, message: "Failed to create account. Please try again later." });
     }
 }
-
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

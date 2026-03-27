@@ -11,13 +11,8 @@
                 extend: {
                     colors: {
                         brand: {
-                            blue: '#0F54C6',
-                            orange: '#F9861E',
-                            darkText: '#101828',
-                            midText: '#344054',
-                            lightText: '#667085',
-                            background: '#F0F5FE',
-                            border: '#EAECF0',
+                            blue: '#0F54C6', orange: '#F9861E', darkText: '#101828',
+                            midText: '#344054', lightText: '#667085', background: '#F0F5FE', border: '#EAECF0',
                         }
                     },
                     fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
@@ -26,109 +21,125 @@
         }
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 <body class="bg-brand-background min-h-screen flex flex-col font-sans selection:bg-brand-blue selection:text-white">
 
-    <nav class="p-6">
+    <nav class="p-4 md:p-6">
         <div class="max-w-[1536px] mx-auto">
             <a href="/" class="inline-block">
-                <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe Logo" class="h-8 w-auto object-contain">
+                <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe Logo" class="h-6 md:h-8 w-auto object-contain">
             </a>
         </div>
     </nav>
 
-    <main class="flex-grow flex items-center justify-center px-4 pb-12">
-        <div class="w-full max-w-[480px]">
-            <div class="bg-white rounded-[32px] border border-brand-border shadow-xl shadow-blue-900/5 p-8 md:p-10">
+    <main class="flex-grow flex items-center justify-center px-4 pb-8">
+        <div class="w-full max-w-[420px]">
+            <div class="bg-white rounded-[24px] md:rounded-[32px] border border-brand-border shadow-xl shadow-blue-900/5 p-6 md:p-10">
                 
-                <div class="text-center mb-8">
-                    <h1 class="text-2xl md:text-3xl font-extrabold text-brand-darkText mb-2">Create an account</h1>
-                    <p class="text-brand-lightText text-sm">Join SMSGlobe for instant global connectivity.</p>
+                <div class="text-center mb-6">
+                    <h1 class="text-xl md:text-2xl font-extrabold text-brand-darkText mb-1.5">Create account</h1>
+                    <p class="text-brand-lightText text-xs md:text-sm">Join SMSGlobe for global connectivity.</p>
                 </div>
 
-                <button type="button" class="w-full flex items-center justify-center gap-3 bg-white border border-brand-border py-3 rounded-xl font-semibold text-brand-darkText hover:bg-gray-50 transition-all mb-6">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" class="w-5 h-5">
-                    Sign up with Google
-                </button>
+                <div id="g_id_onload"
+                     data-client_id="200301370065-fl80h2idsgants6kb6jcuaivkonljs6u.apps.googleusercontent.com"
+                     data-callback="handleGoogleSignup"
+                     data-auto_prompt="false">
+                </div>
+                <div class="g_id_signin mb-5 flex justify-center" 
+                     data-type="standard" 
+                     data-size="large" 
+                     data-theme="outline" 
+                     data-text="signup_with" 
+                     data-shape="rectangular" 
+                     data-logo_alignment="left" 
+                     data-width="320">
+                </div>
 
-                <div class="relative flex items-center mb-6">
+                <div class="relative flex items-center mb-5">
                     <div class="flex-grow border-t border-brand-border"></div>
-                    <span class="flex-shrink mx-4 text-[10px] font-bold text-brand-lightText uppercase tracking-widest">Or use email</span>
+                    <span class="flex-shrink mx-3 text-[10px] font-bold text-brand-lightText uppercase tracking-tighter">Or use email</span>
                     <div class="flex-grow border-t border-brand-border"></div>
                 </div>
 
-                <form id="registerForm" class="space-y-4">
+                <form id="registerForm" class="space-y-3.5">
                     <div>
-                        <label for="name" class="block text-sm font-semibold text-brand-midText mb-1.5">Full Name</label>
-                        <input type="text" id="name" name="name" required class="w-full px-4 py-3 rounded-xl border border-brand-border focus:ring-4 focus:ring-blue-100 focus:border-brand-blue outline-none transition-all" placeholder="John Doe">
+                        <label for="name" class="block text-xs font-semibold text-brand-midText mb-1">Full Name</label>
+                        <input type="text" id="name" name="name" required 
+                            class="w-full px-4 py-2.5 text-sm rounded-xl border border-brand-border focus:ring-4 focus:ring-blue-100 focus:border-brand-blue outline-none transition-all placeholder:text-gray-400" 
+                            placeholder="John Doe">
                     </div>
 
                     <div>
-                        <label for="email" class="block text-sm font-semibold text-brand-midText mb-1.5">Email Address</label>
-                        <input type="email" id="email" name="email" required class="w-full px-4 py-3 rounded-xl border border-brand-border focus:ring-4 focus:ring-blue-100 focus:border-brand-blue outline-none transition-all" placeholder="name@company.com">
+                        <label for="email" class="block text-xs font-semibold text-brand-midText mb-1">Email Address</label>
+                        <input type="email" id="email" name="email" required 
+                            class="w-full px-4 py-2.5 text-sm rounded-xl border border-brand-border focus:ring-4 focus:ring-blue-100 focus:border-brand-blue outline-none transition-all placeholder:text-gray-400" 
+                            placeholder="name@company.com">
                     </div>
 
-                    <div>
-                        <label for="password" class="block text-sm font-semibold text-brand-midText mb-1.5">Password</label>
-                        <div class="relative">
-                            <input type="password" id="password" name="password" required class="w-full px-4 py-3 rounded-xl border border-brand-border focus:ring-4 focus:ring-blue-100 focus:border-brand-blue outline-none transition-all" placeholder="••••••••">
-                            <button type="button" onclick="togglePassword('password')" class="absolute right-4 top-1/2 -translate-y-1/2 text-brand-lightText hover:text-brand-blue">
-                                <svg id="eye-icon-password" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                            </button>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                        <div>
+                            <label for="password" class="block text-xs font-semibold text-brand-midText mb-1">Password</label>
+                            <input type="password" id="password" name="password" required 
+                                class="w-full px-4 py-2.5 text-sm rounded-xl border border-brand-border focus:ring-4 focus:ring-blue-100 focus:border-brand-blue outline-none transition-all placeholder:text-gray-400" 
+                                placeholder="••••••••">
+                        </div>
+                        <div>
+                            <label for="confirm_password" class="block text-xs font-semibold text-brand-midText mb-1">Confirm</label>
+                            <input type="password" id="confirm_password" name="confirm_password" required 
+                                class="w-full px-4 py-2.5 text-sm rounded-xl border border-brand-border focus:ring-4 focus:ring-blue-100 focus:border-brand-blue outline-none transition-all placeholder:text-gray-400" 
+                                placeholder="••••••••">
                         </div>
                     </div>
 
-                    <div>
-                        <label for="confirm_password" class="block text-sm font-semibold text-brand-midText mb-1.5">Confirm Password</label>
-                        <div class="relative">
-                            <input type="password" id="confirm_password" name="confirm_password" required class="w-full px-4 py-3 rounded-xl border border-brand-border focus:ring-4 focus:ring-blue-100 focus:border-brand-blue outline-none transition-all" placeholder="••••••••">
-                            <button type="button" onclick="togglePassword('confirm_password')" class="absolute right-4 top-1/2 -translate-y-1/2 text-brand-lightText hover:text-brand-blue">
-                                <svg id="eye-icon-confirm_password" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                            </button>
-                        </div>
+                    <div class="flex justify-center py-1 scale-[0.85] md:scale-100">
+                        <div class="g-recaptcha" data-sitekey="6LduuIwsAAAAAKX8pDkcisQngBWJ02n8fN9bobKt"></div>
                     </div>
 
-                    <div class="flex justify-center py-2">
-                        <div class="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"></div>
-                    </div>
-
-                    <p class="text-[11px] text-brand-lightText text-center px-4 leading-relaxed">
-                        By clicking "Create Account", you agree to our <a href="#" class="text-brand-blue font-bold">Terms</a> and <a href="#" class="text-brand-blue font-bold">Privacy Policy</a>.
+                    <p class="text-[10px] text-brand-lightText text-center leading-tight">
+                        By signing up, you agree to our <a href="#" class="text-brand-blue font-bold">Terms</a> and <a href="#" class="text-brand-blue font-bold">Privacy</a>.
                     </p>
 
-                    <button type="submit" id="submitBtn" class="w-full bg-brand-blue text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 disabled:opacity-50">
+                    <button type="submit" id="submitBtn" class="w-full bg-brand-blue text-white py-3 md:py-4 rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 disabled:opacity-50">
                         Create Account
                     </button>
                 </form>
 
-                <p class="text-center mt-8 text-sm text-brand-midText">
+                <p class="text-center mt-6 text-xs text-brand-midText">
                     Already have an account? 
-                    <a href="user_login.html" class="text-brand-blue font-bold hover:underline">Log in here</a>
+                    <a href="user_login.html" class="text-brand-blue font-bold hover:underline">Log in</a>
                 </p>
             </div>
         </div>
     </main>
 
     <script>
-        // 1. Toggle Password Visibility Logic
-        function togglePassword(inputId) {
-            const input = document.getElementById(inputId);
-            const icon = document.getElementById('eye-icon-' + inputId);
-            if (input.type === "password") {
-                input.type = "text";
-                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"></path>';
-            } else {
-                input.type = "password";
-                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>';
+        // --- Google Signup Handler ---
+        async function handleGoogleSignup(response) {
+            try {
+                const res = await fetch('/api/google-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idToken: response.credential, loginType: 'user' })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    localStorage.setItem('userToken', data.token);
+                    window.location.href = '/smsuser/dashboard';
+                } else {
+                    alert(data.message || "Google Signup Failed");
+                }
+            } catch (err) {
+                alert("Connection error during Google signup.");
             }
         }
 
-        // 2. Handle API Submission
+        // --- Standard Email Registration ---
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const submitBtn = document.getElementById('submitBtn');
-            
             const fullName = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
@@ -146,7 +157,7 @@
             }
 
             submitBtn.disabled = true;
-            submitBtn.innerText = "Processing...";
+            submitBtn.innerText = "Creating...";
 
             try {
                 const response = await fetch('/api/user-register', {
@@ -156,16 +167,14 @@
                 });
 
                 const data = await response.json();
-
                 if (data.success) {
-                    alert("Registration successful! Redirecting to login...");
+                    alert("Account created! Redirecting to login...");
                     window.location.href = 'user_login.html';
                 } else {
                     alert(data.message || "Registration failed.");
                     grecaptcha.reset();
                 }
             } catch (err) {
-                console.error(err);
                 alert("A connection error occurred.");
             } finally {
                 submitBtn.disabled = false;

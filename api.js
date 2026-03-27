@@ -148,6 +148,8 @@ app.all('/api/:action', async (req, res) => {
         case 'user-profile': return handleGetUserProfile(req, res);
         case 'user-messages': return handleGetUserMessages(req, res);
         case 'purchase-vpn': return handlePurchaseVPN(req, res);
+        case 'initiate-payment': return handleInitiatePayment(req, res);
+        case 'verify-payment': return handleVerifyPayment(req, res);
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
         default:
@@ -564,6 +566,113 @@ async function handlePurchaseVPN(req, res) {
     } catch (err) {
         console.error("VPN Access Error:", err);
         return res.status(401).json({ success: false, message: "Unauthorized or Session Expired" });
+    }
+}
+
+async function handleInitiatePayment(req, res) {
+    const { vpnId, planIndex } = req.body;
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    // --- CONVERSION RATE CONFIG ---
+    // Change this value whenever you want to update your dollar rate
+    const USD_TO_NGN_RATE = 1650; 
+    // ------------------------------
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const user = await User.findById(decoded.id);
+        const vpn = await VPN.findById(vpnId);
+
+        if (!vpn || !vpn.plans[planIndex]) {
+            return res.status(404).json({ success: false, message: "Plan not found" });
+        }
+
+        const selectedPlan = vpn.plans[planIndex];
+        
+        // CALCULATE NAIRA AMOUNT
+        // We multiply the USD price by our rate
+        const amountInNGN = Math.round(selectedPlan.price * USD_TO_NGN_RATE);
+
+        const tx_ref = `SMS-VPN-${Date.now()}-${decoded.id.slice(-4)}`;
+
+        const response = await fetch("https://api.flutterwave.com/v3/payments", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${process.env.FLW_SECRET_KEY}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                tx_ref: tx_ref,
+                amount: amountInNGN, // This is now in Naira
+                currency: "NGN",     // Changed currency to NGN
+                redirect_url: "https://smsglobe.vercel.app/smsuser/user_vpn.html",
+                customer: {
+                    email: user.email,
+                    name: user.fullName,
+                },
+                meta: {
+                    vpnId: vpnId, // Storing this so verify-payment knows what was bought
+                    planIndex: planIndex
+                },
+                customizations: {
+                    title: "SMSGlobe VPN",
+                    // We show the user the USD price in the description so they aren't confused
+                    description: `Access for ${vpn.name} ($${selectedPlan.price} USD @ ₦${USD_TO_NGN_RATE}/$)`,
+                    logo: "https://imgur.com/8YeZgfx.png"
+                },
+            }),
+        });
+
+        const data = await response.json();
+        if (data.status === "success") {
+            return res.json({ success: true, link: data.data.link });
+        } else {
+            return res.status(500).json({ success: false, message: "Gateway Error" });
+        }
+    } catch (err) {
+        return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+}
+
+async function handleVerifyPayment(req, res) {
+    const { transactionId } = req.body;
+
+    try {
+        // Verify with Flutterwave
+        const response = await fetch(`https://api.flutterwave.com/v3/transactions/${transactionId}/verify`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${process.env.FLW_SECRET_KEY}` },
+        });
+
+        const data = await response.json();
+
+        if (data.status === "success" && data.data.status === "successful") {
+            // Find the VPN used in the customization description or metadata
+            // For now, we fetch the node and return credentials
+            // Note: You might want to pass vpnId in 'meta' during initiation to be precise
+            
+            // Return dummy or real credentials from your VPN schema
+            // We find a generic 'active' node to give details for
+            const vpn = await VPN.findOne({ stock: { $gt: 0 } }).select('+password');
+
+            if (vpn) {
+                vpn.stock -= 1;
+                await vpn.save();
+                
+                return res.json({ 
+                    success: true, 
+                    credentials: {
+                        username: vpn.username,
+                        password: vpn.password,
+                        instructions: vpn.instructions || "Contact support for setup."
+                    } 
+                });
+            }
+        }
+        res.status(400).json({ success: false, message: "Verification failed" });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Server error" });
     }
 }
 // --- 8. STARTUP ---

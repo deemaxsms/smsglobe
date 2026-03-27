@@ -1,9 +1,14 @@
 {
   "version": 2,
   "cleanUrls": true,
+  "trailingSlash": false,
   "rewrites": [
     {
       "source": "/api/(.*)",
+      "destination": "/api.js"
+    },
+    {
+      "source": "/smsadmin/(.*)",
       "destination": "/api.js"
     },
     {

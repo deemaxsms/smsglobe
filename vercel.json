@@ -12,7 +12,11 @@
       "destination": "/smsadmin/$1"
     },
     {
-      "source": "/(.*)",
+      "source": "/smsuser/(.*)",
+      "destination": "/smsuser/$1"
+    },
+    {
+      "source": "/((?!smsuser|smsadmin|api).*)",
       "destination": "/api.js"
     }
   ]

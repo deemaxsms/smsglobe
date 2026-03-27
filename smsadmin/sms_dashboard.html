@@ -35,21 +35,24 @@
         body { background-color: #F0F5FE; font-size: 13px; }
         @media (min-width: 1024px) { body { font-size: 14px; } }
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
+        #sidebar-overlay.hidden { display: none; }
     </style>
 </head>
 <body class="min-h-screen font-sans text-brand-darkText">
 
-    <div class="lg:hidden flex items-center justify-between bg-white px-4 py-2.5 border-b border-brand-border">
+    <div class="lg:hidden flex items-center justify-between bg-white px-4 py-2.5 border-b border-brand-border sticky top-0 z-[60]">
         <img src="https://imgur.com/8YeZgfx.png" alt="Logo" class="h-7">
         <button onclick="toggleSidebar()" class="p-1.5 text-brand-midText hover:bg-brand-background rounded-lg">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
             </svg>
         </button>
     </div>
 
+    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden"></div>
+
     <div class="flex">
-        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-60 bg-white border-r border-brand-border transform -translate-x-full lg:translate-x-0 sidebar-transition lg:static lg:block min-h-screen">
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-brand-border transform -translate-x-full lg:translate-x-0 sidebar-transition lg:static lg:block min-h-screen">
             <div class="p-5">
                 <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-9 mb-6 hidden lg:block">
                 
@@ -69,7 +72,7 @@
                 </nav>
             </div>
 
-            <div class="absolute bottom-0 w-full p-5 border-t border-brand-border">
+            <div class="absolute bottom-0 w-full p-5 border-t border-brand-border bg-white">
                 <button onclick="logout()" class="flex items-center gap-2.5 px-3 py-2 w-full text-red-500 hover:bg-red-50 rounded-lg font-bold transition-all text-[13px]">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                     Logout
@@ -77,13 +80,13 @@
             </div>
         </aside>
 
-       <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+        <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
             <header class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
                 <div>
                     <h2 class="text-xl sm:text-2xl font-bold tracking-tight">Financial Overview</h2>
-                    <p class="text-brand-lightText text-[12px] sm:text-sm">Real-time data from MongoDB</p>
+                    <p class="text-brand-lightText text-[12px] sm:text-sm">Real-time data from Database</p>
                 </div>
-                <button onclick="fetchDashboardData()" class="bg-brand-blue text-white px-5 py-2 rounded-lg text-xs sm:text-sm font-bold shadow-md hover:bg-blue-700 transition-all flex items-center gap-2">
+                <button onclick="fetchDashboardData()" class="bg-brand-blue text-white px-5 py-2 rounded-lg text-xs sm:text-sm font-bold shadow-md hover:bg-blue-700 transition-all flex items-center gap-2 w-fit">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                     Refresh Data
                 </button>
@@ -124,59 +127,80 @@
 
             <div class="bg-white rounded-2xl border border-brand-border shadow-sm overflow-hidden">
                 <div class="px-5 py-4 border-b border-brand-border flex justify-between items-center">
-                    <h4 class="font-bold text-sm lg:text-base">Recent Sales</h4>
+                    <h4 class="font-bold text-sm lg:text-base">Recent Activity</h4>
                     <a href="sms_orders.html" class="text-brand-blue font-bold text-[11px] hover:underline uppercase">Full Report</a>
                 </div>
-                <div id="sales-container" class="p-8 h-48 flex items-center justify-center text-brand-lightText text-xs italic">
-                    Fetching data from MongoDB...
+                <div id="sales-container" class="p-8 h-48 flex items-center justify-center text-brand-lightText text-xs italic text-center">
+                    Fetching data from system...
                 </div>
             </div>
         </main>
     </div>
 
     <script>
-       async function fetchDashboardData() {
-    const token = localStorage.getItem('smsglobe_admin_token');
-    
-    try {
-        // Calling your backend at /api/dashboard-stats
-        const response = await fetch('/api/dashboard-stats', {
-            method: 'GET',
-            headers: { 
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
+        // Toggle Sidebar for Mobile
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            if (sidebar && overlay) {
+                sidebar.classList.toggle('-translate-x-full');
+                overlay.classList.toggle('hidden');
             }
-        });
+        }
 
-        const data = await response.json();
-        if (!data.success) throw new Error(data.message);
+        // Safe innerText setter helper
+        function updateUIElement(id, value) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.innerText = value;
+            } else {
+                console.warn(`Element with id "${id}" not found.`);
+            }
+        }
 
-        // Update User Count
-        document.getElementById('total-users').innerText = data.totalUsers.toLocaleString();
-        
-        // Update Revenue Cards
-        document.getElementById('total-revenue').innerText = `$${data.totalRevenue.toFixed(2)}`;
-        document.getElementById('rev-daily').innerText = `$${data.daily.toFixed(2)}`;
-        document.getElementById('rev-weekly').innerText = `$${data.weekly.toFixed(2)}`;
-        document.getElementById('rev-monthly').innerText = `$${data.monthly.toFixed(2)}`;
-        document.getElementById('rev-yearly').innerText = `$${data.yearly.toFixed(2)}`;
+        async function fetchDashboardData() {
+            const token = localStorage.getItem('smsglobe_admin_token');
+            const container = document.getElementById('sales-container');
+            
+            try {
+                const response = await fetch('/api/dashboard-stats', {
+                    method: 'GET',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
 
-        // Update status text
-        const container = document.getElementById('sales-container');
-        if(container) container.innerHTML = '<span class="text-green-500 font-bold">● System Online</span>';
+                const data = await response.json();
+                if (!data.success) throw new Error(data.message || 'Fetch failed');
 
-    } catch (err) {
-        console.error('Fetch error:', err);
-        const container = document.getElementById('sales-container');
-        if(container) container.innerHTML = '<span class="text-red-500 italic">Error connecting to MongoDB...</span>';
-    }
-}
+                // Safely update all fields
+                updateUIElement('total-users', (data.totalUsers || 0).toLocaleString());
+                updateUIElement('total-revenue', `$${(data.totalRevenue || 0).toFixed(2)}`);
+                updateUIElement('rev-daily', `$${(data.daily || 0).toFixed(2)}`);
+                updateUIElement('rev-weekly', `$${(data.weekly || 0).toFixed(2)}`);
+                updateUIElement('rev-monthly', `$${(data.monthly || 0).toFixed(2)}`);
+                updateUIElement('rev-yearly', `$${(data.yearly || 0).toFixed(2)}`);
 
-// Call on load
-window.onload = fetchDashboardData;
+                if (container) {
+                    container.innerHTML = '<span class="text-green-500 font-bold">● System Online</span>';
+                }
 
-        function toggleSidebar() { /* ... */ }
-        function logout() { /* ... */ }
+            } catch (err) {
+                console.error('Fetch error:', err);
+                if (container) {
+                    container.innerHTML = '<span class="text-red-500 italic">Error connecting to database...</span>';
+                }
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('smsglobe_admin_token');
+            window.location.href = 'sms_login.html';
+        }
+
+        // Initialize on Load
+        window.addEventListener('DOMContentLoaded', fetchDashboardData);
     </script>
 </body>
 </html>

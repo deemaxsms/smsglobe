@@ -111,7 +111,7 @@
                 const data = await res.json();
                 if (data.success) {
                     localStorage.setItem('userToken', data.token);
-                    window.location.href = '/smsuser/dashboard';
+                    window.location.href = '/smsuser/user_dashboard';
                 } else {
                     alert(data.message || "Google Login Failed");
                 }
@@ -147,7 +147,7 @@
                 const data = await response.json();
                 if (data.success) {
                     localStorage.setItem('userToken', data.token);
-                    window.location.href = '/smsuser/dashboard';
+                    window.location.href = '/smsuser/user_dashboard';
                 } else {
                     alert(data.message || "Invalid credentials.");
                     grecaptcha.reset();

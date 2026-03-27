@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMSGlobe Admin - Products</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        if (!localStorage.getItem('smsglobe_admin_token')) {
+            window.location.href = 'sms_login.html';
+        }
+
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            blue: '#0F54C6',
+                            orange: '#F9861E',
+                            darkText: '#101828',
+                            midText: '#344054',
+                            lightText: '#667085',
+                            background: '#F0F5FE',
+                            border: '#EAECF0',
+                        }
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                },
+            },
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #F0F5FE; font-size: 13px; }
+        @media (min-width: 1024px) { body { font-size: 14px; } }
+        .sidebar-transition { transition: transform 0.3s ease-in-out; }
+    </style>
+</head>
+<body class="min-h-screen font-sans text-brand-darkText">
+
+    <div class="flex">
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-60 bg-white border-r border-brand-border transform -translate-x-full lg:translate-x-0 sidebar-transition lg:static lg:block min-h-screen">
+            <div class="p-5">
+                <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-9 mb-6">
+                <nav class="space-y-1">
+                    <a href="sms_dashboard.html" class="flex items-center gap-2.5 px-3 py-2 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-lg font-medium transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                        Dashboard
+                    </a>
+                    <a href="sms_users.html" class="flex items-center gap-2.5 px-3 py-2 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-lg font-medium transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                        Users
+                    </a>
+                    <a href="sms_products.html" class="flex items-center gap-2.5 px-3 py-2 bg-brand-background text-brand-blue rounded-lg font-bold transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                        Products
+                    </a>
+                </nav>
+            </div>
+        </aside>
+
+        <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+            <header class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-3">
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-bold tracking-tight">Product Inventory</h2>
+                    <p class="text-brand-lightText text-[12px] sm:text-sm">Manage VPNs, Proxies, and Account listings.</p>
+                </div>
+                <button onclick="openAddModal()" class="bg-brand-blue text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-md hover:bg-blue-700 transition-all">
+                    + Add New Product
+                </button>
+            </header>
+
+            <div class="bg-white rounded-2xl border border-brand-border shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 border-b border-brand-border">
+                            <tr>
+                                <th class="px-6 py-4 text-[11px] font-bold uppercase text-brand-lightText">Product</th>
+                                <th class="px-6 py-4 text-[11px] font-bold uppercase text-brand-lightText">Provider/Region</th>
+                                <th class="px-6 py-4 text-[11px] font-bold uppercase text-brand-lightText">Price</th>
+                                <th class="px-6 py-4 text-[11px] font-bold uppercase text-brand-lightText text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="product-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <div id="productModal" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+            <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+                <div class="p-6 border-b border-brand-border flex justify-between items-center sticky top-0 bg-white z-10">
+                    <h3 id="modalTitle" class="text-lg font-bold">Upload New Product</h3>
+                    <button onclick="closeModal()" class="text-brand-lightText hover:text-red-500">✕</button>
+                </div>
+                
+                <form id="productForm" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="hidden" id="productId" name="productId">
+                    
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-brand-midText mb-1 uppercase">Product Name</label>
+                        <input type="text" id="name" name="name" required class="w-full border border-brand-border p-2.5 rounded-lg outline-none">
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-brand-midText mb-1 uppercase">Image URL</label>
+                        <input type="text" id="image" name="image" placeholder="https://example.com/image.png" class="w-full border border-brand-border p-2.5 rounded-lg outline-none" oninput="previewImage(this.value)">
+                        <div id="imgPreviewContainer" class="mt-2 hidden">
+                            <img id="imgPreview" src="" class="h-20 w-20 object-cover rounded-lg border border-brand-border">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-brand-midText mb-1 uppercase">Provider</label>
+                        <input type="text" id="provider" name="provider" required class="w-full border border-brand-border p-2.5 rounded-lg">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-brand-midText mb-1 uppercase">Region</label>
+                        <input type="text" id="region" name="region" required class="w-full border border-brand-border p-2.5 rounded-lg">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-brand-midText mb-1 uppercase">Duration</label>
+                        <input type="text" id="duration" name="duration" required class="w-full border border-brand-border p-2.5 rounded-lg">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-brand-midText mb-1 uppercase">Price ($)</label>
+                        <input type="number" step="0.01" id="price" name="price" required class="w-full border border-brand-border p-2.5 rounded-lg">
+                    </div>
+
+                    <div class="md:col-span-2 bg-brand-background p-4 rounded-xl border border-blue-100">
+                        <p class="font-bold text-brand-blue mb-3 text-xs uppercase">Credentials & Access</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] font-bold text-brand-lightText mb-1 uppercase">Username</label>
+                                <input type="text" id="username" name="username" class="w-full bg-white border border-brand-border p-2 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-brand-lightText mb-1 uppercase">Password</label>
+                                <input type="text" id="password" name="password" class="w-full bg-white border border-brand-border p-2 rounded-lg">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-brand-midText mb-1 uppercase">Instructions</label>
+                        <textarea id="instructions" name="instructions" rows="2" class="w-full border border-brand-border p-2.5 rounded-lg"></textarea>
+                    </div>
+
+                    <div class="md:col-span-2 pt-4">
+                        <button type="submit" id="submitBtn" class="w-full bg-brand-blue text-white font-bold py-3 rounded-xl shadow-lg hover:bg-blue-700 transition-all">
+                            Save Product
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+<script>
+    let allProducts = [];
+
+    async function fetchProducts() {
+        const token = localStorage.getItem('smsglobe_admin_token');
+        const list = document.getElementById('product-list');
+        
+        try {
+            const res = await fetch('/api/get-products', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            allProducts = data.products;
+            
+            list.innerHTML = allProducts.map(p => `
+                <tr class="border-b border-brand-border hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-gray-100 border border-brand-border overflow-hidden flex-shrink-0">
+                                <img src="${p.image || 'https://via.placeholder.com/40'}" alt="" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/40'">
+                            </div>
+                            <div>
+                                <div class="font-bold text-brand-darkText">${p.name}</div>
+                                <div class="text-[11px] text-brand-lightText">${p.duration}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm font-medium">${p.provider}</div>
+                        <div class="text-[11px] text-brand-orange font-bold uppercase">${p.region}</div>
+                    </td>
+                    <td class="px-6 py-4 font-bold text-brand-blue">$${parseFloat(p.price).toFixed(2)}</td>
+                    <td class="px-6 py-4 text-right flex justify-end gap-3">
+                        <button onclick="editProduct('${p._id}')" class="text-brand-blue hover:underline font-bold text-xs uppercase">Edit</button>
+                        <button onclick="deleteProduct('${p._id}')" class="text-red-500 hover:underline font-bold text-xs uppercase">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (err) {
+            list.innerHTML = '<tr><td colspan="4" class="p-10 text-center italic text-brand-lightText">No products found.</td></tr>';
+        }
+    }
+
+    function previewImage(url) {
+        const container = document.getElementById('imgPreviewContainer');
+        const img = document.getElementById('imgPreview');
+        if (url) {
+            img.src = url;
+            container.classList.remove('hidden');
+        } else {
+            container.classList.add('hidden');
+        }
+    }
+
+    function openAddModal() {
+        document.getElementById('productForm').reset();
+        document.getElementById('productId').value = '';
+        document.getElementById('imgPreviewContainer').classList.add('hidden');
+        document.getElementById('modalTitle').innerText = 'Upload New Product';
+        document.getElementById('submitBtn').innerText = 'Save Product to Firebase';
+        document.getElementById('productModal').classList.remove('hidden');
+    }
+
+    function editProduct(id) {
+        const p = allProducts.find(item => item._id === id);
+        if (!p) return;
+
+        document.getElementById('productId').value = p._id;
+        document.getElementById('name').value = p.name;
+        document.getElementById('image').value = p.image || '';
+        document.getElementById('provider').value = p.provider;
+        document.getElementById('region').value = p.region;
+        document.getElementById('duration').value = p.duration;
+        document.getElementById('price').value = p.price;
+        document.getElementById('username').value = p.username || '';
+        document.getElementById('password').value = p.password || '';
+        document.getElementById('instructions').value = p.instructions || '';
+
+        if (p.image) previewImage(p.image);
+
+        document.getElementById('modalTitle').innerText = 'Update Product';
+        document.getElementById('submitBtn').innerText = 'Update Changes';
+        document.getElementById('productModal').classList.remove('hidden');
+    }
+
+    async function deleteProduct(id) {
+        if (!confirm('Are you sure you want to delete this product?')) return;
+        const token = localStorage.getItem('smsglobe_admin_token');
+        const res = await fetch(`/api/delete-product?id=${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) fetchProducts();
+    }
+
+    function closeModal() {
+        document.getElementById('productModal').classList.add('hidden');
+    }
+
+    document.getElementById('productForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const productData = Object.fromEntries(formData.entries());
+        const token = localStorage.getItem('smsglobe_admin_token');
+        
+        const id = document.getElementById('productId').value;
+        const endpoint = id ? '/api/update-product' : '/api/add-product';
+        const method = id ? 'PUT' : 'POST';
+
+        const res = await fetch(endpoint, {
+            method: method,
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(productData)
+        });
+
+        if (res.ok) {
+            closeModal();
+            fetchProducts();
+        } else {
+            alert('Error saving product.');
+        }
+    };
+
+    window.onload = fetchProducts;
+</script>
+</body>
+</html>

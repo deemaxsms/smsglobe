@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMSGlobe Admin - User Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Security Check
+        if (!localStorage.getItem('smsglobe_admin_token')) {
+            window.location.href = 'sms_login.html';
+        }
+
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            blue: '#0F54C6',
+                            orange: '#F9861E',
+                            darkText: '#101828',
+                            midText: '#344054',
+                            lightText: '#667085',
+                            background: '#F0F5FE',
+                            border: '#EAECF0',
+                        }
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                },
+            },
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #F0F5FE; font-size: 13px; }
+        @media (min-width: 1024px) { body { font-size: 14px; } }
+        .sidebar-transition { transition: transform 0.3s ease-in-out; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #EAECF0; border-radius: 10px; }
+    </style>
+</head>
+<body class="min-h-screen font-sans text-brand-darkText">
+
+    <div class="lg:hidden flex items-center justify-between bg-white px-4 py-2.5 border-b border-brand-border">
+        <img src="https://imgur.com/8YeZgfx.png" alt="Logo" class="h-7">
+        <button onclick="toggleSidebar()" class="p-1.5 text-brand-midText hover:bg-brand-background rounded-lg">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
+        </button>
+    </div>
+
+    <div class="flex">
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-60 bg-white border-r border-brand-border transform -translate-x-full lg:translate-x-0 sidebar-transition lg:static lg:block min-h-screen">
+            <div class="p-5">
+                <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-9 mb-6 hidden lg:block">
+                <nav class="space-y-1">
+                    <a href="sms_dashboard.html" class="flex items-center gap-2.5 px-3 py-2 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-lg font-medium transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                        Dashboard
+                    </a>
+                    <a href="sms_users.html" class="flex items-center gap-2.5 px-3 py-2 bg-brand-background text-brand-blue rounded-lg font-bold transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                        Users
+                    </a>
+                    <a href="sms_products.html" class="flex items-center gap-2.5 px-3 py-2 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-lg font-medium transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                        Products
+                    </a>
+                </nav>
+            </div>
+            <div class="absolute bottom-0 w-full p-5 border-t border-brand-border">
+                <button onclick="logout()" class="flex items-center gap-2.5 px-3 py-2 w-full text-red-500 hover:bg-red-50 rounded-lg font-bold transition-all text-[13px]">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    Logout
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+            <header class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-3">
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-brand-darkText">User Management</h2>
+                    <p class="text-brand-lightText text-[12px] sm:text-sm">View and manage all registered SMSGlobe users.</p>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="userSearch" placeholder="Search email..." class="bg-white border border-brand-border px-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/20 w-full sm:w-64">
+                </div>
+            </header>
+
+            <div class="bg-white rounded-2xl border border-brand-border shadow-sm overflow-hidden">
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-brand-border">
+                                <th class="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-brand-lightText">User Detail</th>
+                                <th class="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Registration Date</th>
+                                <th class="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Status</th>
+                                <th class="px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-brand-lightText text-right">Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                            <tr>
+                                <td colspan="4" class="px-6 py-12 text-center text-brand-lightText italic">
+                                    Connecting to MongoDB...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/30 z-40 hidden lg:hidden backdrop-blur-sm"></div>
+
+    <script>
+        async function fetchUsers() {
+            const token = localStorage.getItem('smsglobe_admin_token');
+            const tbody = document.getElementById('users-table-body');
+            
+            try {
+                const response = await fetch('/api/get-users', {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+                if (!data.success) throw new Error(data.message);
+
+                tbody.innerHTML = ''; // Clear loader
+
+                data.users.forEach(user => {
+                    const date = new Date(user.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric', month: 'short', day: 'numeric'
+                    });
+
+                    tbody.innerHTML += `
+                        <tr class="border-b border-brand-border hover:bg-brand-background/30 transition-colors">
+                            <td class="px-6 py-4">
+                                <div class="font-bold text-brand-darkText">${user.fullName || 'User'}</div>
+                                <div class="text-[12px] text-brand-lightText">${user.email}</div>
+                            </td>
+                            <td class="px-6 py-4 text-brand-midText">
+                                ${date}
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-green-100 text-green-700">Active</span>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <span class="font-bold text-brand-blue text-base">$${parseFloat(user.balance || 0).toFixed(2)}</span>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-red-500 font-bold">Failed to load users. Verify your MongoDB connection.</td></tr>`;
+            }
+        }
+
+        window.onload = fetchUsers;
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        function logout() {
+            localStorage.removeItem('smsglobe_admin_token');
+            window.location.href = 'sms_login.html';
+        }
+    </script>
+</body>
+</html>

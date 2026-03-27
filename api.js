@@ -89,6 +89,9 @@ app.all('/api/:action', async (req, res) => {
         case 'register': return handleRegister(req, res);
         case 'google-login': return handleGoogleLogin(req, res);
         case 'dashboard-stats': return handleDashboardStats(req, res);
+        case 'get-users': return handleGetUsers(req, res);
+        case 'get-products': return handleGetProducts(req, res);
+        case 'add-product': return handleAddProduct(req, res);
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
         default:
@@ -208,6 +211,49 @@ async function handleDashboardStats(req, res) {
     } catch (err) {
         console.error("Dashboard Stats Error:", err);
         return res.status(500).json({ success: false, message: "Failed to fetch stats" });
+    }
+}
+
+async function handleGetUsers(req, res) {
+    try {
+        // We'll define the User model dynamically if not already present
+        const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({}, { strict: false }), 'users');
+        
+        // Fetch all users, sorted by newest first
+        const users = await User.find({}).sort({ createdAt: -1 });
+
+        return res.json({ 
+            success: true, 
+            users: users.map(u => ({
+                fullName: u.fullName,
+                email: u.email,
+                balance: u.balance || 0, // Ensure balance defaults to 0
+                createdAt: u.createdAt
+            }))
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Database Error" });
+    }
+}
+
+async function handleGetProducts(req, res) {
+    const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({}, { strict: false }), 'products');
+    const products = await Product.find({}).sort({ createdAt: -1 });
+    res.json({ success: true, products });
+}
+
+async function handleAddProduct(req, res) {
+    try {
+        const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({}, { strict: false }), 'products');
+        const newProduct = new Product({
+            ...req.body,
+            price: parseFloat(req.body.price),
+            createdAt: new Date()
+        });
+        await newProduct.save();
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Upload failed" });
     }
 }
 

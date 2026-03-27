@@ -6,7 +6,6 @@
     <title>SMSGlobe Admin - Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        // Security Check
         if (!localStorage.getItem('smsglobe_admin_token')) {
             window.location.href = 'sms_login.html';
         }
@@ -35,127 +34,118 @@
         body { background-color: #F0F5FE; font-size: 13px; }
         @media (min-width: 1024px) { body { font-size: 14px; } }
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
-        #sidebar-overlay.hidden { display: none; }
     </style>
 </head>
 <body class="min-h-screen font-sans text-brand-darkText">
 
-    <div class="lg:hidden flex items-center justify-between bg-white px-4 py-2.5 border-b border-brand-border sticky top-0 z-[60]">
+    <div class="lg:hidden flex items-center justify-between bg-white px-4 py-3 border-b border-brand-border sticky top-0 z-[60]">
         <img src="https://imgur.com/8YeZgfx.png" alt="Logo" class="h-7">
-        <button onclick="toggleSidebar()" class="p-1.5 text-brand-midText hover:bg-brand-background rounded-lg">
+        <button onclick="toggleSidebar()" class="p-2 text-brand-midText hover:bg-brand-background rounded-lg">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
             </svg>
         </button>
     </div>
 
-    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden"></div>
+    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden backdrop-blur-sm"></div>
 
     <div class="flex">
         <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-brand-border transform -translate-x-full lg:translate-x-0 sidebar-transition lg:static lg:block min-h-screen">
-            <div class="p-5">
-                <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-9 mb-6 hidden lg:block">
-                
-                <nav class="space-y-1">
-                    <a href="sms_dashboard.html" class="flex items-center gap-2.5 px-3 py-2 bg-brand-background text-brand-blue rounded-lg font-bold transition-all text-[13px] lg:text-[14px]">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                        Dashboard
-                    </a>
-                    <a href="sms_users.html" class="flex items-center gap-2.5 px-3 py-2 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-lg font-medium transition-all text-[13px] lg:text-[14px]">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                        Users
-                    </a>
-                    <a href="sms_products.html" class="flex items-center gap-2.5 px-3 py-2 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-lg font-medium transition-all text-[13px] lg:text-[14px]">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-                        Products
-                    </a>
-                </nav>
-            </div>
+            <div class="flex flex-col h-full">
+                <div class="p-5 flex-1 overflow-y-auto pt-10 lg:pt-5">
+                    <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-9 mb-8 hidden lg:block">
+                    
+                    <nav class="space-y-1">
+                        <a href="sms_dashboard.html" class="flex items-center gap-3 px-3 py-2.5 bg-brand-background text-brand-blue rounded-xl font-bold transition-all shadow-sm">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                            Dashboard
+                        </a>
+                        <a href="sms_users.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                            Users
+                        </a>
+                        <a href="sms_products.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                            Products
+                        </a>
+                    </nav>
+                </div>
 
-            <div class="absolute bottom-0 w-full p-5 border-t border-brand-border bg-white">
-                <button onclick="logout()" class="flex items-center gap-2.5 px-3 py-2 w-full text-red-500 hover:bg-red-50 rounded-lg font-bold transition-all text-[13px]">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                    Logout
-                </button>
+                <div class="p-5 border-t border-brand-border bg-gray-50/50">
+                    <button onclick="logout()" class="flex items-center gap-3 px-3 py-2.5 w-full text-red-500 hover:bg-red-50 rounded-xl font-bold transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                        Sign Out
+                    </button>
+                </div>
             </div>
         </aside>
 
-        <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
-            <header class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
+        <main class="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full">
+            <header class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
                 <div>
-                    <h2 class="text-xl sm:text-2xl font-bold tracking-tight">Financial Overview</h2>
-                    <p class="text-brand-lightText text-[12px] sm:text-sm">Real-time data from Database</p>
+                    <h2 class="text-2xl font-bold tracking-tight">Financial Overview</h2>
+                    <p class="text-brand-lightText">Real-time data from MongoDB</p>
                 </div>
-                <button onclick="fetchDashboardData()" class="bg-brand-blue text-white px-5 py-2 rounded-lg text-xs sm:text-sm font-bold shadow-md hover:bg-blue-700 transition-all flex items-center gap-2 w-fit">
+                <button onclick="fetchDashboardData()" class="bg-brand-blue text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2 w-fit">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    Refresh Data
+                    Refresh
                 </button>
             </header>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                <div class="bg-white p-5 rounded-2xl border border-brand-border shadow-sm">
-                    <p class="text-brand-lightText text-[11px] font-bold uppercase tracking-wider">Registered Users</p>
-                    <h3 id="total-users" class="text-2xl lg:text-3xl font-bold mt-1 text-brand-blue">0</h3>
-                    <span class="text-green-500 text-[10px] font-bold mt-1 inline-block italic">Live from Database</span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-2xl border border-brand-border shadow-sm">
+                    <p class="text-brand-lightText text-[11px] font-bold uppercase tracking-widest">Active Users</p>
+                    <h3 id="total-users" class="text-3xl font-bold mt-2 text-brand-blue">0</h3>
                 </div>
-                <div class="bg-white p-5 rounded-2xl border border-brand-border shadow-sm">
-                    <p class="text-brand-lightText text-[11px] font-bold uppercase tracking-wider">Total Revenue</p>
-                    <h3 id="total-revenue" class="text-2xl lg:text-3xl font-bold mt-1 text-brand-darkText">$0.00</h3>
-                    <span class="text-brand-orange text-[10px] font-bold mt-1 inline-block">Lifetime Earnings</span>
+                <div class="bg-white p-6 rounded-2xl border border-brand-border shadow-sm">
+                    <p class="text-brand-lightText text-[11px] font-bold uppercase tracking-widest">Total Revenue</p>
+                    <h3 id="total-revenue" class="text-3xl font-bold mt-2 text-brand-darkText">$0.00</h3>
                 </div>
             </div>
 
-            <h3 class="font-bold text-sm mb-4 text-brand-midText uppercase tracking-widest">Revenue Breakdown</h3>
+            <h3 class="font-bold text-xs mb-4 text-brand-midText uppercase tracking-widest px-1">Growth Metrics</h3>
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <div class="bg-white p-4 rounded-xl border border-brand-border">
                     <p class="text-brand-lightText text-[10px] font-bold uppercase">Daily</p>
-                    <h4 id="rev-daily" class="text-lg font-bold text-brand-darkText">$0.00</h4>
+                    <h4 id="rev-daily" class="text-lg font-bold">$0.00</h4>
                 </div>
                 <div class="bg-white p-4 rounded-xl border border-brand-border">
                     <p class="text-brand-lightText text-[10px] font-bold uppercase">Weekly</p>
-                    <h4 id="rev-weekly" class="text-lg font-bold text-brand-darkText">$0.00</h4>
+                    <h4 id="rev-weekly" class="text-lg font-bold">$0.00</h4>
                 </div>
                 <div class="bg-white p-4 rounded-xl border border-brand-border">
                     <p class="text-brand-lightText text-[10px] font-bold uppercase">Monthly</p>
-                    <h4 id="rev-monthly" class="text-lg font-bold text-brand-darkText">$0.00</h4>
+                    <h4 id="rev-monthly" class="text-lg font-bold">$0.00</h4>
                 </div>
                 <div class="bg-white p-4 rounded-xl border border-brand-border">
                     <p class="text-brand-lightText text-[10px] font-bold uppercase">Yearly</p>
-                    <h4 id="rev-yearly" class="text-lg font-bold text-brand-darkText">$0.00</h4>
+                    <h4 id="rev-yearly" class="text-lg font-bold">$0.00</h4>
                 </div>
             </div>
 
             <div class="bg-white rounded-2xl border border-brand-border shadow-sm overflow-hidden">
-                <div class="px-5 py-4 border-b border-brand-border flex justify-between items-center">
-                    <h4 class="font-bold text-sm lg:text-base">Recent Activity</h4>
-                    <a href="sms_orders.html" class="text-brand-blue font-bold text-[11px] hover:underline uppercase">Full Report</a>
+                <div class="px-6 py-4 border-b border-brand-border bg-gray-50/30 flex justify-between items-center">
+                    <h4 class="font-bold text-sm">Recent Activity</h4>
+                    <span class="text-[10px] text-green-500 font-bold uppercase tracking-tighter">● Live Sync</span>
                 </div>
-                <div id="sales-container" class="p-8 h-48 flex items-center justify-center text-brand-lightText text-xs italic text-center">
-                    Fetching data from system...
+                <div id="sales-container" class="p-10 h-40 flex items-center justify-center text-brand-lightText text-xs italic">
+                    Connecting to Vercel...
                 </div>
             </div>
         </main>
     </div>
 
     <script>
-        // Toggle Sidebar for Mobile
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
-            if (sidebar && overlay) {
-                sidebar.classList.toggle('-translate-x-full');
-                overlay.classList.toggle('hidden');
-            }
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
         }
 
-        // Safe innerText setter helper
         function updateUIElement(id, value) {
             const el = document.getElementById(id);
-            if (el) {
-                el.innerText = value;
-            } else {
-                console.warn(`Element with id "${id}" not found.`);
-            }
+            if (el) el.innerText = value;
         }
 
         async function fetchDashboardData() {
@@ -164,17 +154,10 @@
             
             try {
                 const response = await fetch('/api/dashboard-stats', {
-                    method: 'GET',
-                    headers: { 
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
-
                 const data = await response.json();
-                if (!data.success) throw new Error(data.message || 'Fetch failed');
 
-                // Safely update all fields
                 updateUIElement('total-users', (data.totalUsers || 0).toLocaleString());
                 updateUIElement('total-revenue', `$${(data.totalRevenue || 0).toFixed(2)}`);
                 updateUIElement('rev-daily', `$${(data.daily || 0).toFixed(2)}`);
@@ -182,15 +165,9 @@
                 updateUIElement('rev-monthly', `$${(data.monthly || 0).toFixed(2)}`);
                 updateUIElement('rev-yearly', `$${(data.yearly || 0).toFixed(2)}`);
 
-                if (container) {
-                    container.innerHTML = '<span class="text-green-500 font-bold">● System Online</span>';
-                }
-
+                if (container) container.innerHTML = '<span class="text-brand-blue font-bold">System Status: Optimized</span>';
             } catch (err) {
-                console.error('Fetch error:', err);
-                if (container) {
-                    container.innerHTML = '<span class="text-red-500 italic">Error connecting to database...</span>';
-                }
+                if (container) container.innerHTML = '<span class="text-red-400">Database Connection Timeout</span>';
             }
         }
 
@@ -199,8 +176,7 @@
             window.location.href = 'sms_login.html';
         }
 
-        // Initialize on Load
-        window.addEventListener('DOMContentLoaded', fetchDashboardData);
+        window.onload = fetchDashboardData;
     </script>
 </body>
 </html>

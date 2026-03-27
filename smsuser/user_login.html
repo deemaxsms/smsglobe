@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - SMSGlobe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            blue: '#0F54C6',
+                            orange: '#F9861E',
+                            darkText: '#101828',
+                            midText: '#344054',
+                            lightText: '#667085',
+                            background: '#F0F5FE',
+                            border: '#EAECF0',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+</head>
+<body class="bg-brand-background min-h-screen flex flex-col font-sans selection:bg-brand-blue selection:text-white">
+
+    <nav class="p-6">
+        <div class="max-w-[1536px] mx-auto">
+            <a href="/" class="inline-block">
+                <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe Logo" class="h-8 w-auto object-contain">
+            </a>
+        </div>
+    </nav>
+
+    <main class="flex-grow flex items-center justify-center px-4 pb-12">
+        <div class="w-full max-w-[440px]">
+            <div class="bg-white rounded-[32px] border border-brand-border shadow-xl shadow-blue-900/5 p-8 md:p-10">
+                
+                <div class="text-center mb-8">
+                    <h1 class="text-2xl md:text-3xl font-extrabold text-brand-darkText mb-2">Welcome back</h1>
+                    <p class="text-brand-lightText text-sm">Please enter your details to sign in.</p>
+                </div>
+
+                <button class="w-full flex items-center justify-center gap-3 bg-white border border-brand-border py-3 rounded-xl font-semibold text-brand-darkText hover:bg-gray-50 transition-all mb-6">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" class="w-5 h-5">
+                    Sign in with Google
+                </button>
+
+                <div class="relative flex items-center mb-6">
+                    <div class="flex-grow border-t border-brand-border"></div>
+                    <span class="flex-shrink mx-4 text-xs font-bold text-brand-lightText uppercase tracking-widest">Or email</span>
+                    <div class="flex-grow border-t border-brand-border"></div>
+                </div>
+
+                <form action="#" method="POST" class="space-y-5">
+                    <div>
+                        <label for="email" class="block text-sm font-semibold text-brand-midText mb-1.5">Email Address</label>
+                        <input type="email" id="email" name="email" required
+                            class="w-full px-4 py-3 rounded-xl border border-brand-border focus:ring-4 focus:ring-blue-100 focus:border-brand-blue outline-none transition-all placeholder:text-gray-400"
+                            placeholder="name@company.com">
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1.5">
+                            <label for="password" class="block text-sm font-semibold text-brand-midText">Password</label>
+                            <a href="#" class="text-xs font-bold text-brand-blue hover:underline">Forgot password?</a>
+                        </div>
+                        <input type="password" id="password" name="password" required
+                            class="w-full px-4 py-3 rounded-xl border border-brand-border focus:ring-4 focus:ring-blue-100 focus:border-brand-blue outline-none transition-all placeholder:text-gray-400"
+                            placeholder="••••••••">
+                    </div>
+
+                    <div class="flex justify-center py-2">
+                        <div class="g-recaptcha" data-sitekey="your_site_key"></div>
+                    </div>
+
+                    <div class="flex items-center">
+                        <input type="checkbox" id="remember" class="w-4 h-4 text-brand-blue border-brand-border rounded focus:ring-brand-blue">
+                        <label for="remember" class="ml-2 text-sm font-medium text-brand-midText">Remember for 30 days</label>
+                    </div>
+
+                    <button type="submit" class="w-full bg-brand-blue text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
+                        Sign In
+                    </button>
+                </form>
+
+                <p class="text-center mt-8 text-sm text-brand-midText">
+                    Don't have an account? 
+                    <a href="user_create.html" class="text-brand-blue font-bold hover:underline">Sign up for free</a>
+                </p>
+            </div>
+
+            <div class="mt-8 flex justify-center space-x-6 text-xs font-medium text-brand-lightText">
+                <a href="#" class="hover:text-brand-midText">Privacy Policy</a>
+                <span>&bull;</span>
+                <a href="#" class="hover:text-brand-midText">Terms of Service</a>
+                <span>&bull;</span>
+                <a href="#" class="hover:text-brand-midText">Support</a>
+            </div>
+        </div>
+    </main>
+
+</body>
+</html>

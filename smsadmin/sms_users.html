@@ -84,7 +84,7 @@
             <header class="grid grid-cols-1 md:flex md:items-center md:justify-between mb-8 gap-4">
                 <div class="max-w-[calc(100%-60px)] md:max-w-none">
                     <h2 class="text-xl md:text-2xl font-bold tracking-tight">User Management</h2>
-                    <p class="text-brand-lightText text-xs md:text-sm">Manage your database of registered users.</p>
+                    <p class="text-brand-lightText text-xs md:text-sm">Suspend or delete users and manage account access.</p>
                 </div>
                 <div class="relative w-full md:w-80">
                     <input type="text" id="userSearch" onkeyup="filterUsers()" placeholder="Search users..." class="w-full bg-white border border-brand-border px-4 py-2.5 md:py-3 rounded-xl text-sm outline-none focus:border-brand-blue transition-all shadow-sm">
@@ -100,7 +100,7 @@
                                 <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">User Identity</th>
                                 <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Join Date</th>
                                 <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Account Status</th>
-                                <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText text-right">Credits</th>
+                                <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="users-table-body" class="divide-y divide-brand-border">
@@ -147,6 +147,32 @@
         }
     }
 
+    async function handleUserAction(action, userId) {
+        const confirmMsg = action === 'delete' ? "Are you sure you want to PERMANENTLY delete this user?" : `Change status to ${action}?`;
+        if (!confirm(confirmMsg)) return;
+
+        const token = localStorage.getItem('smsglobe_admin_token');
+        try {
+            const response = await fetch('/api/manage-user', {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify({ action, userId })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                fetchUsers(); // Refresh list after action
+            } else {
+                alert(data.message);
+            }
+        } catch (err) {
+            alert("Action failed. Check network.");
+        }
+    }
+
     function renderUsers(users) {
         const tbody = document.getElementById('users-table-body');
         if (users.length === 0) {
@@ -159,6 +185,8 @@
                 year: 'numeric', month: 'short', day: 'numeric'
             });
 
+            const isSuspended = user.status === 'suspended';
+
             return `
                 <tr class="hover:bg-brand-background/30 transition-colors">
                     <td class="px-4 md:px-6 py-4">
@@ -169,10 +197,18 @@
                         ${date}
                     </td>
                     <td class="px-4 md:px-6 py-4">
-                        <span class="px-2 py-0.5 md:py-1 rounded-lg text-[9px] md:text-[10px] font-bold uppercase bg-green-50 text-green-600 border border-green-100">Active</span>
+                        <span class="px-2 py-0.5 md:py-1 rounded-lg text-[9px] md:text-[10px] font-bold uppercase border ${
+                            isSuspended 
+                            ? 'bg-red-50 text-red-600 border-red-100' 
+                            : 'bg-green-50 text-green-600 border-green-100'
+                        }">${user.status || 'Active'}</span>
                     </td>
-                    <td class="px-4 md:px-6 py-4 text-right">
-                        <span class="font-bold text-brand-blue text-xs md:text-sm">$${parseFloat(user.balance || 0).toFixed(2)}</span>
+                    <td class="px-4 md:px-6 py-4 text-right space-x-1 whitespace-nowrap">
+                        ${isSuspended 
+                            ? `<button onclick="handleUserAction('activate', '${user._id}')" class="px-3 py-1.5 bg-green-600 text-white rounded-lg text-[10px] font-bold hover:bg-green-700 active:scale-95 transition-all">Activate</button>`
+                            : `<button onclick="handleUserAction('suspend', '${user._id}')" class="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-[10px] font-bold hover:bg-orange-600 active:scale-95 transition-all">Suspend</button>`
+                        }
+                        <button onclick="handleUserAction('delete', '${user._id}')" class="px-3 py-1.5 bg-red-50 text-red-600 border border-red-100 rounded-lg text-[10px] font-bold hover:bg-red-100 active:scale-95 transition-all">Delete</button>
                     </td>
                 </tr>
             `;

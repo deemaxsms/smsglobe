@@ -137,6 +137,7 @@ app.all('/api/:action', async (req, res) => {
         case 'google-login': return handleGoogleLogin(req, res);
         case 'dashboard-stats': return handleDashboardStats(req, res);
         case 'get-users': return handleGetUsers(req, res);
+        case 'manage-user': return handleManageUser(req, res);
         case 'products': 
             if (req.method === 'GET') return handleGetVPNs(req, res);
             if (req.method === 'POST') return handleAddVPN(req, res);
@@ -290,18 +291,16 @@ async function handleDashboardStats(req, res) {
 
 async function handleGetUsers(req, res) {
     try {
-        // We'll define the User model dynamically if not already present
         const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({}, { strict: false }), 'users');
-        
-        // Fetch all users, sorted by newest first
         const users = await User.find({}).sort({ createdAt: -1 });
 
         return res.json({ 
             success: true, 
             users: users.map(u => ({
+                _id: u._id, // Added ID for actions
                 fullName: u.fullName,
                 email: u.email,
-                balance: u.balance || 0, // Ensure balance defaults to 0
+                status: u.status || 'active', // Added status
                 createdAt: u.createdAt
             }))
         });
@@ -309,8 +308,24 @@ async function handleGetUsers(req, res) {
         return res.status(500).json({ success: false, message: "Database Error" });
     }
 }
-// --- Updated Handlers for VPN Management ---
+async function handleManageUser(req, res) {
+    const { action, userId } = req.body;
+    try {
+        const User = mongoose.models.User || mongoose.model('User');
 
+        if (action === 'delete') {
+            await User.findByIdAndDelete(userId);
+            return res.json({ success: true, message: "User deleted successfully." });
+        }
+
+        const newStatus = action === 'suspend' ? 'suspended' : 'active';
+        await User.findByIdAndUpdate(userId, { status: newStatus });
+        
+        return res.json({ success: true, message: `User is now ${newStatus}.` });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Action failed." });
+    }
+}
 async function handleGetVPNs(req, res) {
     try {
         // Fetch all VPNs, including the hidden password field for the admin to see/edit

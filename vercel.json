@@ -9,7 +9,7 @@
     },
     {
       "source": "/smsadmin/(.*)",
-      "destination": "/api.js"
+      "destination": "/smsadmin/$1"
     },
     {
       "source": "/(.*)",

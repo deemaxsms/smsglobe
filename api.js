@@ -17,13 +17,12 @@ app.use(cors());
 app.use(express.json());
 
 // --- 1. SERVE STATIC FILES ---
-app.use(express.static(__dirname)); 
+app.use(express.static(__dirname, { extensions: ['html'] }));
 
-app.get('/smsadmin/sms_login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'smsadmin', 'sms_login.html'));
-});
-
-app.use('/smsadmin', express.static(path.join(__dirname, 'smsadmin')));
+// This handles everything in the smsadmin folder automatically
+app.use('/smsadmin', express.static(path.join(__dirname, 'smsadmin'), {
+    extensions: ['html', 'htm']
+}));
 
 // --- 2. CONFIGURATION & SCHEMA ---
 const JWT_SECRET = process.env.JWT_SECRET;

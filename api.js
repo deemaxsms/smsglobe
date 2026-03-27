@@ -4,28 +4,30 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const path = require('path'); // Added for file path handling
+const path = require('path');
+const { OAuth2Client } = require('google-auth-library');
 
 dotenv.config();
 const app = express();
 
+// Initialize Google OAuth Client
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 app.use(cors());
 app.use(express.json());
 
-// --- 1. SERVE STATIC FILES (Essential for Vercel) ---
-// This tells Express to serve your .html, .css, and .js files automatically
+// --- 1. SERVE STATIC FILES ---
 app.use(express.static(__dirname)); 
 
-// Change this to match the new filename
 app.get('/smsadmin/sms_login', (req, res) => {
     res.sendFile(path.join(__dirname, 'smsadmin', 'sms_login.html'));
 });
 
-// Ensure this is still there to catch the other files (sms_create, sms_forgot)
 app.use('/smsadmin', express.static(path.join(__dirname, 'smsadmin')));
 
 // --- 2. CONFIGURATION & SCHEMA ---
 const JWT_SECRET = process.env.JWT_SECRET;
+const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET_KEY;
 
 const adminSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
@@ -43,7 +45,6 @@ const connectDB = async () => {
         await mongoose.connect(process.env.MONGODB_URI, {
             maxPoolSize: 100, 
             serverSelectionTimeoutMS: 5000,
-            socketTimeoutMS: 45000,
         });
         isConnected = true;
     } catch (err) {
@@ -51,8 +52,19 @@ const connectDB = async () => {
     }
 };
 
-// --- 4. CACHING ---
-let localCache = { data: null, lastFetched: 0 };
+// --- 4. HELPERS ---
+async function verifyRecaptcha(token) {
+    if (!token) return false;
+    try {
+        const response = await fetch(`https://www.google.com/recaptcha/api/siteverify?secret=${RECAPTCHA_SECRET}&response=${token}`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        return data.success;
+    } catch (err) {
+        return false;
+    }
+}
 
 // --- 5. MIDDLEWARE ---
 const verifyToken = (req, res, next) => {
@@ -68,14 +80,7 @@ const verifyToken = (req, res, next) => {
     }
 };
 
-// --- 6. ROUTES ---
-
-// NEW: This handles the "/" error by serving index.html
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// The Central Switch-Case Controller for API
+// --- 6. API ROUTER (Switch-Case) ---
 app.all('/api/:action', async (req, res) => {
     await connectDB();
     const action = req.params.action;
@@ -83,13 +88,9 @@ app.all('/api/:action', async (req, res) => {
     switch (action) {
         case 'login': return handleLogin(req, res);
         case 'register': return handleRegister(req, res);
-        case 'get-data': return verifyToken(req, res, () => handleCachedData(req, res));
+        case 'google-login': return handleGoogleLogin(req, res);
         case 'status':
-            return res.json({ 
-                message: "Smsglobe API is running", 
-                db: isConnected,
-                timestamp: new Date().toISOString()
-            });
+            return res.json({ message: "Smsglobe API Active", db: isConnected });
         default:
             return res.status(404).json({ success: false, error: "Action not found" });
     }
@@ -98,7 +99,13 @@ app.all('/api/:action', async (req, res) => {
 // --- 7. LOGIC HANDLERS ---
 
 async function handleLogin(req, res) {
-    const { email, password } = req.body;
+    const { email, password, captchaToken } = req.body;
+
+    const isHuman = await verifyRecaptcha(captchaToken);
+    if (!isHuman) {
+        return res.status(400).json({ success: false, message: "reCAPTCHA failed." });
+    }
+
     try {
         const admin = await Admin.findOne({ email });
         if (!admin || !(await bcrypt.compare(password, admin.password))) {
@@ -107,15 +114,49 @@ async function handleLogin(req, res) {
         const token = jwt.sign({ id: admin._id, email: admin.email }, JWT_SECRET, { expiresIn: '24h' });
         return res.json({ success: true, token });
     } catch (err) {
-        return res.status(500).json({ success: false, message: "Login failed" });
+        return res.status(500).json({ success: false, message: "Login error" });
+    }
+}
+
+async function handleGoogleLogin(req, res) {
+    const { idToken } = req.body;
+    try {
+        const ticket = await googleClient.verifyIdToken({
+            idToken,
+            audience: process.env.GOOGLE_CLIENT_ID
+        });
+        const { email, name } = ticket.getPayload();
+
+        let admin = await Admin.findOne({ email });
+        
+        // If admin doesn't exist, create a profile (adjust security if you want to restrict this)
+        if (!admin) {
+            admin = new Admin({
+                fullName: name,
+                email: email,
+                password: await bcrypt.hash(Math.random().toString(36), 12)
+            });
+            await admin.save();
+        }
+
+        const token = jwt.sign({ id: admin._id, email: admin.email }, JWT_SECRET, { expiresIn: '24h' });
+        return res.json({ success: true, token });
+    } catch (err) {
+        console.error("Google Auth Error:", err);
+        return res.status(401).json({ success: false, message: "Google Auth Failed" });
     }
 }
 
 async function handleRegister(req, res) {
-    const { fullName, email, password } = req.body;
+    const { fullName, email, password, captchaToken } = req.body;
+    
+    const isHuman = await verifyRecaptcha(captchaToken);
+    if (!isHuman) return res.status(400).json({ success: false, message: "reCAPTCHA failed." });
+
     try {
         const existingAdmin = await Admin.findOne({ email });
         if (existingAdmin) return res.status(400).json({ success: false, message: "Email exists" });
+        
         const hashedPassword = await bcrypt.hash(password, 10);
         const newAdmin = new Admin({ fullName, email, password: hashedPassword });
         await newAdmin.save();
@@ -125,21 +166,12 @@ async function handleRegister(req, res) {
     }
 }
 
-async function handleCachedData(req, res) {
-    const now = Date.now();
-    if (localCache.data && (now - localCache.lastFetched < 60000)) {
-        return res.json({ source: 'cache', data: localCache.data });
-    }
-    const freshData = { items: ["ExpressVPN", "NordVPN", "Custom Proxy Node 01"] };
-    localCache.data = freshData;
-    localCache.lastFetched = now;
-    res.json({ source: 'database', data: freshData });
-}
-
 // --- 8. STARTUP ---
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+
 if (process.env.NODE_ENV !== 'production') {
     const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => console.log(`Running on ${PORT}`));
+    app.listen(PORT, () => console.log(`Dev Server: http://localhost:${PORT}`));
 }
 
 module.exports = app;

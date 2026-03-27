@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SMSGlobe Admin - Create Account</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script>
         tailwind.config = {
             theme: {
@@ -81,7 +83,11 @@
                     </div>
                 </div>
 
-                <button type="submit" class="w-full bg-brand-blue text-white py-3 sm:py-3.5 rounded-xl text-[14px] sm:text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 mt-2">
+                <div class="flex justify-center py-2">
+                    <div class="g-recaptcha" data-sitekey="6LduuIwsAAAAAKX8pDkcisQngBWJ02n8fN9bobKt"></div>
+                </div>
+
+                <button type="submit" id="submitBtn" class="w-full bg-brand-blue text-white py-3 sm:py-3.5 rounded-xl text-[14px] sm:text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 mt-2">
                     Create Admin Account
                 </button>
 
@@ -91,16 +97,28 @@
                     <div class="flex-grow border-t border-brand-border"></div>
                 </div>
 
-                <button type="button" class="w-full bg-white border border-brand-border py-2.5 sm:py-3 rounded-xl text-[13px] sm:text-sm font-semibold text-brand-darkText flex items-center justify-center gap-2 sm:gap-3 hover:bg-gray-50 transition-all">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-4 h-4 sm:w-5 sm:h-5" alt="Google">
-                    Sign up with Google
-                </button>
+                <div id="g_id_onload"
+                    data-client_id="200301370065-fl80h2idsgants6kb6jcuaivkonljs6u.apps.googleusercontent.com"
+                    data-context="signup"
+                    data-ux_mode="popup"
+                    data-callback="handleGoogleResponse"
+                    data-auto_prompt="false">
+                </div>
+
+                <div class="g_id_signin w-full flex justify-center"
+                    data-type="standard"
+                    data-shape="rectangular"
+                    data-theme="outline"
+                    data-text="signup_with"
+                    data-size="large"
+                    data-logo_alignment="left">
+                </div>
             </form>
 
             <div class="mt-6 sm:mt-8 text-center border-t border-brand-border pt-5 sm:pt-6">
                 <p class="text-[12px] sm:text-sm text-brand-lightText">
                     Already have an account? 
-                    <a href="SMSADMIN_LOGIN.HTML" class="text-brand-blue font-bold hover:underline ml-1">Log in</a>
+                    <a href="sms_login.html" class="text-brand-blue font-bold hover:underline ml-1">Log in</a>
                 </p>
             </div>
         </div>
@@ -111,7 +129,6 @@
     </div>
 
     <script>
-        // --- 1. UI TOGGLE LOGIC ---
         function toggleField(inputId, iconId) {
             const input = document.getElementById(inputId);
             const icon = document.getElementById(iconId);
@@ -127,42 +144,74 @@
             }
         }
 
-        // --- 2. REGISTRATION LOGIC ---
+        async function handleGoogleResponse(response) {
+            try {
+                const res = await fetch('/api/google-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idToken: response.credential })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    localStorage.setItem('smsglobe_admin_token', data.token);
+                    window.location.href = 'sms_dashboard.html';
+                } else {
+                    alert("Registration failed: " + data.message);
+                }
+            } catch (err) {
+                console.error("Google Auth Error:", err);
+            }
+        }
+
         const registerForm = document.getElementById('registerForm');
+        const submitBtn = document.getElementById('submitBtn');
 
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            // Get form data
+            const captchaResponse = grecaptcha.getResponse();
+            if (!captchaResponse) {
+                alert("Please verify that you are not a robot.");
+                return;
+            }
+
             const fullName = document.getElementById('fullName').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirm-password').value;
 
-            // Basic Validation
             if (password !== confirmPassword) {
                 alert("Passwords do not match!");
                 return;
             }
 
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Creating account...";
+
             try {
                 const response = await fetch('/api/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fullName, email, password })
+                    body: JSON.stringify({ fullName, email, password, captchaToken: captchaResponse })
                 });
 
                 const data = await response.json();
 
                 if (response.ok) {
-                    alert('Admin registration successful! You can now log in.');
-                    window.location.href = 'SMSADMIN_LOGIN.HTML';
+                    alert('Admin registration successful!');
+                    window.location.href = 'sms_login.html';
                 } else {
-                    alert(data.message || 'Error during registration. Please try again.');
+                    alert(data.message || 'Error during registration.');
+                    grecaptcha.reset();
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = "Create Admin Account";
                 }
             } catch (error) {
                 console.error('Registration Error:', error);
-                alert('Connection failed. Make sure your API is running.');
+                alert('Connection failed.');
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Create Admin Account";
             }
         });
     </script>

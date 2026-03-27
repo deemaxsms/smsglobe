@@ -21,50 +21,66 @@
         }
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .sidebar-transition { transition: transform 0.3s ease-in-out; }
+        /* Hide scrollbar for cleaner look on mobile */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
 
-    <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white border-r border-brand-border z-50 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 flex flex-col">
-        <div class="p-5 border-b border-brand-border flex items-center justify-between">
+    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/40 z-[60] hidden lg:hidden backdrop-blur-sm"></div>
+
+    <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white border-r border-brand-border z-[70] transform -translate-x-full lg:translate-x-0 sidebar-transition flex flex-col">
+        <div class="p-5 border-b border-brand-border flex items-center justify-between lg:justify-center">
             <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-6 w-auto">
+            <button onclick="toggleSidebar()" class="lg:hidden p-2 text-brand-midText">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
         </div>
-       <nav class="flex-grow p-4 space-y-1">
+       <nav class="flex-grow p-4 space-y-1 overflow-y-auto no-scrollbar">
             <p class="px-3 text-[10px] font-bold text-brand-lightText uppercase tracking-widest mb-2">Navigation</p>
-            <a href="user_dashboard.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium">
+            <a href="user_dashboard.html" class="flex items-center space-x-3 px-3 py-2.5 text-brand-midText hover:bg-gray-50 rounded-xl text-xs font-medium transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                 <span>Dashboard</span>
             </a>
-             <a href="user_vpn.html" class="flex items-center space-x-3 px-3 py-2 bg-brand-background text-brand-blue rounded-lg text-xs font-semibold">
+             <a href="user_vpn.html" class="flex items-center space-x-3 px-3 py-2.5 bg-brand-background text-brand-blue rounded-xl text-xs font-bold shadow-sm">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
                 <span>VPNs</span>
             </a>
-             <a href="buy-number.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium transition-all">
+             <a href="buy-number.html" class="flex items-center space-x-3 px-3 py-2.5 text-brand-midText hover:bg-gray-50 rounded-xl text-xs font-medium transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                <span>Buy Virtual Number</span>
+                <span>Buy Number</span>
             </a>
-            <a href="esims.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium transition-all">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+            <a href="esims.html" class="flex items-center space-x-3 px-3 py-2.5 text-brand-midText hover:bg-gray-50 rounded-xl text-xs font-medium transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
                 <span>Travel eSIMs</span>
             </a>
         </nav>
     </aside>
 
     <div class="flex-grow lg:ml-64 flex flex-col min-h-screen">
-        <header class="bg-white border-b border-brand-border sticky top-0 z-30 px-4 md:px-8 py-4 flex items-center justify-between">
-            <span class="text-sm font-bold text-brand-darkText uppercase tracking-tight">Premium VPN Nodes</span>
+        <header class="bg-white border-b border-brand-border sticky top-0 z-[55] px-4 md:px-8 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="lg:hidden p-1.5 bg-brand-background text-brand-blue rounded-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+                <span class="text-xs md:text-sm font-bold text-brand-darkText uppercase tracking-tight">Premium VPN Nodes</span>
+            </div>
+            <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-5 lg:hidden">
         </header>
 
-        <main class="p-6 max-w-5xl w-full">
-            <div id="vpnLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                <div class="h-64 bg-gray-200 animate-pulse rounded-2xl"></div>
-                <div class="h-64 bg-gray-200 animate-pulse rounded-2xl"></div>
+        <main class="p-3 md:p-6 max-w-7xl w-full mx-auto">
+            <div id="vpnLoading" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
+                <div class="h-48 md:h-64 bg-white border border-brand-border animate-pulse rounded-2xl"></div>
+                <div class="h-48 md:h-64 bg-white border border-brand-border animate-pulse rounded-2xl"></div>
             </div>
 
-            <div id="vpnGrid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></div>
+            <div id="vpnGrid" class="hidden grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5"></div>
         </main>
     </div>
 
-    <div id="vpnModal" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+    <div id="vpnModal" class="fixed inset-0 bg-black/50 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl animate-in zoom-in duration-200">
             <h2 id="modalTitle" class="text-lg font-bold text-brand-darkText mb-2">Node Activated!</h2>
             <div id="modalContent" class="space-y-4">
@@ -90,14 +106,21 @@
 <script>
     const API_BASE_URL = '/api';
 
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.toggle('-translate-x-full');
+        overlay.classList.toggle('hidden');
+    }
+
     async function initVPNPage() {
         const token = localStorage.getItem('userToken');
         if (!token) { window.location.href = 'user_login.html'; return; }
 
         const urlParams = new URLSearchParams(window.location.search);
         const status = urlParams.get('status');
-        const tx_ref = urlParams.get('tx_ref');
         const transaction_id = urlParams.get('transaction_id');
+        const tx_ref = urlParams.get('tx_ref');
 
         if (status === 'successful' || status === 'completed') {
             verifyPayment(transaction_id, tx_ref);
@@ -116,7 +139,7 @@
         const buyBtn = document.getElementById(`btn-${vpnId}`);
 
         buyBtn.disabled = true;
-        buyBtn.innerText = "Processing...";
+        buyBtn.innerText = "Wait...";
 
         try {
             const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
@@ -132,12 +155,12 @@
             if (data.success && data.link) {
                 window.location.href = data.link;
             } else {
-                alert(data.message || "Failed to initiate payment.");
+                alert(data.message || "Payment initiation failed.");
                 buyBtn.disabled = false;
                 buyBtn.innerText = "Purchase Access";
             }
         } catch (err) {
-            alert("Payment system unreachable.");
+            alert("Network error.");
             buyBtn.disabled = false;
             buyBtn.innerText = "Purchase Access";
         }
@@ -145,7 +168,7 @@
 
     async function verifyPayment(transactionId, txRef) {
         const token = localStorage.getItem('userToken');
-        document.getElementById('modalTitle').innerText = "Verifying Payment...";
+        document.getElementById('modalTitle').innerText = "Verifying...";
         document.getElementById('vpnModal').classList.remove('hidden');
 
         try {
@@ -166,12 +189,10 @@
                 document.getElementById('modalPass').innerText = data.credentials.password;
                 window.history.replaceState({}, document.title, window.location.pathname);
             } else {
-                alert("Payment verification failed.");
+                alert("Verification failed.");
                 closeModal();
             }
-        } catch (err) {
-            closeModal();
-        }
+        } catch (err) { closeModal(); }
     }
 
     function closeModal() {
@@ -190,38 +211,38 @@
             const stockColor = isOutOfStock ? 'text-red-500 bg-red-50' : 'text-green-600 bg-green-50';
             
             return `
-            <div class="bg-white border border-brand-border rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden w-full max-w-[280px] mx-auto lg:mx-0">
+            <div class="bg-white border border-brand-border rounded-xl md:rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden w-full">
                 
-                <div class="h-32 bg-gray-50 relative overflow-hidden flex items-center justify-center p-2 border-b border-brand-border/50">
+                <div class="h-24 md:h-32 bg-gray-50 relative overflow-hidden flex items-center justify-center p-2 border-b border-brand-border/50">
                     <img src="${vpn.image || 'https://via.placeholder.com/400x200?text=VPN'}" 
-                         class="max-w-full max-h-full object-contain">
+                         class="max-w-[80%] max-h-[80%] object-contain">
                     
-                    <div class="absolute top-2 left-2 flex gap-1">
-                         <span class="text-[8px] font-bold px-1.5 py-0.5 bg-white/90 border border-brand-border text-brand-blue rounded uppercase tracking-tighter">${vpn.region || 'Global'}</span>
+                    <div class="absolute top-1.5 left-1.5 flex gap-1">
+                         <span class="text-[7px] md:text-[8px] font-bold px-1 py-0.5 bg-white/90 border border-brand-border text-brand-blue rounded uppercase tracking-tighter">${vpn.region || 'Global'}</span>
                     </div>
-                    <div class="absolute top-2 right-2">
-                         <span class="text-[8px] font-bold px-1.5 py-0.5 ${stockColor} rounded uppercase tracking-tighter border border-current/10">
-                            ${isOutOfStock ? 'Out' : `${vpn.stock} In Stock`}
+                    <div class="absolute top-1.5 right-1.5">
+                         <span class="text-[7px] md:text-[8px] font-bold px-1 py-0.5 ${stockColor} rounded uppercase tracking-tighter border border-current/10">
+                            ${isOutOfStock ? 'Out' : `${vpn.stock}`}
                          </span>
                     </div>
                 </div>
 
-                <div class="p-4 flex flex-col flex-grow">
-                    <div class="mb-3">
-                        <h3 class="font-bold text-brand-darkText text-xs truncate">${vpn.name}</h3>
-                        <p class="text-[9px] text-brand-lightText font-medium">${vpn.provider || 'SMSGlobe'}</p>
+                <div class="p-2.5 md:p-4 flex flex-col flex-grow">
+                    <div class="mb-2 md:mb-3">
+                        <h3 class="font-bold text-brand-darkText text-[10px] md:text-xs truncate">${vpn.name}</h3>
+                        <p class="text-[8px] md:text-[9px] text-brand-lightText font-medium">${vpn.provider || 'SMSGlobe'}</p>
                     </div>
                     
-                    <div class="bg-gray-50 rounded-lg p-2 mb-4 border border-gray-100">
-                        <label class="text-[8px] font-bold text-brand-lightText uppercase block mb-1">Select Tier</label>
-                        <select id="plan-${vpn._id}" class="w-full bg-white border border-brand-border rounded-md px-1 py-1 text-[10px] font-bold focus:outline-none cursor-pointer">
+                    <div class="bg-gray-50 rounded-lg p-1.5 mb-3 border border-gray-100">
+                        <label class="text-[7px] md:text-[8px] font-bold text-brand-lightText uppercase block mb-1">Tier</label>
+                        <select id="plan-${vpn._id}" class="w-full bg-white border border-brand-border rounded px-1 py-0.5 md:py-1 text-[9px] md:text-[10px] font-bold focus:outline-none cursor-pointer">
                             ${vpn.plans.map((p, i) => `<option value="${i}">${p.duration} — $${parseFloat(p.price).toFixed(2)}</option>`).join('')}
                         </select>
                     </div>
 
                     <button onclick="buyVPN('${vpn._id}')" id="btn-${vpn._id}" ${isOutOfStock ? 'disabled' : ''}
-                            class="mt-auto w-full py-2 ${isOutOfStock ? 'bg-gray-300' : 'bg-brand-blue hover:bg-blue-700'} text-white text-[10px] font-bold rounded-lg shadow-sm transition-all">
-                        ${isOutOfStock ? 'Unavailable' : 'Purchase Access'}
+                            class="mt-auto w-full py-2 ${isOutOfStock ? 'bg-gray-300' : 'bg-brand-blue hover:bg-blue-700'} text-white text-[9px] md:text-[10px] font-bold rounded-lg transition-all active:scale-95 shadow-sm">
+                        ${isOutOfStock ? 'Sold Out' : 'Purchase'}
                     </button>
                 </div>
             </div>

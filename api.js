@@ -24,6 +24,10 @@ app.use('/smsadmin', express.static(path.join(__dirname, 'smsadmin'), {
     extensions: ['html', 'htm']
 }));
 
+app.use('/smsuser', express.static(path.join(__dirname, 'smsuser'), {
+    extensions: ['html', 'htm']
+}));
+
 // --- 2. CONFIGURATION & SCHEMA ---
 const JWT_SECRET = process.env.JWT_SECRET;
 const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET_KEY;
@@ -35,6 +39,15 @@ const adminSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const Admin = mongoose.models.Admin || mongoose.model('Admin', adminSchema);
+
+const userSchema = new mongoose.Schema({
+    fullName: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    balance: { type: Number, default: 0 }
+}, { timestamps: true });
+
+const User = mongoose.models.User || mongoose.model('User', userSchema);
 
 const vpnSchema = new mongoose.Schema({
     name: { type: String, required: true },
@@ -117,9 +130,8 @@ app.all('/api/:action', async (req, res) => {
             if (req.method === 'PATCH') return handleUpdateVPN(req, res);
             if (req.method === 'DELETE') return handleDeleteVPN(req, res);
             break;
-            
-        case 'status':
-
+        case 'user-register': return handleUserRegister(req, res);
+        case 'user-login': return handleUserLogin(req, res);
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
         default:
@@ -347,6 +359,58 @@ async function handleDeleteVPN(req, res) {
         res.status(500).json({ success: false, message: "Delete failed" });
     }
 }
+
+async function handleUserLogin(req, res) {
+    const { email, password, captchaToken } = req.body;
+
+    const isHuman = await verifyRecaptcha(captchaToken);
+    if (!isHuman) {
+        return res.status(400).json({ success: false, message: "reCAPTCHA failed." });
+    }
+
+    try {
+        // Find user by email
+        const user = await User.findOne({ email });
+        
+        // Check user existence and compare password
+        if (!user || !(await bcrypt.compare(password, user.password))) {
+            return res.status(401).json({ success: false, message: "Invalid email or password" });
+        }
+
+        // Generate JWT Token
+        const token = jwt.sign(
+            { id: user._id, email: user.email, type: 'user' }, 
+            JWT_SECRET, 
+            { expiresIn: '24h' }
+        );
+
+        return res.json({ success: true, token });
+    } catch (err) {
+        console.error("User Login Error:", err);
+        return res.status(500).json({ success: false, message: "Server error during login" });
+    }
+}
+
+async function handleUserRegister(req, res) {
+    const { fullName, email, password, captchaToken } = req.body;
+
+    const isHuman = await verifyRecaptcha(captchaToken);
+    if (!isHuman) return res.status(400).json({ success: false, message: "reCAPTCHA failed." });
+
+    try {
+        const existingUser = await User.findOne({ email });
+        if (existingUser) return res.status(400).json({ success: false, message: "User already exists." });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = new User({ fullName, email, password: hashedPassword });
+        
+        await newUser.save();
+        return res.status(201).json({ success: true, message: "User created" });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+}
+
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

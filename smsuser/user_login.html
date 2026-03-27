@@ -49,7 +49,7 @@
                     <p class="text-brand-lightText text-sm">Please enter your details to sign in.</p>
                 </div>
 
-                <button class="w-full flex items-center justify-center gap-3 bg-white border border-brand-border py-3 rounded-xl font-semibold text-brand-darkText hover:bg-gray-50 transition-all mb-6">
+                <button type="button" class="w-full flex items-center justify-center gap-3 bg-white border border-brand-border py-3 rounded-xl font-semibold text-brand-darkText hover:bg-gray-50 transition-all mb-6">
                     <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" class="w-5 h-5">
                     Sign in with Google
                 </button>
@@ -60,7 +60,7 @@
                     <div class="flex-grow border-t border-brand-border"></div>
                 </div>
 
-                <form action="#" method="POST" class="space-y-5">
+                <form id="loginForm" class="space-y-5">
                     <div>
                         <label for="email" class="block text-sm font-semibold text-brand-midText mb-1.5">Email Address</label>
                         <input type="email" id="email" name="email" required
@@ -79,7 +79,7 @@
                     </div>
 
                     <div class="flex justify-center py-2">
-                        <div class="g-recaptcha" data-sitekey="your_site_key"></div>
+                        <div class="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"></div>
                     </div>
 
                     <div class="flex items-center">
@@ -87,7 +87,7 @@
                         <label for="remember" class="ml-2 text-sm font-medium text-brand-midText">Remember for 30 days</label>
                     </div>
 
-                    <button type="submit" class="w-full bg-brand-blue text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">
+                    <button type="submit" id="loginBtn" class="w-full bg-brand-blue text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 disabled:opacity-50">
                         Sign In
                     </button>
                 </form>
@@ -108,5 +108,48 @@
         </div>
     </main>
 
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const loginBtn = document.getElementById('loginBtn');
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const captchaToken = grecaptcha.getResponse();
+
+            if (!captchaToken) {
+                alert("Please complete the reCAPTCHA.");
+                return;
+            }
+
+            loginBtn.disabled = true;
+            loginBtn.innerText = "Authenticating...";
+
+            try {
+                const response = await fetch('/api/user-login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, captchaToken })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Store the token in localStorage
+                    localStorage.setItem('userToken', data.token);
+                    // Redirect to the User Dashboard (ensure this path is correct)
+                    window.location.href = '/smsuser/dashboard'; 
+                } else {
+                    alert(data.message || "Invalid email or password.");
+                    grecaptcha.reset();
+                }
+            } catch (err) {
+                console.error("Login error:", err);
+                alert("Connection failed. Please try again.");
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.innerText = "Sign In";
+            }
+        });
+    </script>
 </body>
 </html>

@@ -85,6 +85,36 @@ const ProxySchema = new mongoose.Schema({
 
 const Proxy = mongoose.models.Proxy || mongoose.model('Proxy', ProxySchema);
 
+const orderSchema = new mongoose.Schema({
+    userEmail: { type: String, required: true, index: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    
+    productType: { type: String, enum: ['VPN', 'Proxy'], required: true },
+    planName: { type: String }, // e.g., "Monthly Plan" or "50 IPs"
+    nodeName: { type: String }, // e.g., "US Premium Node"
+    
+    // 3. Payment Details
+    amount: { type: Number, required: true },
+    currency: { type: String, default: 'USD' }, // 'USD' or 'NGN'
+    paymentGateway: { type: String }, // e.g., 'Flutterwave', 'PayPal', 'Stripe'
+    status: { 
+        type: String, 
+        enum: ['pending', 'successful', 'failed', 'completed'], 
+        default: 'pending' 
+    },
+    paymentReference: { type: String, unique: true },
+
+    activationCode: String, // If it's a proxy
+    vpnCredentials: {
+        username: String,
+        password: { type: String }
+    }
+}, { timestamps: true });
+
+orderSchema.index({ createdAt: -1 });
+
+const Order = mongoose.models.Order || mongoose.model('Order', orderSchema);
+
 // --- 3. OPTIMIZED MONGOOSE CONNECTION ---
 let isConnected = false;
 const connectDB = async () => {

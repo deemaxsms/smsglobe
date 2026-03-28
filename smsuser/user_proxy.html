@@ -134,34 +134,36 @@
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
 
-    async function checkPaymentStatus() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const transactionId = urlParams.get('transaction_id');
-        const status = urlParams.get('status');
+async function checkPaymentStatus() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const transactionId = urlParams.get('transaction_id');
+    const status = urlParams.get('status');
 
-        if (transactionId && status === 'successful') {
-            console.log("Verifying transaction: ", transactionId);
-            try {
-                const res = await fetch(`${API_BASE_URL}/verify-payment`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ transactionId })
-                });
-                const data = await res.json();
+    // FIX: Accept 'completed' (from your URL) or 'successful'
+    if (transactionId && (status === 'successful' || status === 'completed')) {
+        console.log("Verifying transaction: ", transactionId);
+        try {
+            const res = await fetch(`${API_BASE_URL}/verify-payment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ transactionId })
+            });
+            const data = await res.json();
 
-                if (data.success) {
-                    // Remove query params from URL
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                    // Open the modal with fresh data
-                    showSuccessModal(data.credentials);
-                } else {
-                    alert("Payment verification failed: " + data.message);
-                }
-            } catch (err) {
-                console.error("Verification Error:", err);
+            if (data.success) {
+                // Remove query params from URL so it doesn't re-verify on refresh
+                window.history.replaceState({}, document.title, window.location.pathname);
+                
+                // Open the modal with the data returned from the backend
+                showSuccessModal(data.credentials);
+            } else {
+                alert("Payment verification failed: " + data.message);
             }
+        } catch (err) {
+            console.error("Verification Error:", err);
         }
     }
+}
 
     async function initPage() {
         const token = localStorage.getItem('userToken');

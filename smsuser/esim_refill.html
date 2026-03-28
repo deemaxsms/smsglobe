@@ -181,11 +181,14 @@
 
     <script>
         const API_BASE_URL = '/api';
+        const NAIRA_RATE = 1650;
         const carriers = [
             { id: '1', name: 'T-Mobile USA', image: 'https://i.imgur.com/pyDMW1t.png' },
             { id: '2', name: 'AT&T', image: 'https://i.imgur.com/WDCo1gM.png' },
             { id: '3', name: 'Verizon', image: 'https://i.imgur.com/ylEL7gO.jpeg' },
-            { id: '4', name: 'Vodafone UK', image: 'https://i.imgur.com/r7a0fpw.png' }
+            { id: '4', name: 'Vodafone UK', image: 'https://i.imgur.com/r7a0fpw.png' },
+            { id: '5', name: 'Orange FR', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Orange_logo.svg/2048px-Orange_logo.svg.png' },
+            { id: '6', name: 'Claro Brazil', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Claro.svg/1200px-Claro.svg.png' }
         ];
 
         const refillAmounts = [];
@@ -213,7 +216,6 @@
             selector.innerHTML = refillAmounts.map(amt => `<option value="${amt}">${amt}</option>`).join('');
         }
 
-        // --- NEW WARNING MODAL LOGIC ---
         function showWarning(id) {
             selectedCarrierId = id;
             document.getElementById('warningModal').classList.remove('hidden');
@@ -226,7 +228,7 @@
 
         function selectCarrier(id) {
             const carrier = carriers.find(c => c.id === id);
-            window.currentSelectedCarrier = carrier; // Store for payment function
+            window.currentSelectedCarrier = carrier; 
             document.getElementById('selectionView').classList.add('hidden');
             document.getElementById('formView').classList.remove('hidden');
             document.getElementById('formCarrierName').innerText = carrier.name;
@@ -240,9 +242,8 @@
         }
 
         function getNairaPrice(usdString) {
-            const rate = 1650;
             const usd = parseFloat(usdString.replace(/[$,]/g, ''));
-            return `₦${(usd * rate).toLocaleString()}`;
+            return `₦${(usd * NAIRA_RATE).toLocaleString()}`;
         }
 
         document.getElementById('planSelector').addEventListener('change', updateButtonPrice);
@@ -252,8 +253,14 @@
             document.getElementById('formView').classList.add('hidden');
         }
 
+        function escapeHTML(str) {
+            return str.replace(/[&<>"']/g, function(m) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+            });
+        }
+
         async function initiatePayment() {
-            const num = document.getElementById('targetNumber').value;
+            const num = document.getElementById('targetNumber').value.trim();
             const plan = document.getElementById('planSelector').value; 
             const carrier = window.currentSelectedCarrier;
 
@@ -314,10 +321,10 @@
                     document.getElementById('receiptView').classList.remove('hidden');
 
                     const order = data.order || {};
-                    document.getElementById('rCarrier').innerText = order.nodeName || 'eSIM Carrier';
-                    document.getElementById('rNumber').innerText = order.targetNumber || '--';
-                    document.getElementById('rPlan').innerText = order.planName || '--';
-                    document.getElementById('rID').innerText = order.paymentReference || tid;
+                    document.getElementById('rCarrier').innerText = escapeHTML(order.nodeName || 'eSIM Carrier');
+                    document.getElementById('rNumber').innerText = escapeHTML(order.targetNumber || '--');
+                    document.getElementById('rPlan').innerText = escapeHTML(order.planName || '--');
+                    document.getElementById('rID').innerText = escapeHTML(order.paymentReference || tid);
                     
                     window.history.replaceState({}, '', window.location.pathname);
                 }
@@ -331,7 +338,6 @@
             const carrier = document.getElementById('rCarrier').innerText;
             const plan = document.getElementById('rPlan').innerText;
             const tid = document.getElementById('rID').innerText;
-            const confirmLink = `https://smsglobe.vercel.app/api/confirm-order?tid=${tid}`;
 
             const msg = `🚀 *SMSGlobe: NEW eSIM REFILL ORDER*
 __________________________________
@@ -350,15 +356,11 @@ __________________________________
 ⚡ *ACTION REQUIRED:*
 Please initiate the refill now. Once successful, click the link below to update the user's dashboard:
 
-🔗 *SMS GLOBE UPDATE LINK:*
-${confirmLink}
-
 _Automated message from SMSGlobe System_`;
 
             window.open(`https://wa.me/2348149747864?text=${encodeURIComponent(msg)}`, '_blank');
         }
 
-        // Consolidated window.onload
         window.onload = () => {
             initPage(); 
             const urlParams = new URLSearchParams(window.location.search);

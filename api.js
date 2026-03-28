@@ -975,11 +975,25 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
 
     // 1. DYNAMIC CONTENT CONFIGURATION
     const isVPN = credentials.type === "VPN";
-    const subject = isVPN ? "🔑 Your VPN Access Credentials" : "🌐 Your Proxy Access Details";
-    const headerTitle = isVPN ? "Node Activated!" : "Proxy Provisioned! 🌐";
-    const subHeader = isVPN ? "Your Premium VPN Access is ready." : "Your High-Speed Proxy details are below.";
+    const isESIM = credentials.type === "eSIM";
     
-    // 2. DYNAMIC DATA TABLE (This changes based on the product)
+    let subject, headerTitle, subHeader;
+
+    if (isVPN) {
+        subject = "🔑 Your VPN Access Credentials";
+        headerTitle = "Node Activated!";
+        subHeader = "Your Premium VPN Access is ready.";
+    } else if (isESIM) {
+        subject = "📶 eSIM Refill Confirmed";
+        headerTitle = "Refill Successful!";
+        subHeader = "Your eSIM has been successfully topped up.";
+    } else {
+        subject = "🌐 Your Proxy Access Details";
+        headerTitle = "Proxy Provisioned! 🌐";
+        subHeader = "Your High-Speed Proxy details are below.";
+    }
+    
+    // 2. DYNAMIC DATA TABLE
     let dataTableHtml = '';
 
     if (isVPN) {
@@ -995,6 +1009,17 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
             <td class="mobile-full" width="33%" valign="top" style="text-align: right; padding-bottom: 10px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Limit</span><br>
                 <strong style="font-size: 13px; color: #101828;">${credentials.deviceLimit || 1} Device(s)</strong>
+            </td>`;
+    } else if (isESIM) {
+        // ESIM REFILL LAYOUT
+        dataTableHtml = `
+            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
+                <strong style="font-size: 13px; color: #101828;">${credentials.carrierName}</strong>
+            </td>
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 10px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Number</span><br>
+                <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.mobileNumber}</strong>
             </td>`;
     } else {
         // PROXY TABLE LAYOUT
@@ -1037,12 +1062,12 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
 
                         <div style="padding: 24px; color: #344054; text-align: left;">
                             <p style="font-size: 14px; line-height: 1.5; margin-bottom: 24px;">
-                                Thank you for choosing <strong>SMSGlobe</strong>. Your payment was confirmed and your access is now active.
+                                Hello, thank you for choosing <strong>SMSGlobe</strong>. Your payment was confirmed and your ${isESIM ? 'refill' : 'access'} is now active.
                             </p>
                             
                             <div style="background: #F0F5FE; padding: 20px; border-radius: 12px; border: 1px solid #D1E0FF; margin-bottom: 24px;">
-                                <p style="margin: 0 0 10px 0; font-size: 10px; color: #0F54C6; font-weight: 800; text-transform: uppercase;">Instructions</p>
-                                <p style="font-size: 13px; margin: 0 0 20px 0; line-height: 1.6;">${credentials.instructions}</p>
+                                <p style="margin: 0 0 10px 0; font-size: 10px; color: #0F54C6; font-weight: 800; text-transform: uppercase;">${isESIM ? 'Order Summary' : 'Instructions'}</p>
+                                <p style="font-size: 13px; margin: 0 0 20px 0; line-height: 1.6;">${credentials.instructions || 'Please allow a few moments for the carrier to update your balance.'}</p>
                                 
                                 <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
                                     <tr>
@@ -1073,6 +1098,7 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
         html: htmlContent
     });
 };
+
 // --- PROXY HANDLERS ---
 // 2. GET ALL Proxies (Sorted by Newest)
 async function handleGetProxies(req, res) {

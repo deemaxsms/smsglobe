@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Proxies | SMSGlobe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            blue: '#0F54C6', orange: '#F9861E', darkText: '#101828',
+                            midText: '#344054', lightText: '#667085', background: '#F0F5FE', border: '#EAECF0',
+                        }
+                    },
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                },
+            },
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .sidebar-transition { transition: transform 0.3s ease-in-out; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .category-card:hover { transform: translateY(-4px); }
+    </style>
+</head>
+<body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
+
+    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/40 z-[60] hidden lg:hidden backdrop-blur-sm"></div>
+
+    <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white border-r border-brand-border z-[70] transform -translate-x-full lg:translate-x-0 sidebar-transition flex flex-col">
+        <div class="p-5 border-b border-brand-border flex items-center justify-between lg:justify-center">
+            <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-6 w-auto">
+            <button onclick="toggleSidebar()" class="lg:hidden p-2 text-brand-midText">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <nav class="flex-grow p-4 space-y-1 overflow-y-auto no-scrollbar">
+            <p class="px-3 text-[10px] font-bold text-brand-lightText uppercase tracking-widest mb-2">Navigation</p>
+            <a href="user_dashboard.html" class="flex items-center space-x-3 px-3 py-2.5 text-brand-midText hover:bg-gray-50 rounded-xl text-xs font-medium transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                <span>Dashboard</span>
+            </a>
+             <a href="user_proxy.html" class="flex items-center space-x-3 px-3 py-2.5 bg-brand-background text-brand-blue rounded-xl text-xs font-bold shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                <span>Proxy Packages</span>
+            </a>
+             <a href="buy_number.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                <span>Buy Number</span>
+            </a>
+            <a href="esims.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                <span>Travel eSIMs</span>
+            </a>
+             <a href="user_vpn.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                <span>VPNs</span>
+            </a>
+        </nav>
+    </aside>
+
+    <div class="flex-grow lg:ml-64 flex flex-col min-h-screen">
+        <header class="bg-white border-b border-brand-border sticky top-0 z-[55] px-4 md:px-8 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="lg:hidden p-1.5 bg-brand-background text-brand-blue rounded-lg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+                <div id="headerTitle" class="flex flex-col">
+                    <span class="text-[10px] text-brand-lightText font-bold uppercase tracking-widest">Marketplace</span>
+                    <span id="currentViewName" class="text-sm font-bold text-brand-darkText">All Proxy Categories</span>
+                </div>
+            </div>
+            <button id="backBtn" onclick="showCategories()" class="hidden items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-brand-darkText rounded-lg text-[10px] font-bold transition-all">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                Back to Categories
+            </button>
+        </header>
+
+        <main class="p-3 md:p-6 max-w-7xl w-full mx-auto">
+            <div id="proxyLoading" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div class="h-32 bg-white border border-brand-border animate-pulse rounded-2xl"></div>
+                <div class="h-32 bg-white border border-brand-border animate-pulse rounded-2xl"></div>
+            </div>
+
+            <div id="categoryGrid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"></div>
+
+            <div id="proxyGrid" class="hidden grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5"></div>
+        </main>
+    </div>
+
+    <div id="proxyModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
+        <div class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl">
+            <div class="bg-brand-blue p-8 text-center">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <h2 id="modalTitle" class="text-2xl font-bold text-white">Proxy Secured!</h2>
+            </div>
+            <div class="p-6">
+                <div class="bg-brand-background rounded-2xl p-5 space-y-4">
+                    <div>
+                        <p class="text-[9px] font-bold text-brand-blue uppercase">Activation Instructions</p>
+                        <p id="modalInstructions" class="text-[10px] text-brand-midText italic"></p>
+                    </div>
+                    <div>
+                        <p class="text-[9px] font-bold text-brand-lightText uppercase">Your Activation Code</p>
+                        <div class="flex items-center gap-2">
+                            <p id="modalCode" class="text-xs font-mono font-bold text-brand-darkText"></p>
+                            <button onclick="copyToClipboard('modalCode', this)" class="text-brand-blue"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></button>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="w-full mt-6 py-4 bg-brand-blue text-white rounded-2xl text-xs font-bold">Close</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const API_BASE_URL = '/api';
+    let allProxies = [];
+
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('-translate-x-full');
+        document.getElementById('sidebarOverlay').classList.toggle('hidden');
+    }
+
+    async function initPage() {
+        const token = localStorage.getItem('userToken');
+        if (!token) { window.location.href = 'user_login.html'; return; }
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/proxies`); // Ensure this matches your route
+            const data = await res.json();
+            if (data.success) {
+                allProxies = data.proxies;
+                showCategories();
+            }
+        } catch (err) { console.error("Load Error:", err); }
+    }
+
+    function showCategories() {
+        const categoryGrid = document.getElementById('categoryGrid');
+        const proxyGrid = document.getElementById('proxyGrid');
+        const loader = document.getElementById('proxyLoading');
+        const backBtn = document.getElementById('backBtn');
+        const currentViewName = document.getElementById('currentViewName');
+
+        loader.classList.add('hidden');
+        proxyGrid.classList.add('hidden');
+        backBtn.classList.add('hidden');
+        categoryGrid.classList.remove('hidden');
+        currentViewName.innerText = "All Proxy Categories";
+
+        // Group proxies by category
+        const categories = [...new Set(allProxies.map(p => p.category))];
+
+        categoryGrid.innerHTML = categories.map(cat => {
+            const count = allProxies.filter(p => p.category === cat).length;
+            return `
+                <div onclick="showProducts('${cat}')" class="category-card bg-white border border-brand-border p-6 rounded-2xl shadow-sm hover:shadow-md cursor-pointer transition-all border-l-4 border-l-brand-blue">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="text-sm font-bold text-brand-darkText uppercase tracking-tight">${cat}</h3>
+                            <p class="text-[10px] text-brand-lightText font-medium mt-1">${count} Packages Available</p>
+                        </div>
+                        <div class="bg-brand-background p-2 rounded-lg text-brand-blue">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function showProducts(category) {
+        const categoryGrid = document.getElementById('categoryGrid');
+        const proxyGrid = document.getElementById('proxyGrid');
+        const backBtn = document.getElementById('backBtn');
+        const currentViewName = document.getElementById('currentViewName');
+
+        categoryGrid.classList.add('hidden');
+        proxyGrid.classList.remove('hidden');
+        backBtn.classList.remove('hidden');
+        backBtn.classList.add('flex');
+        currentViewName.innerText = category;
+
+        const filtered = allProxies.filter(p => p.category === category);
+
+        proxyGrid.innerHTML = filtered.map(proxy => `
+            <div class="bg-white border border-brand-border rounded-2xl shadow-sm flex flex-col overflow-hidden">
+                <div class="h-24 bg-gray-50 flex items-center justify-center p-4 border-b border-brand-border/50">
+                    <img src="${proxy.imageUrl || 'https://via.placeholder.com/150?text=Proxy'}" class="max-h-full object-contain">
+                </div>
+                <div class="p-3 flex flex-col flex-grow">
+                    <h3 class="font-bold text-brand-darkText text-[10px] uppercase truncate">${proxy.name}</h3>
+                    
+                    <div class="mt-2 bg-brand-background rounded-lg p-1.5 border border-brand-blue/5">
+                        <label class="text-[7px] font-bold text-brand-lightText uppercase block mb-1">Select Tier</label>
+                        <select id="plan-${proxy._id}" class="w-full bg-white border border-brand-border rounded text-[9px] font-bold p-1">
+                            ${proxy.plans.map((p, i) => `<option value="${i}">${p.ip_count} IPs — $${p.price}</option>`).join('')}
+                        </select>
+                    </div>
+
+                    <button onclick="buyProxy('${proxy._id}')" id="btn-${proxy._id}" 
+                            class="mt-3 w-full py-2 bg-brand-blue text-white text-[9px] font-bold rounded-lg hover:bg-blue-700 transition-all shadow-sm">
+                        Purchase Access
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function buyProxy(proxyId) {
+        const planIndex = document.getElementById(`plan-${proxyId}`).value;
+        const token = localStorage.getItem('userToken');
+        const btn = document.getElementById(`btn-${proxyId}`);
+        
+        btn.disabled = true;
+        btn.innerText = "Processing...";
+
+        try {
+            // This is where you call your payment gateway initiate route
+            const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ proxyId, planIndex })
+            });
+            const data = await res.json();
+            if (data.link) window.location.href = data.link;
+            else alert(data.message || "Failed to initiate");
+        } catch (err) { alert("Network error"); }
+        btn.disabled = false;
+        btn.innerText = "Purchase Access";
+    }
+
+    function closeModal() {
+        document.getElementById('proxyModal').classList.add('hidden');
+        window.location.reload();
+    }
+
+    async function copyToClipboard(id, btn) {
+        const text = document.getElementById(id).innerText;
+        await navigator.clipboard.writeText(text);
+        btn.innerHTML = '✅';
+        setTimeout(() => { btn.innerHTML = '📋'; }, 2000);
+    }
+
+    window.onload = initPage;
+</script>
+</body>
+</html>

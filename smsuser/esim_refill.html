@@ -236,14 +236,13 @@
             btn.innerText = "Generating Payment Link...";
 
             try {
-                const response = await fetch(API_BASE_URL, { 
+            const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
                     },
                     body: JSON.stringify({
-                        action: 'initiate-payment',
                         carrierName: selectedCarrier.name,
                         mobileNumber: num,
                         planAmount: plan,
@@ -252,7 +251,7 @@
                     })
                 });
 
-                const data = await response.json();
+                const data = await res.json();
                 if(data.success && data.link) {
                     window.location.href = data.link; 
                 } else {
@@ -270,17 +269,11 @@
 
         async function verifyEsimPayment(tid) {
             try {
-                const res = await fetch(API_BASE_URL, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('userToken')}`
-                    },
-                    body: JSON.stringify({ 
-                        action: 'verify-payment', 
-                        transactionId: tid 
-                    })
-                });
+               const res = await fetch(`${API_BASE_URL}/verify-payment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('userToken')}` },
+                body: JSON.stringify({ transactionId, txRef })
+            });
                 const data = await res.json();
                 
                 if (data.success) {

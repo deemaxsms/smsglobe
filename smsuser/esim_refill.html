@@ -27,7 +27,6 @@
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
-        /* Responsive scaling for mobile */
         @media (max-width: 640px) { 
             html { font-size: 13px; } 
             .mobile-title { font-size: 1.1rem !important; }
@@ -53,8 +52,8 @@
 
         <nav class="flex-grow p-4 space-y-1">
             <p class="px-3 text-[10px] font-bold text-brand-lightText uppercase tracking-widest mb-2">Navigation</p>
-            <a href="user_dashboard.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+            <a href="user_dashboard.html" class="flex items-center space-x-3 px-3 py-2.5 text-brand-midText hover:bg-gray-50 rounded-xl text-xs font-medium transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
                 <span>Dashboard</span>
             </a>
             <a href="buy_number.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium transition-all">
@@ -95,7 +94,7 @@
                     <p class="text-[10px] md:text-xs text-brand-lightText">Choose your provider to begin the refill.</p>
                 </div>
                 <div id="carrierGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-                </div>
+                    </div>
             </div>
 
             <div id="formView" class="hidden animate-flow">
@@ -162,6 +161,9 @@
     </div>
 
     <script>
+        // Use the relative path to ensure Vercel routes it correctly
+        const API_BASE_URL = '/api';
+
         const carriers = [
             { id: '1', name: 'T-Mobile USA', image: 'https://i.imgur.com/pyDMW1t.png' },
             { id: '2', name: 'AT&T', image: 'https://i.imgur.com/WDCo1gM.png' },
@@ -169,7 +171,6 @@
             { id: '4', name: 'Vodafone UK', image: 'https://i.imgur.com/r7a0fpw.png' }
         ];
 
-        // Generate Amounts $15 to $100
         const refillAmounts = [];
         for (let i = 15; i <= 100; i += 5) { refillAmounts.push(`$${i}.00`); }
 
@@ -182,16 +183,16 @@
 
         function initPage() {
             const grid = document.getElementById('carrierGrid');
+            // Grayscale removed from classes below to keep original colors
             grid.innerHTML = carriers.map(c => `
                 <div onclick="selectCarrier('${c.id}')" class="bg-white border border-brand-border p-4 md:p-6 rounded-2xl md:rounded-3xl cursor-pointer hover:shadow-xl transition-all group text-center">
-                    <div class="h-12 md:h-16 mb-3 flex items-center justify-center grayscale group-hover:grayscale-0 transition-all">
+                    <div class="h-12 md:h-16 mb-3 flex items-center justify-center transition-all">
                         <img src="${c.image}" class="max-h-full object-contain">
                     </div>
                     <h3 class="text-[10px] md:text-xs font-bold text-brand-darkText uppercase group-hover:text-brand-blue">${c.name}</h3>
                 </div>
             `).join('');
             
-            // Populate selector
             const selector = document.getElementById('planSelector');
             selector.innerHTML = refillAmounts.map(amt => `<option value="${amt}">${amt}</option>`).join('');
         }
@@ -202,87 +203,120 @@
             document.getElementById('formView').classList.remove('hidden');
             document.getElementById('formCarrierName').innerText = selectedCarrier.name;
             document.getElementById('formCarrierLogo').src = selectedCarrier.image;
+            updateButtonPrice();
         }
+
+        function updateButtonPrice() {
+            const plan = document.getElementById('planSelector').value;
+            document.getElementById('payBtn').innerText = `Pay ${getNairaPrice(plan)} (Refill)`;
+        }
+
+        function getNairaPrice(usdString) {
+            const rate = 1650;
+            const usd = parseFloat(usdString.replace(/[$,]/g, ''));
+            return `₦${(usd * rate).toLocaleString()}`;
+        }
+
+        document.getElementById('planSelector').addEventListener('change', updateButtonPrice);
 
         function goBackToGrid() {
             document.getElementById('selectionView').classList.remove('hidden');
             document.getElementById('formView').classList.add('hidden');
         }
 
-      async function initiatePayment() {
-    const num = document.getElementById('targetNumber').value;
-    const plan = document.getElementById('planSelector').value; // e.g. "$15.00"
+        async function initiatePayment() {
+            const num = document.getElementById('targetNumber').value;
+            const plan = document.getElementById('planSelector').value; 
 
-    if(!num) { 
-        alert("Please enter the eSIM mobile number"); 
-        return; 
-    }
+            if(!num) { alert("Please enter the eSIM mobile number"); return; }
 
-    const btn = document.getElementById('payBtn');
-    const originalText = btn.innerText;
-    btn.disabled = true;
-    btn.innerText = "Generating Payment Link...";
+            const btn = document.getElementById('payBtn');
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "Generating Payment Link...";
 
-    try {
-        // We call your 'initiate-payment' action in the backend
-        const response = await fetch('/api/main', { // Ensure this matches your API route
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}` // Assumes user is logged in
-            },
-            body: JSON.stringify({
-                action: 'initiate-payment',
-                carrierName: selectedCarrier.name, // e.g. "Verizon"
-                mobileNumber: num,
-                planAmount: plan, // e.g. "$15.00"
-                productImage: selectedCarrier.image
-            })
-        });
+            try {
+                const response = await fetch(API_BASE_URL, { 
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
+                    },
+                    body: JSON.stringify({
+                        action: 'initiate-payment',
+                        carrierName: selectedCarrier.name,
+                        mobileNumber: num,
+                        planAmount: plan,
+                        productImage: selectedCarrier.image,
+                        productType: 'eSIM'
+                    })
+                });
 
-        const data = await response.json();
-
-        if(data.success && data.link) {
-            // REDIRECT TO FLUTTERWAVE
-            window.location.href = data.link; 
-        } else {
-            alert("Error: " + (data.message || "Could not initialize payment."));
-            btn.disabled = false;
-            btn.innerText = originalText;
+                const data = await response.json();
+                if(data.success && data.link) {
+                    window.location.href = data.link; 
+                } else {
+                    alert("Error: " + (data.message || "Could not initialize payment."));
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Connection error. Please try again.");
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
         }
-    } catch (err) {
-        console.error(err);
-        alert("Connection error. Please check your internet.");
-        btn.disabled = false;
-        btn.innerText = originalText;
-    }
-}
+
+        async function verifyEsimPayment(tid) {
+            try {
+                const res = await fetch(API_BASE_URL, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+                    },
+                    body: JSON.stringify({ 
+                        action: 'verify-payment', 
+                        transactionId: tid 
+                    })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('selectionView').classList.add('hidden');
+                    document.getElementById('formView').classList.add('hidden');
+                    document.getElementById('receiptView').classList.remove('hidden');
+
+                    document.getElementById('rCarrier').innerText = data.order.nodeName;
+                    document.getElementById('rNumber').innerText = data.order.targetNumber;
+                    document.getElementById('rPlan').innerText = data.order.planName;
+                    document.getElementById('rID').innerText = data.order.paymentReference;
+                    
+                    window.history.replaceState({}, '', window.location.pathname);
+                }
+            } catch (e) {
+                console.error("Verification failed", e);
+            }
+        }
 
         function contactManagement() {
             const num = document.getElementById('rNumber').innerText;
             const carrier = document.getElementById('rCarrier').innerText;
             const plan = document.getElementById('rPlan').innerText;
             const tid = document.getElementById('rID').innerText;
-
             const msg = `*ESIM REFILL REQUEST*\n\nCarrier: ${carrier}\nNumber: ${num}\nAmount: ${plan}\nRef ID: ${tid}\n\nPlease confirm payment and initiate refill.`;
-            const waUrl = `https://wa.me/2348149747864?text=${encodeURIComponent(msg)}`;
-            window.open(waUrl, '_blank');
+            window.open(`https://wa.me/2348149747864?text=${encodeURIComponent(msg)}`, '_blank');
         }
 
-        // Add this helper function
-function getNairaPrice(usdString) {
-    const rate = 1650;
-    const usd = parseFloat(usdString.replace(/[$,]/g, ''));
-    return `₦${(usd * rate).toLocaleString()}`;
-}
-
-// Update your planSelector listener
-document.getElementById('planSelector').addEventListener('change', function() {
-    const nairaDisplay = getNairaPrice(this.value);
-    document.getElementById('payBtn').innerText = `Pay ${nairaDisplay} (Refill)`;
-});
-
-        window.onload = initPage;
+        window.onload = () => {
+            initPage(); 
+            const urlParams = new URLSearchParams(window.location.search);
+            const transactionId = urlParams.get('transaction_id');
+            if (transactionId) {
+                verifyEsimPayment(transactionId);
+            }
+        };
     </script>
 </body>
 </html>

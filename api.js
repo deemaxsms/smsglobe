@@ -945,10 +945,12 @@ async function handleVerifyPayment(req, res) {
             } catch (emailErr) {
                 console.error("Email Delivery Failed:", emailErr);
             }
-
+            const savedOrder = await Order.findOne({ paymentReference: paymentRef });
+            
             return res.json({ 
                 success: true, 
-                credentials: credentials 
+                credentials: credentials,
+                order: savedOrder
             });
         }
 

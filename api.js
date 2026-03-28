@@ -88,23 +88,20 @@ const Proxy = mongoose.models.Proxy || mongoose.model('Proxy', ProxySchema);
 const orderSchema = new mongoose.Schema({
     userEmail: { type: String, required: true, index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    
+    fullName: { type: String },     
     productType: { type: String, enum: ['VPN', 'Proxy'], required: true },
-    planName: { type: String }, // e.g., "Monthly Plan" or "50 IPs"
-    nodeName: { type: String }, // e.g., "US Premium Node"
-    
-    // 3. Payment Details
+    planName: { type: String }, 
+    nodeName: { type: String }, 
     amount: { type: Number, required: true },
-    currency: { type: String, default: 'USD' }, // 'USD' or 'NGN'
-    paymentGateway: { type: String }, // e.g., 'Flutterwave', 'PayPal', 'Stripe'
+    currency: { type: String, default: 'USD' }, 
+    paymentGateway: { type: String }, 
     status: { 
         type: String, 
         enum: ['pending', 'successful', 'failed', 'completed'], 
         default: 'pending' 
     },
     paymentReference: { type: String, unique: true },
-
-    activationCode: String, // If it's a proxy
+    activationCode: String, 
     vpnCredentials: {
         username: String,
         password: { type: String }
@@ -865,8 +862,9 @@ async function handleVerifyPayment(req, res) {
             // --- 5. CREATE ORDER (TRANSACTION HISTORY) ---
             try {
                 await Order.create({
-                    userEmail: userEmail, // Using the clean email from User profile
                     userId: userId,
+                    userEmail: userEmail, // Using the clean email from User profile
+                    fullName: actualUser.fullName,
                     productType: productType,
                     planName: productDetails.plan,
                     nodeName: productDetails.name,
@@ -1107,17 +1105,13 @@ async function handleDeleteProxy(req, res) {
 
 async function handleAllTransactions(req, res) {
     try {
-        // .populate('userId') tells Mongoose to fetch the full User object 
-        // using the ID stored in the Order. We only select 'fullName' for performance.
-        const orders = await Order.find()
-            .populate('userId', 'fullName') 
-            .sort({ createdAt: -1 });
+        const orders = await Order.find().sort({ createdAt: -1 });
 
+        // 2. Map the transactions for the frontend
         const formattedTransactions = orders.map(order => ({
             id: order._id.toString(),
             date: order.createdAt,
-            // Fallback to "Customer" if the user was deleted or ID is missing
-            customerName: order.userId?.fullName || "Guest Customer",
+            customerName: order.fullName || order.userEmail, 
             email: order.userEmail, 
             product: order.productType,
             details: `${order.nodeName} - ${order.planName}`,
@@ -1125,12 +1119,16 @@ async function handleAllTransactions(req, res) {
             currency: order.currency
         }));
 
-        res.json({ success: true, transactions: formattedTransactions });
+        res.json({ 
+            success: true, 
+            transactions: formattedTransactions 
+        });
     } catch (err) {
         console.error("Error fetching transactions:", err);
         res.status(500).json({ success: false, message: "Server error" });
     }
 }
+
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

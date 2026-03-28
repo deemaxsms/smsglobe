@@ -124,26 +124,36 @@
     <script>
         let allTxns = [];
 
-        async function fetchTransactions() {
-            const token = localStorage.getItem('smsglobe_admin_token');
-            const tbody = document.getElementById('txnBody');
+       async function fetchTransactions() {
+    const token = localStorage.getItem('smsglobe_admin_token');
+    const tbody = document.getElementById('txnBody');
 
-            try {
-                const res = await fetch('/api/admin/transactions', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const data = await res.json();
+    // Show a loading state while fetching
+    tbody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-brand-lightText">Loading transactions...</td></tr>`;
 
-                if (data.success) {
-                    allTxns = data.transactions;
-                    renderTable(allTxns);
-                } else {
-                    throw new Error("Failed to fetch");
-                }
-            } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="4" class="p-20 text-center text-red-500 font-bold">Error loading history. Check your connection.</td></tr>`;
+    try {
+        // FIXED URL: Removed "/admin" so it matches your backend 'transactions' case
+        const res = await fetch('/api/transactions', {
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
             }
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            allTxns = data.transactions;
+            renderTable(allTxns);
+        } else {
+            // If the API returns success: false (e.g., unauthorized)
+            throw new Error(data.error || "Failed to fetch");
         }
+    } catch (err) {
+        console.error("Fetch Error:", err);
+        tbody.innerHTML = `<tr><td colspan="4" class="p-20 text-center text-red-500 font-bold">Error loading history: ${err.message}</td></tr>`;
+    }
+}
 
         function renderTable(txns) {
             const tbody = document.getElementById('txnBody');

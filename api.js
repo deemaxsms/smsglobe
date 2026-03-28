@@ -6,6 +6,8 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const { OAuth2Client } = require('google-auth-library');
+const nodemailer = require('nodemailer');
+
 
 dotenv.config();
 const app = express();
@@ -125,6 +127,7 @@ const verifyToken = (req, res, next) => {
         return res.status(401).json({ success: false, error: "Unauthorized" });
     }
 };
+
 
 // --- 6. API ROUTER (Switch-Case) ---
 app.all('/api/:action', async (req, res) => {
@@ -662,24 +665,34 @@ async function handleVerifyPayment(req, res) {
 
         const data = await response.json();
 
-        // Check if payment was actually successful in Flutterwave's records
         if (data.status === "success" && data.data.status === "successful") {
-            
-            // Retrieve the specific vpnId we stored in the 'meta' field earlier
             const purchasedVpnId = data.data.meta.vpnId;
+            const userEmail = data.data.customer.email; // Get email from Flutterwave response
+            
             const vpn = await VPN.findById(purchasedVpnId).select('+password');
 
             if (vpn && vpn.stock > 0) {
                 vpn.stock -= 1;
                 await vpn.save();
                 
+                const credentials = {
+                    username: vpn.username,
+                    password: vpn.password,
+                    instructions: vpn.instructions || "Download the client and use these credentials."
+                };
+
+                // --- SEND EMAIL NOTIFICATION ---
+                try {
+                    await sendVPNEmail(userEmail, credentials);
+                } catch (mailErr) {
+                    console.error("Email Delivery Failed:", mailErr);
+                    // We don't block the response if email fails, 
+                    // user still gets credentials on their screen.
+                }
+
                 return res.json({ 
                     success: true, 
-                    credentials: {
-                        username: vpn.username,
-                        password: vpn.password,
-                        instructions: vpn.instructions || "Download the client and use these credentials."
-                    } 
+                    credentials: credentials 
                 });
             } else {
                 return res.status(400).json({ success: false, message: "Node sold out during transaction." });
@@ -687,9 +700,101 @@ async function handleVerifyPayment(req, res) {
         }
         res.status(400).json({ success: false, message: "Transaction not confirmed." });
     } catch (err) {
+        console.error("Verification Error:", err);
         res.status(500).json({ success: false, message: "Server verification error." });
     }
 }
+const sendVPNEmail = async (userEmail, credentials) => {
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        }
+    });
+
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            @media screen and (max-width: 480px) {
+                .mobile-full { width: 100% !important; display: block !important; text-align: left !important; }
+                .header-padding { padding: 20px !important; }
+            }
+        </style>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f4f7ff;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+                <td align="center" style="padding: 20px 0;">
+                    <div style="font-family: 'Inter', Helvetica, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                        
+                        <div style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 1px solid #f0f0f0;">
+                            <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" style="height: 24px; width: auto; display: block; margin: 0 auto;">
+                        </div>
+
+                        <div class="header-padding" style="background-color: #0F54C6; color: white; padding: 35px 24px; text-align: center;">
+                            <h2 style="margin: 0; font-size: 22px; letter-spacing: -0.5px;">Node Activated! ✅</h2>
+                            <p style="opacity: 0.8; font-size: 13px; margin-top: 8px;">Your Premium VPN Access is officially ready.</p>
+                        </div>
+
+                        <div style="padding: 24px; color: #344054; text-align: left;">
+                            <p style="font-size: 14px; line-height: 1.5; margin-bottom: 24px;">
+                                Hello, <br><br>
+                                Thank you for choosing <strong>SMSGlobe</strong>. Your payment was confirmed and your secure connection node is now provisioned.
+                            </p>
+                            
+                            <div style="background: #F0F5FE; padding: 20px; border-radius: 12px; border: 1px solid #D1E0FF; margin-bottom: 24px;">
+                                <p style="margin: 0 0 10px 0; font-size: 10px; color: #0F54C6; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">Instructions</p>
+                                <p style="font-size: 13px; margin: 0 0 20px 0; line-height: 1.6; color: #101828;">${credentials.instructions}</p>
+                                
+                                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
+                                    <tr>
+                                        <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">
+                                            <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Username</span><br>
+                                            <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #101828;">${credentials.username}</strong>
+                                        </td>
+                                        <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 10px;">
+                                            <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Security Key</span><br>
+                                            <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.password}</strong>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background: #FFF9F2; border-radius: 8px; border: 1px solid #FFEACC;">
+                                <tr>
+                                    <td style="padding: 12px; font-size: 11px; color: #B54708; line-height: 1.4;">
+                                        <strong>Security Notice:</strong> Never share these keys. SMSGlobe support will never ask for your password. Access is limited to one device at a time.
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <div style="text-align: center; margin-top: 30px;">
+                                <a href="https://smsglobe.com/login" style="background-color: #0F54C6; color: #ffffff; padding: 12px 24px; text-decoration: none; font-size: 13px; font-weight: bold; border-radius: 8px; display: inline-block;">Access Dashboard</a>
+                            </div>
+                        </div>
+
+                        <div style="background: #F9FAFB; padding: 20px; text-align: center; border-top: 1px solid #EAECF0;">
+                            <p style="font-size: 11px; color: #667085; margin: 0;">&copy; 2026 <strong>SMSGlobe</strong>. All rights reserved.</p>
+                            <p style="font-size: 10px; color: #98A2B3; margin-top: 5px;">Reliable Virtual Communications & Global Connectivity</p>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>`;
+
+    await transporter.sendMail({
+        from: `"SMSGlobe Support" <${process.env.EMAIL_USER}>`,
+        to: userEmail,
+        subject: "🔑 Your VPN Access Credentials - SMSGlobe",
+        html: htmlContent
+    });
+};
 
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));

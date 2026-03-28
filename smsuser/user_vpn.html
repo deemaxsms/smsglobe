@@ -80,28 +80,71 @@
         </main>
     </div>
 
-    <div id="vpnModal" class="fixed inset-0 bg-black/50 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl animate-in zoom-in duration-200">
-            <h2 id="modalTitle" class="text-lg font-bold text-brand-darkText mb-2">Node Activated!</h2>
-            <div id="modalContent" class="space-y-4">
-                <div class="bg-brand-background p-3 rounded-lg border border-brand-blue/10">
-                    <p class="text-[10px] font-bold text-brand-blue uppercase">Connection Instructions</p>
-                    <p id="modalInstructions" class="text-xs mt-1 text-brand-midText leading-relaxed"></p>
+   <div id="vpnModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
+    <div class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-in zoom-in fade-in duration-300">
+        <div class="bg-brand-blue p-8 text-center relative">
+            <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle, #fff 1px, transparent 1px); background-size: 20px 20px;"></div>
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <h2 id="modalTitle" class="text-2xl font-bold text-white leading-tight">Payment Verified!</h2>
+            <p class="text-blue-100 text-xs mt-1 font-medium tracking-wide uppercase">Your Premium Node is Ready</p>
+        </div>
+
+        <div class="p-6 md:p-8">
+            <div class="text-center mb-6">
+                <p class="text-brand-darkText font-semibold text-sm">Congratulations!</p>
+                <p class="text-brand-lightText text-[11px] leading-relaxed mt-1">
+                    Your secure connection has been provisioned. A copy of these details has also been sent to your email.
+                </p>
+            </div>
+
+            <div class="bg-brand-background rounded-2xl border border-brand-blue/10 p-5 space-y-4 shadow-inner">
+                <div class="pb-4 border-b border-brand-blue/5">
+                    <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider mb-1">Access Instructions</p>
+                    <p id="modalInstructions" class="text-[10px] text-brand-midText leading-relaxed italic"></p>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="border border-brand-border p-3 rounded-lg bg-gray-50/50">
-                        <p class="text-[10px] font-bold text-brand-lightText uppercase">Username</p>
-                        <p id="modalUser" class="text-xs font-mono font-bold text-brand-blue break-all"></p>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Username</p>
+                        <div class="flex items-center gap-2">
+                            <p id="modalUser" class="text-xs font-mono font-bold text-brand-darkText break-all"></p>
+                            <button onclick="copyToClipboard('modalUser', this)" class="text-brand-blue hover:text-blue-700 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            </button>
+                        </div>
                     </div>
-                    <div class="border border-brand-border p-3 rounded-lg bg-gray-50/50">
-                        <p class="text-[10px] font-bold text-brand-lightText uppercase">Security Key</p>
-                        <p id="modalPass" class="text-xs font-mono font-bold text-brand-darkText">********</p>
+                    <div class="space-y-1 text-right">
+                        <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Security Key</p>
+                        <div class="flex items-center justify-end gap-2">
+                            <p id="modalPass" class="text-xs font-mono font-bold text-brand-blue"></p>
+                            <button onclick="copyToClipboard('modalPass', this)" class="text-brand-blue hover:text-blue-700 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-            <button onclick="closeModal()" class="w-full mt-6 py-3 bg-brand-blue text-white rounded-xl text-xs font-bold shadow-lg hover:bg-blue-700 transition-all active:scale-95">Done</button>
+
+            <div class="mt-6 flex items-start gap-3 p-3 bg-orange-50 rounded-xl border border-orange-100">
+                <svg class="w-4 h-4 text-brand-orange mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                <p class="text-[10px] text-brand-orange font-medium leading-tight">
+                    Security Notice: Never share your VPN keys. SMSGlobe staff will never ask for your password.
+                </p>
+            </div>
+
+            <button onclick="closeModal()" class="w-full mt-8 py-4 bg-brand-blue text-white rounded-2xl text-xs font-bold shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
+                <span>Finish & Go to Dashboard</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+            </button>
         </div>
     </div>
+</div>
 
 <script>
     const API_BASE_URL = '/api';
@@ -166,45 +209,46 @@
         }
     }
 
-   async function verifyPayment(transactionId, txRef) {
-    const token = localStorage.getItem('userToken');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalInstructions = document.getElementById('modalInstructions');
-    const modalUser = document.getElementById('modalUser');
-    const modalPass = document.getElementById('modalPass');
+async function verifyPayment(transactionId, txRef) {
+        const token = localStorage.getItem('userToken');
+        const modal = document.getElementById('vpnModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalInstructions = document.getElementById('modalInstructions');
+        const modalUser = document.getElementById('modalUser');
+        const modalPass = document.getElementById('modalPass');
 
-    modalTitle.innerText = "Verifying Payment...";
-    document.getElementById('vpnModal').classList.remove('hidden');
+        modalTitle.innerText = "Verifying Payment...";
+        modal.classList.remove('hidden');
 
-    try {
-        const res = await fetch(`${API_BASE_URL}/verify-payment`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            // Ensure the key matches what your backend destructures: { transactionId }
-            body: JSON.stringify({ transactionId: transactionId, txRef: txRef })
-        });
+        try {
+            const res = await fetch(`${API_BASE_URL}/verify-payment`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ transactionId, txRef })
+            });
 
-        const data = await res.json();
-        if (data.success) {
-            modalTitle.innerText = "Node Activated! ✅";
-            modalInstructions.innerText = data.credentials.instructions;
-            modalUser.innerText = data.credentials.username;
-            modalPass.innerText = data.credentials.password;
-            
-            // Clean the URL so refreshing doesn't trigger verification again
-            window.history.replaceState({}, document.title, window.location.pathname);
-        } else {
-            alert(data.message || "Verification failed. Please contact support.");
-            closeModal();
+            const data = await res.json();
+
+            if (data.success) {
+                modalTitle.innerText = "Payment Verified!";
+                modalInstructions.innerText = data.credentials.instructions || "Download the client and use these credentials.";
+                modalUser.innerText = data.credentials.username;
+                modalPass.innerText = data.credentials.password; // Reveal the password here
+                
+                const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+            } else {
+                alert(data.message || "Verification failed.");
+                closeModal();
+            }
+        } catch (err) { 
+            console.error("Critical Verify Error:", err);
+            closeModal(); 
         }
-    } catch (err) { 
-        console.error("Verify Error:", err);
-        closeModal(); 
     }
-}
 
     function closeModal() {
         document.getElementById('vpnModal').classList.add('hidden');
@@ -258,6 +302,22 @@
                 </div>
             </div>
         `;}).join('');
+    }
+
+    async function copyToClipboard(elementId, btn) {
+        const text = document.getElementById(elementId).innerText;
+        const originalIcon = btn.innerHTML;
+        
+        try {
+            await navigator.clipboard.writeText(text);
+            // Change icon to checkmark
+            btn.innerHTML = `<svg class="w-3.5 h-3.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>`;
+            
+            // Revert back after 2 seconds
+            setTimeout(() => { btn.innerHTML = originalIcon; }, 2000);
+        } catch (err) {
+            console.error('Failed to copy: ', err);
+        }
     }
 
     window.onload = initVPNPage;

@@ -159,6 +159,22 @@
         overlay.classList.toggle('hidden');
     }
 
+    /**
+     * NEW: Silent Refresh
+     * Re-fetches the VPN products to sync the local stock numbers with the backend.
+     */
+    async function refreshVPNData() {
+        try {
+            const vpnRes = await fetch(`${API_BASE_URL}/products`);
+            const data = await vpnRes.json();
+            if (data.success) { 
+                renderVPNs(data.products); 
+            }
+        } catch (err) { 
+            console.error("Silent Refresh Error:", err); 
+        }
+    }
+
     async function initVPNPage() {
         const token = localStorage.getItem('userToken');
         if (!token) { window.location.href = 'user_login.html'; return; }
@@ -168,15 +184,13 @@
         const transaction_id = urlParams.get('transaction_id');
         const tx_ref = urlParams.get('tx_ref');
 
+        // Check for payment callback first
         if (status === 'successful' || status === 'completed') {
-            verifyPayment(transaction_id, tx_ref);
+            await verifyPayment(transaction_id, tx_ref);
         }
 
-        try {
-            const vpnRes = await fetch(`${API_BASE_URL}/products`);
-            const data = await vpnRes.json();
-            if (data.success) { renderVPNs(data.products); }
-        } catch (err) { console.error("Initialization Error:", err); }
+        // Initial Load
+        await refreshVPNData();
     }
 
     async function buyVPN(vpnId) {
@@ -185,7 +199,7 @@
         const buyBtn = document.getElementById(`btn-${vpnId}`);
 
         buyBtn.disabled = true;
-        buyBtn.innerText = "Wait...";
+        buyBtn.innerHTML = `<span class="flex items-center justify-center gap-1"><svg class="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Wait...</span>`;
 
         try {
             const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
@@ -194,7 +208,7 @@
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ vpnId, planIndex })
+                body: JSON.stringify({ vpnId, planIndex, type: 'VPN' }) // Added type for backend clarity
             });
 
             const data = await res.json();
@@ -212,7 +226,7 @@
         }
     }
 
-async function verifyPayment(transactionId, txRef) {
+    async function verifyPayment(transactionId, txRef) {
         const token = localStorage.getItem('userToken');
         const modal = document.getElementById('vpnModal');
         const modalTitle = document.getElementById('modalTitle');
@@ -236,13 +250,18 @@ async function verifyPayment(transactionId, txRef) {
             const data = await res.json();
 
             if (data.success) {
-                modalTitle.innerText = "Payment Verified!";
-                modalInstructions.innerText = data.credentials.instructions || "Download the client and use these credentials.";
-                modalUser.innerText = data.credentials.username;
-                modalPass.innerText = data.credentials.password; 
-                
+                // 1. Clean URL
                 const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
                 window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+
+                // 2. CRITICAL: Refresh stock in the background while modal is open
+                await refreshVPNData();
+
+                // 3. Update Modal with data
+                modalTitle.innerText = "Payment Verified!";
+                modalInstructions.innerText = data.credentials.instructions || "Your VPN is ready.";
+                modalUser.innerText = data.credentials.username;
+                modalPass.innerText = data.credentials.password; 
             } else {
                 alert(data.message || "Verification failed.");
                 closeModal();
@@ -255,32 +274,37 @@ async function verifyPayment(transactionId, txRef) {
 
     function closeModal() {
         document.getElementById('vpnModal').classList.add('hidden');
-        window.location.href = 'user_vpn.html';
+        // No need to redirect if the state is already cleaned and refreshed
     }
 
     function renderVPNs(vpns) {
         const grid = document.getElementById('vpnGrid');
         const loader = document.getElementById('vpnLoading');
-        loader.classList.add('hidden');
+        if (loader) loader.classList.add('hidden');
         grid.classList.remove('hidden');
 
         grid.innerHTML = vpns.map(vpn => {
-            const isOutOfStock = vpn.stock <= 0;
-            const stockColor = isOutOfStock ? 'text-red-500 bg-red-50' : 'text-green-600 bg-green-50';
+            const stockCount = vpn.stock || 0;
+            const isOutOfStock = stockCount <= 0;
+            
+            // UI Logic for Stock colors
+            let stockClasses = "text-green-600 bg-green-50 border-green-200";
+            if (isOutOfStock) stockClasses = "text-red-500 bg-red-50 border-red-200";
+            else if (stockCount < 5) stockClasses = "text-orange-600 bg-orange-50 border-orange-200";
             
             return `
             <div class="bg-white border border-brand-border rounded-xl md:rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden w-full">
                 
                 <div class="h-24 md:h-32 bg-gray-50 relative overflow-hidden flex items-center justify-center p-2 border-b border-brand-border/50">
                     <img src="${vpn.image || 'https://via.placeholder.com/400x200?text=VPN'}" 
-                         class="max-w-[80%] max-h-[80%] object-contain">
+                         class="max-w-[80%] max-h-[80%] object-contain ${isOutOfStock ? 'grayscale opacity-50' : ''}">
                     
                     <div class="absolute top-1.5 left-1.5">
                          <span class="text-[7px] md:text-[8px] font-bold px-1.5 py-0.5 bg-white/90 border border-brand-border text-brand-blue rounded uppercase tracking-tighter">${vpn.region || 'Global'}</span>
                     </div>
                     <div class="absolute top-1.5 right-1.5">
-                         <span class="text-[7px] md:text-[8px] font-bold px-1.5 py-0.5 ${stockColor} rounded uppercase tracking-tighter border border-current/10">
-                            ${isOutOfStock ? 'Out' : `${vpn.stock}`}
+                         <span class="text-[7px] md:text-[8px] font-bold px-1.5 py-0.5 ${stockClasses} rounded uppercase tracking-tighter border">
+                            ${isOutOfStock ? 'Sold Out' : `Stock: ${stockCount}`}
                          </span>
                     </div>
                 </div>
@@ -293,19 +317,20 @@ async function verifyPayment(transactionId, txRef) {
                         </span>
                     </div>
 
-                    <div class="mb-2 md:mb-3 pr-16"> <h3 class="font-bold text-brand-darkText text-[10px] md:text-xs truncate uppercase tracking-tight">${vpn.name}</h3>
+                    <div class="mb-2 md:mb-3 pr-16"> 
+                        <h3 class="font-bold text-brand-darkText text-[10px] md:text-xs truncate uppercase tracking-tight">${vpn.name}</h3>
                         <p class="text-[8px] md:text-[9px] text-brand-lightText font-medium">${vpn.provider || 'SMSGlobe'}</p>
                     </div>
                     
                     <div class="bg-gray-50 rounded-lg p-1.5 mb-3 border border-gray-100">
                         <label class="text-[7px] md:text-[8px] font-bold text-brand-lightText uppercase block mb-1">Select Tier</label>
-                        <select id="plan-${vpn._id}" class="w-full bg-white border border-brand-border rounded px-1 py-0.5 md:py-1 text-[9px] md:text-[10px] font-bold focus:outline-none cursor-pointer">
+                        <select id="plan-${vpn._id}" ${isOutOfStock ? 'disabled' : ''} class="w-full bg-white border border-brand-border rounded px-1 py-0.5 md:py-1 text-[9px] md:text-[10px] font-bold focus:outline-none cursor-pointer disabled:opacity-50">
                             ${vpn.plans.map((p, i) => `<option value="${i}">${p.duration} — $${parseFloat(p.price).toFixed(2)}</option>`).join('')}
                         </select>
                     </div>
 
                     <button onclick="buyVPN('${vpn._id}')" id="btn-${vpn._id}" ${isOutOfStock ? 'disabled' : ''}
-                            class="mt-auto w-full py-2 ${isOutOfStock ? 'bg-gray-300' : 'bg-brand-blue hover:bg-blue-700'} text-white text-[9px] md:text-[10px] font-bold rounded-lg transition-all active:scale-95 shadow-sm">
+                            class="mt-auto w-full py-2 ${isOutOfStock ? 'bg-gray-300 cursor-not-allowed' : 'bg-brand-blue hover:bg-blue-700 active:scale-95'} text-white text-[9px] md:text-[10px] font-bold rounded-lg transition-all shadow-sm">
                         ${isOutOfStock ? 'Sold Out' : 'Purchase Access'}
                     </button>
                 </div>

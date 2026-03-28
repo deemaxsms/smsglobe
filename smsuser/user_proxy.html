@@ -163,42 +163,68 @@
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
 
-async function checkPaymentStatus() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const transactionId = urlParams.get('transaction_id');
-    const status = urlParams.get('status');
-
-    // FIX: Accept 'completed' (from your URL) or 'successful'
-    if (transactionId && (status === 'successful' || status === 'completed')) {
-        console.log("Verifying transaction: ", transactionId);
+    /**
+     * NEW: Silent Data Refresh
+     * Re-fetches proxy data to update local stock counts without a full page reload.
+     */
+    async function refreshProxyData() {
         try {
-            const res = await fetch(`${API_BASE_URL}/verify-payment`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ transactionId })
-            });
+            const res = await fetch(`${API_BASE_URL}/proxies`);
             const data = await res.json();
-
             if (data.success) {
-                // Remove query params from URL so it doesn't re-verify on refresh
-                window.history.replaceState({}, document.title, window.location.pathname);
+                allProxies = data.proxies;
                 
-                // Open the modal with the data returned from the backend
-                showSuccessModal(data.credentials);
-            } else {
-                alert("Payment verification failed: " + data.message);
+                // If user is currently viewing a specific category, re-render it to show new stock
+                const currentView = document.getElementById('currentViewName').innerText;
+                if (currentView !== "All Proxy Categories") {
+                    showProducts(currentView);
+                } else {
+                    showCategories();
+                }
             }
         } catch (err) {
-            console.error("Verification Error:", err);
+            console.error("Stock refresh failed:", err);
         }
     }
-}
+
+    async function checkPaymentStatus() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const transactionId = urlParams.get('transaction_id');
+        const status = urlParams.get('status');
+
+        if (transactionId && (status === 'successful' || status === 'completed')) {
+            console.log("Verifying transaction: ", transactionId);
+            try {
+                const res = await fetch(`${API_BASE_URL}/verify-payment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ transactionId })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    // 1. Remove query params from URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    
+                    // 2. REFRESH STOCK: Sync local UI with server-side deduction
+                    await refreshProxyData(); 
+
+                    // 3. Show success modal
+                    showSuccessModal(data.credentials);
+                } else {
+                    alert("Payment verification failed: " + data.message);
+                }
+            } catch (err) {
+                console.error("Verification Error:", err);
+            }
+        }
+    }
 
     async function initPage() {
         const token = localStorage.getItem('userToken');
         if (!token) { window.location.href = 'user_login.html'; return; }
 
-        // First, check if we're coming back from a successful Flutterwave payment
+        // Always check payment status first in case of redirect
         await checkPaymentStatus();
 
         try {
@@ -245,7 +271,7 @@ async function checkPaymentStatus() {
         }).join('');
     }
 
-   function showProducts(category) {
+    function showProducts(category) {
         const categoryGrid = document.getElementById('categoryGrid');
         const proxyGrid = document.getElementById('proxyGrid');
         const backBtn = document.getElementById('backBtn');
@@ -260,14 +286,19 @@ async function checkPaymentStatus() {
         const filtered = allProxies.filter(p => p.category === category);
 
         proxyGrid.innerHTML = filtered.map(proxy => {
-            // Check if product is out of stock
-            const isOutOfStock = (proxy.stock === 0);
+            const stockCount = proxy.stock || 0;
+            const isOutOfStock = (stockCount === 0);
             
+            // Dynamic badge color based on stock levels
+            let badgeColor = "bg-green-100 text-green-600";
+            if (isOutOfStock) badgeColor = "bg-red-100 text-red-600";
+            else if (stockCount < 5) badgeColor = "bg-orange-100 text-orange-600";
+
             return `
             <div class="bg-white border border-brand-border rounded-2xl shadow-sm flex flex-col overflow-hidden transition-all hover:shadow-md relative">
                 <div class="absolute top-2 right-2 z-10">
-                    <span class="${isOutOfStock ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'} text-[8px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter">
-                        Stock: ${proxy.stock || 0}
+                    <span class="${badgeColor} text-[8px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter">
+                        Stock: ${stockCount}
                     </span>
                 </div>
 

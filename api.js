@@ -271,53 +271,93 @@ async function handleRegister(req, res) {
 
 async function handleDashboardStats(req, res) {
     try {
+        // Ensure models are initialized (Product-agnostic Order fetching)
         const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({}, { strict: false }), 'users');
         const Order = mongoose.models.Order || mongoose.model('Order', new mongoose.Schema({}, { strict: false }), 'orders');
 
         const totalUsers = await User.countDocuments();
         
+        // Define Time Ranges
         const now = new Date();
-        const startOfDay = new Date().setHours(0,0,0,0);
-        const startOfWeek = new Date().setDate(now.getDate() - 7);
+        const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+        const startOfWeek = new Date(); startOfWeek.setDate(now.getDate() - 7);
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-        const orders = await Order.find({ status: 'successful' });
+        // Fetch ALL successful orders (VPNs, Proxies, etc.)
+        const orders = await Order.find({ 
+            status: { $in: ['successful', 'completed'] } 
+        });
 
-        // Pull rate from .env
         const RATE = parseFloat(process.env.USD_TO_NGN_RATE) || 1650; 
 
         let stats = {
             totalRevenue: 0,
             daily: 0,
             weekly: 0,
-            monthly: 0
+            monthly: 0,
+            yearly: 0
         };
 
         orders.forEach(order => {
-            const amt = parseFloat(order.amount || 0);
-            const date = new Date(order.createdAt || order.timestamp);
+            // Ensure we capture the amount regardless of field name (amount vs price)
+            const amt = parseFloat(order.amount || order.price || 0);
+            
+            // Use createdAt if available, otherwise fallback to timestamp
+            const date = new Date(order.createdAt || order.timestamp || now);
 
             stats.totalRevenue += amt;
+            
             if (date >= startOfDay) stats.daily += amt;
             if (date >= startOfWeek) stats.weekly += amt;
             if (date >= startOfMonth) stats.monthly += amt;
+            if (date >= startOfYear) stats.yearly += amt;
         });
 
-        // Send both currencies to frontend
+        // Send response with automatic NGN conversion
         return res.json({ 
             success: true, 
             totalUsers,
-            rateUsed: RATE, // Optional: useful for debugging
             usd: stats,
             ngn: {
                 totalRevenue: stats.totalRevenue * RATE,
                 daily: stats.daily * RATE,
                 weekly: stats.weekly * RATE,
-                monthly: stats.monthly * RATE
+                monthly: stats.monthly * RATE,
+                yearly: stats.yearly * RATE
             }
         });
     } catch (err) {
         console.error("Stats Error:", err);
+        return res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+}
+
+// GET /api/admin/transactions
+async function handleAllTransactions(req, res) {
+    try {
+        const Order = mongoose.models.Order || mongoose.model('Order', new mongoose.Schema({}, { strict: false }), 'orders');
+        
+        // Fetch all successful orders, sorted by newest first
+        const transactions = await Order.find({ 
+            status: { $in: ['successful', 'completed', 'paid'] } 
+        }).sort({ createdAt: -1 });
+
+        return res.json({ 
+            success: true, 
+            transactions: transactions.map(t => ({
+                id: t._id,
+                email: t.userEmail || 'N/A',
+                product: t.productType || t.planName || 'Service',
+                details: t.nodeName || t.location || 'Standard Plan',
+                amount: t.amount || 0,
+                // Ensure currency defaults to USD if not specified, but captures NGN if present
+                currency: t.currency ? t.currency.toUpperCase() : 'USD', 
+                date: t.createdAt || t.timestamp
+            }))
+        });
+    } catch (err) {
+        console.error("Transaction Fetch Error:", err);
         return res.status(500).json({ success: false });
     }
 }
@@ -710,19 +750,17 @@ async function handleVerifyPayment(req, res) {
             const productType = data.data.meta.productType;
             const userEmail = data.data.customer.email;
             
-            let item;
             let credentials = {};
 
             if (productType === "VPN") {
-                // 1. Fetch VPN and include password
-                item = await VPN.findById(productId).select('+password');
-                if (!item) return res.status(404).json({ success: false, message: "VPN not found" });
+                // ATOMIC UPDATE: Find only if stock > 0, and decrement by 1 in one step
+                const item = await VPN.findOneAndUpdate(
+                    { _id: productId, stock: { $gt: 0 } },
+                    { $inc: { stock: -1 } },
+                    { new: true, select: '+password' }
+                );
 
-                // 2. Decrement Stock
-                if (item.stock > 0) {
-                    item.stock -= 1;
-                    await item.save();
-                }
+                if (!item) return res.status(400).json({ success: false, message: "VPN out of stock or not found" });
 
                 credentials = {
                     type: "VPN",
@@ -730,22 +768,21 @@ async function handleVerifyPayment(req, res) {
                     password: item.password,
                     instructions: item.instructions || "Download the OpenVPN config from your dashboard."
                 };
+
             } else if (productType === "Proxy") {
-                // 1. Fetch Proxy
-                item = await Proxy.findById(productId);
-                if (!item) return res.status(404).json({ success: false, message: "Proxy package not found" });
+                // ATOMIC UPDATE: Decrease stock and return the updated proxy details
+                const item = await Proxy.findOneAndUpdate(
+                    { _id: productId, stock: { $gt: 0 } },
+                    { $inc: { stock: -1 } },
+                    { new: true }
+                );
 
-                // 2. Decrement Stock (If your Proxy model has stock)
-                if (item.stock !== undefined && item.stock > 0) {
-                    item.stock -= 1;
-                    await item.save();
-                }
+                if (!item) return res.status(400).json({ success: false, message: "Proxy package out of stock or not found" });
 
-                // 3. Prepare Credentials (Matching the frontend modal expectations)
                 credentials = {
                     type: "Proxy",
-                    activationCode: item.activationCode, // This matches modalCode.innerText
-                    instructions: item.instructions || "Configure your browser or tool using the SOCKS5 protocol with the code provided."
+                    activationCode: item.activationCode,
+                    instructions: item.instructions || "Configure your browser using the provided code."
                 };
             }
 
@@ -754,21 +791,19 @@ async function handleVerifyPayment(req, res) {
                 await sendDeliveryEmail(userEmail, credentials); 
             } catch (emailErr) {
                 console.error("Email Delivery Failed:", emailErr);
-                // We don't block the response if email fails, as the modal will still show the code
             }
 
-            // 5. Success Response to Frontend
             return res.json({ 
                 success: true, 
                 credentials: credentials 
             });
         }
 
-        return res.status(400).json({ success: false, message: "Transaction verification failed with provider." });
+        return res.status(400).json({ success: false, message: "Transaction verification failed." });
 
     } catch (err) {
         console.error("Payment Verification Error:", err);
-        return res.status(500).json({ success: false, message: "Internal server error during verification." });
+        return res.status(500).json({ success: false, message: "Internal server error." });
     }
 }
 

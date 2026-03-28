@@ -73,6 +73,10 @@
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
                            Proxy Nodes
                         </a>
+                        <a href="transaction_history.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                            Transaction History
+                        </a>
                     </nav>
                 </div>
 
@@ -153,68 +157,122 @@
         </main>
     </div>
 
-    <script>
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebar-overlay');
-            sidebar.classList.toggle('-translate-x-full');
-            overlay.classList.toggle('hidden');
-        }
+<script>
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        sidebar.classList.toggle('-translate-x-full');
+        overlay.classList.toggle('hidden');
+    }
 
-        function updateUIElement(id, value) {
-            const el = document.getElementById(id);
-            if (el) el.innerText = value;
-        }
+    function updateUIElement(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.innerText = value;
+    }
 
-        async function fetchDashboardData() {
-            const token = localStorage.getItem('smsglobe_admin_token');
-            const container = document.getElementById('sales-container');
-            
-            try {
-                const response = await fetch('/api/dashboard-stats', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const data = await response.json();
+    async function fetchDashboardData() {
+        const token = localStorage.getItem('smsglobe_admin_token');
+        const container = document.getElementById('sales-container');
+        
+        try {
+            const response = await fetch('/api/dashboard-stats', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
 
-                if (data.success) {
-                    // Update Active Users
-                    updateUIElement('total-users', (data.totalUsers || 0).toLocaleString());
+            if (data.success) {
+                // 1. Update Active Users count
+                updateUIElement('total-users', (data.totalUsers || 0).toLocaleString());
 
-                    // Formatting functions
-                    const fmtUSD = (val) => `$${(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                    const fmtNGN = (val) => `₦${(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                // Formatting helpers
+                const fmtUSD = (val) => `$${(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                const fmtNGN = (val) => `₦${(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-                    // Revenue Display (USD and NGN)
-                    updateUIElement('total-revenue-usd', fmtUSD(data.usd.totalRevenue));
-                    updateUIElement('total-revenue-ngn', fmtNGN(data.ngn.totalRevenue));
+                // 2. Update Main Revenue Cards
+                updateUIElement('total-revenue-usd', fmtUSD(data.usd.totalRevenue));
+                updateUIElement('total-revenue-ngn', fmtNGN(data.ngn.totalRevenue));
 
-                    // Growth Metrics Grid
-                    updateUIElement('rev-daily-usd', fmtUSD(data.usd.daily));
-                    updateUIElement('rev-daily-ngn', fmtNGN(data.ngn.daily));
+                // 3. Update Growth Metrics Grid
+                updateUIElement('rev-daily-usd', fmtUSD(data.usd.daily));
+                updateUIElement('rev-daily-ngn', fmtNGN(data.ngn.daily));
 
-                    updateUIElement('rev-weekly-usd', fmtUSD(data.usd.weekly));
-                    updateUIElement('rev-weekly-ngn', fmtNGN(data.ngn.weekly));
+                updateUIElement('rev-weekly-usd', fmtUSD(data.usd.weekly));
+                updateUIElement('rev-weekly-ngn', fmtNGN(data.ngn.weekly));
 
-                    updateUIElement('rev-monthly-usd', fmtUSD(data.usd.monthly));
-                    updateUIElement('rev-monthly-ngn', fmtNGN(data.ngn.monthly));
+                updateUIElement('rev-monthly-usd', fmtUSD(data.usd.monthly));
+                updateUIElement('rev-monthly-ngn', fmtNGN(data.ngn.monthly));
 
-                    updateUIElement('rev-yearly-usd', fmtUSD(data.usd.yearly));
-                    updateUIElement('rev-yearly-ngn', fmtNGN(data.ngn.yearly));
+                updateUIElement('rev-yearly-usd', fmtUSD(data.usd.yearly));
+                updateUIElement('rev-yearly-ngn', fmtNGN(data.ngn.yearly));
 
-                    if (container) container.innerHTML = '<span class="text-brand-blue font-bold">System Status: Optimized</span>';
+                // 4. Render Recent Activity Table (VPN & Proxies)
+                if (container) {
+                    if (data.recentOrders && data.recentOrders.length > 0) {
+                        // Remove the "Connecting" padding/styles
+                        container.className = "overflow-x-auto"; 
+                        
+                        container.innerHTML = `
+                            <table class="w-full text-left text-[11px] md:text-xs">
+                                <thead class="bg-gray-50 text-brand-lightText uppercase border-b border-brand-border">
+                                    <tr>
+                                        <th class="px-6 py-3 font-bold">Customer</th>
+                                        <th class="px-6 py-3 font-bold">Product Type</th>
+                                        <th class="px-6 py-3 font-bold">Status</th>
+                                        <th class="px-6 py-3 font-bold text-right">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    ${data.recentOrders.map(order => `
+                                        <tr class="hover:bg-gray-50/50 transition-colors">
+                                            <td class="px-6 py-4 font-medium text-brand-darkText">
+                                                ${order.userEmail || 'System User'}
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <span class="px-2 py-1 rounded-md bg-brand-background text-brand-blue font-bold text-[10px] uppercase">
+                                                    ${order.productType || 'Service'}
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <span class="flex items-center gap-1.5 text-green-600 font-bold">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>
+                                                    Paid
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 text-right font-bold text-brand-darkText">
+                                                $${parseFloat(order.amount).toFixed(2)}
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        `;
+                    } else {
+                        container.innerHTML = `
+                            <div class="p-10 text-center text-brand-lightText italic">
+                                No successful sales recorded yet.
+                            </div>
+                        `;
+                    }
                 }
-            } catch (err) {
-                console.error("Fetch error:", err);
-                if (container) container.innerHTML = '<span class="text-red-400 px-4">Database Connection Timeout. Check API Route.</span>';
+            }
+        } catch (err) {
+            console.error("Dashboard Fetch Error:", err);
+            if (container) {
+                container.innerHTML = `
+                    <div class="p-10 text-center text-red-500 font-bold">
+                        Database Connection Error. Please refresh.
+                    </div>
+                `;
             }
         }
+    }
 
-        function logout() {
-            localStorage.removeItem('smsglobe_admin_token');
-            window.location.href = 'sms_login.html';
-        }
+    function logout() {
+        localStorage.removeItem('smsglobe_admin_token');
+        window.location.href = 'sms_login.html';
+    }
 
-        window.onload = fetchDashboardData;
-    </script>
+    window.onload = fetchDashboardData;
+</script>
 </body>
 </html>

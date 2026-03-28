@@ -585,6 +585,7 @@ async function handlePurchaseVPN(req, res) {
             credentials: {
                 username: vpn.username,
                 password: vpn.password,
+                deviceLimit: vpn.deviceLimit,
                 instructions: vpn.instructions
             },
             remainingStock: vpn.stock
@@ -686,6 +687,7 @@ async function handleVerifyPayment(req, res) {
                 const credentials = {
                     username: vpn.username,
                     password: vpn.password,
+                    deviceLimit: vpn.deviceLimit, 
                     instructions: vpn.instructions || "Download the client and use these credentials."
                 };
 
@@ -712,6 +714,7 @@ async function handleVerifyPayment(req, res) {
         res.status(500).json({ success: false, message: "Server verification error." });
     }
 }
+
 const sendVPNEmail = async (userEmail, credentials) => {
     const transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -720,6 +723,9 @@ const sendVPNEmail = async (userEmail, credentials) => {
             pass: process.env.EMAIL_PASS
         }
     });
+
+    // Ensure we have a fallback if deviceLimit is missing
+    const displayLimit = credentials.deviceLimit || 1;
 
     const htmlContent = `
     <!DOCTYPE html>
@@ -760,13 +766,17 @@ const sendVPNEmail = async (userEmail, credentials) => {
                                 
                                 <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
                                     <tr>
-                                        <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">
+                                        <td class="mobile-full" width="33%" valign="top" style="padding-bottom: 10px;">
                                             <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Username</span><br>
-                                            <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #101828;">${credentials.username}</strong>
+                                            <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.username}</strong>
                                         </td>
-                                        <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 10px;">
+                                        <td class="mobile-full" width="33%" valign="top" style="padding-bottom: 10px;">
                                             <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Security Key</span><br>
-                                            <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.password}</strong>
+                                            <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.password}</strong>
+                                        </td>
+                                        <td class="mobile-full" width="33%" valign="top" style="text-align: right; padding-bottom: 10px;">
+                                            <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Device Limit</span><br>
+                                            <strong style="font-size: 13px; color: #101828;">${displayLimit} Device(s)</strong>
                                         </td>
                                     </tr>
                                 </table>
@@ -775,7 +785,7 @@ const sendVPNEmail = async (userEmail, credentials) => {
                             <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background: #FFF9F2; border-radius: 8px; border: 1px solid #FFEACC;">
                                 <tr>
                                     <td style="padding: 12px; font-size: 11px; color: #B54708; line-height: 1.4;">
-                                        <strong>Security Notice:</strong> Never share these keys. SMSGlobe support will never ask for your password. Access is limited to one device at a time.
+                                        <strong>Security Notice:</strong> Never share these keys. SMSGlobe support will never ask for your password. Access is limited to <strong>${displayLimit} device(s)</strong> at a time.
                                     </td>
                                 </tr>
                             </table>
@@ -803,7 +813,6 @@ const sendVPNEmail = async (userEmail, credentials) => {
         html: htmlContent
     });
 };
-
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

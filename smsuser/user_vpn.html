@@ -23,7 +23,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
-        /* Hide scrollbar for cleaner look on mobile */
         .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
@@ -236,7 +235,7 @@ async function verifyPayment(transactionId, txRef) {
                 modalTitle.innerText = "Payment Verified!";
                 modalInstructions.innerText = data.credentials.instructions || "Download the client and use these credentials.";
                 modalUser.innerText = data.credentials.username;
-                modalPass.innerText = data.credentials.password; // Reveal the password here
+                modalPass.innerText = data.credentials.password; 
                 
                 const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
                 window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
@@ -274,6 +273,10 @@ async function verifyPayment(transactionId, txRef) {
                     
                     <div class="absolute top-1.5 left-1.5 flex gap-1">
                          <span class="text-[7px] md:text-[8px] font-bold px-1 py-0.5 bg-white/90 border border-brand-border text-brand-blue rounded uppercase tracking-tighter">${vpn.region || 'Global'}</span>
+                         <span class="text-[7px] md:text-[8px] font-bold px-1 py-0.5 bg-brand-blue text-white rounded uppercase tracking-tighter flex items-center gap-0.5 shadow-sm">
+                            <svg class="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                            Limit: ${vpn.deviceLimit || 1}
+                         </span>
                     </div>
                     <div class="absolute top-1.5 right-1.5">
                          <span class="text-[7px] md:text-[8px] font-bold px-1 py-0.5 ${stockColor} rounded uppercase tracking-tighter border border-current/10">
@@ -284,12 +287,12 @@ async function verifyPayment(transactionId, txRef) {
 
                 <div class="p-2.5 md:p-4 flex flex-col flex-grow">
                     <div class="mb-2 md:mb-3">
-                        <h3 class="font-bold text-brand-darkText text-[10px] md:text-xs truncate">${vpn.name}</h3>
+                        <h3 class="font-bold text-brand-darkText text-[10px] md:text-xs truncate uppercase tracking-tight">${vpn.name}</h3>
                         <p class="text-[8px] md:text-[9px] text-brand-lightText font-medium">${vpn.provider || 'SMSGlobe'}</p>
                     </div>
                     
                     <div class="bg-gray-50 rounded-lg p-1.5 mb-3 border border-gray-100">
-                        <label class="text-[7px] md:text-[8px] font-bold text-brand-lightText uppercase block mb-1">Tier</label>
+                        <label class="text-[7px] md:text-[8px] font-bold text-brand-lightText uppercase block mb-1">Select Tier</label>
                         <select id="plan-${vpn._id}" class="w-full bg-white border border-brand-border rounded px-1 py-0.5 md:py-1 text-[9px] md:text-[10px] font-bold focus:outline-none cursor-pointer">
                             ${vpn.plans.map((p, i) => `<option value="${i}">${p.duration} — $${parseFloat(p.price).toFixed(2)}</option>`).join('')}
                         </select>
@@ -297,7 +300,7 @@ async function verifyPayment(transactionId, txRef) {
 
                     <button onclick="buyVPN('${vpn._id}')" id="btn-${vpn._id}" ${isOutOfStock ? 'disabled' : ''}
                             class="mt-auto w-full py-2 ${isOutOfStock ? 'bg-gray-300' : 'bg-brand-blue hover:bg-blue-700'} text-white text-[9px] md:text-[10px] font-bold rounded-lg transition-all active:scale-95 shadow-sm">
-                        ${isOutOfStock ? 'Sold Out' : 'Purchase'}
+                        ${isOutOfStock ? 'Sold Out' : 'Purchase Access'}
                     </button>
                 </div>
             </div>
@@ -310,10 +313,7 @@ async function verifyPayment(transactionId, txRef) {
         
         try {
             await navigator.clipboard.writeText(text);
-            // Change icon to checkmark
             btn.innerHTML = `<svg class="w-3.5 h-3.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>`;
-            
-            // Revert back after 2 seconds
             setTimeout(() => { btn.innerHTML = originalIcon; }, 2000);
         } catch (err) {
             console.error('Failed to copy: ', err);

@@ -249,6 +249,20 @@
         btn.innerHTML = '<span class="text-[9px] font-bold">COPIED</span>';
         setTimeout(() => { btn.innerHTML = original; }, 1500);
     }
+    // Function to call once payment is verified
+function showSuccessModal(credentials) {
+    const modal = document.getElementById('proxyModal');
+    const modalCode = document.getElementById('modalCode');
+    const modalInstructions = document.getElementById('modalInstructions');
+    
+    // For Proxies, we display the format Host:Port:User:Pass as the "Code"
+    const fullCode = `${credentials.host}:${credentials.port}:${credentials.username}:${credentials.password}`;
+    
+    modalCode.innerText = fullCode;
+    modalInstructions.innerText = credentials.instructions;
+    
+    modal.classList.remove('hidden');
+}
 
     window.onload = initPage;
 </script>

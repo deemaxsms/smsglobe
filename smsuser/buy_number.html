@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buy Number | SMSGlobe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            blue: '#0F54C6', orange: '#F9861E', darkText: '#101828',
+                            midText: '#344054', lightText: '#667085', background: '#F0F5FE', border: '#EAECF0',
+                        }
+                    },
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                },
+            },
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .sidebar-transition { transition: transform 0.3s ease-in-out; }
+        .service-card.active { border-color: #0F54C6; background-color: #F0F5FE; }
+    </style>
+</head>
+<body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
+
+    <div id="sidebarOverlay" class="fixed inset-0 bg-black/20 z-40 hidden lg:hidden"></div>
+
+    <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white border-r border-brand-border z-50 transform -translate-x-full lg:translate-x-0 sidebar-transition flex flex-col">
+        <div class="p-5 border-b border-brand-border flex items-center justify-between">
+            <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-6 w-auto">
+            <button id="closeSidebar" class="lg:hidden text-gray-400 text-xl">&times;</button>
+        </div>
+        <nav class="flex-grow p-4 space-y-1">
+            <p class="px-3 text-[10px] font-bold text-brand-lightText uppercase tracking-widest mb-2">Navigation</p>
+            <a href="user_dashboard.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                <span>Dashboard</span>
+            </a>
+            <a href="buy_number.html" class="flex items-center space-x-3 px-3 py-2 bg-brand-background text-brand-blue rounded-lg text-xs font-semibold">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                <span>Buy Number</span>
+            </a>
+            <a href="esims.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                <span>Travel eSIMs</span>
+            </a>
+            <a href="user_vpn.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                <span>VPNs</span>
+            </a>
+        </nav>
+        <div class="p-4 border-t border-brand-border">
+            <button onclick="logout()" class="flex items-center space-x-3 w-full px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg text-xs font-bold transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                <span>Log Out</span>
+            </button>
+        </div>
+    </aside>
+
+    <div class="flex-grow lg:ml-64 flex flex-col min-h-screen">
+        
+        <header class="bg-white border-b border-brand-border sticky top-0 z-30 px-4 md:px-8 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <button id="openSidebar" class="lg:hidden p-1.5 text-brand-midText border border-brand-border rounded-md">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <span class="text-sm font-bold text-brand-darkText">Rent a Number</span>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <div class="hidden sm:block text-right">
+                    <p id="userName" class="text-[11px] font-bold text-brand-darkText">...</p>
+                    <p id="userBalance" class="text-[10px] text-brand-blue font-bold">$0.00 Balance</p>
+                </div>
+                <div class="w-8 h-8 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center text-xs font-bold border border-brand-blue/20">
+                    <span id="userInitials">U</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="p-4 md:p-6 max-w-5xl w-full mx-auto space-y-6">
+            
+            <section class="space-y-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 px-1">
+                    <div>
+                        <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-tight">Step 1: Select Service</h4>
+                        <p class="text-[10px] text-brand-lightText">Choose the application you want to verify.</p>
+                    </div>
+                    <div class="relative">
+                        <input type="text" id="serviceSearch" placeholder="Search services..." class="pl-8 pr-4 py-2 bg-white border border-brand-border rounded-xl text-xs focus:ring-1 focus:ring-brand-blue outline-none w-full md:w-64 transition-all">
+                        <svg class="w-3.5 h-3.5 absolute left-3 top-2.5 text-brand-lightText" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                </div>
+
+                <div id="serviceGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                    <div onclick="selectService('WhatsApp', this)" class="service-card cursor-pointer bg-white border border-brand-border p-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all hover:shadow-md group">
+                        <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" class="w-8 h-8 mb-2 group-hover:scale-110 transition-transform">
+                        <span class="text-[10px] font-bold text-brand-darkText">WhatsApp</span>
+                    </div>
+                    <div onclick="selectService('Telegram', this)" class="service-card cursor-pointer bg-white border border-brand-border p-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all hover:shadow-md group">
+                        <img src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png" class="w-8 h-8 mb-2 group-hover:scale-110 transition-transform">
+                        <span class="text-[10px] font-bold text-brand-darkText">Telegram</span>
+                    </div>
+                    <div onclick="selectService('Google', this)" class="service-card cursor-pointer bg-white border border-brand-border p-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all hover:shadow-md group">
+                        <img src="https://cdn-icons-png.flaticon.com/512/300/300221.png" class="w-8 h-8 mb-2 group-hover:scale-110 transition-transform">
+                        <span class="text-[10px] font-bold text-brand-darkText">Google/YT</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="space-y-4">
+                <div class="px-1">
+                    <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-tight">Step 2: Select Country</h4>
+                    <p class="text-[10px] text-brand-lightText">Availability and prices vary by region.</p>
+                </div>
+                <div class="bg-white rounded-2xl border border-brand-border p-4 shadow-sm">
+                    <select id="countrySelect" class="w-full bg-brand-background border-none rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand-blue outline-none">
+                        <option value="">Choose a country...</option>
+                        <option value="US">🇺🇸 United States - $1.50</option>
+                        <option value="UK">🇬🇧 United Kingdom - $1.20</option>
+                        <option value="NG">🇳🇬 Nigeria - $0.80</option>
+                        <option value="DE">🇩🇪 Germany - $2.00</option>
+                    </select>
+                </div>
+            </section>
+
+            <div class="bg-brand-blue text-white rounded-2xl p-6 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="text-center md:text-left">
+                    <p class="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Total Due</p>
+                    <h2 class="text-3xl font-extrabold" id="displayPrice">$0.00</h2>
+                    <p class="text-[10px] mt-2 opacity-90" id="selectionSummary">Please select a service and country.</p>
+                </div>
+                <button onclick="processRent()" class="w-full md:w-auto px-10 py-4 bg-white text-brand-blue rounded-xl font-bold text-sm hover:bg-opacity-90 transition-all shadow-xl active:scale-95">
+                    Rent Number Now
+                </button>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        let selectedService = null;
+        let selectedPrice = 0.00;
+
+        function selectService(name, element) {
+            // Remove active class from all cards
+            document.querySelectorAll('.service-card').forEach(card => card.classList.remove('active'));
+            // Add to selected
+            element.classList.add('active');
+            selectedService = name;
+            updateSummary();
+        }
+
+        document.getElementById('countrySelect').addEventListener('change', function(e) {
+            const val = e.target.value;
+            // Mock price logic
+            if(val === 'US') selectedPrice = 1.50;
+            else if(val === 'UK') selectedPrice = 1.20;
+            else if(val === 'NG') selectedPrice = 0.80;
+            else if(val === 'DE') selectedPrice = 2.00;
+            else selectedPrice = 0.00;
+            
+            updateSummary();
+        });
+
+        function updateSummary() {
+            const service = selectedService || '...';
+            const country = document.getElementById('countrySelect').options[document.getElementById('countrySelect').selectedIndex].text.split('-')[0] || '...';
+            
+            document.getElementById('displayPrice').innerText = `$${selectedPrice.toFixed(2)}`;
+            document.getElementById('selectionSummary').innerText = `Renting a ${service} number from ${country}`;
+        }
+
+        async function processRent() {
+            if(!selectedService || selectedPrice === 0) {
+                alert('Please complete your selection first.');
+                return;
+            }
+            // Logic for API call to /rent-number would go here
+            alert(`Processing order for ${selectedService}...`);
+        }
+
+        // Sidebar Toggles
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        const openBtn = document.getElementById('openSidebar');
+        const closeBtn = document.getElementById('closeSidebar');
+
+        const toggle = () => {
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        };
+
+        openBtn.addEventListener('click', toggle);
+        closeBtn.addEventListener('click', toggle);
+        overlay.addEventListener('click', toggle);
+
+        function logout() {
+            localStorage.removeItem('userToken');
+            window.location.href = 'user_login.html';
+        }
+    </script>
+</body>
+</html>

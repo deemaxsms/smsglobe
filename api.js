@@ -800,46 +800,81 @@ async function handleVerifyPayment(req, res) {
 
         if (data.status === "success" && data.data.status === "successful") {
             const productId = data.data.meta.productId;
-            const productType = data.data.meta.productType;
+            const productType = data.data.meta.productType; // "VPN" or "Proxy"
+            const planIndex = data.data.meta.planIndex;
             const userEmail = data.data.customer.email;
-            
-            let credentials = {};
+            const amountPaid = data.data.amount;
+            const paymentRef = data.data.tx_ref;
 
+            let credentials = {};
+            let productDetails = { name: "", plan: "" };
+
+            // --- 1. HANDLE VPN PURCHASE ---
             if (productType === "VPN") {
-                // ATOMIC UPDATE: Find only if stock > 0, and decrement by 1 in one step
                 const item = await VPN.findOneAndUpdate(
                     { _id: productId, stock: { $gt: 0 } },
                     { $inc: { stock: -1 } },
                     { new: true, select: '+password' }
                 );
 
-                if (!item) return res.status(400).json({ success: false, message: "VPN out of stock or not found" });
+                if (!item) return res.status(400).json({ success: false, message: "VPN out of stock" });
+
+                productDetails.name = item.name;
+                productDetails.plan = item.plans[planIndex]?.duration || "Standard Plan";
 
                 credentials = {
                     type: "VPN",
                     username: item.username,
                     password: item.password,
-                    instructions: item.instructions || "Download the OpenVPN config from your dashboard."
+                    instructions: item.instructions || "Check dashboard."
                 };
 
+            // --- 2. HANDLE PROXY PURCHASE ---
             } else if (productType === "Proxy") {
-                // ATOMIC UPDATE: Decrease stock and return the updated proxy details
                 const item = await Proxy.findOneAndUpdate(
                     { _id: productId, stock: { $gt: 0 } },
                     { $inc: { stock: -1 } },
                     { new: true }
                 );
 
-                if (!item) return res.status(400).json({ success: false, message: "Proxy package out of stock or not found" });
+                if (!item) return res.status(400).json({ success: false, message: "Proxy out of stock" });
+
+                productDetails.name = item.name;
+                productDetails.plan = `${item.plans[planIndex]?.ip_count} IPs`;
 
                 credentials = {
                     type: "Proxy",
                     activationCode: item.activationCode,
-                    instructions: item.instructions || "Configure your browser using the provided code."
+                    instructions: item.instructions || "Check dashboard."
                 };
             }
 
-            // 4. Send Delivery Email
+            // --- 3. CREATE TRANSACTION HISTORY (SAVE TO ORDER COLLECTION) ---
+            // This is the missing piece that fills your empty database collection
+            try {
+                await Order.create({
+                    userEmail: userEmail,
+                    productType: productType,
+                    planName: productDetails.plan,
+                    nodeName: productDetails.name,
+                    amount: amountPaid,
+                    currency: "NGN", // Flutterwave is processing in NGN per your initiate function
+                    status: "successful",
+                    paymentReference: paymentRef,
+                    // Store the actual credentials in the order for admin/user view
+                    activationCode: credentials.activationCode,
+                    vpnCredentials: productType === "VPN" ? {
+                        username: credentials.username,
+                        password: credentials.password
+                    } : undefined
+                });
+                console.log(`Order saved for ${userEmail}: ${productDetails.name}`);
+            } catch (dbErr) {
+                console.error("Database Order Save Failed:", dbErr);
+                // We don't block the user since they already paid, but we log the error
+            }
+
+            // --- 4. DELIVERY ---
             try {
                 await sendDeliveryEmail(userEmail, credentials); 
             } catch (emailErr) {
@@ -852,7 +887,7 @@ async function handleVerifyPayment(req, res) {
             });
         }
 
-        return res.status(400).json({ success: false, message: "Transaction verification failed." });
+        return res.status(400).json({ success: false, message: "Verification failed." });
 
     } catch (err) {
         console.error("Payment Verification Error:", err);
@@ -872,7 +907,7 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
     // 1. DYNAMIC CONTENT CONFIGURATION
     const isVPN = credentials.type === "VPN";
     const subject = isVPN ? "🔑 Your VPN Access Credentials" : "🌐 Your Proxy Access Details";
-    const headerTitle = isVPN ? "Node Activated! ✅" : "Proxy Provisioned! 🌐";
+    const headerTitle = isVPN ? "Node Activated!" : "Proxy Provisioned! 🌐";
     const subHeader = isVPN ? "Your Premium VPN Access is ready." : "Your High-Speed Proxy details are below.";
     
     // 2. DYNAMIC DATA TABLE (This changes based on the product)

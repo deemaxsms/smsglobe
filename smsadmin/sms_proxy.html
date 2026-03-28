@@ -105,8 +105,7 @@
                                 <th class="px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="proxy-list" class="divide-y divide-brand-border">
-                            </tbody>
+                        <tbody id="proxy-list" class="divide-y divide-brand-border"></tbody>
                     </table>
                 </div>
             </div>
@@ -146,18 +145,32 @@
                     </select>
                 </div>
 
-                <div class="md:col-span-1">
-                    <label class="block text-[10px] font-bold text-brand-midText mb-1.5 uppercase tracking-widest">IP Address / Host</label>
-                    <input type="text" id="host" name="host" required placeholder="127.0.0.1" class="w-full bg-brand-background/30 border border-brand-border p-3 rounded-xl outline-none focus:border-brand-blue transition-all">
+                <div class="md:col-span-2 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-[10px] font-bold text-brand-blue uppercase tracking-widest">IP Address / Host</label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <span class="text-[10px] font-bold text-brand-midText uppercase">Bulk Mode (5-10 IPs)</span>
+                            <input type="checkbox" id="bulkToggle" onchange="toggleBulkInput()" class="w-4 h-4 accent-brand-blue">
+                        </label>
+                    </div>
+                    
+                    <div id="singleIPContainer">
+                        <input type="text" id="host" name="host" placeholder="127.0.0.1" class="w-full bg-white border border-brand-border p-3 rounded-xl outline-none focus:border-brand-blue transition-all">
+                    </div>
+                    
+                    <div id="bulkIPContainer" class="hidden">
+                        <textarea id="bulkHosts" placeholder="Paste IPs here (One per line)&#10;1.1.1.1&#10;2.2.2.2&#10;3.3.3.3" rows="4" class="w-full bg-white border border-brand-border p-3 rounded-xl outline-none focus:border-brand-blue transition-all font-mono text-xs"></textarea>
+                        <p class="text-[10px] text-brand-lightText mt-1">System will create a separate node for each IP listed.</p>
+                    </div>
                 </div>
 
-                <div class="md:col-span-1">
-                    <label class="block text-[10px] font-bold text-brand-midText mb-1.5 uppercase tracking-widest">Port</label>
+                <div class="md:col-span-2">
+                    <label class="block text-[10px] font-bold text-brand-midText mb-1.5 uppercase tracking-widest">Port (Applied to all)</label>
                     <input type="number" id="port" name="port" required placeholder="8080" class="w-full bg-brand-background/30 border border-brand-border p-3 rounded-xl outline-none focus:border-brand-blue transition-all">
                 </div>
 
                 <div class="md:col-span-2 bg-gray-50 p-4 rounded-2xl border border-brand-border">
-                    <label class="block text-[10px] font-bold text-brand-midText mb-3 uppercase tracking-widest">Pricing Plans (Duration & Price)</label>
+                    <label class="block text-[10px] font-bold text-brand-midText mb-3 uppercase tracking-widest">Pricing Plans</label>
                     <div id="pricingContainer" class="space-y-3"></div>
                     <button type="button" onclick="addPriceRow()" class="mt-4 text-brand-blue font-bold text-[11px] uppercase flex items-center gap-1 hover:text-blue-700">
                         <span class="text-base">+</span> Add Plan Option
@@ -165,10 +178,7 @@
                 </div>
 
                 <div class="md:col-span-2 bg-brand-background p-5 rounded-2xl border border-blue-100">
-                    <p class="font-bold text-brand-blue mb-4 text-[10px] uppercase tracking-widest flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                        Auth Credentials
-                    </p>
+                    <p class="font-bold text-brand-blue mb-4 text-[10px] uppercase tracking-widest flex items-center gap-2">Auth Credentials</p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input type="text" id="username" name="username" placeholder="Proxy Username" class="w-full bg-white border border-brand-border p-2.5 rounded-lg text-sm">
                         <input type="text" id="password" name="password" placeholder="Proxy Password" class="w-full bg-white border border-brand-border p-2.5 rounded-lg text-sm">
@@ -192,19 +202,28 @@
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
 
+    // --- NEW: Handle Bulk IP Interface ---
+    function toggleBulkInput() {
+        const isBulk = document.getElementById('bulkToggle').checked;
+        document.getElementById('singleIPContainer').classList.toggle('hidden', isBulk);
+        document.getElementById('bulkIPContainer').classList.toggle('hidden', !isBulk);
+        
+        // Toggle required attributes to prevent HTML5 validation errors
+        document.getElementById('host').required = !isBulk;
+        document.getElementById('bulkHosts').required = isBulk;
+    }
+
     function addPriceRow(duration = '', price = '') {
         const container = document.getElementById('pricingContainer');
         const row = document.createElement('div');
         row.className = 'pricing-row flex gap-2 items-center animate-in fade-in duration-300';
         row.innerHTML = `
-            <input type="text" placeholder="e.g. 1GB / 30 Days" value="${duration}" class="plan-duration flex-1 bg-white border border-brand-border p-2.5 rounded-lg text-sm focus:border-brand-blue outline-none">
+            <input type="text" placeholder="e.g. 1GB / 30 Days" value="${duration}" class="plan-duration flex-1 bg-white border border-brand-border p-2.5 rounded-lg text-sm">
             <div class="relative w-32">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-brand-lightText">$</span>
-                <input type="number" step="0.01" placeholder="0.00" value="${price}" class="plan-price w-full bg-white border border-brand-border pl-7 pr-3 py-2.5 rounded-lg text-sm focus:border-brand-blue outline-none">
+                <input type="number" step="0.01" value="${price}" class="plan-price w-full bg-white border border-brand-border pl-7 pr-3 py-2.5 rounded-lg text-sm">
             </div>
-            <button type="button" onclick="this.parentElement.remove()" class="p-2 text-red-400 hover:text-red-600 transition-colors">
-                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-            </button>
+            <button type="button" onclick="this.parentElement.remove()" class="p-2 text-red-400 hover:text-red-600">✕</button>
         `;
         container.appendChild(row);
     }
@@ -212,75 +231,95 @@
     async function fetchProxies() {
         const token = localStorage.getItem('smsglobe_admin_token');
         const list = document.getElementById('proxy-list');
-        
         try {
-            // Using your existing products API filtered for proxies or a new proxy endpoint
-            const res = await fetch('/api/proxies', { 
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const res = await fetch('/api/proxies', { headers: { 'Authorization': `Bearer ${token}` } });
             const data = await res.json();
             allProxies = data.proxies || [];
-            
-            if (allProxies.length === 0) {
-                list.innerHTML = '<tr><td colspan="5" class="p-12 text-center text-brand-lightText italic text-xs">No proxy nodes found.</td></tr>';
-                return;
-            }
-
             list.innerHTML = allProxies.map(p => {
                 const plans = p.plans || [];
-                const planDisplay = plans.length > 0 
-                    ? `<span class="text-brand-blue font-bold">${plans[0].duration} - $${parseFloat(plans[0].price).toFixed(2)}</span>`
-                    : '<span class="text-gray-400">Not set</span>';
-
+                const planDisplay = plans.length > 0 ? `<span class="text-brand-blue font-bold">${plans[0].duration} - $${parseFloat(plans[0].price).toFixed(2)}</span>` : '<span class="text-gray-400">Not set</span>';
                 return `
                     <tr class="hover:bg-brand-background/30 transition-colors">
                         <td class="px-6 py-5">
-                            <div class="min-w-0">
-                                <div class="font-bold text-brand-darkText truncate max-w-[180px]">${p.name}</div>
-                                <div class="text-[11px] text-brand-lightText font-mono">${p.host}:${p.port}</div>
-                            </div>
+                            <div class="font-bold text-brand-darkText">${p.name}</div>
+                            <div class="text-[11px] text-brand-lightText font-mono">${p.host}:${p.port}</div>
                         </td>
                         <td class="px-6 py-5">
-                            <div class="text-sm font-medium whitespace-nowrap">${p.type}</div>
-                            <div class="text-[10px] text-brand-orange font-bold uppercase tracking-wider">${p.protocol}</div>
+                            <div class="text-sm font-medium">${p.type}</div>
+                            <div class="text-[10px] text-brand-orange font-bold uppercase">${p.protocol}</div>
                         </td>
-                        <td class="px-6 py-5 text-center">
-                            <span class="px-2.5 py-1 rounded-full font-bold text-[10px] bg-green-100 text-green-700 uppercase">Active</span>
+                        <td class="px-6 py-5 text-center"><span class="px-2.5 py-1 rounded-full font-bold text-[10px] bg-green-100 text-green-700 uppercase">Active</span></td>
+                        <td class="px-6 py-5">${planDisplay}</td>
+                        <td class="px-6 py-5 text-right flex justify-end gap-3">
+                            <button onclick="editProxy('${p._id}')" class="text-brand-blue font-bold text-[10px]">EDIT</button>
+                            <button onclick="deleteProxy('${p._id}')" class="text-red-500 font-bold text-[10px]">DEL</button>
                         </td>
-                        <td class="px-6 py-5 whitespace-nowrap">${planDisplay}</td>
-                        <td class="px-6 py-5 text-right">
-                            <div class="flex justify-end gap-3">
-                                <button onclick="editProxy('${p._id}')" class="text-brand-blue hover:text-blue-800 font-bold text-[10px] uppercase">Edit</button>
-                                <button onclick="deleteProxy('${p._id}')" class="text-red-500 hover:text-red-700 font-bold text-[10px] uppercase">Del</button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
+                    </tr>`;
             }).join('');
-        } catch (err) {
-            list.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-red-500">Connection error.</td></tr>';
-        }
+        } catch (err) { list.innerHTML = '<tr><td colspan="5">Error loading proxies.</td></tr>'; }
     }
+
+    // --- FORM SUBMISSION LOGIC ---
+    document.getElementById('proxyForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.innerText = 'Synchronizing...';
+
+        const isBulk = document.getElementById('bulkToggle').checked;
+        const baseData = {
+            name: document.getElementById('name').value,
+            protocol: document.getElementById('protocol').value,
+            type: document.getElementById('type').value,
+            port: document.getElementById('port').value,
+            username: document.getElementById('username').value,
+            password: document.getElementById('password').value,
+            plans: Array.from(document.querySelectorAll('.pricing-row')).map(row => ({
+                duration: row.querySelector('.plan-duration').value,
+                price: row.querySelector('.plan-price').value
+            }))
+        };
+
+        // Determine IPs to send
+        let hosts = isBulk 
+            ? document.getElementById('bulkHosts').value.split('\n').filter(h => h.trim() !== '') 
+            : [document.getElementById('host').value];
+
+        try {
+            // Send each IP as a separate entry to the backend
+            for (let host of hosts) {
+                const payload = { ...baseData, host: host.trim() };
+                await fetch('/api/proxies', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('smsglobe_admin_token')}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+            }
+            alert(`Successfully synced ${hosts.length} proxy node(s).`);
+            closeModal();
+            fetchProxies();
+        } catch (err) {
+            alert('Error syncing data.');
+        } finally {
+            btn.disabled = false;
+            btn.innerText = 'Sync Proxy Data';
+        }
+    });
 
     function openAddProxyModal() {
         document.getElementById('proxyForm').reset();
-        document.getElementById('proxyId').value = '';
         document.getElementById('pricingContainer').innerHTML = '';
+        document.getElementById('bulkToggle').checked = false;
+        toggleBulkInput();
         addPriceRow();
-        document.getElementById('modalTitle').innerText = 'New Proxy Configuration';
-        document.getElementById('submitBtn').innerText = 'Sync Proxy Data';
         document.getElementById('proxyModal').classList.remove('hidden');
     }
 
-    function closeModal() {
-        document.getElementById('proxyModal').classList.add('hidden');
-    }
-
-    function logout() {
-        localStorage.removeItem('smsglobe_admin_token');
-        window.location.href = 'sms_login.html';
-    }
-
+    function closeModal() { document.getElementById('proxyModal').classList.add('hidden'); }
+    function logout() { localStorage.removeItem('smsglobe_admin_token'); window.location.href = 'sms_login.html'; }
     window.onload = fetchProxies;
 </script>
 </body>

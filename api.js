@@ -722,13 +722,10 @@ async function handleVerifyPayment(req, res) {
                 };
             } else {
                 item = await Proxy.findById(productId);
-                credentials = {
+               const credentials = {
                     type: "Proxy",
-                    host: item.host,
-                    port: item.port,
-                    username: item.username,
-                    password: item.password,
-                    instructions: "Use these details in your proxy manager or browser settings."
+                    activationCode: item.activationCode,
+                    instructions: item.instructions || "Use the code above to access your proxy."
                 };
             }
 

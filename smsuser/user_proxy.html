@@ -249,18 +249,72 @@
         btn.innerHTML = '<span class="text-[9px] font-bold">COPIED</span>';
         setTimeout(() => { btn.innerHTML = original; }, 1500);
     }
-    // Function to call once payment is verified
+   async function checkPaymentStatus() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const transactionId = urlParams.get('transaction_id');
+    const status = urlParams.get('status');
+
+    if (transactionId && status === 'successful') {
+        // Show a loading state if you want
+        console.log("Verifying transaction: ", transactionId);
+        
+        try {
+            const res = await fetch(`${API_BASE_URL}/verify-payment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ transactionId })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                // Clear the URL parameters so it doesn't verify again on refresh
+                window.history.replaceState({}, document.title, window.location.pathname);
+                
+                // TRIGGER THE MODAL WITH DATA FROM BACKEND
+                showSuccessModal(data.credentials);
+            } else {
+                alert("Payment verification failed: " + data.message);
+            }
+        } catch (err) {
+            console.error("Verification Error:", err);
+        }
+    }
+}
+
+// Update your initPage to include the check
+async function initPage() {
+    const token = localStorage.getItem('userToken');
+    if (!token) { window.location.href = 'user_login.html'; return; }
+
+    // Check if we just returned from Flutterwave
+    await checkPaymentStatus();
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/proxies`);
+        const data = await res.json();
+        if (data.success) {
+            allProxies = data.proxies;
+            showCategories();
+        }
+    } catch (err) { console.error("Load Error:", err); }
+}
+
 function showSuccessModal(credentials) {
     const modal = document.getElementById('proxyModal');
     const modalCode = document.getElementById('modalCode');
     const modalInstructions = document.getElementById('modalInstructions');
+    const modalTitle = document.getElementById('modalTitle');
+
+    // Set Header
+    modalTitle.innerText = "Proxy Secured!";
     
-    // For Proxies, we display the format Host:Port:User:Pass as the "Code"
-    const fullCode = `${credentials.host}:${credentials.port}:${credentials.username}:${credentials.password}`;
+    // Set the Code (from your ProxySchema: activationCode)
+    modalCode.innerText = credentials.activationCode || "N/A";
     
-    modalCode.innerText = fullCode;
-    modalInstructions.innerText = credentials.instructions;
-    
+    // Set Instructions
+    modalInstructions.innerText = credentials.instructions || "Check your email for setup details.";
+
+    // Show Modal
     modal.classList.remove('hidden');
 }
 

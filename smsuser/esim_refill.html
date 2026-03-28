@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta property="og:title" content="Confirm eSIM Refill">
+    <meta property="og:description" content="SMS GLOBE action required">
+    <meta property="og:image" content="https://imgur.com/8YeZgfx.png">
+    <meta property="og:type" content="website">
     <title>eSIM Refill | SMSGlobe</title>
     <link rel="icon" type="image/png" href="https://i.imgur.com/syKFaNI.png">
     <link rel="apple-touch-icon" href="https://i.imgur.com/syKFaNI.png">
@@ -25,6 +29,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
         @media (max-width: 640px) { 
@@ -39,6 +44,22 @@
     </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText mb-20 lg:mb-0">
+
+    <div id="warningModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4">
+        <div class="fixed inset-0 bg-brand-darkText/60 backdrop-blur-sm"></div>
+        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full relative z-[110] shadow-2xl animate-flow text-center">
+            <div class="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <h3 class="text-lg font-bold text-brand-darkText mb-3 uppercase tracking-tight">Important Notice</h3>
+            <p class="text-xs text-brand-midText leading-relaxed mb-6">
+                YOU MUST KNOW THE ORIGINAL PAYMENT OF YOUR ESIM PLAN AND MAKE SURE YOU CHOOSE YOUR ORIGINAL PAYMENT PLAN. IF YOU MAKE PAYMENT OF OTHER PLAN THAT DIDNT' MATCH YOUR CURRENT PLAN WE WON'T BE RESPONSIBLE FOR ANY LOST. THANK YOU WE APPRECIATE YOUR SUPPORT AT SMSGLOBE.
+            </p>
+            <button onclick="closeWarningAndProceed()" class="w-full py-4 bg-brand-blue text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg">
+                I Understand
+            </button>
+        </div>
+    </div>
 
     <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/40 z-[60] hidden lg:hidden backdrop-blur-sm"></div>
 
@@ -93,8 +114,7 @@
                     <h2 class="text-lg md:text-xl font-bold text-brand-darkText mobile-title">Select a Carrier</h2>
                     <p class="text-[10px] md:text-xs text-brand-lightText">Choose your provider to begin the refill.</p>
                 </div>
-                <div id="carrierGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-                    </div>
+                <div id="carrierGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6"></div>
             </div>
 
             <div id="formView" class="hidden animate-flow">
@@ -120,8 +140,7 @@
                         
                         <div>
                             <label class="text-[9px] md:text-[10px] font-bold text-brand-blue uppercase tracking-wider mb-2 block mobile-label">Refill Amount (USD)</label>
-                            <select id="planSelector" class="w-full bg-brand-background border border-brand-border p-3 md:p-4 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold focus:ring-2 focus:ring-brand-blue outline-none appearance-none cursor-pointer mobile-input">
-                                </select>
+                            <select id="planSelector" class="w-full bg-brand-background border border-brand-border p-3 md:p-4 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold focus:ring-2 focus:ring-brand-blue outline-none appearance-none cursor-pointer mobile-input"></select>
                         </div>
 
                         <button onclick="initiatePayment()" id="payBtn" class="w-full py-4 md:py-5 bg-brand-blue text-white rounded-xl md:rounded-2xl text-xs md:text-sm font-bold shadow-xl hover:bg-blue-700 transition-all active:scale-[0.98]">
@@ -131,62 +150,37 @@
                 </div>
             </div>
 
-           <div id="receiptView" class="hidden animate-flow py-4 md:py-8 px-4">
-    <div class="bg-white border-2 border-dashed border-brand-border rounded-[2rem] p-5 md:p-8 max-w-[340px] md:max-w-md mx-auto shadow-2xl relative">
-        
-        <div class="flex justify-center mb-4">
-            <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe Logo" class="h-8 md:h-10 object-contain">
-        </div>
-
-        <div class="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg border-4 border-white">
-            <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7"></path>
-            </svg>
-        </div>
-        
-        <div class="text-center mt-2">
-            <h2 class="text-base md:text-xl font-black text-brand-darkText uppercase tracking-tight">Payment Receipt</h2>
-            <p class="text-[9px] md:text-[10px] text-brand-lightText mt-1">Ref ID: <span id="rID" class="font-mono bg-gray-100 px-1 rounded">SG-882190</span></p>
-        </div>
-
-        <div class="my-5 space-y-2.5 border-t border-b border-dashed border-brand-border py-5 font-mono text-[10px] md:text-xs">
-            <div class="flex justify-between items-center">
-                <span class="text-brand-lightText">Carrier:</span> 
-                <span id="rCarrier" class="font-bold text-right text-brand-darkText uppercase">--</span>
+            <div id="receiptView" class="hidden animate-flow py-4 md:py-8 px-4">
+                <div class="bg-white border-2 border-dashed border-brand-border rounded-[2rem] p-5 md:p-8 max-w-[340px] md:max-w-md mx-auto shadow-2xl relative">
+                    <div class="flex justify-center mb-4">
+                        <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe Logo" class="h-8 md:h-10 object-contain">
+                    </div>
+                    <div class="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg border-4 border-white">
+                        <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
+                    <div class="text-center mt-2">
+                        <h2 class="text-base md:text-xl font-black text-brand-darkText uppercase tracking-tight">Payment Successful</h2>
+                        <p class="text-[9px] md:text-[10px] text-brand-lightText mt-1">Ref ID: <span id="rID" class="font-mono bg-gray-100 px-1 rounded">--</span></p>
+                    </div>
+                    <div class="my-5 space-y-2.5 border-t border-b border-dashed border-brand-border py-5 font-mono text-[10px] md:text-xs">
+                        <div class="flex justify-between items-center"><span class="text-brand-lightText">Carrier:</span> <span id="rCarrier" class="font-bold text-right text-brand-darkText uppercase">--</span></div>
+                        <div class="flex justify-between items-center"><span class="text-brand-lightText">Number:</span> <span id="rNumber" class="font-bold text-right text-brand-darkText">--</span></div>
+                        <div class="flex justify-between items-center"><span class="text-brand-lightText">Amount:</span> <span id="rPlan" class="font-bold text-right text-brand-darkText">--</span></div>
+                        <div class="flex justify-between items-center"><span class="text-brand-lightText">Payment:</span> <span class="bg-green-500 text-white px-2 py-0.5 rounded font-bold text-[8px] md:text-[9px] uppercase">Confirmed ✅</span></div>
+                        <div class="flex justify-between items-center pt-1"><span class="text-brand-lightText">Refill Status:</span> <span class="text-orange-600 font-bold text-[9px] uppercase animate-pulse">Pending SmsGlobe</span></div>
+                    </div>
+                    <button onclick="contactManagement()" class="w-full py-3.5 bg-[#25D366] text-white rounded-xl text-[10px] md:text-[12px] font-bold flex items-center justify-center gap-2 hover:brightness-95 active:scale-[0.98] transition-all shadow-md">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+                        Click to Contact SmsGlobe For Refill
+                    </button>
+                    <button onclick="location.reload()" class="w-full text-[8px] md:text-[10px] font-black text-brand-lightText hover:text-brand-blue uppercase py-3 mt-1 tracking-widest transition-colors">← New Transaction</button>
+                </div>
             </div>
-            <div class="flex justify-between items-center">
-                <span class="text-brand-lightText">Number:</span> 
-                <span id="rNumber" class="font-bold text-right text-brand-darkText">--</span>
-            </div>
-            <div class="flex justify-between items-center">
-                <span class="text-brand-lightText">Amount:</span> 
-                <span id="rPlan" class="font-bold text-right text-brand-darkText">--</span>
-            </div>
-            <div class="flex justify-between items-center">
-                <span class="text-brand-lightText">Status:</span> 
-                <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold text-[9px] uppercase">Processing</span>
-            </div>
-        </div>
-
-        <button onclick="contactManagement()" class="w-full py-3 bg-[#25D366] text-white rounded-xl text-[10px] md:text-[12px] font-bold flex items-center justify-center gap-2 hover:brightness-95 active:scale-[0.98] transition-all shadow-md">
-            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
-            Notify SMSGLOBE on WhatsApp
-        </button>
-
-        <button onclick="location.reload()" class="w-full text-[8px] md:text-[10px] font-black text-brand-lightText hover:text-brand-blue uppercase py-3 mt-1 tracking-widest transition-colors">
-            ← Start New Refill
-        </button>
-    </div>
-</div>
-
         </main>
     </div>
 
     <script>
-        // Use the relative path to ensure Vercel routes it correctly
         const API_BASE_URL = '/api';
-
         const carriers = [
             { id: '1', name: 'T-Mobile USA', image: 'https://i.imgur.com/pyDMW1t.png' },
             { id: '2', name: 'AT&T', image: 'https://i.imgur.com/WDCo1gM.png' },
@@ -197,7 +191,7 @@
         const refillAmounts = [];
         for (let i = 15; i <= 100; i += 5) { refillAmounts.push(`$${i}.00`); }
 
-        let selectedCarrier = null;
+        let selectedCarrierId = null;
 
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('-translate-x-full');
@@ -206,9 +200,8 @@
 
         function initPage() {
             const grid = document.getElementById('carrierGrid');
-            // Grayscale removed from classes below to keep original colors
             grid.innerHTML = carriers.map(c => `
-                <div onclick="selectCarrier('${c.id}')" class="bg-white border border-brand-border p-4 md:p-6 rounded-2xl md:rounded-3xl cursor-pointer hover:shadow-xl transition-all group text-center">
+                <div onclick="showWarning('${c.id}')" class="bg-white border border-brand-border p-4 md:p-6 rounded-2xl md:rounded-3xl cursor-pointer hover:shadow-xl transition-all group text-center">
                     <div class="h-12 md:h-16 mb-3 flex items-center justify-center transition-all">
                         <img src="${c.image}" class="max-h-full object-contain">
                     </div>
@@ -220,12 +213,24 @@
             selector.innerHTML = refillAmounts.map(amt => `<option value="${amt}">${amt}</option>`).join('');
         }
 
+        // --- NEW WARNING MODAL LOGIC ---
+        function showWarning(id) {
+            selectedCarrierId = id;
+            document.getElementById('warningModal').classList.remove('hidden');
+        }
+
+        function closeWarningAndProceed() {
+            document.getElementById('warningModal').classList.add('hidden');
+            selectCarrier(selectedCarrierId);
+        }
+
         function selectCarrier(id) {
-            selectedCarrier = carriers.find(c => c.id === id);
+            const carrier = carriers.find(c => c.id === id);
+            window.currentSelectedCarrier = carrier; // Store for payment function
             document.getElementById('selectionView').classList.add('hidden');
             document.getElementById('formView').classList.remove('hidden');
-            document.getElementById('formCarrierName').innerText = selectedCarrier.name;
-            document.getElementById('formCarrierLogo').src = selectedCarrier.image;
+            document.getElementById('formCarrierName').innerText = carrier.name;
+            document.getElementById('formCarrierLogo').src = carrier.image;
             updateButtonPrice();
         }
 
@@ -247,124 +252,121 @@
             document.getElementById('formView').classList.add('hidden');
         }
 
-async function initiatePayment() {
-        const num = document.getElementById('targetNumber').value;
-        const plan = document.getElementById('planSelector').value; 
+        async function initiatePayment() {
+            const num = document.getElementById('targetNumber').value;
+            const plan = document.getElementById('planSelector').value; 
+            const carrier = window.currentSelectedCarrier;
 
-        if(!num) { alert("Please enter the eSIM mobile number"); return; }
+            if(!num) { alert("Please enter the eSIM mobile number"); return; }
 
-        const btn = document.getElementById('payBtn');
-        const originalText = btn.innerText;
-        btn.disabled = true;
-        btn.innerText = "Generating Payment Link...";
+            const btn = document.getElementById('payBtn');
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "Generating Payment Link...";
 
-        try {
-            const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
-                },
-                body: JSON.stringify({
-                    carrierName: selectedCarrier.name,
-                    mobileNumber: num,
-                    planAmount: plan,
-                    productImage: selectedCarrier.image,
-                    productType: 'eSIM'
-                })
-            });
+            try {
+                const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
+                    },
+                    body: JSON.stringify({
+                        carrierName: carrier.name,
+                        mobileNumber: num,
+                        planAmount: plan,
+                        productImage: carrier.image,
+                        productType: 'eSIM'
+                    })
+                });
 
-            const data = await res.json();
-            if(data.success && data.link) {
-                window.location.href = data.link; 
-            } else {
-                alert("Error: " + (data.message || "Could not initialize payment."));
+                const data = await res.json();
+                if(data.success && data.link) {
+                    window.location.href = data.link; 
+                } else {
+                    alert("Error: " + (data.message || "Could not initialize payment."));
+                    btn.disabled = false;
+                    btn.innerText = originalText;
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Connection error.");
                 btn.disabled = false;
                 btn.innerText = originalText;
             }
-        } catch (err) {
-            console.error(err);
-            alert("Connection error. Check console.");
-            btn.disabled = false;
-            btn.innerText = originalText;
         }
-    }
-      async function verifyEsimPayment(tid, txRef) {
-        try {
-            const res = await fetch(`${API_BASE_URL}/verify-payment`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
-                },
-                body: JSON.stringify({ 
-                    transactionId: tid, 
-                    txRef: txRef 
-                })
-            });
-            
-            const data = await res.json();
-            
-            if (data.success) {
-                document.getElementById('selectionView').classList.add('hidden');
-                document.getElementById('formView').classList.add('hidden');
-                document.getElementById('receiptView').classList.remove('hidden');
 
-                // Fill receipt
-                const order = data.order || {};
-                document.getElementById('rCarrier').innerText = order.nodeName || 'eSIM Carrier';
-                document.getElementById('rNumber').innerText = order.targetNumber || '--';
-                document.getElementById('rPlan').innerText = order.planName || '--';
-                document.getElementById('rID').innerText = order.paymentReference || tid;
+        async function verifyEsimPayment(tid, txRef) {
+            try {
+                const res = await fetch(`${API_BASE_URL}/verify-payment`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
+                    },
+                    body: JSON.stringify({ transactionId: tid, txRef: txRef })
+                });
                 
-                window.history.replaceState({}, '', window.location.pathname);
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('selectionView').classList.add('hidden');
+                    document.getElementById('formView').classList.add('hidden');
+                    document.getElementById('receiptView').classList.remove('hidden');
+
+                    const order = data.order || {};
+                    document.getElementById('rCarrier').innerText = order.nodeName || 'eSIM Carrier';
+                    document.getElementById('rNumber').innerText = order.targetNumber || '--';
+                    document.getElementById('rPlan').innerText = order.planName || '--';
+                    document.getElementById('rID').innerText = order.paymentReference || tid;
+                    
+                    window.history.replaceState({}, '', window.location.pathname);
+                }
+            } catch (e) {
+                console.error("Verification failed", e);
             }
-        } catch (e) {
-            console.error("Verification failed", e);
         }
-    }
 
-window.onload = () => {
-    initPage(); 
-    const urlParams = new URLSearchParams(window.location.search);
-    const transactionId = urlParams.get('transaction_id');
-    const txRef = urlParams.get('tx_ref'); // Get the reference from the URL too
-    
-    if (transactionId) {
-        verifyEsimPayment(transactionId, txRef); // Pass both to the function
-    }
-};
+        function contactManagement() {
+            const num = document.getElementById('rNumber').innerText;
+            const carrier = document.getElementById('rCarrier').innerText;
+            const plan = document.getElementById('rPlan').innerText;
+            const tid = document.getElementById('rID').innerText;
+            const confirmLink = `https://smsglobe.vercel.app/api/confirm-order?tid=${tid}`;
 
-       function contactManagement() {
-    const num = document.getElementById('rNumber').innerText;
-    const carrier = document.getElementById('rCarrier').innerText;
-    const plan = document.getElementById('rPlan').innerText;
-    const tid = document.getElementById('rID').innerText;
-    
-    // This is the Magic Link only you (the Admin) will use
-    const confirmLink = `https://smsglobe.vercel.app/api/confirm-order?tid=${tid}`;
+            const msg = `🚀 *SMSGlobe: NEW eSIM REFILL ORDER*
+__________________________________
 
-    const msg = `*ESIM REFILL REQUEST*
-    
-Carrier: ${carrier}
-Number: ${num}
-Amount: ${plan}
-Ref ID: ${tid}
+✅ *PAYMENT STATUS:* CONFIRMED
+📦 *PRODUCT:* eSIM Refill
+🆔 *REF ID:* ${tid}
 
-*ADMIN ONLY (Confirm Payment):*
+*CUSTOMER DETAILS:*
+━━━━━━━━━━━━━━━━━━
+📡 *CARRIER:* ${carrier}
+📞 *NUMBER:* ${num}
+💰 *PLAN:* ${plan}
+━━━━━━━━━━━━━━━━━━
+
+⚡ *ACTION REQUIRED:*
+Please initiate the refill now. Once successful, click the link below to update the user's dashboard:
+
+🔗 *SMS GLOBE UPDATE LINK:*
 ${confirmLink}
 
-Please confirm payment and initiate refill.`;
+_Automated message from SMSGlobe System_`;
 
-    window.open(`https://wa.me/2348149747864?text=${encodeURIComponent(msg)}`, '_blank');
-}
+            window.open(`https://wa.me/2348149747864?text=${encodeURIComponent(msg)}`, '_blank');
+        }
 
+        // Consolidated window.onload
         window.onload = () => {
             initPage(); 
             const urlParams = new URLSearchParams(window.location.search);
             const transactionId = urlParams.get('transaction_id');
+            const txRef = urlParams.get('tx_ref');
+            
             if (transactionId) {
-                verifyEsimPayment(transactionId);
+                verifyEsimPayment(transactionId, txRef);
             }
         };
     </script>

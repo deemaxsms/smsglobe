@@ -59,7 +59,7 @@
             </a>
             <a href="esims.html" class="flex items-center space-x-3 px-3 py-2.5 text-brand-midText hover:bg-gray-50 rounded-xl text-xs font-medium transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
-                <span>Travel eSIMs</span>
+                <span>eSIMs Refill</span>
             </a>
         </nav>
     </aside>
@@ -75,14 +75,69 @@
             <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-5 lg:hidden">
         </header>
 
-        <main class="p-3 md:p-6 max-w-7xl w-full mx-auto">
-            <div id="vpnLoading" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
-                <div class="h-48 md:h-64 bg-white border border-brand-border animate-pulse rounded-2xl"></div>
-                <div class="h-48 md:h-64 bg-white border border-brand-border animate-pulse rounded-2xl"></div>
+      <main class="p-3 md:p-6 max-w-7xl w-full mx-auto">
+    <div id="vpnLoading" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
+        <div class="h-48 md:h-64 bg-white border border-brand-border animate-pulse rounded-2xl"></div>
+        <div class="h-48 md:h-64 bg-white border border-brand-border animate-pulse rounded-2xl"></div>
+    </div>
+
+    <div id="vpnGrid" class="hidden grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5"></div>
+
+    <div class="mt-12 mb-8">
+        <div class="flex items-center gap-3 mb-6">
+            <div class="h-px flex-grow bg-brand-border"></div>
+            <h2 class="text-[10px] md:text-xs font-bold text-brand-lightText uppercase tracking-[0.2em] whitespace-nowrap">Installation & Usage Guide</h2>
+            <div class="h-px flex-grow bg-brand-border"></div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div class="bg-white border border-brand-border p-5 rounded-2xl shadow-sm flex flex-col items-center text-center group hover:border-brand-blue transition-colors">
+                <div class="w-10 h-10 bg-brand-background text-brand-blue rounded-full flex items-center justify-center font-bold text-sm mb-3 group-hover:bg-brand-blue group-hover:text-white transition-all">1</div>
+                <p class="text-[11px] font-bold text-brand-darkText uppercase mb-1">Download App</p>
+                <p class="text-[10px] text-brand-lightText leading-relaxed">Download the VPN app from the provider's website or official App Store.</p>
             </div>
 
-            <div id="vpnGrid" class="hidden grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5"></div>
-        </main>
+            <div class="bg-white border border-brand-border p-5 rounded-2xl shadow-sm flex flex-col items-center text-center group hover:border-brand-blue transition-colors">
+                <div class="w-10 h-10 bg-brand-background text-brand-blue rounded-full flex items-center justify-center font-bold text-sm mb-3 group-hover:bg-brand-blue group-hover:text-white transition-all">2</div>
+                <p class="text-[11px] font-bold text-brand-darkText uppercase mb-1">Install</p>
+                <p class="text-[10px] text-brand-lightText leading-relaxed">Install and open the application on your preferred device.</p>
+            </div>
+
+            <div class="bg-white border border-brand-border p-5 rounded-2xl shadow-sm flex flex-col items-center text-center group hover:border-brand-blue transition-colors">
+                <div class="w-10 h-10 bg-brand-background text-brand-blue rounded-full flex items-center justify-center font-bold text-sm mb-3 group-hover:bg-brand-blue group-hover:text-white transition-all">3</div>
+                <p class="text-[11px] font-bold text-brand-darkText uppercase mb-1">Login</p>
+                <p class="text-[10px] text-brand-lightText leading-relaxed">Log in using the unique credentials provided after your purchase.</p>
+            </div>
+
+            <div class="bg-white border border-brand-border p-5 rounded-2xl shadow-sm flex flex-col items-center text-center group hover:border-brand-blue transition-colors">
+                <div class="w-10 h-10 bg-brand-background text-brand-blue rounded-full flex items-center justify-center font-bold text-sm mb-3 group-hover:bg-brand-blue group-hover:text-white transition-all">4</div>
+                <p class="text-[11px] font-bold text-brand-darkText uppercase mb-1">Connect</p>
+                <p class="text-[10px] text-brand-lightText leading-relaxed">Select your purchased server location and click connect.</p>
+            </div>
+
+            <div class="bg-brand-blue p-5 rounded-2xl shadow-lg shadow-blue-100 flex flex-col items-center text-center">
+                <div class="w-10 h-10 bg-white/20 text-white rounded-full flex items-center justify-center mb-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <p class="text-[11px] font-bold text-white uppercase mb-1">Secure</p>
+                <p class="text-[10px] text-blue-100 leading-relaxed">Enjoy private and secure browsing with SMSGlobe Premium.</p>
+            </div>
+        </div>
+
+        <div class="mt-6 p-4 bg-orange-50 border border-orange-100 rounded-2xl flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-white rounded-lg text-brand-orange shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <div>
+                    <p class="text-[11px] font-bold text-brand-darkText">Need Technical Help?</p>
+                    <p class="text-[10px] text-brand-lightText">Our support team is available 24/7 if you encounter any setup issues.</p>
+                </div>
+            </div>
+            <a href="user_support.html" class="px-4 py-2 bg-white border border-brand-border text-[10px] font-bold rounded-xl hover:bg-gray-50 transition-colors">Contact Support</a>
+        </div>
+    </div>
+</main>
     </div>
 
    <div id="vpnModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">

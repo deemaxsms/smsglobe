@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>VPN Services | SMSGlobe</title>
     <link rel="icon" type="image/png" href="https://i.imgur.com/syKFaNI.png">
     <link rel="apple-touch-icon" href="https://i.imgur.com/syKFaNI.png">
@@ -27,46 +27,45 @@
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
-        /* Mobile specific font reduction */
         @media (max-width: 768px) {
-            html { font-size: 12px; }
-            .mobile-small-text { font-size: 9px !important; }
-            p, span, h3, button, select { font-size: 10px !important; }
+            html { font-size: 14px; }
+            .mobile-grid { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+            /* Safe area padding for iPhones with notches */
+            .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
         }
+
+        /* Animation for Modal */
+        @keyframes modalShow {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .modal-animate { animation: modalShow 0.3s ease-out forwards; }
     </style>
 </head>
-<body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
+<body class="bg-brand-background min-h-screen flex font-sans text-brand-midText mb-20 lg:mb-0">
 
     <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/40 z-[60] hidden lg:hidden backdrop-blur-sm"></div>
 
     <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white border-r border-brand-border z-[70] transform -translate-x-full lg:translate-x-0 sidebar-transition flex flex-col">
-        <div class="p-5 border-b border-brand-border flex items-center justify-between lg:justify-center">
+        <div class="p-5 border-b border-brand-border flex items-center justify-between">
             <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-6 w-auto">
             <button onclick="toggleSidebar()" class="lg:hidden p-2 text-brand-midText">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
         <nav class="flex-grow p-4 space-y-1 overflow-y-auto no-scrollbar">
-            <p class="px-3 text-[10px] font-bold text-brand-lightText uppercase tracking-widest mb-2">Navigation</p>
+            <p class="px-3 text-[10px] font-bold text-brand-lightText uppercase tracking-widest mb-2">Main Menu</p>
             <a href="user_dashboard.html" class="flex items-center space-x-3 px-3 py-2.5 text-brand-midText hover:bg-gray-50 rounded-xl text-xs font-medium transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                 <span>Dashboard</span>
             </a>
-             <a href="user_vpn.html" class="flex items-center space-x-3 px-3 py-2.5 bg-brand-background text-brand-blue rounded-xl text-xs font-bold shadow-sm">
+            <a href="user_vpn.html" class="flex items-center space-x-3 px-3 py-2.5 bg-brand-background text-brand-blue rounded-xl text-xs font-bold shadow-sm">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                <span>VPNs</span>
+                <span>VPN Nodes</span>
             </a>
             <a href="user_proxy.html" class="flex items-center space-x-3 px-3 py-2.5 text-brand-midText hover:bg-gray-50 rounded-xl text-xs font-medium transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                 <span>Proxies</span>
-            </a>
-             <a href="buy_number.html" class="flex items-center space-x-3 px-3 py-2.5 text-brand-midText hover:bg-gray-50 rounded-xl text-xs font-medium transition-all">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                <span>Buy Number</span>
-            </a>
-            <a href="esims.html" class="flex items-center space-x-3 px-3 py-2.5 text-brand-midText hover:bg-gray-50 rounded-xl text-xs font-medium transition-all">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
-                <span>eSIMs Refill</span>
             </a>
         </nav>
     </aside>
@@ -74,146 +73,130 @@
     <div class="flex-grow lg:ml-64 flex flex-col min-h-screen">
         <header class="bg-white border-b border-brand-border sticky top-0 z-[55] px-4 md:px-8 py-4 flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <button onclick="toggleSidebar()" class="lg:hidden p-1.5 bg-brand-background text-brand-blue rounded-lg">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                <button onclick="toggleSidebar()" class="lg:hidden p-2 bg-brand-background text-brand-blue rounded-xl">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
                 </button>
-                <span class="text-xs md:text-sm font-bold text-brand-darkText uppercase tracking-tight">Premium VPN Nodes</span>
+                <h1 class="text-sm md:text-base font-bold text-brand-darkText uppercase tracking-tight">Premium VPN Nodes</h1>
             </div>
-            <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-5 lg:hidden">
+            <div class="flex items-center gap-2">
+                <div class="hidden md:block text-right">
+                    <p class="text-[10px] font-bold text-brand-blue uppercase">Status</p>
+                    <p class="text-[9px] text-green-600 font-medium">All Systems Operational</p>
+                </div>
+                <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-5 lg:hidden ml-2">
+            </div>
         </header>
 
-      <main class="p-3 md:p-6 max-w-7xl w-full mx-auto flex flex-col flex-grow">
-        <div class="flex-grow">
-            <div id="vpnLoading" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5">
-                <div class="h-48 md:h-64 bg-white border border-brand-border animate-pulse rounded-2xl"></div>
-                <div class="h-48 md:h-64 bg-white border border-brand-border animate-pulse rounded-2xl"></div>
+        <main class="p-4 md:p-8 max-w-7xl w-full mx-auto flex flex-col flex-grow">
+            <div id="vpnLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                <div class="h-64 bg-white border border-brand-border animate-pulse rounded-2xl shadow-sm"></div>
+                <div class="h-64 bg-white border border-brand-border animate-pulse rounded-2xl shadow-sm"></div>
+                <div class="h-64 bg-white border border-brand-border animate-pulse rounded-2xl shadow-sm"></div>
             </div>
 
-            <div id="vpnGrid" class="hidden grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5"></div>
-        </div>
+            <div id="vpnGrid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6"></div>
 
-        <div class="mt-12 mb-8 pt-10 border-t border-brand-border/30">
-            <div class="flex items-center gap-3 mb-6">
-                <div class="h-px flex-grow bg-brand-border"></div>
-                <h2 class="text-[10px] md:text-xs font-bold text-brand-lightText uppercase tracking-[0.2em] whitespace-nowrap">Installation & Usage Guide</h2>
-                <div class="h-px flex-grow bg-brand-border"></div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <div class="bg-white border border-brand-border p-5 rounded-2xl shadow-sm flex flex-col items-center text-center group hover:border-brand-blue transition-colors">
-                    <div class="w-10 h-10 bg-brand-background text-brand-blue rounded-full flex items-center justify-center font-bold text-sm mb-3 group-hover:bg-brand-blue group-hover:text-white transition-all">1</div>
-                    <p class="text-[11px] font-bold text-brand-darkText uppercase mb-1">Download App</p>
-                    <p class="text-[10px] text-brand-lightText leading-relaxed">Download the VPN app from the provider's website or official App Store.</p>
+            <div class="mt-12 mb-10">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="h-px flex-grow bg-brand-border"></div>
+                    <h2 class="text-[10px] md:text-xs font-bold text-brand-lightText uppercase tracking-[0.2em] whitespace-nowrap">Installation Guide</h2>
+                    <div class="h-px flex-grow bg-brand-border"></div>
                 </div>
 
-                <div class="bg-white border border-brand-border p-5 rounded-2xl shadow-sm flex flex-col items-center text-center group hover:border-brand-blue transition-colors">
-                    <div class="w-10 h-10 bg-brand-background text-brand-blue rounded-full flex items-center justify-center font-bold text-sm mb-3 group-hover:bg-brand-blue group-hover:text-white transition-all">2</div>
-                    <p class="text-[11px] font-bold text-brand-darkText uppercase mb-1">Install</p>
-                    <p class="text-[10px] text-brand-lightText leading-relaxed">Install and open the application on your preferred device.</p>
-                </div>
-
-                <div class="bg-white border border-brand-border p-5 rounded-2xl shadow-sm flex flex-col items-center text-center group hover:border-brand-blue transition-colors">
-                    <div class="w-10 h-10 bg-brand-background text-brand-blue rounded-full flex items-center justify-center font-bold text-sm mb-3 group-hover:bg-brand-blue group-hover:text-white transition-all">3</div>
-                    <p class="text-[11px] font-bold text-brand-darkText uppercase mb-1">Login</p>
-                    <p class="text-[10px] text-brand-lightText leading-relaxed">Log in using the unique credentials provided after your purchase.</p>
-                </div>
-
-                <div class="bg-white border border-brand-border p-5 rounded-2xl shadow-sm flex flex-col items-center text-center group hover:border-brand-blue transition-colors">
-                    <div class="w-10 h-10 bg-brand-background text-brand-blue rounded-full flex items-center justify-center font-bold text-sm mb-3 group-hover:bg-brand-blue group-hover:text-white transition-all">4</div>
-                    <p class="text-[11px] font-bold text-brand-darkText uppercase mb-1">Connect</p>
-                    <p class="text-[10px] text-brand-lightText leading-relaxed">Select your purchased server location and click connect.</p>
-                </div>
-
-                <div class="bg-brand-blue p-5 rounded-2xl shadow-lg shadow-blue-100 flex flex-col items-center text-center">
-                    <div class="w-10 h-10 bg-white/20 text-white rounded-full flex items-center justify-center mb-3">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <div class="bg-white border border-brand-border p-6 rounded-2xl shadow-sm flex flex-col items-center text-center">
+                        <span class="w-8 h-8 bg-brand-background text-brand-blue rounded-full flex items-center justify-center font-bold text-xs mb-3">1</span>
+                        <p class="text-xs font-bold text-brand-darkText uppercase mb-1">Download</p>
+                        <p class="text-[11px] text-brand-lightText">Get the official app for your device.</p>
                     </div>
-                    <p class="text-[11px] font-bold text-white uppercase mb-1">Secure</p>
-                    <p class="text-[10px] text-blue-100 leading-relaxed">Enjoy private and secure browsing with SMSGlobe Premium.</p>
+                    <div class="bg-white border border-brand-border p-6 rounded-2xl shadow-sm flex flex-col items-center text-center">
+                        <span class="w-8 h-8 bg-brand-background text-brand-blue rounded-full flex items-center justify-center font-bold text-xs mb-3">2</span>
+                        <p class="text-xs font-bold text-brand-darkText uppercase mb-1">Install</p>
+                        <p class="text-[11px] text-brand-lightText">Run the setup and open the app.</p>
+                    </div>
+                    <div class="bg-white border border-brand-border p-6 rounded-2xl shadow-sm flex flex-col items-center text-center">
+                        <span class="w-8 h-8 bg-brand-background text-brand-blue rounded-full flex items-center justify-center font-bold text-xs mb-3">3</span>
+                        <p class="text-xs font-bold text-brand-darkText uppercase mb-1">Login</p>
+                        <p class="text-[11px] text-brand-lightText">Use credentials from your dashboard.</p>
+                    </div>
+                    <div class="bg-white border border-brand-border p-6 rounded-2xl shadow-sm flex flex-col items-center text-center">
+                        <span class="w-8 h-8 bg-brand-background text-brand-blue rounded-full flex items-center justify-center font-bold text-xs mb-3">4</span>
+                        <p class="text-xs font-bold text-brand-darkText uppercase mb-1">Connect</p>
+                        <p class="text-[11px] text-brand-lightText">Select server and click Connect.</p>
+                    </div>
+                    <div class="bg-brand-blue p-6 rounded-2xl shadow-lg shadow-blue-100 flex flex-col items-center text-center">
+                        <div class="w-8 h-8 bg-white/20 text-white rounded-full flex items-center justify-center mb-3">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        </div>
+                        <p class="text-xs font-bold text-white uppercase mb-1">Secure</p>
+                        <p class="text-[11px] text-blue-100">Enjoy private browsing.</p>
+                    </div>
                 </div>
             </div>
+        </main>
+    </div>
 
-            <div class="mt-6 p-4 bg-orange-50 border border-orange-100 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
-                <div class="flex items-center gap-3">
-                    <div class="p-2 bg-white rounded-lg text-brand-orange shadow-sm">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+    <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-brand-border z-[65] px-6 py-3 safe-bottom shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+        <div class="flex items-center justify-between max-w-md mx-auto">
+            <a href="user_dashboard.html" class="flex flex-col items-center gap-1 text-brand-lightText">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                <span class="text-[10px] font-bold">Home</span>
+            </a>
+            <a href="user_vpn.html" class="flex flex-col items-center gap-1 text-brand-blue">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                <span class="text-[10px] font-bold">VPNs</span>
+            </a>
+            <a href="buy_number.html" class="flex flex-col items-center gap-1 text-brand-lightText">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                <span class="text-[10px] font-bold">Numbers</span>
+            </a>
+            <a href="user_support.html" class="flex flex-col items-center gap-1 text-brand-lightText">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                <span class="text-[10px] font-bold">Help</span>
+            </a>
+        </div>
+    </div>
+
+    <div id="vpnModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
+        <div class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl modal-animate">
+            <div class="bg-brand-blue p-8 text-center relative">
+                <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle, #fff 1px, transparent 1px); background-size: 20px 20px;"></div>
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <h2 id="modalTitle" class="text-2xl font-bold text-white leading-tight">Processing...</h2>
+            </div>
+
+            <div class="p-6 md:p-8">
+                <div class="bg-brand-background rounded-2xl border border-brand-blue/10 p-5 space-y-4">
+                    <div>
+                        <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider mb-1">Username</p>
+                        <div class="flex items-center justify-between bg-white border border-brand-border p-3 rounded-xl">
+                            <span id="modalUser" class="text-xs font-mono font-bold text-brand-darkText">--------</span>
+                            <button onclick="copyToClipboard('modalUser', this)" class="text-brand-blue">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            </button>
+                        </div>
                     </div>
                     <div>
-                        <p class="text-[11px] font-bold text-brand-darkText">Need Technical Help?</p>
-                        <p class="text-[10px] text-brand-lightText">Our support team is available 24/7 if you encounter any setup issues.</p>
-                    </div>
-                </div>
-                <a href="user_support.html" class="w-full md:w-auto text-center px-4 py-2 bg-white border border-brand-border text-[10px] font-bold rounded-xl hover:bg-gray-50 transition-colors">Contact Support</a>
-            </div>
-        </div>
-    </main>
-    </div>
-
-   <div id="vpnModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
-    <div class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-in zoom-in fade-in duration-300">
-        <div class="bg-brand-blue p-8 text-center relative">
-            <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle, #fff 1px, transparent 1px); background-size: 20px 20px;"></div>
-            <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
-                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                </svg>
-            </div>
-            <h2 id="modalTitle" class="text-2xl font-bold text-white leading-tight">Payment Verified!</h2>
-            <p class="text-blue-100 text-xs mt-1 font-medium tracking-wide uppercase">Your Premium Node is Ready</p>
-        </div>
-
-        <div class="p-6 md:p-8">
-            <div class="text-center mb-6">
-                <p class="text-brand-darkText font-semibold text-sm">Congratulations!</p>
-                <p class="text-brand-lightText text-[11px] leading-relaxed mt-1">
-                    Your secure connection has been provisioned. A copy of these details has also been sent to your email.
-                </p>
-            </div>
-
-            <div class="bg-brand-background rounded-2xl border border-brand-blue/10 p-5 space-y-4 shadow-inner">
-                <div class="pb-4 border-b border-brand-blue/5">
-                    <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider mb-1">Access Instructions</p>
-                    <p id="modalInstructions" class="text-[10px] text-brand-midText leading-relaxed italic"></p>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-1">
-                        <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Username</p>
-                        <div class="flex items-center gap-2">
-                            <p id="modalUser" class="text-xs font-mono font-bold text-brand-darkText break-all"></p>
-                            <button onclick="copyToClipboard('modalUser', this)" class="text-brand-blue hover:text-blue-700 transition-colors">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="space-y-1 text-right">
-                        <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Security Key</p>
-                        <div class="flex items-center justify-end gap-2">
-                            <p id="modalPass" class="text-xs font-mono font-bold text-brand-blue"></p>
-                            <button onclick="copyToClipboard('modalPass', this)" class="text-brand-blue hover:text-blue-700 transition-colors">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider mb-1">Security Key</p>
+                        <div class="flex items-center justify-between bg-white border border-brand-border p-3 rounded-xl">
+                            <span id="modalPass" class="text-xs font-mono font-bold text-brand-blue">--------</span>
+                            <button onclick="copyToClipboard('modalPass', this)" class="text-brand-blue">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                             </button>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="mt-6 flex items-start gap-3 p-3 bg-orange-50 rounded-xl border border-orange-100">
-                <svg class="w-4 h-4 text-brand-orange mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                </svg>
-                <p class="text-[10px] text-brand-orange font-medium leading-tight">
-                    Security Notice: Never share your VPN keys. SMSGlobe staff will never ask for your password.
-                </p>
-            </div>
+                <p id="modalInstructions" class="mt-4 text-[11px] text-brand-lightText text-center px-2"></p>
 
-            <button onclick="closeModal()" class="w-full mt-8 py-4 bg-brand-blue text-white rounded-2xl text-xs font-bold shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
-                <span>Finish & Go to Dashboard</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
-            </button>
+                <button onclick="closeModal()" class="w-full mt-6 py-4 bg-brand-blue text-white rounded-2xl text-xs font-bold shadow-xl hover:bg-blue-700 transition-all">
+                    Go to Dashboard
+                </button>
+            </div>
         </div>
     </div>
-</div>
 
 <script>
     const API_BASE_URL = '/api';
@@ -225,110 +208,25 @@
         overlay.classList.toggle('hidden');
     }
 
-    async function refreshVPNData() {
-        try {
-            const vpnRes = await fetch(`${API_BASE_URL}/products`);
-            const data = await vpnRes.json();
-            if (data.success) { 
-                renderVPNs(data.products); 
-            }
-        } catch (err) { 
-            console.error("Silent Refresh Error:", err); 
-        }
-    }
-
     async function initVPNPage() {
         const token = localStorage.getItem('userToken');
         if (!token) { window.location.href = 'user_login.html'; return; }
 
         const urlParams = new URLSearchParams(window.location.search);
         const status = urlParams.get('status');
-        const transaction_id = urlParams.get('transaction_id');
-        const tx_ref = urlParams.get('tx_ref');
-
         if (status === 'successful' || status === 'completed') {
-            await verifyPayment(transaction_id, tx_ref);
+            await verifyPayment(urlParams.get('transaction_id'), urlParams.get('tx_ref'));
         }
 
-        await refreshVPNData();
+        await fetchVPNs();
     }
 
-    async function buyVPN(vpnId) {
-        const planIndex = document.getElementById(`plan-${vpnId}`).value;
-        const token = localStorage.getItem('userToken');
-        const buyBtn = document.getElementById(`btn-${vpnId}`);
-
-        buyBtn.disabled = true;
-        buyBtn.innerHTML = `<span class="flex items-center justify-center gap-1"><svg class="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Wait...</span>`;
-
+    async function fetchVPNs() {
         try {
-            const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ vpnId, planIndex, type: 'VPN' })
-            });
-
+            const res = await fetch(`${API_BASE_URL}/products`);
             const data = await res.json();
-            if (data.success && data.link) {
-                window.location.href = data.link;
-            } else {
-                alert(data.message || "Payment initiation failed.");
-                buyBtn.disabled = false;
-                buyBtn.innerText = "Purchase Access";
-            }
-        } catch (err) {
-            alert("Network error.");
-            buyBtn.disabled = false;
-            buyBtn.innerText = "Purchase Access";
-        }
-    }
-
-    async function verifyPayment(transactionId, txRef) {
-        const token = localStorage.getItem('userToken');
-        const modal = document.getElementById('vpnModal');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalInstructions = document.getElementById('modalInstructions');
-        const modalUser = document.getElementById('modalUser');
-        const modalPass = document.getElementById('modalPass');
-
-        modalTitle.innerText = "Verifying Payment...";
-        modal.classList.remove('hidden');
-
-        try {
-            const res = await fetch(`${API_BASE_URL}/verify-payment`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ transactionId, txRef })
-            });
-
-            const data = await res.json();
-
-            if (data.success) {
-                const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-                window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
-                await refreshVPNData();
-                modalTitle.innerText = "Payment Verified!";
-                modalInstructions.innerText = data.credentials.instructions || "Your VPN is ready.";
-                modalUser.innerText = data.credentials.username;
-                modalPass.innerText = data.credentials.password; 
-            } else {
-                alert(data.message || "Verification failed.");
-                closeModal();
-            }
-        } catch (err) { 
-            console.error("Critical Verify Error:", err);
-            closeModal(); 
-        }
-    }
-
-    function closeModal() {
-        document.getElementById('vpnModal').classList.add('hidden');
+            if (data.success) renderVPNs(data.products);
+        } catch (err) { console.error("Data Fetch Error:", err); }
     }
 
     function renderVPNs(vpns) {
@@ -338,70 +236,92 @@
         grid.classList.remove('hidden');
 
         grid.innerHTML = vpns.map(vpn => {
-            const stockCount = vpn.stock || 0;
-            const isOutOfStock = stockCount <= 0;
-            
-            let stockClasses = "text-green-600 bg-green-50 border-green-200";
-            if (isOutOfStock) stockClasses = "text-red-500 bg-red-50 border-red-200";
-            else if (stockCount < 5) stockClasses = "text-orange-600 bg-orange-50 border-orange-200";
-            
+            const isOutOfStock = (vpn.stock || 0) <= 0;
+            const stockColor = vpn.stock < 5 ? 'text-orange-600 bg-orange-50' : 'text-green-600 bg-green-50';
+
             return `
-            <div class="bg-white border border-brand-border rounded-xl md:rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden w-full">
-                
-                <div class="h-32 md:h-32 bg-gray-50 relative overflow-hidden flex items-center justify-center p-2 border-b border-brand-border/50">
-                    <img src="${vpn.image || 'https://via.placeholder.com/400x200?text=VPN'}" 
-                         class="max-w-[80%] max-h-[80%] object-contain ${isOutOfStock ? 'grayscale opacity-50' : ''}">
-                    
-                    <div class="absolute top-1.5 left-1.5">
-                         <span class="text-[7px] md:text-[8px] font-bold px-1.5 py-0.5 bg-white/90 border border-brand-border text-brand-blue rounded uppercase tracking-tighter">${vpn.region || 'Global'}</span>
-                    </div>
-                    <div class="absolute top-1.5 right-1.5">
-                         <span class="text-[7px] md:text-[8px] font-bold px-1.5 py-0.5 ${stockClasses} rounded uppercase tracking-tighter border">
-                            ${isOutOfStock ? 'Sold Out' : `Stock: ${stockCount}`}
-                         </span>
+            <div class="bg-white border border-brand-border rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden">
+                <div class="h-32 bg-gray-50 relative flex items-center justify-center p-4 border-b border-brand-border/50">
+                    <img src="${vpn.image || 'https://via.placeholder.com/150'}" class="max-h-full object-contain ${isOutOfStock ? 'grayscale opacity-50' : ''}">
+                    <div class="absolute top-3 left-3 flex gap-2">
+                        <span class="text-[8px] font-bold px-2 py-1 bg-white border border-brand-border text-brand-blue rounded shadow-sm uppercase">${vpn.region || 'Global'}</span>
                     </div>
                 </div>
 
-                <div class="p-4 md:p-4 flex flex-col flex-grow relative">
-                    <div class="absolute top-4 right-4">
-                        <span class="text-[7px] md:text-[8px] font-bold px-1.5 py-0.5 bg-brand-blue text-white rounded-md uppercase tracking-tighter flex items-center gap-0.5 shadow-sm">
-                            <svg class="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                            Limit: ${vpn.deviceLimit || 1}
+                <div class="p-5 flex flex-col flex-grow">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="font-bold text-brand-darkText text-xs uppercase tracking-tight">${vpn.name}</h3>
+                            <p class="text-[10px] text-brand-lightText font-medium">${vpn.provider || 'SMSGlobe'}</p>
+                        </div>
+                        <span class="text-[9px] font-bold px-2 py-1 rounded-md ${isOutOfStock ? 'bg-red-50 text-red-600' : stockColor} border border-current/20">
+                            ${isOutOfStock ? 'Sold Out' : `Stock: ${vpn.stock}`}
                         </span>
                     </div>
-
-                    <div class="mb-3 pr-16"> 
-                        <h3 class="font-bold text-brand-darkText text-[10px] md:text-xs truncate uppercase tracking-tight">${vpn.name}</h3>
-                        <p class="text-[8px] md:text-[9px] text-brand-lightText font-medium">${vpn.provider || 'SMSGlobe'}</p>
-                    </div>
                     
-                    <div class="bg-gray-50 rounded-lg p-1.5 mb-3 border border-gray-100">
-                        <label class="text-[7px] md:text-[8px] font-bold text-brand-lightText uppercase block mb-1">Select Tier</label>
-                        <select id="plan-${vpn._id}" ${isOutOfStock ? 'disabled' : ''} class="w-full bg-white border border-brand-border rounded px-1 py-1 text-[9px] md:text-[10px] font-bold focus:outline-none cursor-pointer disabled:opacity-50">
+                    <div class="bg-brand-background rounded-xl p-3 mb-4 border border-brand-blue/5">
+                        <label class="text-[8px] font-bold text-brand-lightText uppercase block mb-1.5">Select Subscription Plan</label>
+                        <select id="plan-${vpn._id}" ${isOutOfStock ? 'disabled' : ''} class="w-full bg-white border border-brand-border rounded-lg px-2 py-2 text-xs font-bold focus:ring-2 focus:ring-brand-blue outline-none cursor-pointer">
                             ${vpn.plans.map((p, i) => `<option value="${i}">${p.duration} — $${parseFloat(p.price).toFixed(2)}</option>`).join('')}
                         </select>
                     </div>
 
                     <button onclick="buyVPN('${vpn._id}')" id="btn-${vpn._id}" ${isOutOfStock ? 'disabled' : ''}
-                            class="mt-auto w-full py-3 ${isOutOfStock ? 'bg-gray-300 cursor-not-allowed' : 'bg-brand-blue hover:bg-blue-700 active:scale-95'} text-white text-[10px] md:text-[10px] font-bold rounded-lg transition-all shadow-sm">
-                        ${isOutOfStock ? 'Sold Out' : 'Purchase Access'}
+                            class="mt-auto w-full py-3.5 ${isOutOfStock ? 'bg-gray-200 text-gray-500' : 'bg-brand-blue text-white hover:bg-blue-700 active:scale-[0.98]'} text-xs font-bold rounded-xl transition-all shadow-sm">
+                        ${isOutOfStock ? 'Currently Unavailable' : 'Purchase Access'}
                     </button>
                 </div>
-            </div>
-        `;}).join('');
+            </div>`;
+        }).join('');
     }
+
+    async function buyVPN(vpnId) {
+        const btn = document.getElementById(`btn-${vpnId}`);
+        const token = localStorage.getItem('userToken');
+        btn.disabled = true;
+        btn.innerHTML = `<span class="inline-block animate-spin mr-2">↻</span> Please Wait...`;
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ vpnId, planIndex: document.getElementById(`plan-${vpnId}`).value, type: 'VPN' })
+            });
+            const data = await res.json();
+            if (data.success && data.link) window.location.href = data.link;
+            else alert(data.message || "Failed to initiate payment");
+        } catch (err) { alert("Connection Error"); }
+        finally { btn.disabled = false; btn.innerText = "Purchase Access"; }
+    }
+
+    async function verifyPayment(transactionId, txRef) {
+        const modal = document.getElementById('vpnModal');
+        modal.classList.remove('hidden');
+        try {
+            const res = await fetch(`${API_BASE_URL}/verify-payment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('userToken')}` },
+                body: JSON.stringify({ transactionId, txRef })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('modalTitle').innerText = "Payment Successful!";
+                document.getElementById('modalUser').innerText = data.credentials.username;
+                document.getElementById('modalPass').innerText = data.credentials.password;
+                document.getElementById('modalInstructions').innerText = data.credentials.instructions || "Check your email for setup details.";
+                window.history.replaceState({}, '', window.location.pathname);
+            } else { alert(data.message); closeModal(); }
+        } catch (err) { closeModal(); }
+    }
+
+    function closeModal() { document.getElementById('vpnModal').classList.add('hidden'); }
 
     async function copyToClipboard(elementId, btn) {
         const text = document.getElementById(elementId).innerText;
-        const originalIcon = btn.innerHTML;
-        
-        try {
-            await navigator.clipboard.writeText(text);
-            btn.innerHTML = `<svg class="w-3.5 h-3.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>`;
-            setTimeout(() => { btn.innerHTML = originalIcon; }, 2000);
-        } catch (err) {
-            console.error('Failed to copy: ', err);
-        }
+        const oldHtml = btn.innerHTML;
+        await navigator.clipboard.writeText(text);
+        btn.innerHTML = `<svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>`;
+        setTimeout(() => btn.innerHTML = oldHtml, 2000);
     }
 
     window.onload = initVPNPage;

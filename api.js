@@ -71,10 +71,10 @@ const VPN = mongoose.models.VPN || mongoose.model('VPN', vpnSchema);
 
 const ProxySchema = new mongoose.Schema({
     name: { type: String, required: true },
+    category: { type: String, default: 'Standard' }, // Added Category field
     imageUrl: { type: String },
     activationCode: { type: String },
     instructions: { type: String },
-    // Merged Tier: Each plan contains its own IP count and Price
     plans: [{
         ip_count: { type: Number, required: true },
         price: { type: Number, required: true }
@@ -846,21 +846,30 @@ async function handleGetProxies(req, res) {
     }
 }
 
+// 3. ADD Proxy (Includes category parsing)
 async function handleAddProxy(req, res) {
     try {
-        const data = req.body;
+        const { name, category, imageUrl, activationCode, instructions, plans } = req.body;
 
-        // Clean and parse the merged Pricing/IP tiers
-        if (data.plans && Array.isArray(data.plans)) {
-            data.plans = data.plans.map(p => ({
+        // Clean and parse the plans
+        let formattedPlans = [];
+        if (plans && Array.isArray(plans)) {
+            formattedPlans = plans.map(p => ({
                 ip_count: parseInt(p.ip_count) || 0,
                 price: parseFloat(p.price) || 0
             }));
         }
 
-        const newProxy = new Proxy(data);
+        const newProxy = new Proxy({
+            name,
+            category: category || 'Standard', // Fallback to 'Standard' if empty
+            imageUrl,
+            activationCode,
+            instructions,
+            plans: formattedPlans
+        });
+
         await newProxy.save();
-        
         return res.json({ success: true, message: "Proxy Package Deployed Successfully" });
     } catch (err) {
         console.error("Add Proxy Error:", err);
@@ -868,27 +877,37 @@ async function handleAddProxy(req, res) {
     }
 }
 
+// 4. UPDATE Proxy (Includes category update)
 async function handleUpdateProxy(req, res) {
     try {
-        const { proxyId, ...updateData } = req.body;
+        const { proxyId, plans, ...restOfData } = req.body;
 
-        if (updateData.plans && Array.isArray(updateData.plans)) {
-            updateData.plans = updateData.plans.map(p => ({
+        const updatePayload = { ...restOfData };
+
+        // Handle plans parsing specifically
+        if (plans && Array.isArray(plans)) {
+            updatePayload.plans = plans.map(p => ({
                 ip_count: parseInt(p.ip_count) || 0,
                 price: parseFloat(p.price) || 0
             }));
         }
 
-        const updated = await Proxy.findByIdAndUpdate(proxyId, updateData, { new: true });
+        const updated = await Proxy.findByIdAndUpdate(
+            proxyId, 
+            { $set: updatePayload }, 
+            { new: true }
+        );
         
         if (!updated) return res.status(404).json({ success: false, message: "Proxy not found" });
 
         return res.json({ success: true, message: "Proxy Package Updated" });
     } catch (err) {
+        console.error("Update Proxy Error:", err);
         return res.status(500).json({ success: false, message: "Update failed" });
     }
 }
 
+// 5. DELETE Proxy (Remains same)
 async function handleDeleteProxy(req, res) {
     try {
         const { id } = req.query;

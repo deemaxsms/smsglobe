@@ -230,6 +230,7 @@ app.all('/api/:action', async (req, res) => {
         if (req.method === 'POST') return handleEsimRefill(req, res);
         break;
         case 'create-esim-order':return handleCreateEsimOrder(req, res);
+        case 'confirm-order': return handleConfirmOrder(req, res);
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
         default:
@@ -1226,6 +1227,27 @@ async function handleCreateEsimOrder(req, res) {
     } catch (err) {
         console.error("eSIM Creation Error:", err);
         return res.status(500).json({ success: false, message: "Server database error" });
+    }
+}
+
+async function handleConfirmOrder(req, res) {
+    const { tid } = req.query; // Get ID from the URL link
+    
+    try {
+        // 1. Find the transaction in your database
+        // 2. Update status to 'Completed'
+        const result = await db.collection('transactions').updateOne(
+            { paymentReference: tid },
+            { $set: { status: 'Completed', updatedAt: new Date() } }
+        );
+
+        if (result.modifiedCount > 0) {
+            return res.send("<h1>✅ Payment Confirmed & Database Updated!</h1>");
+        } else {
+            return res.send("<h1>❌ Order not found or already completed.</h1>");
+        }
+    } catch (error) {
+        return res.status(500).send("Error updating database.");
     }
 }
 

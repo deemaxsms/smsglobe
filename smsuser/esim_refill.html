@@ -45,22 +45,6 @@
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText mb-20 lg:mb-0">
 
-    <div id="warningModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4">
-        <div class="fixed inset-0 bg-brand-darkText/60 backdrop-blur-sm"></div>
-        <div class="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full relative z-[110] shadow-2xl animate-flow text-center">
-            <div class="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-            </div>
-            <h3 class="text-lg font-bold text-brand-darkText mb-3 uppercase tracking-tight">Important Notice</h3>
-            <p class="text-xs text-brand-midText leading-relaxed mb-6">
-                YOU MUST KNOW THE ORIGINAL PAYMENT OF YOUR ESIM PLAN AND MAKE SURE YOU CHOOSE YOUR ORIGINAL PAYMENT PLAN. IF YOU MAKE PAYMENT OF OTHER PLAN THAT DIDNT' MATCH YOUR CURRENT PLAN WE WON'T BE RESPONSIBLE FOR ANY LOST. THANK YOU WE APPRECIATE YOUR SUPPORT AT SMSGLOBE.
-            </p>
-            <button onclick="closeWarningAndProceed()" class="w-full py-4 bg-brand-blue text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg">
-                I Understand
-            </button>
-        </div>
-    </div>
-
     <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/40 z-[60] hidden lg:hidden backdrop-blur-sm"></div>
 
     <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white border-r border-brand-border z-[70] transform -translate-x-full lg:translate-x-0 sidebar-transition flex flex-col">
@@ -150,6 +134,28 @@
                 </div>
             </div>
 
+            <div id="userGuide" class="mt-12 bg-white border border-brand-border rounded-3xl p-6 md:p-8 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="p-2 bg-orange-100 text-orange-600 rounded-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <h3 class="text-sm md:text-base font-bold text-brand-darkText uppercase tracking-tight">Instructions / User Guide</h3>
+                </div>
+                <div class="space-y-4">
+                    <div class="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-xl">
+                        <p class="text-[11px] md:text-xs font-bold text-orange-800 uppercase leading-relaxed">
+                            IMPORTANT NOTICE: YOU MUST KNOW THE ORIGINAL PAYMENT OF YOUR ESIM PLAN AND MAKE SURE YOU CHOOSE YOUR ORIGINAL PAYMENT PLAN. IF YOU MAKE PAYMENT OF OTHER PLAN THAT DIDNT' MATCH YOUR CURRENT PLAN WE WON'T BE RESPONSIBLE FOR ANY LOST. THANK YOU WE APPRECIATE YOUR SUPPORT AT SMSGLOBE.
+                        </p>
+                    </div>
+                    <ul class="text-[10px] md:text-xs text-brand-midText space-y-2 list-disc pl-4">
+                        <li>Select your active eSIM carrier from the list above.</li>
+                        <li>Enter the correct mobile number associated with your eSIM.</li>
+                        <li>Select the refill amount that matches your current subscription plan.</li>
+                        <li>After successful payment, click the WhatsApp button to notify administration for instant processing.</li>
+                    </ul>
+                </div>
+            </div>
+
             <div id="receiptView" class="hidden animate-flow py-4 md:py-8 px-4">
                 <div class="bg-white border-2 border-dashed border-brand-border rounded-[2rem] p-5 md:p-8 max-w-[340px] md:max-w-md mx-auto shadow-2xl relative">
                     <div class="flex justify-center mb-4">
@@ -194,8 +200,6 @@
         const refillAmounts = [];
         for (let i = 15; i <= 100; i += 5) { refillAmounts.push(`$${i}.00`); }
 
-        let selectedCarrierId = null;
-
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('-translate-x-full');
             document.getElementById('sidebarOverlay').classList.toggle('hidden');
@@ -204,7 +208,7 @@
         function initPage() {
             const grid = document.getElementById('carrierGrid');
             grid.innerHTML = carriers.map(c => `
-                <div onclick="showWarning('${c.id}')" class="bg-white border border-brand-border p-4 md:p-6 rounded-2xl md:rounded-3xl cursor-pointer hover:shadow-xl transition-all group text-center">
+                <div onclick="selectCarrier('${c.id}')" class="bg-white border border-brand-border p-4 md:p-6 rounded-2xl md:rounded-3xl cursor-pointer hover:shadow-xl transition-all group text-center">
                     <div class="h-12 md:h-16 mb-3 flex items-center justify-center transition-all">
                         <img src="${c.image}" class="max-h-full object-contain">
                     </div>
@@ -214,16 +218,6 @@
             
             const selector = document.getElementById('planSelector');
             selector.innerHTML = refillAmounts.map(amt => `<option value="${amt}">${amt}</option>`).join('');
-        }
-
-        function showWarning(id) {
-            selectedCarrierId = id;
-            document.getElementById('warningModal').classList.remove('hidden');
-        }
-
-        function closeWarningAndProceed() {
-            document.getElementById('warningModal').classList.add('hidden');
-            selectCarrier(selectedCarrierId);
         }
 
         function selectCarrier(id) {
@@ -319,6 +313,7 @@
                     document.getElementById('selectionView').classList.add('hidden');
                     document.getElementById('formView').classList.add('hidden');
                     document.getElementById('receiptView').classList.remove('hidden');
+                    document.getElementById('userGuide').classList.add('hidden');
 
                     const order = data.order || {};
                     document.getElementById('rCarrier').innerText = escapeHTML(order.nodeName || 'eSIM Carrier');

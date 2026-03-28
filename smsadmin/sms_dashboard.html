@@ -34,6 +34,7 @@
         body { background-color: #F0F5FE; font-size: 13px; }
         @media (min-width: 1024px) { body { font-size: 14px; } }
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
+        .currency-label { font-size: 0.75rem; font-weight: 700; color: #0F54C6; }
     </style>
 </head>
 <body class="min-h-screen font-sans text-brand-darkText">
@@ -99,7 +100,10 @@
                 </div>
                 <div class="bg-white p-5 md:p-6 rounded-2xl border border-brand-border shadow-sm">
                     <p class="text-brand-lightText text-[10px] md:text-[11px] font-bold uppercase tracking-widest">Total Revenue</p>
-                    <h3 id="total-revenue" class="text-2xl md:text-3xl font-bold mt-1 md:mt-2 text-brand-darkText">$0.00</h3>
+                    <div class="flex flex-col md:flex-row md:items-baseline md:gap-3">
+                        <h3 id="total-revenue-usd" class="text-2xl md:text-3xl font-bold mt-1 md:mt-2 text-brand-darkText">$0.00</h3>
+                        <span id="total-revenue-ngn" class="currency-label mt-1">₦0.00</span>
+                    </div>
                 </div>
             </div>
 
@@ -107,19 +111,23 @@
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-8">
                 <div class="bg-white p-3 md:p-4 rounded-xl border border-brand-border">
                     <p class="text-brand-lightText text-[9px] font-bold uppercase">Daily</p>
-                    <h4 id="rev-daily" class="text-base md:text-lg font-bold">$0.00</h4>
+                    <h4 id="rev-daily-usd" class="text-base md:text-lg font-bold">$0.00</h4>
+                    <p id="rev-daily-ngn" class="text-[10px] text-brand-blue font-bold">₦0.00</p>
                 </div>
                 <div class="bg-white p-3 md:p-4 rounded-xl border border-brand-border">
                     <p class="text-brand-lightText text-[9px] font-bold uppercase">Weekly</p>
-                    <h4 id="rev-weekly" class="text-base md:text-lg font-bold">$0.00</h4>
+                    <h4 id="rev-weekly-usd" class="text-base md:text-lg font-bold">$0.00</h4>
+                    <p id="rev-weekly-ngn" class="text-[10px] text-brand-blue font-bold">₦0.00</p>
                 </div>
                 <div class="bg-white p-3 md:p-4 rounded-xl border border-brand-border">
                     <p class="text-brand-lightText text-[9px] font-bold uppercase">Monthly</p>
-                    <h4 id="rev-monthly" class="text-base md:text-lg font-bold">$0.00</h4>
+                    <h4 id="rev-monthly-usd" class="text-base md:text-lg font-bold">$0.00</h4>
+                    <p id="rev-monthly-ngn" class="text-[10px] text-brand-blue font-bold">₦0.00</p>
                 </div>
                 <div class="bg-white p-3 md:p-4 rounded-xl border border-brand-border">
                     <p class="text-brand-lightText text-[9px] font-bold uppercase">Yearly</p>
-                    <h4 id="rev-yearly" class="text-base md:text-lg font-bold">$0.00</h4>
+                    <h4 id="rev-yearly-usd" class="text-base md:text-lg font-bold">$0.00</h4>
+                    <p id="rev-yearly-ngn" class="text-[10px] text-brand-blue font-bold">₦0.00</p>
                 </div>
             </div>
 
@@ -164,15 +172,35 @@
                 });
                 const data = await response.json();
 
-                updateUIElement('total-users', (data.totalUsers || 0).toLocaleString());
-                updateUIElement('total-revenue', `$${(data.totalRevenue || 0).toFixed(2)}`);
-                updateUIElement('rev-daily', `$${(data.daily || 0).toFixed(2)}`);
-                updateUIElement('rev-weekly', `$${(data.weekly || 0).toFixed(2)}`);
-                updateUIElement('rev-monthly', `$${(data.monthly || 0).toFixed(2)}`);
-                updateUIElement('rev-yearly', `$${(data.yearly || 0).toFixed(2)}`);
+                if (data.success) {
+                    // Update Active Users
+                    updateUIElement('total-users', (data.totalUsers || 0).toLocaleString());
 
-                if (container) container.innerHTML = '<span class="text-brand-blue font-bold">System Status: Optimized</span>';
+                    // Formatting functions
+                    const fmtUSD = (val) => `$${(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    const fmtNGN = (val) => `₦${(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+                    // Revenue Display (USD and NGN)
+                    updateUIElement('total-revenue-usd', fmtUSD(data.usd.totalRevenue));
+                    updateUIElement('total-revenue-ngn', fmtNGN(data.ngn.totalRevenue));
+
+                    // Growth Metrics Grid
+                    updateUIElement('rev-daily-usd', fmtUSD(data.usd.daily));
+                    updateUIElement('rev-daily-ngn', fmtNGN(data.ngn.daily));
+
+                    updateUIElement('rev-weekly-usd', fmtUSD(data.usd.weekly));
+                    updateUIElement('rev-weekly-ngn', fmtNGN(data.ngn.weekly));
+
+                    updateUIElement('rev-monthly-usd', fmtUSD(data.usd.monthly));
+                    updateUIElement('rev-monthly-ngn', fmtNGN(data.ngn.monthly));
+
+                    updateUIElement('rev-yearly-usd', fmtUSD(data.usd.yearly));
+                    updateUIElement('rev-yearly-ngn', fmtNGN(data.ngn.yearly));
+
+                    if (container) container.innerHTML = '<span class="text-brand-blue font-bold">System Status: Optimized</span>';
+                }
             } catch (err) {
+                console.error("Fetch error:", err);
                 if (container) container.innerHTML = '<span class="text-red-400 px-4">Database Connection Timeout. Check API Route.</span>';
             }
         }

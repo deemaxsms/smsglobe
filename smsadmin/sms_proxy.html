@@ -100,7 +100,7 @@
                             <tr>
                                 <th class="px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Package</th>
                                 <th class="px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Category</th>
-                                <th class="px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Total Plans</th>
+                                <th class="px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Inventory</th>
                                 <th class="px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText text-center">Activation</th>
                                 <th class="px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText text-right">Actions</th>
                             </tr>
@@ -131,9 +131,15 @@
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-[10px] font-bold text-brand-midText mb-1.5 uppercase tracking-widest">Proxy/Package Name</label>
-                    <input type="text" id="name" name="name" required placeholder="e.g. UK Residential High-Speed" class="w-full bg-brand-background/30 border border-brand-border p-3 rounded-xl outline-none focus:border-brand-blue transition-all">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-brand-midText mb-1.5 uppercase tracking-widest">Proxy/Package Name</label>
+                        <input type="text" id="name" name="name" required placeholder="e.g. UK Residential High-Speed" class="w-full bg-brand-background/30 border border-brand-border p-3 rounded-xl outline-none focus:border-brand-blue transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-brand-midText mb-1.5 uppercase tracking-widest">Stock Available</label>
+                        <input type="number" id="stock" name="stock" required placeholder="e.g. 100" class="w-full bg-brand-background/30 border border-brand-border p-3 rounded-xl outline-none focus:border-brand-blue transition-all">
+                    </div>
                 </div>
 
                 <div class="bg-gray-50 p-4 rounded-2xl border border-brand-border">
@@ -203,6 +209,9 @@
 
             list.innerHTML = allProxies.map(p => {
                 const plans = p.plans || [];
+                const stockStatus = p.stock > 0 ? `${p.stock} units` : 'Out of Stock';
+                const stockColor = p.stock > 10 ? 'text-brand-midText' : 'text-red-500 font-bold';
+                
                 return `
                     <tr class="hover:bg-brand-background/30 transition-colors">
                         <td class="px-6 py-5">
@@ -220,7 +229,8 @@
                             </span>
                         </td>
                         <td class="px-6 py-5">
-                            <div class="text-sm font-bold text-brand-midText">${plans.length} Tiers</div>
+                            <div class="text-xs font-bold text-brand-midText">${plans.length} Pricing Plans</div>
+                            <div class="text-[10px] ${stockColor}">${stockStatus}</div>
                         </td>
                         <td class="px-6 py-5 text-center">
                             <span class="px-2.5 py-1 rounded-full font-bold text-[10px] ${p.activationCode ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'} uppercase">
@@ -250,6 +260,7 @@
         
         document.getElementById('name').value = proxy.name;
         document.getElementById('category').value = proxy.category || '';
+        document.getElementById('stock').value = proxy.stock || 0;
         document.getElementById('imageUrl').value = proxy.imageUrl || '';
         document.getElementById('activationCode').value = proxy.activationCode || '';
         document.getElementById('instructions').value = proxy.instructions || '';
@@ -292,6 +303,7 @@
         const payload = {
             name: document.getElementById('name').value,
             category: document.getElementById('category').value,
+            stock: parseInt(document.getElementById('stock').value) || 0,
             imageUrl: document.getElementById('imageUrl').value,
             activationCode: document.getElementById('activationCode').value,
             instructions: document.getElementById('instructions').value,
@@ -321,7 +333,7 @@
         } catch (err) { alert('Error connecting to server.'); }
         finally {
             btn.disabled = false;
-            btn.innerText = 'Deploy Proxy Package';
+            btn.innerText = editId ? 'Update Changes' : 'Deploy Proxy Package';
         }
     });
 

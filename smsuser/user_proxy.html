@@ -94,35 +94,64 @@
         </main>
     </div>
 
-    <div id="proxyModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
-        <div class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl modal-animate">
-            <div class="bg-brand-blue p-8 text-center">
-                <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4">
-                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                </div>
-                <h2 id="modalTitle" class="text-2xl font-bold text-white uppercase tracking-tight">Proxy Secured!</h2>
-                <p class="text-blue-100 text-[10px] mt-1 font-bold uppercase tracking-widest">Transaction Successful</p>
+   <div id="proxyModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
+    <div class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-in zoom-in fade-in duration-300">
+        <div class="bg-brand-blue p-8 text-center relative">
+            <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle, #fff 1px, transparent 1px); background-size: 20px 20px;"></div>
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                </svg>
             </div>
-            <div class="p-6">
-                <div class="bg-brand-background rounded-2xl p-5 space-y-4 border border-brand-blue/5">
-                    <div>
-                        <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider">Activation Instructions</p>
-                        <p id="modalInstructions" class="text-[11px] text-brand-midText leading-relaxed mt-1"></p>
-                    </div>
-                    <div>
-                        <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Your Activation Code</p>
-                        <div class="flex items-center justify-between mt-1.5 bg-white p-3 rounded-xl border border-brand-border">
-                            <p id="modalCode" class="text-xs font-mono font-bold text-brand-darkText tracking-wider"></p>
-                            <button onclick="copyToClipboard('modalCode', this)" class="text-brand-blue active-scale p-1">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            </button>
-                        </div>
+            <h2 id="modalTitle" class="text-2xl font-bold text-white leading-tight">Proxy Secured!</h2>
+            <p class="text-blue-100 text-xs mt-1 font-medium tracking-wide uppercase">Transaction Successful</p>
+        </div>
+
+        <div class="p-6 md:p-8">
+            <div class="text-center mb-6">
+                <p class="text-brand-darkText font-semibold text-sm">Congratulations!</p>
+                <p class="text-brand-lightText text-[11px] leading-relaxed mt-1">
+                    Your proxy package has been successfully activated. A copy of these details has also been sent to your email.
+                </p>
+            </div>
+
+            <div class="bg-brand-background rounded-2xl border border-brand-blue/10 p-5 space-y-4 shadow-inner">
+                <div class="pb-4 border-b border-brand-blue/5">
+                    <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider mb-1">Activation Instructions</p>
+                    <p id="modalInstructions" class="text-[10px] text-brand-midText leading-relaxed italic"></p>
+                </div>
+
+                <div class="space-y-1">
+                    <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Your Activation Code</p>
+                    <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-brand-blue/5">
+                        <p id="modalCode" class="text-xs font-mono font-bold text-brand-darkText tracking-wider"></p>
+                        <button onclick="copyToClipboard('modalCode', this)" class="text-brand-blue hover:text-blue-700 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                        </button>
                     </div>
                 </div>
-                <button onclick="closeModal()" class="w-full mt-6 py-4 bg-brand-blue text-white rounded-2xl text-xs font-bold uppercase active-scale shadow-lg shadow-brand-blue/20 transition-all hover:bg-blue-700">Go to Dashboard</button>
             </div>
+
+            <div class="mt-6 flex items-start gap-3 p-3 bg-orange-50 rounded-xl border border-orange-100">
+                <svg class="w-4 h-4 text-brand-orange mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                <p class="text-[10px] text-brand-orange font-medium leading-tight">
+                    Security Notice: Never share your activation code. SMSGlobe staff will never ask for your proxy credentials.
+                </p>
+            </div>
+
+            <button onclick="closeModal()" class="w-full mt-8 py-4 bg-brand-blue text-white rounded-2xl text-xs font-bold shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
+                <span>Finish & Go to Dashboard</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                </svg>
+            </button>
         </div>
     </div>
+</div>
 
 <script>
     const API_BASE_URL = '/api';
@@ -216,7 +245,7 @@ async function checkPaymentStatus() {
         }).join('');
     }
 
-    function showProducts(category) {
+   function showProducts(category) {
         const categoryGrid = document.getElementById('categoryGrid');
         const proxyGrid = document.getElementById('proxyGrid');
         const backBtn = document.getElementById('backBtn');
@@ -230,30 +259,44 @@ async function checkPaymentStatus() {
 
         const filtered = allProxies.filter(p => p.category === category);
 
-        proxyGrid.innerHTML = filtered.map(proxy => `
-            <div class="bg-white border border-brand-border rounded-2xl shadow-sm flex flex-col overflow-hidden transition-all hover:shadow-md">
-                <div class="h-24 bg-gray-50 flex items-center justify-center p-4 border-b border-brand-border/30">
-                    <img src="${proxy.imageUrl || CAT_IMAGE_URL}" class="max-h-full object-contain">
+        proxyGrid.innerHTML = filtered.map(proxy => {
+            // Check if product is out of stock
+            const isOutOfStock = (proxy.stock === 0);
+            
+            return `
+            <div class="bg-white border border-brand-border rounded-2xl shadow-sm flex flex-col overflow-hidden transition-all hover:shadow-md relative">
+                <div class="absolute top-2 right-2 z-10">
+                    <span class="${isOutOfStock ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'} text-[8px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter">
+                        Stock: ${proxy.stock || 0}
+                    </span>
                 </div>
+
+                <div class="h-24 bg-gray-50 flex items-center justify-center p-4 border-b border-brand-border/30">
+                    <img src="${proxy.imageUrl || CAT_IMAGE_URL}" class="max-h-full object-contain ${isOutOfStock ? 'grayscale opacity-50' : ''}">
+                </div>
+                
                 <div class="p-3 flex flex-col flex-grow">
                     <h3 class="font-extrabold text-brand-darkText text-[10px] uppercase truncate tracking-tight">${proxy.name}</h3>
                     
                     <div class="mt-2 bg-brand-background rounded-lg p-1.5 border border-brand-blue/5">
                         <label class="text-[7px] font-bold text-brand-lightText uppercase block mb-1">Select Tier</label>
-                        <select id="plan-${proxy._id}" class="w-full bg-white border border-brand-border rounded text-[9px] font-bold p-1 focus:ring-1 focus:ring-brand-blue outline-none">
+                        <select id="plan-${proxy._id}" ${isOutOfStock ? 'disabled' : ''} class="w-full bg-white border border-brand-border rounded text-[9px] font-bold p-1 focus:ring-1 focus:ring-brand-blue outline-none disabled:opacity-50">
                             ${proxy.plans.map((p, i) => `<option value="${i}">${p.ip_count} IPs — $${p.price}</option>`).join('')}
                         </select>
                     </div>
 
-                    <button onclick="buyProxy('${proxy._id}')" id="btn-${proxy._id}" 
-                            class="mt-3 w-full py-2.5 bg-brand-blue text-white text-[9px] font-bold rounded-xl active-scale transition-all shadow-sm hover:brightness-110">
-                        Purchase Access
+                    <button 
+                        onclick="${isOutOfStock ? '' : `buyProxy('${proxy._id}')`}" 
+                        id="btn-${proxy._id}" 
+                        ${isOutOfStock ? 'disabled' : ''}
+                        class="mt-3 w-full py-2.5 ${isOutOfStock ? 'bg-gray-300 cursor-not-allowed' : 'bg-brand-blue hover:brightness-110 active-scale shadow-sm'} text-white text-[9px] font-bold rounded-xl transition-all">
+                        ${isOutOfStock ? 'Out of Stock' : 'Purchase Access'}
                     </button>
                 </div>
             </div>
-        `).join('');
+        `}).join('');
     }
-
+    
     async function buyProxy(proxyId) {
         const planIndex = document.getElementById(`plan-${proxyId}`).value;
         const token = localStorage.getItem('userToken');

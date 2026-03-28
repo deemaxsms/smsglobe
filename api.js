@@ -71,10 +71,11 @@ const VPN = mongoose.models.VPN || mongoose.model('VPN', vpnSchema);
 
 const ProxySchema = new mongoose.Schema({
     name: { type: String, required: true },
-    category: { type: String, default: 'Standard' }, // Added Category field
+    category: { type: String, default: 'Standard' },
     imageUrl: { type: String },
     activationCode: { type: String },
     instructions: { type: String },
+    stock: { type: Number, default: 0 }, // Added Stock field
     plans: [{
         ip_count: { type: Number, required: true },
         price: { type: Number, required: true }
@@ -881,7 +882,7 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
     });
 };
 // --- PROXY HANDLERS ---
-
+// 2. GET ALL Proxies (Sorted by Newest)
 async function handleGetProxies(req, res) {
     try {
         const proxies = await Proxy.find({}).sort({ createdAt: -1 });
@@ -891,10 +892,10 @@ async function handleGetProxies(req, res) {
     }
 }
 
-// 3. ADD Proxy (Includes category parsing)
+// 3. ADD Proxy (Includes category and stock parsing)
 async function handleAddProxy(req, res) {
     try {
-        const { name, category, imageUrl, activationCode, instructions, plans } = req.body;
+        const { name, category, imageUrl, activationCode, instructions, plans, stock } = req.body;
 
         // Clean and parse the plans
         let formattedPlans = [];
@@ -907,10 +908,11 @@ async function handleAddProxy(req, res) {
 
         const newProxy = new Proxy({
             name,
-            category: category || 'Standard', // Fallback to 'Standard' if empty
+            category: category || 'Standard', 
             imageUrl,
             activationCode,
             instructions,
+            stock: parseInt(stock) || 0, // Ensure stock is stored as a number
             plans: formattedPlans
         });
 
@@ -922,12 +924,15 @@ async function handleAddProxy(req, res) {
     }
 }
 
-// 4. UPDATE Proxy (Includes category update)
+// 4. UPDATE Proxy (Includes category, stock, and plans update)
 async function handleUpdateProxy(req, res) {
     try {
-        const { proxyId, plans, ...restOfData } = req.body;
+        const { proxyId, plans, stock, ...restOfData } = req.body;
 
-        const updatePayload = { ...restOfData };
+        const updatePayload = { 
+            ...restOfData,
+            stock: parseInt(stock) || 0 // Parse stock for updates
+        };
 
         // Handle plans parsing specifically
         if (plans && Array.isArray(plans)) {
@@ -952,7 +957,7 @@ async function handleUpdateProxy(req, res) {
     }
 }
 
-// 5. DELETE Proxy (Remains same)
+// 5. DELETE Proxy
 async function handleDeleteProxy(req, res) {
     try {
         const { id } = req.query;

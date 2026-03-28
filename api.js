@@ -206,6 +206,7 @@ app.all('/api/:action', async (req, res) => {
         if (req.method === 'PATCH') return handleUpdateProxy(req, res);
         if (req.method === 'DELETE') return handleDeleteProxy(req, res);
         break;
+        case 'transactions': return handleAllTransactions(req, res);
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
         default:
@@ -644,12 +645,11 @@ async function handleGetUserMessages(req, res) {
 }
 
 async function handlePurchaseVPN(req, res) {
-    const { vpnId, planIndex } = req.body;
+    const { vpnId, planIndex, currency } = req.body; // Added currency to body
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
     try {
-        // We still verify the token to ensure the user is logged in
         const decoded = jwt.verify(token, JWT_SECRET);
         
         // 1. Fetch VPN and include password
@@ -665,8 +665,30 @@ async function handlePurchaseVPN(req, res) {
             return res.status(400).json({ success: false, message: "This VPN node is currently out of stock." });
         }
 
-        // 4. Update Inventory Only
-        // We decrement the stock because the user "claimed" a spot
+        const selectedPlan = vpn.plans[planIndex];
+
+        // --- NEW: RECORD THE TRANSACTION IN DATABASE ---
+        // This is what fills the empty "orders" collection in your screenshot
+        const Order = mongoose.models.Order || mongoose.model('Order'); // Ensure Order model is loaded
+        
+        const newOrder = new Order({
+            userEmail: decoded.email, // Taking email from the verified JWT token
+            productType: 'VPN',
+            planName: selectedPlan.duration,
+            nodeName: vpn.name,
+            amount: selectedPlan.price,
+            currency: currency || 'USD', // Captured from frontend (USD or NGN)
+            status: 'successful',
+            vpnCredentials: {
+                username: vpn.username,
+                password: vpn.password
+            }
+        });
+
+        await newOrder.save(); 
+        // -----------------------------------------------
+
+        // 4. Update Inventory
         vpn.stock -= 1;
         await vpn.save();
 
@@ -674,6 +696,7 @@ async function handlePurchaseVPN(req, res) {
         return res.json({ 
             success: true, 
             message: "Access granted successfully!",
+            orderId: newOrder._id, // Helpful for frontend reference
             credentials: {
                 username: vpn.username,
                 password: vpn.password,
@@ -1032,6 +1055,29 @@ async function handleDeleteProxy(req, res) {
         return res.json({ success: true, message: "Proxy Package Deleted" });
     } catch (err) {
         return res.status(500).json({ success: false, message: "Delete failed" });
+    }
+}
+
+async function handleAllTransactions(req, res) {
+    try {
+        // Fetch all orders from the Order model, sorted by newest first
+        const orders = await Order.find().sort({ createdAt: -1 });
+
+        // Map the database fields to the fields your frontend script expects
+        const formattedTransactions = orders.map(order => ({
+            id: order._id.toString(),
+            date: order.createdAt,
+            email: order.userEmail,
+            product: order.productType,
+            details: `${order.nodeName} - ${order.planName}`,
+            amount: order.amount,
+            currency: order.currency
+        }));
+
+        res.json({ success: true, transactions: formattedTransactions });
+    } catch (err) {
+        console.error("Error fetching transactions:", err);
+        res.status(500).json({ success: false, message: "Server error" });
     }
 }
 // --- 8. STARTUP ---

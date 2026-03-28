@@ -754,34 +754,34 @@ async function handleInitiatePayment(req, res) {
         const amountInNGN = Math.round(selectedPlan.price * USD_TO_NGN_RATE);
         const tx_ref = `SMS-${itemType}-${Date.now()}-${decoded.id.slice(-4)}`;
 
-        const response = await fetch("https://api.flutterwave.com/v3/payments", {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${process.env.FLW_SECRET_KEY}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                tx_ref: tx_ref,
-                amount: amountInNGN,
-                currency: "NGN",
-                // Redirect back to the proxy page if it's a proxy
-                redirect_url: vpnId ? "https://smsglobe.vercel.app/smsuser/user_vpn.html" : "https://smsglobe.vercel.app/smsuser/user_proxy.html",
-                customer: {
-                    email: user.email,
-                    name: user.fullName,
-                },
-                meta: {
-                    productId: vpnId || proxyId,
-                    productType: itemType, // This tells verify-payment what to look for
-                    planIndex: planIndex
-                },
-                customizations: {
-                    title: title,
-                    description: `${item.name} ($${selectedPlan.price} USD @ ₦${USD_TO_NGN_RATE}/$)`,
-                    logo: "https://imgur.com/8YeZgfx.png"
-                },
-            }),
-        });
+const response = await fetch("https://api.flutterwave.com/v3/payments", {
+    method: "POST",
+    headers: {
+        Authorization: `Bearer ${process.env.FLW_SECRET_KEY}`,
+        "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+        tx_ref: tx_ref,
+        amount: amountInNGN,
+        currency: "NGN",
+        redirect_url: vpnId ? "https://smsglobe.vercel.app/smsuser/user_vpn.html" : "https://smsglobe.vercel.app/smsuser/user_proxy.html",
+        customer: {
+            email: user.email,
+            name: user.fullName,
+        },
+        meta: {
+            userId: decoded.id, // CRITICAL: This links the payment to your User collection
+            productId: vpnId || proxyId,
+            productType: itemType,
+            planIndex: planIndex
+        },
+        customizations: {
+            title: title,
+            description: `${item.name} ($${selectedPlan.price} USD)`,
+            logo: "https://imgur.com/8YeZgfx.png"
+        },
+    }),
+});
 
         const data = await response.json();
         if (data.status === "success") {
@@ -806,17 +806,23 @@ async function handleVerifyPayment(req, res) {
         const data = await response.json();
 
         if (data.status === "success" && data.data.status === "successful") {
-            const productId = data.data.meta.productId;
-            const productType = data.data.meta.productType; // "VPN" or "Proxy"
-            const planIndex = data.data.meta.planIndex;
-            const userEmail = data.data.customer.email;
+            // 1. Extract our custom Meta data
+            const { productId, productType, planIndex, userId } = data.data.meta;
+            
+            // 2. Fetch the AUTHENTIC user from your DB
+            // This prevents the messy "ravesb_..." email from appearing in your orders
+            const actualUser = await User.findById(userId);
+            if (!actualUser) return res.status(404).json({ success: false, message: "User account not found" });
+
+            const userEmail = actualUser.email; 
             const amountPaid = data.data.amount;
             const paymentRef = data.data.tx_ref;
+            const currency = data.data.currency; // Usually "NGN"
 
             let credentials = {};
             let productDetails = { name: "", plan: "" };
 
-            // --- 1. HANDLE VPN PURCHASE ---
+            // --- 3. HANDLE VPN PURCHASE ---
             if (productType === "VPN") {
                 const item = await VPN.findOneAndUpdate(
                     { _id: productId, stock: { $gt: 0 } },
@@ -836,7 +842,7 @@ async function handleVerifyPayment(req, res) {
                     instructions: item.instructions || "Check dashboard."
                 };
 
-            // --- 2. HANDLE PROXY PURCHASE ---
+            // --- 4. HANDLE PROXY PURCHASE ---
             } else if (productType === "Proxy") {
                 const item = await Proxy.findOneAndUpdate(
                     { _id: productId, stock: { $gt: 0 } },
@@ -847,7 +853,7 @@ async function handleVerifyPayment(req, res) {
                 if (!item) return res.status(400).json({ success: false, message: "Proxy out of stock" });
 
                 productDetails.name = item.name;
-                productDetails.plan = `${item.plans[planIndex]?.ip_count} IPs`;
+                productDetails.plan = `${item.plans[planIndex]?.ip_count || 0} IPs`;
 
                 credentials = {
                     type: "Proxy",
@@ -856,32 +862,31 @@ async function handleVerifyPayment(req, res) {
                 };
             }
 
-            // --- 3. CREATE TRANSACTION HISTORY (SAVE TO ORDER COLLECTION) ---
-            // This is the missing piece that fills your empty database collection
+            // --- 5. CREATE ORDER (TRANSACTION HISTORY) ---
             try {
                 await Order.create({
-                    userEmail: userEmail,
+                    userEmail: userEmail, // Using the clean email from User profile
+                    userId: userId,
                     productType: productType,
                     planName: productDetails.plan,
                     nodeName: productDetails.name,
                     amount: amountPaid,
-                    currency: "NGN", // Flutterwave is processing in NGN per your initiate function
+                    currency: currency, 
                     status: "successful",
                     paymentReference: paymentRef,
-                    // Store the actual credentials in the order for admin/user view
+                    // Save specific credentials so they are visible in the user's history
                     activationCode: credentials.activationCode,
                     vpnCredentials: productType === "VPN" ? {
                         username: credentials.username,
                         password: credentials.password
                     } : undefined
                 });
-                console.log(`Order saved for ${userEmail}: ${productDetails.name}`);
+                console.log(`Order recorded: ${userEmail} bought ${productDetails.name}`);
             } catch (dbErr) {
-                console.error("Database Order Save Failed:", dbErr);
-                // We don't block the user since they already paid, but we log the error
+                console.error("Order Record Failed:", dbErr);
             }
 
-            // --- 4. DELIVERY ---
+            // --- 6. DELIVERY ---
             try {
                 await sendDeliveryEmail(userEmail, credentials); 
             } catch (emailErr) {
@@ -894,7 +899,7 @@ async function handleVerifyPayment(req, res) {
             });
         }
 
-        return res.status(400).json({ success: false, message: "Verification failed." });
+        return res.status(400).json({ success: false, message: "Transaction verification failed." });
 
     } catch (err) {
         console.error("Payment Verification Error:", err);
@@ -1102,14 +1107,18 @@ async function handleDeleteProxy(req, res) {
 
 async function handleAllTransactions(req, res) {
     try {
-        // Fetch all orders from the Order model, sorted by newest first
-        const orders = await Order.find().sort({ createdAt: -1 });
+        // .populate('userId') tells Mongoose to fetch the full User object 
+        // using the ID stored in the Order. We only select 'fullName' for performance.
+        const orders = await Order.find()
+            .populate('userId', 'fullName') 
+            .sort({ createdAt: -1 });
 
-        // Map the database fields to the fields your frontend script expects
         const formattedTransactions = orders.map(order => ({
             id: order._id.toString(),
             date: order.createdAt,
-            email: order.userEmail,
+            // Fallback to "Customer" if the user was deleted or ID is missing
+            customerName: order.userId?.fullName || "Guest Customer",
+            email: order.userEmail, 
             product: order.productType,
             details: `${order.nodeName} - ${order.planName}`,
             amount: order.amount,

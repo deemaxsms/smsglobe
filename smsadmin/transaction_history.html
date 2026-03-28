@@ -121,121 +121,127 @@
         </main>
     </div>
 
-    <script>
-        let allTxns = [];
+<script>
+    let allTxns = [];
 
-       async function fetchTransactions() {
-    const token = localStorage.getItem('smsglobe_admin_token');
-    const tbody = document.getElementById('txnBody');
+    async function fetchTransactions() {
+        const token = localStorage.getItem('smsglobe_admin_token');
+        const tbody = document.getElementById('txnBody');
 
-    // Show a loading state while fetching
-    tbody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-brand-lightText">Loading transactions...</td></tr>`;
+        // Show a loading state while fetching
+        tbody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-brand-lightText">
+            <div class="flex flex-col items-center gap-3">
+                <div class="w-8 h-8 border-4 border-brand-blue border-t-transparent rounded-full animate-spin"></div>
+                <p>Retrieving secure transaction records...</p>
+            </div>
+        </td></tr>`;
 
-    try {
-        // FIXED URL: Removed "/admin" so it matches your backend 'transactions' case
-        const res = await fetch('/api/transactions', {
-            headers: { 
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-
-        const data = await res.json();
-
-        if (data.success) {
-            allTxns = data.transactions;
-            renderTable(allTxns);
-        } else {
-            // If the API returns success: false (e.g., unauthorized)
-            throw new Error(data.error || "Failed to fetch");
-        }
-    } catch (err) {
-        console.error("Fetch Error:", err);
-        tbody.innerHTML = `<tr><td colspan="4" class="p-20 text-center text-red-500 font-bold">Error loading history: ${err.message}</td></tr>`;
-    }
-}
-
-        function renderTable(txns) {
-            const tbody = document.getElementById('txnBody');
-            if (txns.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="p-20 text-center italic text-brand-lightText">No transactions found for this selection.</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = txns.map(t => {
-                const currency = (t.currency || 'USD').toUpperCase();
-                const isNaira = currency === 'NGN' || currency === 'NAIRA';
-                const symbol = isNaira ? '₦' : '$';
-                const formattedAmount = parseFloat(t.amount || 0).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                });
-
-                return `
-                    <tr class="hover:bg-brand-background/40 transition-colors group">
-                        <td class="px-6 py-4">
-                            <div class="font-semibold text-brand-darkText">${new Date(t.date).toLocaleDateString()}</div>
-                            <div class="text-[10px] text-brand-lightText uppercase tracking-tight">${new Date(t.date).toLocaleTimeString()}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="font-medium text-brand-darkText truncate max-w-[180px]">${t.email}</div>
-                            <div class="text-[9px] font-bold text-brand-blue/60 uppercase">Ref: ${t.id.slice(-8)}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-brand-background text-brand-blue mb-1">
-                                ${t.product}
-                            </span>
-                            <div class="text-brand-lightText text-[11px] leading-tight">${t.details}</div>
-                        </td>
-                        <td class="px-6 py-4 text-right">
-                            <div class="text-sm font-bold ${isNaira ? 'text-green-600' : 'text-brand-darkText'}">
-                                ${symbol}${formattedAmount}
-                            </div>
-                            <div class="text-[9px] font-bold text-brand-lightText opacity-60">${currency}</div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function applyAllFilters() {
-            const searchQuery = document.getElementById('txnSearch').value.toLowerCase();
-            const startVal = document.getElementById('startDate').value;
-            const endVal = document.getElementById('endDate').value;
-
-            const filtered = allTxns.filter(t => {
-                // 1. Text Search Filter
-                const matchesSearch = t.email.toLowerCase().includes(searchQuery) || 
-                                    t.product.toLowerCase().includes(searchQuery) ||
-                                    (t.currency && t.currency.toLowerCase().includes(searchQuery));
-
-                // 2. Date Range Filter
-                const txnDate = new Date(t.date).setHours(0,0,0,0);
-                let matchesDate = true;
-
-                if (startVal) {
-                    const start = new Date(startVal).setHours(0,0,0,0);
-                    if (txnDate < start) matchesDate = false;
+        try {
+            const res = await fetch('/api/transactions', {
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
                 }
-                if (endVal) {
-                    const end = new Date(endVal).setHours(0,0,0,0);
-                    if (txnDate > end) matchesDate = false;
-                }
-
-                return matchesSearch && matchesDate;
             });
 
-            renderTable(filtered);
+            const data = await res.json();
+
+            if (data.success) {
+                allTxns = data.transactions;
+                renderTable(allTxns);
+            } else {
+                throw new Error(data.error || "Failed to fetch");
+            }
+        } catch (err) {
+            console.error("Fetch Error:", err);
+            tbody.innerHTML = `<tr><td colspan="4" class="p-20 text-center text-red-500 font-bold">Error loading history: ${err.message}</td></tr>`;
+        }
+    }
+
+    function renderTable(txns) {
+        const tbody = document.getElementById('txnBody');
+        if (txns.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="p-20 text-center italic text-brand-lightText">No transactions found for this selection.</td></tr>`;
+            return;
         }
 
-        function resetFilters() {
-            document.getElementById('txnSearch').value = '';
-            document.getElementById('startDate').value = '';
-            document.getElementById('endDate').value = '';
-            renderTable(allTxns);
-        }
+        tbody.innerHTML = txns.map(t => {
+            const currency = (t.currency || 'USD').toUpperCase();
+            const isNaira = currency === 'NGN' || currency === 'NAIRA';
+            const symbol = isNaira ? '₦' : '$';
+            const formattedAmount = parseFloat(t.amount || 0).toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
 
-        window.onload = fetchTransactions;
-    </script>
+            return `
+                <tr class="hover:bg-brand-background/40 transition-colors group">
+                    <td class="px-6 py-4">
+                        <div class="font-semibold text-brand-darkText">${new Date(t.date).toLocaleDateString()}</div>
+                        <div class="text-[10px] text-brand-lightText uppercase tracking-tight">${new Date(t.date).toLocaleTimeString()}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="font-bold text-brand-darkText capitalize">${t.customerName || 'Unknown User'}</div>
+                        <div class="text-[11px] text-brand-lightText truncate max-w-[180px]">${t.email}</div>
+                        <div class="text-[9px] font-bold text-brand-blue/60 uppercase mt-1">Ref: ${t.id.slice(-8)}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-brand-background text-brand-blue mb-1">
+                            ${t.product}
+                        </span>
+                        <div class="text-brand-lightText text-[11px] leading-tight">${t.details}</div>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <div class="text-sm font-bold ${isNaira ? 'text-green-600' : 'text-brand-darkText'}">
+                            ${symbol}${formattedAmount}
+                        </div>
+                        <div class="text-[9px] font-bold text-brand-lightText opacity-60">${currency}</div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function applyAllFilters() {
+        const searchQuery = document.getElementById('txnSearch').value.toLowerCase();
+        const startVal = document.getElementById('startDate').value;
+        const endVal = document.getElementById('endDate').value;
+
+        const filtered = allTxns.filter(t => {
+            // 1. Text Search Filter (Now including customerName)
+            const matchesSearch = 
+                (t.customerName && t.customerName.toLowerCase().includes(searchQuery)) || 
+                t.email.toLowerCase().includes(searchQuery) || 
+                t.product.toLowerCase().includes(searchQuery) ||
+                (t.currency && t.currency.toLowerCase().includes(searchQuery));
+
+            // 2. Date Range Filter
+            const txnDate = new Date(t.date).setHours(0,0,0,0);
+            let matchesDate = true;
+
+            if (startVal) {
+                const start = new Date(startVal).setHours(0,0,0,0);
+                if (txnDate < start) matchesDate = false;
+            }
+            if (endVal) {
+                const end = new Date(endVal).setHours(0,0,0,0);
+                if (txnDate > end) matchesDate = false;
+            }
+
+            return matchesSearch && matchesDate;
+        });
+
+        renderTable(filtered);
+    }
+
+    function resetFilters() {
+        document.getElementById('txnSearch').value = '';
+        document.getElementById('startDate').value = '';
+        document.getElementById('endDate').value = '';
+        renderTable(allTxns);
+    }
+
+    window.onload = fetchTransactions;
+</script>
 </body>
 </html>

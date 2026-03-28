@@ -37,7 +37,7 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
-       <nav class="flex-grow p-4 space-y-1 overflow-y-auto no-scrollbar">
+        <nav class="flex-grow p-4 space-y-1 overflow-y-auto no-scrollbar">
             <p class="px-3 text-[10px] font-bold text-brand-lightText uppercase tracking-widest mb-2">Navigation</p>
             <a href="user_dashboard.html" class="flex items-center space-x-3 px-3 py-2.5 text-brand-midText hover:bg-gray-50 rounded-xl text-xs font-medium transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
@@ -271,23 +271,25 @@ async function verifyPayment(transactionId, txRef) {
                     <img src="${vpn.image || 'https://via.placeholder.com/400x200?text=VPN'}" 
                          class="max-w-[80%] max-h-[80%] object-contain">
                     
-                    <div class="absolute top-1.5 left-1.5 flex gap-1">
-                         <span class="text-[7px] md:text-[8px] font-bold px-1 py-0.5 bg-white/90 border border-brand-border text-brand-blue rounded uppercase tracking-tighter">${vpn.region || 'Global'}</span>
-                         <span class="text-[7px] md:text-[8px] font-bold px-1 py-0.5 bg-brand-blue text-white rounded uppercase tracking-tighter flex items-center gap-0.5 shadow-sm">
-                            <svg class="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                            Limit: ${vpn.deviceLimit || 1}
-                         </span>
+                    <div class="absolute top-1.5 left-1.5">
+                         <span class="text-[7px] md:text-[8px] font-bold px-1.5 py-0.5 bg-white/90 border border-brand-border text-brand-blue rounded uppercase tracking-tighter">${vpn.region || 'Global'}</span>
                     </div>
                     <div class="absolute top-1.5 right-1.5">
-                         <span class="text-[7px] md:text-[8px] font-bold px-1 py-0.5 ${stockColor} rounded uppercase tracking-tighter border border-current/10">
+                         <span class="text-[7px] md:text-[8px] font-bold px-1.5 py-0.5 ${stockColor} rounded uppercase tracking-tighter border border-current/10">
                             ${isOutOfStock ? 'Out' : `${vpn.stock}`}
                          </span>
                     </div>
                 </div>
 
-                <div class="p-2.5 md:p-4 flex flex-col flex-grow">
-                    <div class="mb-2 md:mb-3">
-                        <h3 class="font-bold text-brand-darkText text-[10px] md:text-xs truncate uppercase tracking-tight">${vpn.name}</h3>
+                <div class="p-2.5 md:p-4 flex flex-col flex-grow relative">
+                    <div class="absolute top-2.5 right-2.5">
+                        <span class="text-[7px] md:text-[8px] font-bold px-1.5 py-0.5 bg-brand-blue text-white rounded-md uppercase tracking-tighter flex items-center gap-0.5 shadow-sm">
+                            <svg class="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                            Limit: ${vpn.deviceLimit || 1}
+                        </span>
+                    </div>
+
+                    <div class="mb-2 md:mb-3 pr-16"> <h3 class="font-bold text-brand-darkText text-[10px] md:text-xs truncate uppercase tracking-tight">${vpn.name}</h3>
                         <p class="text-[8px] md:text-[9px] text-brand-lightText font-medium">${vpn.provider || 'SMSGlobe'}</p>
                     </div>
                     

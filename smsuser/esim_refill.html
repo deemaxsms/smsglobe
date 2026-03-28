@@ -160,156 +160,174 @@
         </main>
     </div>
 
-    <script>
-        // Use the relative path to ensure Vercel routes it correctly
-        const API_BASE_URL = '/api';
+<script>
+    // Base API URL for Vercel
+    const API_BASE_URL = '/api';
 
-        const carriers = [
-            { id: '1', name: 'T-Mobile USA', image: 'https://i.imgur.com/pyDMW1t.png' },
-            { id: '2', name: 'AT&T', image: 'https://i.imgur.com/WDCo1gM.png' },
-            { id: '3', name: 'Verizon', image: 'https://i.imgur.com/ylEL7gO.jpeg' },
-            { id: '4', name: 'Vodafone UK', image: 'https://i.imgur.com/r7a0fpw.png' }
-        ];
+    const carriers = [
+        { id: '1', name: 'T-Mobile USA', image: 'https://i.imgur.com/pyDMW1t.png' },
+        { id: '2', name: 'AT&T', image: 'https://i.imgur.com/WDCo1gM.png' },
+        { id: '3', name: 'Verizon', image: 'https://i.imgur.com/ylEL7gO.jpeg' },
+        { id: '4', name: 'Vodafone UK', image: 'https://i.imgur.com/r7a0fpw.png' }
+    ];
 
-        const refillAmounts = [];
-        for (let i = 15; i <= 100; i += 5) { refillAmounts.push(`$${i}.00`); }
+    const refillAmounts = [];
+    for (let i = 15; i <= 100; i += 5) { refillAmounts.push(`$${i}.00`); }
 
-        let selectedCarrier = null;
+    let selectedCarrier = null;
 
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('-translate-x-full');
-            document.getElementById('sidebarOverlay').classList.toggle('hidden');
-        }
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('-translate-x-full');
+        document.getElementById('sidebarOverlay').classList.toggle('hidden');
+    }
 
-        function initPage() {
-            const grid = document.getElementById('carrierGrid');
-            // Grayscale removed from classes below to keep original colors
-            grid.innerHTML = carriers.map(c => `
-                <div onclick="selectCarrier('${c.id}')" class="bg-white border border-brand-border p-4 md:p-6 rounded-2xl md:rounded-3xl cursor-pointer hover:shadow-xl transition-all group text-center">
-                    <div class="h-12 md:h-16 mb-3 flex items-center justify-center transition-all">
-                        <img src="${c.image}" class="max-h-full object-contain">
-                    </div>
-                    <h3 class="text-[10px] md:text-xs font-bold text-brand-darkText uppercase group-hover:text-brand-blue">${c.name}</h3>
+    function initPage() {
+        const grid = document.getElementById('carrierGrid');
+        grid.innerHTML = carriers.map(c => `
+            <div onclick="selectCarrier('${c.id}')" class="bg-white border border-brand-border p-4 md:p-6 rounded-2xl md:rounded-3xl cursor-pointer hover:shadow-xl transition-all group text-center">
+                <div class="h-12 md:h-16 mb-3 flex items-center justify-center transition-all">
+                    <img src="${c.image}" class="max-h-full object-contain">
                 </div>
-            `).join('');
-            
-            const selector = document.getElementById('planSelector');
-            selector.innerHTML = refillAmounts.map(amt => `<option value="${amt}">${amt}</option>`).join('');
-        }
+                <h3 class="text-[10px] md:text-xs font-bold text-brand-darkText uppercase group-hover:text-brand-blue">${c.name}</h3>
+            </div>
+        `).join('');
+        
+        const selector = document.getElementById('planSelector');
+        selector.innerHTML = refillAmounts.map(amt => `<option value="${amt}">${amt}</option>`).join('');
+    }
 
-        function selectCarrier(id) {
-            selectedCarrier = carriers.find(c => c.id === id);
-            document.getElementById('selectionView').classList.add('hidden');
-            document.getElementById('formView').classList.remove('hidden');
-            document.getElementById('formCarrierName').innerText = selectedCarrier.name;
-            document.getElementById('formCarrierLogo').src = selectedCarrier.image;
-            updateButtonPrice();
-        }
+    function selectCarrier(id) {
+        selectedCarrier = carriers.find(c => c.id === id);
+        document.getElementById('selectionView').classList.add('hidden');
+        document.getElementById('formView').classList.remove('hidden');
+        document.getElementById('formCarrierName').innerText = selectedCarrier.name;
+        document.getElementById('formCarrierLogo').src = selectedCarrier.image;
+        updateButtonPrice();
+    }
 
-        function updateButtonPrice() {
-            const plan = document.getElementById('planSelector').value;
-            document.getElementById('payBtn').innerText = `Pay ${getNairaPrice(plan)} (Refill)`;
-        }
+    function updateButtonPrice() {
+        const plan = document.getElementById('planSelector').value;
+        document.getElementById('payBtn').innerText = `Pay ${getNairaPrice(plan)} (Refill)`;
+    }
 
-        function getNairaPrice(usdString) {
-            const rate = 1650;
-            const usd = parseFloat(usdString.replace(/[$,]/g, ''));
-            return `₦${(usd * rate).toLocaleString()}`;
-        }
+    function getNairaPrice(usdString) {
+        const rate = 1650;
+        const usd = parseFloat(usdString.replace(/[$,]/g, ''));
+        return `₦${(usd * rate).toLocaleString()}`;
+    }
 
-        document.getElementById('planSelector').addEventListener('change', updateButtonPrice);
+    document.getElementById('planSelector').addEventListener('change', updateButtonPrice);
 
-        function goBackToGrid() {
-            document.getElementById('selectionView').classList.remove('hidden');
-            document.getElementById('formView').classList.add('hidden');
-        }
+    function goBackToGrid() {
+        document.getElementById('selectionView').classList.remove('hidden');
+        document.getElementById('formView').classList.add('hidden');
+    }
 
-        async function initiatePayment() {
-            const num = document.getElementById('targetNumber').value;
-            const plan = document.getElementById('planSelector').value; 
+    async function initiatePayment() {
+        const num = document.getElementById('targetNumber').value;
+        const plan = document.getElementById('planSelector').value; 
 
-            if(!num) { alert("Please enter the eSIM mobile number"); return; }
+        if(!num) { alert("Please enter the eSIM mobile number"); return; }
+        if(!selectedCarrier) { alert("Please select a carrier first"); return; }
 
-            const btn = document.getElementById('payBtn');
-            const originalText = btn.innerText;
-            btn.disabled = true;
-            btn.innerText = "Generating Payment Link...";
+        const btn = document.getElementById('payBtn');
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = "Generating Payment Link...";
 
-            try {
-            const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
-                    },
-                    body: JSON.stringify({
-                        carrierName: selectedCarrier.name,
-                        mobileNumber: num,
-                        planAmount: plan,
-                        productImage: selectedCarrier.image,
-                        productType: 'eSIM'
-                    })
-                });
+        try {
+            const res = await fetch(API_BASE_URL, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
+                },
+                body: JSON.stringify({
+                    action: 'initiate-payment',
+                    carrierName: selectedCarrier.name,
+                    mobileNumber: num,
+                    planAmount: plan,
+                    productImage: selectedCarrier.image,
+                    productType: 'eSIM'
+                })
+            });
 
-                const data = await res.json();
-                if(data.success && data.link) {
-                    window.location.href = data.link; 
-                } else {
-                    alert("Error: " + (data.message || "Could not initialize payment."));
-                    btn.disabled = false;
-                    btn.innerText = originalText;
-                }
-            } catch (err) {
-                console.error(err);
-                alert("Connection error. Please try again.");
+            const data = await res.json();
+            if(data.success && data.link) {
+                window.location.href = data.link; 
+            } else {
+                alert("Error: " + (data.message || "Could not initialize payment."));
                 btn.disabled = false;
                 btn.innerText = originalText;
             }
+        } catch (err) {
+            console.error(err);
+            alert("Connection error. Please try again.");
+            btn.disabled = false;
+            btn.innerText = originalText;
         }
+    }
 
-        async function verifyEsimPayment(tid) {
-            try {
-               const res = await fetch(`${API_BASE_URL}/verify-payment`, {
+    async function verifyEsimPayment(tid, reference) {
+        try {
+            const res = await fetch(API_BASE_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('userToken')}` },
-                body: JSON.stringify({ transactionId, txRef })
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
+                },
+                body: JSON.stringify({ 
+                    action: 'verify-payment',
+                    transactionId: tid, 
+                    txRef: reference 
+                })
             });
-                const data = await res.json();
+            
+            const data = await res.json();
+            
+            if (data.success) {
+                document.getElementById('selectionView').classList.add('hidden');
+                document.getElementById('formView').classList.add('hidden');
+                document.getElementById('receiptView').classList.remove('hidden');
+
+                // Fill receipt details from the order data returned by your API
+                const order = data.order || {};
+                document.getElementById('rCarrier').innerText = order.nodeName || 'eSIM Carrier';
+                document.getElementById('rNumber').innerText = order.targetNumber || '--';
+                document.getElementById('rPlan').innerText = order.planName || '--';
+                document.getElementById('rID').innerText = order.paymentReference || tid;
                 
-                if (data.success) {
-                    document.getElementById('selectionView').classList.add('hidden');
-                    document.getElementById('formView').classList.add('hidden');
-                    document.getElementById('receiptView').classList.remove('hidden');
-
-                    document.getElementById('rCarrier').innerText = data.order.nodeName;
-                    document.getElementById('rNumber').innerText = data.order.targetNumber;
-                    document.getElementById('rPlan').innerText = data.order.planName;
-                    document.getElementById('rID').innerText = data.order.paymentReference;
-                    
-                    window.history.replaceState({}, '', window.location.pathname);
-                }
-            } catch (e) {
-                console.error("Verification failed", e);
+                // Clean the URL to prevent re-verification on refresh
+                window.history.replaceState({}, '', window.location.pathname);
+            } else {
+                alert("Verification failed: " + (data.message || "Unknown error"));
             }
+        } catch (e) {
+            console.error("Verification failed", e);
         }
+    }
 
-        function contactManagement() {
-            const num = document.getElementById('rNumber').innerText;
-            const carrier = document.getElementById('rCarrier').innerText;
-            const plan = document.getElementById('rPlan').innerText;
-            const tid = document.getElementById('rID').innerText;
-            const msg = `*ESIM REFILL REQUEST*\n\nCarrier: ${carrier}\nNumber: ${num}\nAmount: ${plan}\nRef ID: ${tid}\n\nPlease confirm payment and initiate refill.`;
-            window.open(`https://wa.me/2348149747864?text=${encodeURIComponent(msg)}`, '_blank');
+    function contactManagement() {
+        const num = document.getElementById('rNumber').innerText;
+        const carrier = document.getElementById('rCarrier').innerText;
+        const plan = document.getElementById('rPlan').innerText;
+        const tid = document.getElementById('rID').innerText;
+        const msg = `*ESIM REFILL REQUEST*\n\nCarrier: ${carrier}\nNumber: ${num}\nAmount: ${plan}\nRef ID: ${tid}\n\nPlease confirm payment and initiate refill.`;
+        window.open(`https://wa.me/2348149747864?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    // Merged window.onload handler
+    window.onload = () => {
+        initPage(); 
+        const urlParams = new URLSearchParams(window.location.search);
+        const transactionId = urlParams.get('transaction_id');
+        const txRef = urlParams.get('tx_ref'); 
+        
+        if (transactionId) {
+            // We pass both the ID and the Reference to the verification function
+            verifyEsimPayment(transactionId, txRef); 
         }
-
-        window.onload = () => {
-            initPage(); 
-            const urlParams = new URLSearchParams(window.location.search);
-            const transactionId = urlParams.get('transaction_id');
-            if (transactionId) {
-                verifyEsimPayment(transactionId);
-            }
-        };
-    </script>
+    };
+</script>
 </body>
 </html>

@@ -302,61 +302,68 @@ async function handleRegister(req, res) {
 
 async function handleDashboardStats(req, res) {
     try {
-        // Ensure models are initialized (Product-agnostic Order fetching)
-        const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({}, { strict: false }), 'users');
-        const Order = mongoose.models.Order || mongoose.model('Order', new mongoose.Schema({}, { strict: false }), 'orders');
+        const User = mongoose.models.User || mongoose.model('User');
+        const Order = mongoose.models.Order || mongoose.model('Order');
 
         const totalUsers = await User.countDocuments();
-        
-        // Define Time Ranges
+        const RATE = parseFloat(process.env.USD_TO_NGN_RATE) || 1650; 
+
         const now = new Date();
         const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
         const startOfWeek = new Date(); startOfWeek.setDate(now.getDate() - 7);
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-        // Fetch ALL successful orders (VPNs, Proxies, etc.)
         const orders = await Order.find({ 
             status: { $in: ['successful', 'completed'] } 
         });
 
-        const RATE = parseFloat(process.env.USD_TO_NGN_RATE) || 1650; 
-
-        let stats = {
-            totalRevenue: 0,
-            daily: 0,
-            weekly: 0,
-            monthly: 0,
-            yearly: 0
-        };
+        // Initialize separate counters
+        let usdStats = { totalRevenue: 0, daily: 0, weekly: 0, monthly: 0, yearly: 0 };
+        let ngnStats = { totalRevenue: 0, daily: 0, weekly: 0, monthly: 0, yearly: 0 };
 
         orders.forEach(order => {
-            // Ensure we capture the amount regardless of field name (amount vs price)
-            const amt = parseFloat(order.amount || order.price || 0);
+            const rawAmount = parseFloat(order.amount || 0);
+            const date = new Date(order.createdAt || now);
             
-            // Use createdAt if available, otherwise fallback to timestamp
-            const date = new Date(order.createdAt || order.timestamp || now);
+            let valUSD = 0;
+            let valNGN = 0;
 
-            stats.totalRevenue += amt;
-            
-            if (date >= startOfDay) stats.daily += amt;
-            if (date >= startOfWeek) stats.weekly += amt;
-            if (date >= startOfMonth) stats.monthly += amt;
-            if (date >= startOfYear) stats.yearly += amt;
+            // Check the actual currency saved in the database
+            if (order.currency === 'NGN') {
+                valNGN = rawAmount;
+                valUSD = rawAmount / RATE; // Convert NGN back to USD for stats
+            } else {
+                valUSD = rawAmount;
+                valNGN = rawAmount * RATE; // Convert USD to NGN for stats
+            }
+
+            // Update USD Stats
+            usdStats.totalRevenue += valUSD;
+            if (date >= startOfDay) usdStats.daily += valUSD;
+            if (date >= startOfWeek) usdStats.weekly += valUSD;
+            if (date >= startOfMonth) usdStats.monthly += valUSD;
+            if (date >= startOfYear) usdStats.yearly += valUSD;
+
+            // Update NGN Stats
+            ngnStats.totalRevenue += valNGN;
+            if (date >= startOfDay) ngnStats.daily += valNGN;
+            if (date >= startOfWeek) ngnStats.weekly += valNGN;
+            if (date >= startOfMonth) ngnStats.monthly += valNGN;
+            if (date >= startOfYear) ngnStats.yearly += valNGN;
         });
 
-        // Send response with automatic NGN conversion
+        // Fetch 5 most recent orders for the "Recent Activity" table
+        const recentOrders = await Order.find({ status: 'successful' })
+            .sort({ createdAt: -1 })
+            .limit(5);
+
         return res.json({ 
             success: true, 
             totalUsers,
-            usd: stats,
-            ngn: {
-                totalRevenue: stats.totalRevenue * RATE,
-                daily: stats.daily * RATE,
-                weekly: stats.weekly * RATE,
-                monthly: stats.monthly * RATE,
-                yearly: stats.yearly * RATE
-            }
+            usd: usdStats,
+            ngn: ngnStats,
+            recentOrders // Send this so the table updates too
         });
     } catch (err) {
         console.error("Stats Error:", err);

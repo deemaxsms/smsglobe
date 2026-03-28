@@ -85,13 +85,35 @@ const ProxySchema = new mongoose.Schema({
 
 const Proxy = mongoose.models.Proxy || mongoose.model('Proxy', ProxySchema);
 
+const esimRefillSchema = new mongoose.Schema({
+    carrierName: { type: String, required: true },    
+    carrierImage: { type: String },     
+    mobileNumber: { type: String, required: true },    
+    planAmount: { type: String, required: true },    
+    userEmail: { type: String, required: true, index: true },    
+    refId: { type: String, unique: true }, 
+    status: { 
+        type: String, 
+        enum: ['pending', 'completed', 'failed'], 
+        default: 'pending' 
+    }
+}, { timestamps: true });
+
+const EsimRefill = mongoose.models.EsimRefill || mongoose.model('EsimRefill', esimRefillSchema);
+
 const orderSchema = new mongoose.Schema({
     userEmail: { type: String, required: true, index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    fullName: { type: String },     
-    productType: { type: String, enum: ['VPN', 'Proxy'], required: true },
+    fullName: { type: String },         
+    productType: { 
+        type: String, 
+        enum: ['VPN', 'Proxy', 'eSIM'], 
+        required: true 
+    },
     planName: { type: String }, 
     nodeName: { type: String }, 
+    productImage: { type: String },
+    targetNumber: { type: String }, 
     amount: { type: Number, required: true },
     currency: { type: String, default: 'USD' }, 
     paymentGateway: { type: String }, 
@@ -99,7 +121,7 @@ const orderSchema = new mongoose.Schema({
         type: String, 
         enum: ['pending', 'successful', 'failed', 'completed'], 
         default: 'pending' 
-    },
+    },    
     paymentReference: { type: String, unique: true },
     activationCode: String, 
     vpnCredentials: {
@@ -204,6 +226,10 @@ app.all('/api/:action', async (req, res) => {
         if (req.method === 'DELETE') return handleDeleteProxy(req, res);
         break;
         case 'transactions': return handleAllTransactions(req, res);
+        case 'esim-refill': 
+        if (req.method === 'POST') return handleEsimRefill(req, res);
+        break;
+        case 'create-esim-order':return handleCreateEsimOrder(req, res);
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
         default:
@@ -717,8 +743,8 @@ async function handlePurchaseVPN(req, res) {
 }
 
 async function handleInitiatePayment(req, res) {
-    // We now accept either vpnId OR proxyId
-    const { vpnId, proxyId, planIndex } = req.body;
+    // Added carrierName, mobileNumber, and planAmount for eSIM
+    const { vpnId, proxyId, carrierName, mobileNumber, planAmount, planIndex } = req.body;
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
@@ -727,67 +753,89 @@ async function handleInitiatePayment(req, res) {
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         const user = await User.findById(decoded.id);
+        if (!user) return res.status(404).json({ success: false, message: "User not found" });
         
         let item;
         let itemType;
         let title;
+        let amountInUSD;
+        let redirectUrl = "https://smsglobe.vercel.app/smsuser/user_dashboard.html"; // Default
 
-        // Determine if we are buying a VPN or a Proxy
+        // 1. Logic for VPN
         if (vpnId) {
             item = await VPN.findById(vpnId);
+            if (!item || !item.plans[planIndex]) return res.status(404).json({ success: false, message: "VPN Plan not found" });
             itemType = "VPN";
             title = "SMSGlobe VPN";
-        } else if (proxyId) {
-            item = await Proxy.findById(proxyId); // Assuming your model is 'Proxy'
+            amountInUSD = item.plans[planIndex].price;
+            redirectUrl = "https://smsglobe.vercel.app/smsuser/user_vpn.html";
+        } 
+        // 2. Logic for Proxy
+        else if (proxyId) {
+            item = await Proxy.findById(proxyId);
+            if (!item || !item.plans[planIndex]) return res.status(404).json({ success: false, message: "Proxy Plan not found" });
             itemType = "Proxy";
             title = "SMSGlobe Proxy";
+            amountInUSD = item.plans[planIndex].price;
+            redirectUrl = "https://smsglobe.vercel.app/smsuser/user_proxy.html";
+        } 
+        // 3. Logic for eSIM Refill
+        else if (carrierName) {
+            itemType = "eSIM";
+            title = `eSIM Refill: ${carrierName}`;
+            // Convert "$15.00" string from frontend to number 15
+            amountInUSD = parseFloat(planAmount.replace(/[$,]/g, ''));
+            redirectUrl = "https://smsglobe.vercel.app/smsuser/esim_refill.html";
+        } else {
+            return res.status(400).json({ success: false, message: "No product specified" });
         }
 
-        if (!item || !item.plans[planIndex]) {
-            return res.status(404).json({ success: false, message: "Product or Plan not found" });
-        }
-
-        const selectedPlan = item.plans[planIndex];
-        const amountInNGN = Math.round(selectedPlan.price * USD_TO_NGN_RATE);
+        const amountInNGN = Math.round(amountInUSD * USD_TO_NGN_RATE);
         const tx_ref = `SMS-${itemType}-${Date.now()}-${decoded.id.slice(-4)}`;
 
-const response = await fetch("https://api.flutterwave.com/v3/payments", {
-    method: "POST",
-    headers: {
-        Authorization: `Bearer ${process.env.FLW_SECRET_KEY}`,
-        "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-        tx_ref: tx_ref,
-        amount: amountInNGN,
-        currency: "NGN",
-        redirect_url: vpnId ? "https://smsglobe.vercel.app/smsuser/user_vpn.html" : "https://smsglobe.vercel.app/smsuser/user_proxy.html",
-        customer: {
-            email: user.email,
-            name: user.fullName,
-        },
-        meta: {
-            userId: decoded.id, // CRITICAL: This links the payment to your User collection
-            productId: vpnId || proxyId,
-            productType: itemType,
-            planIndex: planIndex
-        },
-        customizations: {
-            title: title,
-            description: `${item.name} ($${selectedPlan.price} USD)`,
-            logo: "https://imgur.com/8YeZgfx.png"
-        },
-    }),
-});
+        const response = await fetch("https://api.flutterwave.com/v3/payments", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${process.env.FLW_SECRET_KEY}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                tx_ref: tx_ref,
+                amount: amountInNGN,
+                currency: "NGN",
+                redirect_url: redirectUrl,
+                customer: {
+                    email: user.email,
+                    name: user.fullName,
+                },
+                meta: {
+                    userId: decoded.id,
+                    productType: itemType,
+                    // If eSIM, we store carrier and number. If VPN/Proxy, we store productId
+                    productId: vpnId || proxyId || carrierName, 
+                    planIndex: planIndex,
+                    mobileNumber: mobileNumber || null, // Specific to eSIM
+                    planAmount: planAmount || null      // Specific to eSIM
+                },
+                customizations: {
+                    title: title,
+                    description: itemType === "eSIM" 
+                        ? `Refill for ${mobileNumber} (${planAmount})` 
+                        : `${item.name} ($${amountInUSD} USD)`,
+                    logo: "https://imgur.com/8YeZgfx.png"
+                },
+            }),
+        });
 
         const data = await response.json();
         if (data.status === "success") {
             return res.json({ success: true, link: data.data.link });
         } else {
-            return res.status(500).json({ success: false, message: "Gateway Error" });
+            return res.status(500).json({ success: false, message: "Flutterwave Error" });
         }
     } catch (err) {
-        return res.status(401).json({ success: false, message: "Unauthorized" });
+        console.error("Initiate Payment Error:", err);
+        return res.status(401).json({ success: false, message: "Unauthorized or Session Expired" });
     }
 }
 
@@ -803,21 +851,21 @@ async function handleVerifyPayment(req, res) {
         const data = await response.json();
 
         if (data.status === "success" && data.data.status === "successful") {
-            // 1. Extract our custom Meta data
-            const { productId, productType, planIndex, userId } = data.data.meta;
+            // 1. Extract Meta data (Including eSIM specific fields)
+            const { productId, productType, planIndex, userId, mobileNumber, planAmount } = data.data.meta;
             
-            // 2. Fetch the AUTHENTIC user from your DB
-            // This prevents the messy "ravesb_..." email from appearing in your orders
+            // 2. Fetch the User
             const actualUser = await User.findById(userId);
             if (!actualUser) return res.status(404).json({ success: false, message: "User account not found" });
 
             const userEmail = actualUser.email; 
             const amountPaid = data.data.amount;
             const paymentRef = data.data.tx_ref;
-            const currency = data.data.currency; // Usually "NGN"
+            const currency = data.data.currency;
 
             let credentials = {};
             let productDetails = { name: "", plan: "" };
+            let targetNum = null;
 
             // --- 3. HANDLE VPN PURCHASE ---
             if (productType === "VPN") {
@@ -826,12 +874,10 @@ async function handleVerifyPayment(req, res) {
                     { $inc: { stock: -1 } },
                     { new: true, select: '+password' }
                 );
-
                 if (!item) return res.status(400).json({ success: false, message: "VPN out of stock" });
 
                 productDetails.name = item.name;
                 productDetails.plan = item.plans[planIndex]?.duration || "Standard Plan";
-
                 credentials = {
                     type: "VPN",
                     username: item.username,
@@ -846,46 +892,55 @@ async function handleVerifyPayment(req, res) {
                     { $inc: { stock: -1 } },
                     { new: true }
                 );
-
                 if (!item) return res.status(400).json({ success: false, message: "Proxy out of stock" });
 
                 productDetails.name = item.name;
                 productDetails.plan = `${item.plans[planIndex]?.ip_count || 0} IPs`;
-
                 credentials = {
                     type: "Proxy",
                     activationCode: item.activationCode,
                     instructions: item.instructions || "Check dashboard."
                 };
+
+            // --- 5. NEW: HANDLE ESIM REFILL ---
+            } else if (productType === "eSIM") {
+                productDetails.name = productId; // In eSIM initiate, we passed Carrier Name as productId
+                productDetails.plan = planAmount; // e.g., "$15.00"
+                targetNum = mobileNumber;         // The phone number to refill
+
+                credentials = {
+                    type: "eSIM",
+                    instructions: "Your refill request has been received. Processing usually takes 5-30 minutes."
+                };
             }
 
-            // --- 5. CREATE ORDER (TRANSACTION HISTORY) ---
+            // --- 6. CREATE ORDER (Saves everything to DB) ---
             try {
                 await Order.create({
                     userId: userId,
-                    userEmail: userEmail, // Using the clean email from User profile
+                    userEmail: userEmail,
                     fullName: actualUser.fullName,
                     productType: productType,
                     planName: productDetails.plan,
                     nodeName: productDetails.name,
-                    amount: amountPaid,
+                    targetNumber: targetNum, // CRITICAL: This saves the eSIM mobile number
+                    amount: amountPaid,      // The Naira amount paid
                     currency: currency, 
                     status: "successful",
                     paymentReference: paymentRef,
-                    // Save specific credentials so they are visible in the user's history
                     activationCode: credentials.activationCode,
                     vpnCredentials: productType === "VPN" ? {
                         username: credentials.username,
                         password: credentials.password
                     } : undefined
                 });
-                console.log(`Order recorded: ${userEmail} bought ${productDetails.name}`);
             } catch (dbErr) {
                 console.error("Order Record Failed:", dbErr);
             }
 
-            // --- 6. DELIVERY ---
+            // --- 7. DELIVERY EMAIL ---
             try {
+                // You can modify your email template to handle eSIM instructions
                 await sendDeliveryEmail(userEmail, credentials); 
             } catch (emailErr) {
                 console.error("Email Delivery Failed:", emailErr);
@@ -904,6 +959,7 @@ async function handleVerifyPayment(req, res) {
         return res.status(500).json({ success: false, message: "Internal server error." });
     }
 }
+
 
 const sendDeliveryEmail = async (userEmail, credentials) => {
     const transporter = nodemailer.createTransport({
@@ -1126,6 +1182,48 @@ async function handleAllTransactions(req, res) {
     } catch (err) {
         console.error("Error fetching transactions:", err);
         res.status(500).json({ success: false, message: "Server error" });
+    }
+}
+
+async function handleCreateEsimOrder(req, res) {
+    const { email, carrierName, mobileNumber, planAmount, refId, productImage } = req.body;
+    const USD_TO_NGN_RATE = 1650;
+
+    // Validation
+    if (!email || !carrierName || !mobileNumber || !planAmount) {
+        return res.status(400).json({ success: false, message: "Missing required eSIM data" });
+    }
+
+    try {
+        // 1. Clean the USD amount (e.g., "$15.00" -> 15)
+        const amountUSD = parseFloat(planAmount.replace(/[$,]/g, ''));
+        
+        // 2. Calculate the Naira equivalent for your records
+        const amountNGN = Math.round(amountUSD * USD_TO_NGN_RATE);
+
+        // 3. Create the order using your existing Order model
+        const newOrder = await Order.create({
+            userEmail: email,
+            productType: 'eSIM',
+            nodeName: carrierName,      // Mapping Carrier to nodeName
+            planName: planAmount,       // Mapping Plan to planName
+            targetNumber: mobileNumber, // The eSIM phone number
+            productImage: productImage, // Carrier logo URL
+            amount: amountNGN,          // Saving the calculated Naira amount
+            currency: 'NGN',
+            paymentReference: refId || `REF-${Date.now()}`,
+            status: 'pending'           // Stays pending for admin refill
+        });
+
+        return res.status(201).json({ 
+            success: true, 
+            message: "Order created successfully", 
+            orderId: newOrder._id 
+        });
+
+    } catch (err) {
+        console.error("eSIM Creation Error:", err);
+        return res.status(500).json({ success: false, message: "Server database error" });
     }
 }
 

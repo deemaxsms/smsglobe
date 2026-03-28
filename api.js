@@ -539,6 +539,7 @@ async function handleGetUserMessages(req, res) {
         return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 }
+
 async function handlePurchaseVPN(req, res) {
     const { vpnId, planIndex } = req.body;
     const authHeader = req.headers['authorization'];
@@ -654,7 +655,6 @@ async function handleVerifyPayment(req, res) {
     const { transactionId } = req.body;
 
     try {
-        // Verify with Flutterwave
         const response = await fetch(`https://api.flutterwave.com/v3/transactions/${transactionId}/verify`, {
             method: "GET",
             headers: { Authorization: `Bearer ${process.env.FLW_SECRET_KEY}` },
@@ -662,16 +662,14 @@ async function handleVerifyPayment(req, res) {
 
         const data = await response.json();
 
+        // Check if payment was actually successful in Flutterwave's records
         if (data.status === "success" && data.data.status === "successful") {
-            // Find the VPN used in the customization description or metadata
-            // For now, we fetch the node and return credentials
-            // Note: You might want to pass vpnId in 'meta' during initiation to be precise
             
-            // Return dummy or real credentials from your VPN schema
-            // We find a generic 'active' node to give details for
-            const vpn = await VPN.findOne({ stock: { $gt: 0 } }).select('+password');
+            // Retrieve the specific vpnId we stored in the 'meta' field earlier
+            const purchasedVpnId = data.data.meta.vpnId;
+            const vpn = await VPN.findById(purchasedVpnId).select('+password');
 
-            if (vpn) {
+            if (vpn && vpn.stock > 0) {
                 vpn.stock -= 1;
                 await vpn.save();
                 
@@ -680,16 +678,19 @@ async function handleVerifyPayment(req, res) {
                     credentials: {
                         username: vpn.username,
                         password: vpn.password,
-                        instructions: vpn.instructions || "Contact support for setup."
+                        instructions: vpn.instructions || "Download the client and use these credentials."
                     } 
                 });
+            } else {
+                return res.status(400).json({ success: false, message: "Node sold out during transaction." });
             }
         }
-        res.status(400).json({ success: false, message: "Verification failed" });
+        res.status(400).json({ success: false, message: "Transaction not confirmed." });
     } catch (err) {
-        res.status(500).json({ success: false, message: "Server error" });
+        res.status(500).json({ success: false, message: "Server verification error." });
     }
 }
+
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

@@ -166,34 +166,45 @@
         }
     }
 
-    async function verifyPayment(transactionId, txRef) {
-        const token = localStorage.getItem('userToken');
-        document.getElementById('modalTitle').innerText = "Verifying...";
-        document.getElementById('vpnModal').classList.remove('hidden');
+   async function verifyPayment(transactionId, txRef) {
+    const token = localStorage.getItem('userToken');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalInstructions = document.getElementById('modalInstructions');
+    const modalUser = document.getElementById('modalUser');
+    const modalPass = document.getElementById('modalPass');
 
-        try {
-            const res = await fetch(`${API_BASE_URL}/verify-payment`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ transactionId, txRef })
-            });
+    modalTitle.innerText = "Verifying Payment...";
+    document.getElementById('vpnModal').classList.remove('hidden');
 
-            const data = await res.json();
-            if (data.success) {
-                document.getElementById('modalTitle').innerText = "Node Activated! ✅";
-                document.getElementById('modalInstructions').innerText = data.credentials.instructions;
-                document.getElementById('modalUser').innerText = data.credentials.username;
-                document.getElementById('modalPass').innerText = data.credentials.password;
-                window.history.replaceState({}, document.title, window.location.pathname);
-            } else {
-                alert("Verification failed.");
-                closeModal();
-            }
-        } catch (err) { closeModal(); }
+    try {
+        const res = await fetch(`${API_BASE_URL}/verify-payment`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            // Ensure the key matches what your backend destructures: { transactionId }
+            body: JSON.stringify({ transactionId: transactionId, txRef: txRef })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            modalTitle.innerText = "Node Activated! ✅";
+            modalInstructions.innerText = data.credentials.instructions;
+            modalUser.innerText = data.credentials.username;
+            modalPass.innerText = data.credentials.password;
+            
+            // Clean the URL so refreshing doesn't trigger verification again
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+            alert(data.message || "Verification failed. Please contact support.");
+            closeModal();
+        }
+    } catch (err) { 
+        console.error("Verify Error:", err);
+        closeModal(); 
     }
+}
 
     function closeModal() {
         document.getElementById('vpnModal').classList.add('hidden');

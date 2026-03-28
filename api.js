@@ -69,6 +69,21 @@ const vpnSchema = new mongoose.Schema({
 
 const VPN = mongoose.models.VPN || mongoose.model('VPN', vpnSchema);
 
+const ProxySchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    imageUrl: { type: String },
+    activationCode: { type: String },
+    instructions: { type: String },
+    // Merged Tier: Each plan contains its own IP count and Price
+    plans: [{
+        ip_count: { type: Number, required: true },
+        price: { type: Number, required: true }
+    }],
+    createdAt: { type: Date, default: Date.now }
+});
+
+const Proxy = mongoose.models.Proxy || mongoose.model('Proxy', ProxySchema);
+
 // --- 3. OPTIMIZED MONGOOSE CONNECTION ---
 let isConnected = false;
 const connectDB = async () => {
@@ -813,6 +828,72 @@ const sendVPNEmail = async (userEmail, credentials) => {
         html: htmlContent
     });
 };
+
+// --- PROXY HANDLERS ---
+
+async function handleGetProxies(req, res) {
+    try {
+        const proxies = await Proxy.find({}).sort({ createdAt: -1 });
+        return res.json({ success: true, proxies });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Fetch failed" });
+    }
+}
+
+async function handleAddProxy(req, res) {
+    try {
+        const data = req.body;
+
+        // Clean and parse the merged Pricing/IP tiers
+        if (data.plans && Array.isArray(data.plans)) {
+            data.plans = data.plans.map(p => ({
+                ip_count: parseInt(p.ip_count) || 0,
+                price: parseFloat(p.price) || 0
+            }));
+        }
+
+        const newProxy = new Proxy(data);
+        await newProxy.save();
+        
+        return res.json({ success: true, message: "Proxy Package Deployed Successfully" });
+    } catch (err) {
+        console.error("Add Proxy Error:", err);
+        return res.status(500).json({ success: false, message: "Deployment failed" });
+    }
+}
+
+async function handleUpdateProxy(req, res) {
+    try {
+        const { proxyId, ...updateData } = req.body;
+
+        if (updateData.plans && Array.isArray(updateData.plans)) {
+            updateData.plans = updateData.plans.map(p => ({
+                ip_count: parseInt(p.ip_count) || 0,
+                price: parseFloat(p.price) || 0
+            }));
+        }
+
+        const updated = await Proxy.findByIdAndUpdate(proxyId, updateData, { new: true });
+        
+        if (!updated) return res.status(404).json({ success: false, message: "Proxy not found" });
+
+        return res.json({ success: true, message: "Proxy Package Updated" });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Update failed" });
+    }
+}
+
+async function handleDeleteProxy(req, res) {
+    try {
+        const { id } = req.query;
+        if (!id) return res.status(400).json({ success: false, message: "ID is required" });
+        
+        await Proxy.findByIdAndDelete(id);
+        return res.json({ success: true, message: "Proxy Package Deleted" });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Delete failed" });
+    }
+}
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

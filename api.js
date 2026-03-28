@@ -713,36 +713,61 @@ async function handleVerifyPayment(req, res) {
             let credentials = {};
 
             if (productType === "VPN") {
+                // 1. Fetch VPN and include password
                 item = await VPN.findById(productId).select('+password');
+                if (!item) return res.status(404).json({ success: false, message: "VPN not found" });
+
+                // 2. Decrement Stock
+                if (item.stock > 0) {
+                    item.stock -= 1;
+                    await item.save();
+                }
+
                 credentials = {
                     type: "VPN",
                     username: item.username,
                     password: item.password,
-                    instructions: item.instructions
+                    instructions: item.instructions || "Download the OpenVPN config from your dashboard."
                 };
-            } else {
+            } else if (productType === "Proxy") {
+                // 1. Fetch Proxy
                 item = await Proxy.findById(productId);
-               const credentials = {
+                if (!item) return res.status(404).json({ success: false, message: "Proxy package not found" });
+
+                // 2. Decrement Stock (If your Proxy model has stock)
+                if (item.stock !== undefined && item.stock > 0) {
+                    item.stock -= 1;
+                    await item.save();
+                }
+
+                // 3. Prepare Credentials (Matching the frontend modal expectations)
+                credentials = {
                     type: "Proxy",
-                    activationCode: item.activationCode,
-                    instructions: item.instructions || "Use the code above to access your proxy."
+                    activationCode: item.activationCode, // This matches modalCode.innerText
+                    instructions: item.instructions || "Configure your browser or tool using the SOCKS5 protocol with the code provided."
                 };
             }
 
-            // Logic for stock management (if applicable)
-            if (item) {
-                // Send specific email based on productType
+            // 4. Send Delivery Email
+            try {
                 await sendDeliveryEmail(userEmail, credentials); 
-
-                return res.json({ 
-                    success: true, 
-                    credentials: credentials 
-                });
+            } catch (emailErr) {
+                console.error("Email Delivery Failed:", emailErr);
+                // We don't block the response if email fails, as the modal will still show the code
             }
+
+            // 5. Success Response to Frontend
+            return res.json({ 
+                success: true, 
+                credentials: credentials 
+            });
         }
-        res.status(400).json({ success: false, message: "Transaction failed." });
+
+        return res.status(400).json({ success: false, message: "Transaction verification failed with provider." });
+
     } catch (err) {
-        res.status(500).json({ success: false, message: "Server error." });
+        console.error("Payment Verification Error:", err);
+        return res.status(500).json({ success: false, message: "Internal server error during verification." });
     }
 }
 

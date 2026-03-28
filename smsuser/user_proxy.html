@@ -26,6 +26,11 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .category-card:hover { transform: translateY(-3px); }
         .active-scale:active { transform: scale(0.98); }
+        .modal-animate { animation: modalIn 0.3s ease-out; }
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
     </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
@@ -85,36 +90,36 @@
             </div>
 
             <div id="categoryGrid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-
             <div id="proxyGrid" class="hidden grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-5"></div>
         </main>
     </div>
 
     <div id="proxyModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
-        <div class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl">
+        <div class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl modal-animate">
             <div class="bg-brand-blue p-8 text-center">
                 <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4">
                     <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
                 </div>
                 <h2 id="modalTitle" class="text-2xl font-bold text-white uppercase tracking-tight">Proxy Secured!</h2>
+                <p class="text-blue-100 text-[10px] mt-1 font-bold uppercase tracking-widest">Transaction Successful</p>
             </div>
             <div class="p-6">
-                <div class="bg-brand-background rounded-2xl p-5 space-y-4">
+                <div class="bg-brand-background rounded-2xl p-5 space-y-4 border border-brand-blue/5">
                     <div>
-                        <p class="text-[9px] font-bold text-brand-blue uppercase">Activation Instructions</p>
-                        <p id="modalInstructions" class="text-[10px] text-brand-midText italic mt-1"></p>
+                        <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider">Activation Instructions</p>
+                        <p id="modalInstructions" class="text-[11px] text-brand-midText leading-relaxed mt-1"></p>
                     </div>
                     <div>
-                        <p class="text-[9px] font-bold text-brand-lightText uppercase">Your Activation Code</p>
-                        <div class="flex items-center justify-between mt-1 bg-white p-2 rounded-lg border border-brand-border">
-                            <p id="modalCode" class="text-xs font-mono font-bold text-brand-darkText"></p>
-                            <button onclick="copyToClipboard('modalCode', this)" class="text-brand-blue active-scale">
+                        <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Your Activation Code</p>
+                        <div class="flex items-center justify-between mt-1.5 bg-white p-3 rounded-xl border border-brand-border">
+                            <p id="modalCode" class="text-xs font-mono font-bold text-brand-darkText tracking-wider"></p>
+                            <button onclick="copyToClipboard('modalCode', this)" class="text-brand-blue active-scale p-1">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                             </button>
                         </div>
                     </div>
                 </div>
-                <button onclick="closeModal()" class="w-full mt-6 py-4 bg-brand-blue text-white rounded-2xl text-xs font-bold uppercase active-scale shadow-lg shadow-brand-blue/20">Close Dashboard</button>
+                <button onclick="closeModal()" class="w-full mt-6 py-4 bg-brand-blue text-white rounded-2xl text-xs font-bold uppercase active-scale shadow-lg shadow-brand-blue/20 transition-all hover:bg-blue-700">Go to Dashboard</button>
             </div>
         </div>
     </div>
@@ -129,9 +134,41 @@
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
 
+    async function checkPaymentStatus() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const transactionId = urlParams.get('transaction_id');
+        const status = urlParams.get('status');
+
+        if (transactionId && status === 'successful') {
+            console.log("Verifying transaction: ", transactionId);
+            try {
+                const res = await fetch(`${API_BASE_URL}/verify-payment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ transactionId })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    // Remove query params from URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    // Open the modal with fresh data
+                    showSuccessModal(data.credentials);
+                } else {
+                    alert("Payment verification failed: " + data.message);
+                }
+            } catch (err) {
+                console.error("Verification Error:", err);
+            }
+        }
+    }
+
     async function initPage() {
         const token = localStorage.getItem('userToken');
         if (!token) { window.location.href = 'user_login.html'; return; }
+
+        // First, check if we're coming back from a successful Flutterwave payment
+        await checkPaymentStatus();
 
         try {
             const res = await fetch(`${API_BASE_URL}/proxies`);
@@ -227,7 +264,7 @@
             const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ proxyId, planIndex })
+                body: JSON.stringify({ proxyId, planIndex, type: 'proxy' })
             });
             const data = await res.json();
             if (data.link) window.location.href = data.link;
@@ -237,86 +274,29 @@
         btn.innerText = "Purchase Access";
     }
 
+    function showSuccessModal(credentials) {
+        const modal = document.getElementById('proxyModal');
+        const modalCode = document.getElementById('modalCode');
+        const modalInstructions = document.getElementById('modalInstructions');
+        
+        modalCode.innerText = credentials.activationCode || "N/A";
+        modalInstructions.innerText = credentials.instructions || "Your proxy is ready. Check your email for full setup details.";
+
+        modal.classList.remove('hidden');
+    }
+
     function closeModal() {
         document.getElementById('proxyModal').classList.add('hidden');
-        window.location.reload();
+        window.location.href = 'user_dashboard.html';
     }
 
     async function copyToClipboard(id, btn) {
         const text = document.getElementById(id).innerText;
         await navigator.clipboard.writeText(text);
         const original = btn.innerHTML;
-        btn.innerHTML = '<span class="text-[9px] font-bold">COPIED</span>';
+        btn.innerHTML = '<span class="text-[9px] font-bold text-green-600">COPIED</span>';
         setTimeout(() => { btn.innerHTML = original; }, 1500);
     }
-   async function checkPaymentStatus() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const transactionId = urlParams.get('transaction_id');
-    const status = urlParams.get('status');
-
-    if (transactionId && status === 'successful') {
-        // Show a loading state if you want
-        console.log("Verifying transaction: ", transactionId);
-        
-        try {
-            const res = await fetch(`${API_BASE_URL}/verify-payment`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ transactionId })
-            });
-            const data = await res.json();
-
-            if (data.success) {
-                // Clear the URL parameters so it doesn't verify again on refresh
-                window.history.replaceState({}, document.title, window.location.pathname);
-                
-                // TRIGGER THE MODAL WITH DATA FROM BACKEND
-                showSuccessModal(data.credentials);
-            } else {
-                alert("Payment verification failed: " + data.message);
-            }
-        } catch (err) {
-            console.error("Verification Error:", err);
-        }
-    }
-}
-
-// Update your initPage to include the check
-async function initPage() {
-    const token = localStorage.getItem('userToken');
-    if (!token) { window.location.href = 'user_login.html'; return; }
-
-    // Check if we just returned from Flutterwave
-    await checkPaymentStatus();
-
-    try {
-        const res = await fetch(`${API_BASE_URL}/proxies`);
-        const data = await res.json();
-        if (data.success) {
-            allProxies = data.proxies;
-            showCategories();
-        }
-    } catch (err) { console.error("Load Error:", err); }
-}
-
-function showSuccessModal(credentials) {
-    const modal = document.getElementById('proxyModal');
-    const modalCode = document.getElementById('modalCode');
-    const modalInstructions = document.getElementById('modalInstructions');
-    const modalTitle = document.getElementById('modalTitle');
-
-    // Set Header
-    modalTitle.innerText = "Proxy Secured!";
-    
-    // Set the Code (from your ProxySchema: activationCode)
-    modalCode.innerText = credentials.activationCode || "N/A";
-    
-    // Set Instructions
-    modalInstructions.innerText = credentials.instructions || "Check your email for setup details.";
-
-    // Show Modal
-    modal.classList.remove('hidden');
-}
 
     window.onload = initPage;
 </script>

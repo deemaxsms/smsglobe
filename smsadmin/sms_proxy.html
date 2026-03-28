@@ -185,9 +185,18 @@
         const token = localStorage.getItem('smsglobe_admin_token');
         const list = document.getElementById('proxy-list');
         try {
-            const res = await fetch('/api/proxies', { headers: { 'Authorization': `Bearer ${token}` } });
+            // Updated to relative path - ensure your backend is deployed
+            const res = await fetch('/api/proxies', { 
+                headers: { 'Authorization': `Bearer ${token}` } 
+            });
             const data = await res.json();
             allProxies = data.proxies || [];
+            
+            if (allProxies.length === 0) {
+                list.innerHTML = '<tr><td colspan="4" class="p-10 text-center text-brand-lightText">No proxy packages found.</td></tr>';
+                return;
+            }
+
             list.innerHTML = allProxies.map(p => {
                 const plans = p.plans || [];
                 return `
@@ -215,16 +224,70 @@
                         </td>
                     </tr>`;
             }).join('');
-        } catch (err) { list.innerHTML = '<tr><td colspan="4">Error loading proxies.</td></tr>'; }
+        } catch (err) { 
+            list.innerHTML = '<tr><td colspan="4" class="p-10 text-center text-red-500">Error connection to API.</td></tr>'; 
+        }
     }
 
+    // --- NEW: EDIT LOGIC ---
+    function editProxy(id) {
+        const proxy = allProxies.find(p => p._id === id);
+        if (!proxy) return;
+
+        const form = document.getElementById('proxyForm');
+        form.dataset.editId = id; // Store ID for the submit handler
+        
+        document.getElementById('modalTitle').innerText = 'Update Proxy Package';
+        document.getElementById('submitBtn').innerText = 'Update Changes';
+        
+        document.getElementById('name').value = proxy.name;
+        document.getElementById('imageUrl').value = proxy.imageUrl || '';
+        document.getElementById('activationCode').value = proxy.activationCode || '';
+        document.getElementById('instructions').value = proxy.instructions || '';
+        
+        // Reset and Fill Tiers
+        const container = document.getElementById('pricingContainer');
+        container.innerHTML = '';
+        if (proxy.plans && proxy.plans.length > 0) {
+            proxy.plans.forEach(plan => addPriceRow(plan.ip_count, plan.price));
+        } else {
+            addPriceRow();
+        }
+
+        document.getElementById('proxyModal').classList.remove('hidden');
+    }
+
+    // --- NEW: DELETE LOGIC ---
+    async function deleteProxy(id) {
+        if (!confirm('Are you sure you want to delete this proxy package?')) return;
+        
+        const token = localStorage.getItem('smsglobe_admin_token');
+        try {
+            const res = await fetch(`/api/proxies?id=${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.success) {
+                fetchProxies();
+            } else {
+                alert(data.message || 'Delete failed');
+            }
+        } catch (err) {
+            alert('Server error during deletion.');
+        }
+    }
+
+    // --- MODIFIED SUBMIT HANDLER (Handles both Add and Update) ---
     document.getElementById('proxyForm').addEventListener('submit', async (e) => {
         e.preventDefault();
+        const form = e.target;
         const btn = document.getElementById('submitBtn');
         const token = localStorage.getItem('smsglobe_admin_token');
+        const editId = form.dataset.editId;
         
         btn.disabled = true;
-        btn.innerText = 'Deploying...';
+        btn.innerText = 'Processing...';
 
         const payload = {
             name: document.getElementById('name').value,
@@ -237,9 +300,11 @@
             }))
         };
 
+        if (editId) payload.proxyId = editId;
+
         try {
             const res = await fetch('/api/proxies', {
-                method: 'POST',
+                method: editId ? 'PATCH' : 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
@@ -247,13 +312,16 @@
                 body: JSON.stringify(payload)
             });
 
-            if(res.ok) {
-                alert(`Successfully deployed ${payload.name}.`);
+            const result = await res.json();
+
+            if(result.success) {
                 closeModal();
                 fetchProxies();
+            } else {
+                alert(result.message || 'Action failed');
             }
         } catch (err) {
-            alert('Error during deployment.');
+            alert('Error connecting to server.');
         } finally {
             btn.disabled = false;
             btn.innerText = 'Deploy Proxy Package';
@@ -261,7 +329,11 @@
     });
 
     function openAddProxyModal() {
-        document.getElementById('proxyForm').reset();
+        const form = document.getElementById('proxyForm');
+        delete form.dataset.editId; // Clear edit ID
+        form.reset();
+        document.getElementById('modalTitle').innerText = 'Proxy Package Configuration';
+        document.getElementById('submitBtn').innerText = 'Deploy Proxy Package';
         document.getElementById('pricingContainer').innerHTML = '';
         addPriceRow();
         document.getElementById('proxyModal').classList.remove('hidden');

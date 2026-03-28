@@ -169,6 +169,12 @@ app.all('/api/:action', async (req, res) => {
         case 'purchase-vpn': return handlePurchaseVPN(req, res);
         case 'initiate-payment': return handleInitiatePayment(req, res);
         case 'verify-payment': return handleVerifyPayment(req, res);
+        case 'proxies': 
+        if (req.method === 'GET') return handleGetProxies(req, res);
+        if (req.method === 'POST') return handleAddProxy(req, res);
+        if (req.method === 'PATCH') return handleUpdateProxy(req, res);
+        if (req.method === 'DELETE') return handleDeleteProxy(req, res);
+        break;
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
         default:

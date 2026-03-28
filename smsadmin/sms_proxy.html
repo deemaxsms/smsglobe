@@ -149,7 +149,7 @@
                     <div class="flex justify-between items-center mb-2">
                         <label class="block text-[10px] font-bold text-brand-blue uppercase tracking-widest">IP Address / Host</label>
                         <label class="flex items-center gap-2 cursor-pointer">
-                            <span class="text-[10px] font-bold text-brand-midText uppercase">Bulk Mode (5-10 IPs)</span>
+                            <span class="text-[10px] font-bold text-brand-midText uppercase">Bulk Mode (Multiple IPs)</span>
                             <input type="checkbox" id="bulkToggle" onchange="toggleBulkInput()" class="w-4 h-4 accent-brand-blue">
                         </label>
                     </div>
@@ -159,8 +159,8 @@
                     </div>
                     
                     <div id="bulkIPContainer" class="hidden">
-                        <textarea id="bulkHosts" placeholder="Paste IPs here (One per line)&#10;1.1.1.1&#10;2.2.2.2&#10;3.3.3.3" rows="4" class="w-full bg-white border border-brand-border p-3 rounded-xl outline-none focus:border-brand-blue transition-all font-mono text-xs"></textarea>
-                        <p class="text-[10px] text-brand-lightText mt-1">System will create a separate node for each IP listed.</p>
+                        <textarea id="bulkHosts" placeholder="Paste 9Proxy IPs here...&#10;1.1.1.1&#10;2.2.2.2&#10;3.3.3.3" rows="4" class="w-full bg-white border border-brand-border p-3 rounded-xl outline-none focus:border-brand-blue transition-all font-mono text-xs"></textarea>
+                        <p class="text-[10px] text-brand-lightText mt-2">Separate IPs by <b>newlines</b>, <b>commas</b>, or <b>semicolons</b>.</p>
                     </div>
                 </div>
 
@@ -202,13 +202,11 @@
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
 
-    // --- NEW: Handle Bulk IP Interface ---
     function toggleBulkInput() {
         const isBulk = document.getElementById('bulkToggle').checked;
         document.getElementById('singleIPContainer').classList.toggle('hidden', isBulk);
         document.getElementById('bulkIPContainer').classList.toggle('hidden', !isBulk);
         
-        // Toggle required attributes to prevent HTML5 validation errors
         document.getElementById('host').required = !isBulk;
         document.getElementById('bulkHosts').required = isBulk;
     }
@@ -259,12 +257,13 @@
         } catch (err) { list.innerHTML = '<tr><td colspan="5">Error loading proxies.</td></tr>'; }
     }
 
-    // --- FORM SUBMISSION LOGIC ---
     document.getElementById('proxyForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = document.getElementById('submitBtn');
+        const token = localStorage.getItem('smsglobe_admin_token');
+        
         btn.disabled = true;
-        btn.innerText = 'Synchronizing...';
+        btn.innerText = 'Syncing Batch...';
 
         const isBulk = document.getElementById('bulkToggle').checked;
         const baseData = {
@@ -280,29 +279,29 @@
             }))
         };
 
-        // Determine IPs to send
-        let hosts = isBulk 
-            ? document.getElementById('bulkHosts').value.split('\n').filter(h => h.trim() !== '') 
-            : [document.getElementById('host').value];
+        // Improved parsing for Bulk IPs (Newlines, commas, semicolons)
+        let rawHosts = isBulk ? document.getElementById('bulkHosts').value : document.getElementById('host').value;
+        let hosts = rawHosts.split(/[\n,;]+/).map(h => h.trim()).filter(h => h !== '');
 
         try {
-            // Send each IP as a separate entry to the backend
-            for (let host of hosts) {
-                const payload = { ...baseData, host: host.trim() };
-                await fetch('/api/proxies', {
+            // Processing in parallel for speed
+            const requests = hosts.map(host => {
+                return fetch('/api/proxies', {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('smsglobe_admin_token')}`
+                        'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ ...baseData, host })
                 });
-            }
-            alert(`Successfully synced ${hosts.length} proxy node(s).`);
+            });
+
+            await Promise.all(requests);
+            alert(`Batch sync complete. Processed ${hosts.length} proxy nodes.`);
             closeModal();
             fetchProxies();
         } catch (err) {
-            alert('Error syncing data.');
+            alert('Error during batch synchronization.');
         } finally {
             btn.disabled = false;
             btn.innerText = 'Sync Proxy Data';

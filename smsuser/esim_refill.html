@@ -27,8 +27,8 @@
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         @media (max-width: 768px) { html { font-size: 14px; } .safe-bottom { padding-bottom: env(safe-area-inset-bottom); } }
-        @keyframes modalShow { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-        .modal-animate { animation: modalShow 0.3s ease-out forwards; }
+        @keyframes fadeInScale { from { opacity: 0; transform: scale(0.98) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        .animate-flow { animation: fadeInScale 0.4s ease-out forwards; }
     </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText mb-20 lg:mb-0">
@@ -42,9 +42,10 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
-        <nav class="flex-grow p-4 space-y-1 overflow-y-auto no-scrollbar">
-            <p class="px-3 text-[10px] font-bold text-brand-lightText uppercase tracking-widest mb-2">Main Menu</p>
-            <a href="user_dashboard.html" class="flex items-center space-x-3 px-3 py-2.5 text-brand-midText hover:bg-gray-50 rounded-xl text-xs font-medium transition-all">
+
+         <nav class="flex-grow p-4 space-y-1">
+            <p class="px-3 text-[10px] font-bold text-brand-lightText uppercase tracking-widest mb-2">Navigation</p>
+            <a href="user_dashboard.html" class="flex items-center space-x-3 px-3 py-2 bg-brand-background text-brand-blue rounded-lg text-xs font-semibold">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                 <span>Dashboard</span>
             </a>
@@ -58,7 +59,11 @@
             </a>
             <a href="user_vpn.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                <span>VPN Nodes</span>
+                <span>VPNs</span>
+            </a>
+            <a href="user_proxy.html" class="flex items-center space-x-3 px-3 py-2.5 text-brand-midText hover:bg-gray-50 rounded-xl text-xs font-medium transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                <span>Proxies</span>
             </a>
         </nav>
     </aside>
@@ -69,185 +74,173 @@
                 <button onclick="toggleSidebar()" class="lg:hidden p-2 bg-brand-background text-brand-blue rounded-xl">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
                 </button>
-                <h1 class="text-sm md:text-base font-bold text-brand-darkText uppercase tracking-tight">eSIM Network Refill</h1>
+                <h1 class="text-sm font-bold text-brand-darkText uppercase tracking-tight">eSIM Network Refill</h1>
             </div>
-            <div class="flex items-center gap-2">
-                <div class="hidden md:block text-right">
-                    <p class="text-[10px] font-bold text-brand-blue uppercase">Connection</p>
-                    <p class="text-[9px] text-green-600 font-medium">Direct Carrier Access</p>
-                </div>
-                <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-5 lg:hidden ml-2">
-            </div>
+            <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-5 lg:hidden">
         </header>
 
-        <main class="p-4 md:p-8 max-w-7xl w-full mx-auto flex flex-col flex-grow">
-            <div id="carrierLoading" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
-                <div class="h-48 md:h-64 bg-white border border-brand-border animate-pulse rounded-2xl"></div>
-                <div class="h-48 md:h-64 bg-white border border-brand-border animate-pulse rounded-2xl"></div>
-                <div class="h-48 md:h-64 bg-white border border-brand-border animate-pulse rounded-2xl"></div>
-                <div class="h-48 md:h-64 bg-white border border-brand-border animate-pulse rounded-2xl"></div>
+        <main class="p-4 md:p-8 max-w-5xl w-full mx-auto flex flex-col flex-grow">
+            
+            <div id="selectionView">
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold text-brand-darkText">Select a Carrier</h2>
+                    <p class="text-xs text-brand-lightText">Choose your provider to begin the refill process.</p>
+                </div>
+                <div id="carrierGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                    </div>
             </div>
 
-            <div id="carrierGrid" class="hidden grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6"></div>
-
-            <div class="mt-auto pt-12 mb-10">
-                <div class="flex items-center gap-4 mb-8">
-                    <div class="h-px flex-grow bg-brand-border"></div>
-                    <h2 class="text-[10px] md:text-xs font-bold text-brand-lightText uppercase tracking-[0.2em] whitespace-nowrap">How to Refill</h2>
-                    <div class="h-px flex-grow bg-brand-border"></div>
-                </div>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                    <div class="bg-white border border-brand-border p-4 rounded-2xl text-center">
-                        <span class="w-7 h-7 bg-brand-background text-brand-blue rounded-full flex items-center justify-center font-bold text-xs mx-auto mb-3">1</span>
-                        <p class="text-[10px] font-bold text-brand-darkText uppercase">Select Carrier</p>
-                        <p class="text-[9px] text-brand-lightText">Choose your provider.</p>
-                    </div>
-                    <div class="bg-white border border-brand-border p-4 rounded-2xl text-center">
-                        <span class="w-7 h-7 bg-brand-background text-brand-blue rounded-full flex items-center justify-center font-bold text-xs mx-auto mb-3">2</span>
-                        <p class="text-[10px] font-bold text-brand-darkText uppercase">Enter Number</p>
-                        <p class="text-[9px] text-brand-lightText">Input your eSIM details.</p>
-                    </div>
-                    <div class="bg-white border border-brand-border p-4 rounded-2xl text-center">
-                        <span class="w-7 h-7 bg-brand-background text-brand-blue rounded-full flex items-center justify-center font-bold text-xs mx-auto mb-3">3</span>
-                        <p class="text-[10px] font-bold text-brand-darkText uppercase">Choose Plan</p>
-                        <p class="text-[9px] text-brand-lightText">Select data or credit.</p>
-                    </div>
-                    <div class="bg-brand-blue border border-brand-blue p-4 rounded-2xl text-center text-white">
-                        <div class="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            <div id="formView" class="hidden animate-flow">
+                <button onclick="goBackToGrid()" class="mb-6 flex items-center gap-2 text-xs font-bold text-brand-blue uppercase hover:translate-x-[-4px] transition-transform">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    Change Carrier
+                </button>
+                
+                <div class="bg-white border border-brand-border rounded-3xl overflow-hidden shadow-sm max-w-xl mx-auto">
+                    <div class="bg-brand-blue p-8 text-center text-white">
+                        <div class="bg-white w-20 h-20 rounded-2xl p-3 mx-auto mb-4 shadow-lg">
+                            <img id="formCarrierLogo" src="" class="w-full h-full object-contain">
                         </div>
-                        <p class="text-[10px] font-bold uppercase">Success</p>
-                        <p class="text-[9px] text-blue-100">Refill applied instantly.</p>
+                        <h2 id="formCarrierName" class="text-2xl font-bold">--</h2>
+                        <p class="text-blue-100 text-[10px] uppercase font-bold tracking-widest mt-1">Direct Carrier Refill</p>
+                    </div>
+
+                    <div class="p-6 md:p-10 space-y-6">
+                        <div>
+                            <label class="text-[10px] font-bold text-brand-blue uppercase tracking-wider mb-2 block">eSIM Mobile Number</label>
+                            <input type="text" id="targetNumber" placeholder="+1 (000) 000-0000" class="w-full bg-brand-background border border-brand-border p-4 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-brand-blue outline-none transition-all">
+                        </div>
+                        
+                        <div>
+                            <label class="text-[10px] font-bold text-brand-blue uppercase tracking-wider mb-2 block">Account Security PIN</label>
+                            <input type="password" id="accountPin" placeholder="Enter 4-8 digit PIN" class="w-full bg-brand-background border border-brand-border p-4 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-brand-blue outline-none transition-all">
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] font-bold text-brand-blue uppercase tracking-wider mb-2 block">Choose Subscription Plan</label>
+                            <select id="planSelector" class="w-full bg-brand-background border border-brand-border p-4 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-brand-blue outline-none appearance-none cursor-pointer">
+                                </select>
+                        </div>
+
+                        <button onclick="initiatePayment()" id="payBtn" class="w-full py-5 bg-brand-blue text-white rounded-2xl text-sm font-bold shadow-xl hover:bg-blue-700 transition-all active:scale-[0.98]">
+                            Proceed to Refill
+                        </button>
                     </div>
                 </div>
             </div>
+
+            <div id="receiptView" class="hidden animate-flow py-10">
+                <div class="bg-white border-2 border-dashed border-brand-border rounded-3xl p-8 max-w-md mx-auto shadow-2xl relative">
+                    <div class="absolute -top-6 left-1/2 -translate-x-1/2 w-12 h-12 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <h2 class="text-xl font-bold text-brand-darkText">Payment Receipt</h2>
+                        <p class="text-xs text-brand-lightText">Transaction ID: <span id="rID" class="font-mono">SG-882190</span></p>
+                    </div>
+
+                    <div class="my-8 space-y-3 border-t border-b border-brand-border py-6 font-mono text-xs">
+                        <div class="flex justify-between"><span>Carrier:</span> <span id="rCarrier" class="font-bold">--</span></div>
+                        <div class="flex justify-between"><span>eSIM Number:</span> <span id="rNumber" class="font-bold">--</span></div>
+                        <div class="flex justify-between"><span>Selected Plan:</span> <span id="rPlan" class="font-bold text-right">--</span></div>
+                        <div class="flex justify-between"><span>Status:</span> <span class="text-green-600 font-bold uppercase">Paid / Processing</span></div>
+                    </div>
+
+                    <button onclick="contactManagement()" class="w-full py-4 bg-[#25D366] text-white rounded-2xl text-xs font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+                        Send Receipt to WhatsApp
+                    </button>
+                    <button onclick="location.reload()" class="w-full text-[10px] font-bold text-brand-lightText uppercase py-4">Refill Another eSIM</button>
+                </div>
+            </div>
+
         </main>
     </div>
 
-    <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-brand-border z-[65] px-6 py-3 safe-bottom shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
-        <div class="flex items-center justify-between max-w-md mx-auto">
-            <a href="user_dashboard.html" class="flex flex-col items-center gap-1 text-brand-lightText">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-                <span class="text-[10px] font-bold">Home</span>
-            </a>
-            <a href="esim_refill.html" class="flex flex-col items-center gap-1 text-brand-blue">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
-                <span class="text-[10px] font-bold">Refill</span>
-            </a>
-            <a href="buy_number.html" class="flex flex-col items-center gap-1 text-brand-lightText">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                <span class="text-[10px] font-bold">Numbers</span>
-            </a>
-        </div>
-    </div>
-
-    <div id="refillModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
-        <div class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl modal-animate">
-            <div class="bg-brand-blue p-8 text-center relative">
-                <h2 class="text-2xl font-bold text-white leading-tight" id="carrierNameLabel">Refill eSIM</h2>
-                <p class="text-blue-100 text-[10px] uppercase font-bold mt-1 tracking-widest" id="planLabel">Selected Plan: --</p>
-            </div>
-            <div class="p-6 md:p-8 space-y-4">
-                <div class="bg-brand-background rounded-2xl border border-brand-blue/10 p-5">
-                    <label class="text-[9px] font-bold text-brand-blue uppercase tracking-wider mb-1 block">eSIM Number / ICCID</label>
-                    <input type="text" id="targetNumber" placeholder="+1 (000) 000-0000" class="w-full bg-white border border-brand-border p-3 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-brand-blue outline-none">
-                </div>
-                <button onclick="processRefill()" id="confirmBtn" class="w-full py-4 bg-brand-blue text-white rounded-2xl text-xs font-bold shadow-xl hover:bg-blue-700 transition-all">
-                    Proceed to Payment
-                </button>
-                <button onclick="closeModal()" class="w-full text-[10px] font-bold text-brand-lightText uppercase py-2">Cancel</button>
-            </div>
-        </div>
-    </div>
-
     <script>
-        const API_BASE_URL = '/api';
-        let currentSelection = { id: null, planIdx: null };
+        // CARRIER DATA
+        const carriers = [
+            { id: '1', name: 'T-Mobile USA', image: 'https://i.imgur.com/vHqLp0b.png', plans: ['10GB Data - $25.00', 'Unlimited Data - $50.00', 'Talk & Text 30 Days - $35.00'] },
+            { id: '2', name: 'AT&T', image: 'https://i.imgur.com/4hYgWlC.png', plans: ['5GB Starter - $15.00', '25GB Monthly - $45.00', 'Unlimited Max - $75.00'] },
+            { id: '3', name: 'Verizon', image: 'https://i.imgur.com/6U6lM6i.png', plans: ['Global Roaming - $10/day', 'Verizon Prepaid 5GB - $35.00', 'Unlimited Core - $65.00'] },
+            { id: '4', name: 'Vodafone UK', image: 'https://i.imgur.com/wPZ0v0C.png', plans: ['£10 Big Value Bundle', '£20 Unlimited Data', '£30 Pay As You Go Plus'] }
+        ];
+
+        let selectedCarrier = null;
 
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('-translate-x-full');
             document.getElementById('sidebarOverlay').classList.toggle('hidden');
         }
 
-        async function initPage() {
-            const token = localStorage.getItem('userToken');
-            if (!token) { window.location.href = 'user_login.html'; return; }
-            await fetchCarriers();
-        }
-
-        async function fetchCarriers() {
-            // Simulated Data - In real usage, fetch from your /products endpoint
-            const carriers = [
-                { _id: '1', name: 'T-Mobile USA', image: 'https://i.imgur.com/vHqLp0b.png', plans: [{duration: '10GB Data', price: 25.00}, {duration: 'Unlimited', price: 50.00}] },
-                { _id: '2', name: 'AT&T', image: 'https://i.imgur.com/4hYgWlC.png', plans: [{duration: '5GB Data', price: 15.00}, {duration: '20GB Data', price: 40.00}] },
-                { _id: '3', name: 'Verizon', image: 'https://i.imgur.com/6U6lM6i.png', plans: [{duration: 'Global Roaming', price: 60.00}] },
-                { _id: '4', name: 'Vodafone UK', image: 'https://i.imgur.com/wPZ0v0C.png', plans: [{duration: 'Pay As You Go', price: 10.00}] }
-            ];
-            renderCarriers(carriers);
-        }
-
-        function renderCarriers(carriers) {
+        // LOAD CARRIERS INTO GRID
+        function initPage() {
             const grid = document.getElementById('carrierGrid');
-            const loader = document.getElementById('carrierLoading');
-            loader.classList.add('hidden');
-            grid.classList.remove('hidden');
-
             grid.innerHTML = carriers.map(c => `
-                <div class="bg-white border border-brand-border rounded-2xl shadow-sm flex flex-col overflow-hidden">
-                    <div class="h-24 bg-gray-50 flex items-center justify-center p-4">
+                <div onclick="selectCarrier('${c.id}')" class="bg-white border border-brand-border p-6 rounded-3xl cursor-pointer hover:shadow-xl transition-all group text-center">
+                    <div class="h-16 mb-4 flex items-center justify-center grayscale group-hover:grayscale-0 transition-all">
                         <img src="${c.image}" class="max-h-full object-contain">
                     </div>
-                    <div class="p-4 flex flex-col flex-grow">
-                        <h3 class="font-bold text-brand-darkText text-[10px] uppercase mb-3">${c.name}</h3>
-                        <div class="bg-brand-background rounded-lg p-2 mb-3 border border-brand-blue/5">
-                            <label class="text-[7px] font-bold text-brand-lightText uppercase block mb-1">Select Package</label>
-                            <select id="plan-${c._id}" class="w-full bg-white border border-brand-border rounded p-1 text-[10px] font-bold outline-none">
-                                ${c.plans.map((p, i) => `<option value="${i}">${p.duration} — $${p.price.toFixed(2)}</option>`).join('')}
-                            </select>
-                        </div>
-                        <button onclick="openRefillModal('${c._id}', '${c.name}')" class="mt-auto w-full py-2.5 bg-brand-blue text-white text-[10px] font-bold rounded-lg hover:bg-blue-700 transition-all">
-                            Refill Now
-                        </button>
-                    </div>
+                    <h3 class="text-xs font-bold text-brand-darkText uppercase group-hover:text-brand-blue">${c.name}</h3>
+                    <p class="text-[9px] text-brand-lightText font-bold uppercase mt-1">Refill Available</p>
                 </div>
             `).join('');
         }
 
-        function openRefillModal(id, name) {
-            const planSelect = document.getElementById(`plan-${id}`);
-            currentSelection = { id, planIdx: planSelect.value };
+        // TRANSITION TO FORM
+        function selectCarrier(id) {
+            selectedCarrier = carriers.find(c => c.id === id);
             
-            document.getElementById('carrierNameLabel').innerText = name;
-            document.getElementById('planLabel').innerText = `Plan: ${planSelect.options[planSelect.selectedIndex].text}`;
-            document.getElementById('refillModal').classList.remove('hidden');
+            document.getElementById('selectionView').classList.add('hidden');
+            document.getElementById('formView').classList.remove('hidden');
+
+            document.getElementById('formCarrierName').innerText = selectedCarrier.name;
+            document.getElementById('formCarrierLogo').src = selectedCarrier.image;
+
+            const selector = document.getElementById('planSelector');
+            selector.innerHTML = selectedCarrier.plans.map(p => `<option value="${p}">${p}</option>`).join('');
         }
 
-        function closeModal() { document.getElementById('refillModal').classList.add('hidden'); }
+        function goBackToGrid() {
+            document.getElementById('selectionView').classList.remove('hidden');
+            document.getElementById('formView').classList.add('hidden');
+        }
 
-        async function processRefill() {
-            const number = document.getElementById('targetNumber').value;
-            if(!number) { alert("Please enter a number"); return; }
-            
-            const btn = document.getElementById('confirmBtn');
+        // SIMULATE PAYMENT & SHOW RECEIPT
+        function initiatePayment() {
+            const num = document.getElementById('targetNumber').value;
+            const pin = document.getElementById('accountPin').value;
+            const plan = document.getElementById('planSelector').value;
+
+            if(!num || !pin) { alert("Please fill in both Number and Security PIN"); return; }
+
+            const btn = document.getElementById('payBtn');
             btn.disabled = true;
-            btn.innerText = "Initiating...";
+            btn.innerText = "Processing Payment...";
 
-            try {
-                const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('userToken')}` },
-                    body: JSON.stringify({ 
-                        carrierId: currentSelection.id, 
-                        planIndex: currentSelection.planIdx, 
-                        type: 'REFILL',
-                        target: number
-                    })
-                });
-                const data = await res.json();
-                if (data.success && data.link) window.location.href = data.link;
-                else alert(data.message || "Failed to process refill");
-            } catch (err) { alert("Connection Error"); }
-            finally { btn.disabled = false; btn.innerText = "Proceed to Payment"; }
+            // Simulated Delay
+            setTimeout(() => {
+                document.getElementById('formView').classList.add('hidden');
+                document.getElementById('receiptView').classList.remove('hidden');
+                
+                document.getElementById('rCarrier').innerText = selectedCarrier.name;
+                document.getElementById('rNumber').innerText = num;
+                document.getElementById('rPlan').innerText = plan;
+                document.getElementById('rID').innerText = 'SG-' + Math.floor(100000 + Math.random() * 900000);
+            }, 2000);
+        }
+
+        // WHATSAPP REDIRECT
+        function contactManagement() {
+            const num = document.getElementById('rNumber').innerText;
+            const carrier = document.getElementById('rCarrier').innerText;
+            const plan = document.getElementById('rPlan').innerText;
+            const tid = document.getElementById('rID').innerText;
+
+            const msg = `*NEW REFILL ORDER PAID*\n\nCarrier: ${carrier}\nNumber: ${num}\nPlan: ${plan}\nTransaction ID: ${tid}\n\nPlease verify and complete the refill.`;
+            const waUrl = `https://wa.me/2348149747864?text=${encodeURIComponent(msg)}`; // UPDATE WITH YOUR NUMBER
+            window.open(waUrl, '_blank');
         }
 
         window.onload = initPage;

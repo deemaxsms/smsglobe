@@ -107,7 +107,7 @@ const orderSchema = new mongoose.Schema({
     fullName: { type: String },         
     productType: { 
         type: String, 
-        enum: ['VPN', 'Proxy', 'eSIM'], 
+        enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill'], 
         required: true 
     },
     planName: { type: String }, 
@@ -230,7 +230,7 @@ app.all('/api/:action', async (req, res) => {
         if (req.method === 'POST') return handleEsimRefill(req, res);
         break;
         case 'create-esim-order':return handleCreateEsimOrder(req, res);
-        case 'confirm-order': return handleConfirmOrder(req, res);
+        case 'confirm-esim-refill': return handleConfirmEsimRefill(req, res);
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
         default:
@@ -1256,27 +1256,127 @@ async function handleCreateEsimOrder(req, res) {
     }
 }
 
-async function handleConfirmOrder(req, res) {
-    const { tid } = req.query; // Get ID from the URL link
+async function handleConfirmEsimRefill(req, res) {
+    const { tid } = req.query; // Get payment reference/ID from the URL link
     
+    if (!tid) {
+        return res.status(400).send("<h1>❌ Missing Transaction ID</h1>");
+    }
+
     try {
-        // 1. Find the transaction in your database
-        // 2. Update status to 'Completed'
+        // 1. Find the transaction and update status specifically for eSIM Refills
         const result = await db.collection('transactions').updateOne(
-            { paymentReference: tid },
-            { $set: { status: 'Completed', updatedAt: new Date() } }
+            { 
+                paymentReference: tid,
+                productType: 'eSIM' // Safety check: Ensure we are confirming an eSIM
+            },
+            { 
+                $set: { 
+                    status: 'Completed', 
+                    refillStatus: 'Processed', // Additional flag for your records
+                    updatedAt: new Date() 
+                } 
+            }
         );
 
         if (result.modifiedCount > 0) {
-            return res.send("<h1>✅ Payment Confirmed & Database Updated!</h1>");
+            // Success Response
+            return res.send(`
+                <div style="font-family: sans-serif; text-align: center; padding: 50px;">
+                    <h1 style="color: #0F54C6;">✅ eSIM Refill Confirmed!</h1>
+                    <p style="color: #344054;">The database has been updated and the refill is marked as completed.</p>
+                    <hr style="max-width: 400px; border: 1px dashed #EAECF0;">
+                    <p style="font-size: 12px; color: #667085;">Ref ID: ${tid}</p>
+                </div>
+            `);
         } else {
-            return res.send("<h1>❌ Order not found or already completed.</h1>");
+            // Already completed or not found
+            return res.send(`
+                <div style="font-family: sans-serif; text-align: center; padding: 50px;">
+                    <h1 style="color: #F9861E;">ℹ️ Refill Already Processed</h1>
+                    <p style="color: #344054;">This eSIM refill order was either already completed or the ID is invalid.</p>
+                </div>
+            `);
         }
     } catch (error) {
-        return res.status(500).send("Error updating database.");
+        console.error("Database Update Error:", error);
+        return res.status(500).send("<h1>❌ Internal Server Error</h1><p>Could not update eSIM refill status.</p>");
     }
 }
 
+async function getEsimRefills(req, res) {
+    try {
+        // Fetch transactions where type is eSIM, sorted by newest first
+        const refills = await db.collection('transactions')
+            .find({ productType: 'eSIM' })
+            .sort({ createdAt: -1 })
+            .limit(50)
+            .toArray();
+
+        return res.json({
+            success: true,
+            refills: refills // This feeds the data.refills.map in your HTML
+        });
+    } catch (error) {
+        console.error("Fetch Error:", error);
+        return res.status(500).json({ success: false, message: "Failed to fetch refills" });
+    }
+}
+
+async function handleAdminEsimUpdate(req, res) {
+    const { tid, status } = req.body;
+
+    if (!tid || !status) {
+        return res.status(400).json({ success: false, message: "Missing Transaction ID or Status" });
+    }
+
+    try {
+        // 1. Update the Order in the database
+        // We use findOneAndUpdate to get the document back for the email details
+        const updatedOrder = await Order.findOneAndUpdate(
+            { paymentReference: tid },
+            { 
+                $set: { 
+                    status: status, 
+                    refillStatus: 'Processed Manually', // Tracking flag
+                    adminUpdatedBy: req.user?.email || 'System Admin', 
+                    updatedAt: new Date() 
+                } 
+            },
+            { new: true } // This returns the document AFTER the update
+        );
+
+        if (!updatedOrder) {
+            return res.status(404).json({ success: false, message: "Transaction not found" });
+        }
+
+        // 2. Trigger Email Notification if status is 'Completed'
+        if (status.toLowerCase() === 'completed') {
+            try {
+                // Mapping Order fields to the email helper's expected 'credentials' object
+                await sendDeliveryEmail(updatedOrder.userEmail, {
+                    type: "eSIM",
+                    carrierName: updatedOrder.nodeName || "Global Carrier",
+                    mobileNumber: updatedOrder.targetNumber,
+                    instructions: "Your refill has been applied. Please restart your device or toggle Airplane Mode if the balance doesn't reflect immediately."
+                });
+                console.log(`✅ Refill confirmation email sent to: ${updatedOrder.userEmail}`);
+            } catch (emailError) {
+                // We log the error but don't fail the request because the DB update was successful
+                console.error("❌ Email Delivery Failed:", emailError);
+            }
+        }
+
+        return res.json({ 
+            success: true, 
+            message: `Status updated to ${status}${status === 'completed' ? ' and user notified' : ''}` 
+        });
+
+    } catch (error) {
+        console.error("Database/Admin Error:", error);
+        return res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+}
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

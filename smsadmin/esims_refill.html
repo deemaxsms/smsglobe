@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMSGlobe Admin - eSIM Refills</title>
+    <link rel="icon" type="image/png" href="https://i.imgur.com/syKFaNI.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        if (!localStorage.getItem('smsglobe_admin_token')) {
+            window.location.href = 'sms_login.html';
+        }
+
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            blue: '#0F54C6',
+                            orange: '#F9861E',
+                            darkText: '#101828',
+                            midText: '#344054',
+                            lightText: '#667085',
+                            background: '#F0F5FE',
+                            border: '#EAECF0',
+                        }
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                },
+            },
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #F0F5FE; font-size: 14px; }
+        .sidebar-transition { transition: transform 0.3s ease-in-out; }
+    </style>
+</head>
+<body class="min-h-screen font-sans text-brand-darkText">
+
+    <div class="lg:hidden flex items-center justify-between bg-white px-4 py-3 border-b border-brand-border sticky top-0 z-[60]">
+        <img src="https://imgur.com/8YeZgfx.png" alt="Logo" class="h-6">
+        <button onclick="toggleSidebar()" class="p-2 text-brand-midText hover:bg-brand-background rounded-lg">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+            </svg>
+        </button>
+    </div>
+
+    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-[70] hidden lg:hidden backdrop-blur-sm"></div>
+
+    <div class="flex">
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-[80] w-64 bg-white border-r border-brand-border transform -translate-x-full lg:translate-x-0 sidebar-transition lg:static lg:block min-h-screen">
+            <div class="flex flex-col h-full">
+                <div class="p-5 flex-1 overflow-y-auto pt-20 lg:pt-5">
+                    <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-9 mb-8 hidden lg:block">
+                    <nav class="space-y-1">
+                        <a href="sms_dashboard.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                            Dashboard
+                        </a>
+                        <a href="esim_refills.html" class="flex items-center gap-3 px-3 py-2.5 bg-brand-background text-brand-blue rounded-xl font-bold transition-all shadow-sm">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                            eSIM Refills
+                        </a>
+                        </nav>
+                </div>
+                <div class="p-5 border-t border-brand-border bg-gray-50/50">
+                    <button onclick="logout()" class="flex items-center gap-3 px-3 py-2.5 w-full text-red-500 hover:bg-red-50 rounded-xl font-bold transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                        Sign Out
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full">
+            <header class="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold tracking-tight">eSIM Refill Requests</h2>
+                    <p class="text-brand-lightText text-sm">Manage and process user eSIM balance refills</p>
+                </div>
+                <button onclick="fetchRefills()" class="bg-brand-blue text-white px-5 py-2 rounded-xl text-sm font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2 w-fit">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    Refresh List
+                </button>
+            </header>
+
+            <div class="bg-white rounded-2xl border border-brand-border shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-50 text-brand-lightText uppercase text-[11px] border-b border-brand-border">
+                            <tr>
+                                <th class="px-6 py-4 font-bold">Refill ID / Date</th>
+                                <th class="px-6 py-4 font-bold">User</th>
+                                <th class="px-6 py-4 font-bold">Details (ICCID/Phone)</th>
+                                <th class="px-6 py-4 font-bold text-center">Amount</th>
+                                <th class="px-6 py-4 font-bold">Status</th>
+                                <th class="px-6 py-4 font-bold text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="refills-body" class="divide-y divide-gray-100">
+                            <tr>
+                                <td colspan="6" class="px-6 py-12 text-center text-brand-lightText italic">
+                                    Loading eSIM refill data...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        async function fetchRefills() {
+    const token = localStorage.getItem('smsglobe_admin_token');
+    const tbody = document.getElementById('refills-body');
+
+    try {
+        const response = await fetch('/api/admin/esim-refills', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+
+        if (data.success && data.refills.length > 0) {
+            tbody.innerHTML = data.refills.map(refill => {
+                const status = refill.status.toLowerCase();
+                
+                // Logic to determine which button to show based on status
+                let actionButton = '';
+                if (status === 'pending') {
+                    actionButton = `
+                        <button onclick="updateRefillStatus('${refill.paymentReference}', 'Processing')" 
+                                class="bg-brand-blue text-white px-3 py-1.5 rounded-lg text-[11px] font-bold hover:bg-blue-700 transition-all">
+                            Start Processing
+                        </button>`;
+                } else if (status === 'processing') {
+                    actionButton = `
+                        <button onclick="updateRefillStatus('${refill.paymentReference}', 'Completed')" 
+                                class="bg-green-500 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold hover:bg-green-600 transition-all">
+                            Mark Done
+                        </button>`;
+                } else if (status === 'completed') {
+                    actionButton = `<span class="text-green-500 font-bold text-[11px] flex items-center justify-end gap-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                        Processed
+                                    </span>`;
+                }
+
+                return `
+                    <tr class="hover:bg-gray-50/50 transition-colors">
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-brand-darkText">#${refill.paymentReference.slice(-6)}</div>
+                            <div class="text-[10px] text-brand-lightText">${new Date(refill.createdAt).toLocaleDateString()}</div>
+                        </td>
+                        <td class="px-6 py-4 font-medium">${refill.userEmail}</td>
+                        <td class="px-6 py-4">
+                            <div class="text-[11px] font-mono bg-gray-100 px-2 py-1 rounded inline-block">
+                                ${refill.esimIdentifier || 'N/A'}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center font-bold text-brand-blue">
+                            $${parseFloat(refill.amount).toFixed(2)}
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${getStatusClass(refill.status)} inline-flex items-center gap-1">
+                                ${status === 'processing' ? '<span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>' : ''}
+                                ${refill.status}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            ${actionButton}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        } else {
+            tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-brand-lightText italic">No refill requests found.</td></tr>`;
+        }
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-red-500 font-bold">Failed to load data.</td></tr>`;
+    }
+}
+
+       function getStatusClass(status) {
+    switch(status.toLowerCase()) {
+        case 'completed': 
+            return 'bg-green-100 text-green-700';
+        case 'processing': 
+            return 'bg-blue-100 text-blue-700'; // Added processing state
+        case 'pending': 
+            return 'bg-orange-100 text-orange-700';
+        case 'failed': 
+            return 'bg-red-100 text-red-700';
+        default: 
+            return 'bg-gray-100 text-gray-700';
+    }
+}
+
+        async function updateRefillStatus(tid, status) {
+            if (!confirm(`Mark transaction ${tid} as ${status}?`)) return;
+
+            const token = localStorage.getItem('smsglobe_admin_token');
+            try {
+                const response = await fetch('/api/admin/update-esim-status', {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ tid, status })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Refill status updated successfully!');
+                    fetchRefills();
+                } else {
+                    alert('Update failed: ' + data.message);
+                }
+            } catch (err) {
+                alert('Error connecting to server.');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('smsglobe_admin_token');
+            window.location.href = 'sms_login.html';
+        }
+
+        window.onload = fetchRefills;
+    </script>
+</body>
+</html>

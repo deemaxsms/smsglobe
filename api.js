@@ -1129,7 +1129,6 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
     });
 };
 
-// --- PROXY HANDLERS ---
 // 2. GET ALL Proxies (Sorted by Newest)
 async function handleGetProxies(req, res) {
     try {
@@ -1371,13 +1370,13 @@ async function handleAdminEsimUpdate(req, res) {
     }
 
     try {
-        const updatedRefill = await EsimRefill.findOneAndUpdate(
-            { paymentReference: tid }, 
+        // FIX: Change 'EsimRefill' to 'Order' to match where the data is actually stored
+        const updatedRefill = await Order.findOneAndUpdate(
+            { paymentReference: tid, productType: 'eSIM' }, 
             { 
                 $set: { 
                     status: status, 
                     confirmationNumber: confirmationNumber || null, 
-                    adminUpdatedBy: req.user?.email || 'System Admin', 
                     updatedAt: new Date() 
                 } 
             },
@@ -1385,20 +1384,21 @@ async function handleAdminEsimUpdate(req, res) {
         );
 
         if (!updatedRefill) {
-            return res.status(404).json({ success: false, message: "Transaction not found" });
+            return res.status(404).json({ success: false, message: "Transaction not found in Orders" });
         }
 
         const isFinished = status.toLowerCase() === 'completed' || status.toLowerCase() === 'successful';
         
         if (isFinished) {
             try {
+                // Ensure all fields are mapped correctly from the Order model
                 await sendDeliveryEmail(updatedRefill.userEmail, {
-                    type: "eSIM Refill",
-                    amount: updatedRefill.planName || updatedRefill.amount, 
+                    type: "eSIM",
+                    amount: updatedRefill.planName, 
                     confirmationNumber: confirmationNumber || "Refill Processed",
-                    carrierName: updatedRefill.carrier || updatedRefill.nodeName || "eSIM Service",
-                    mobileNumber: updatedRefill.targetNumber || updatedRefill.esimIdentifier,
-                    instructions: "Your eSIM refill has been applied. Please restart your device or toggle Airplane Mode if the balance doesn't reflect immediately."
+                    carrierName: updatedRefill.nodeName || "eSIM Service",
+                    mobileNumber: updatedRefill.targetNumber,
+                    instructions: "Your eSIM refill has been applied successfully."
                 });
             } catch (emailError) {
                 console.error("Email Delivery Failed:", emailError);
@@ -1407,13 +1407,13 @@ async function handleAdminEsimUpdate(req, res) {
 
         return res.json({ 
             success: true, 
-            message: `Order updated to ${status}${isFinished ? ' and user notified' : ''}`,
+            message: `Order updated to ${status}`,
             data: updatedRefill 
         });
 
     } catch (error) {
-        console.error("Database/Admin Error:", error);
-        return res.status(500).json({ success: false, message: "Internal Server Error" });
+        console.error("Admin Update Error:", error);
+        return res.status(500).json({ success: false, message: "Internal Server error" });
     }
 }
 

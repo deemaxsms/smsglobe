@@ -195,11 +195,12 @@ const verifyToken = (req, res, next) => {
     }
 };
 
-
-// --- 6. API ROUTER (Switch-Case) ---
 app.all('/api/:action', async (req, res) => {
     await connectDB();
-    const action = req.params.action;
+    
+    // Normalize the action string to avoid hidden spaces or casing issues
+    const action = (req.params.action || '').toLowerCase().trim();
+    
     console.log("Incoming Action:", action, "Method:", req.method);
 
     switch (action) {
@@ -223,22 +224,30 @@ app.all('/api/:action', async (req, res) => {
         case 'initiate-payment': return handleInitiatePayment(req, res);
         case 'verify-payment': return handleVerifyPayment(req, res);
         case 'proxies': 
-        if (req.method === 'GET') return handleGetProxies(req, res);
-        if (req.method === 'POST') return handleAddProxy(req, res);
-        if (req.method === 'PATCH') return handleUpdateProxy(req, res);
-        if (req.method === 'DELETE') return handleDeleteProxy(req, res);
-        break;
+            if (req.method === 'GET') return handleGetProxies(req, res);
+            if (req.method === 'POST') return handleAddProxy(req, res);
+            if (req.method === 'PATCH') return handleUpdateProxy(req, res);
+            if (req.method === 'DELETE') return handleDeleteProxy(req, res);
+            break;
         case 'transactions': return handleAllTransactions(req, res);
         case 'esim-refill': 
-        if (req.method === 'POST') return handleEsimRefill(req, res);
-        break;
-        case 'create-esim-order':return handleCreateEsimOrder(req, res);
-        case 'esim-refills':  return getEsimRefills(req, res);
-        case 'update-esim-status':return handleAdminEsimUpdate(req, res);
+            if (req.method === 'POST') return handleEsimRefill(req, res);
+            break;
+        case 'create-esim-order': return handleCreateEsimOrder(req, res);
+        case 'esim-refills': return getEsimRefills(req, res);
+        
+        // This is your target case
+        case 'update-esim-status':
+            return handleAdminEsimUpdate(req, res);
+            
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
+            
         default:
-            return res.status(404).json({ success: false, error: "Action not found" });
+            return res.status(404).json({ 
+                success: false, 
+                error: `Action '${action}' not found on this server.` 
+            });
     }
 });
 

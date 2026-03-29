@@ -1298,18 +1298,14 @@ async function handleConfirmEsimRefill(req, res) {
 // GET All eSIM Refills for Admin
 async function getEsimRefills(req, res) {
     try {
-        // 1. Fetch orders specifically for eSIMs
-        // We use .find() on the Order model for better performance and validation
         const refills = await Order.find({ 
             productType: 'eSIM' 
         })
-        .sort({ createdAt: -1 }) // Newest first
-        .limit(100);             // Increased limit slightly for better admin visibility
+        .sort({ createdAt: -1 })
+        .limit(100);
 
-        // 2. Format the data for the Frontend Table
         const formattedRefills = refills.map(refill => {
-            // Since you stored the amount as NGN (amountUSD * 1650),
-            // we convert it back to USD for the admin table display.
+            // Convert NGN back to USD
             const amountInUSD = refill.amount / 1650;
 
             return {
@@ -1318,8 +1314,10 @@ async function getEsimRefills(req, res) {
                 userEmail: refill.userEmail,
                 amount: amountInUSD.toFixed(2), 
                 status: refill.status || 'pending',
+                // FIX: Use 'targetNumber' as the identifier
                 esimIdentifier: refill.targetNumber || 'N/A',
-                carrier: refill.carrier || refill.productName || 'Unknown' 
+                // FIX: Use 'nodeName' (from your DB screenshot) or 'carrierName' 
+                carrier: refill.nodeName || refill.carrierName || refill.productName || 'Global eSIM' 
             };
         });
 

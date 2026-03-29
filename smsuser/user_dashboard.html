@@ -83,7 +83,7 @@
             
             <div class="flex items-center space-x-4">
                 <div class="hidden sm:block text-right">
-                    <p id="userName" class="text-[11px] font-bold text-brand-darkText">...</p>
+                    <p id="userName" class="text-[11px] font-bold text-brand-darkText">Loading...</p>
                     <p id="userEmail" class="text-[10px] text-brand-lightText">...</p>
                 </div>
                 <div class="w-8 h-8 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center text-xs font-bold border border-brand-blue/20">
@@ -172,7 +172,7 @@
                 <div class="space-y-4">
                     <h4 class="text-xs font-bold text-brand-darkText px-1 uppercase">Instant Support</h4>
                     <div class="bg-white rounded-2xl border border-brand-border p-3 shadow-sm">
-                        <button onclick="window.location.href='#'" class="w-full flex items-center justify-between p-3 rounded-xl hover:bg-brand-background transition-all group border border-transparent hover:border-brand-blue/10">
+                        <button onclick="window.open('https://wa.me/yournumber', '_blank')" class="w-full flex items-center justify-between p-3 rounded-xl hover:bg-brand-background transition-all group border border-transparent hover:border-brand-blue/10">
                             <div class="flex items-center space-x-3">
                                 <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" class="w-5 h-5">
                                 <span class="text-[10px] font-bold">WhatsApp Support</span>
@@ -198,18 +198,26 @@
             const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (profileRes.status === 401) throw new Error('Expired');
+            
+            if (!profileRes.ok) throw new Error('Session Expired');
+            
             const userData = await profileRes.json();
             
             document.getElementById('userName').innerText = userData.full_name || "User";
             document.getElementById('userEmail').innerText = userData.email;
-            document.getElementById('userInitials').innerText = (userData.full_name || "U").charAt(0);
+            document.getElementById('userInitials').innerText = (userData.full_name || "U").charAt(0).toUpperCase();
 
-            fetchFeaturedProxies();
-            fetchFeaturedVPNs();
-            fetchMessages();
+            // Load sections in parallel
+            await Promise.all([
+                fetchFeaturedProxies(),
+                fetchFeaturedVPNs(),
+                fetchMessages()
+            ]);
 
-        } catch (err) { logout(); }
+        } catch (err) { 
+            console.error(err);
+            logout(); 
+        }
     }
 
     async function fetchFeaturedProxies() {
@@ -217,8 +225,7 @@
         try {
             const res = await fetch(`${API_BASE_URL}/proxies`);
             const data = await res.json();
-            if (data.success) {
-                // Group by category and take top 3
+            if (data.success && data.proxies) {
                 const categories = [...new Set(data.proxies.map(p => p.category))].slice(0, 3);
                 
                 container.innerHTML = categories.map(cat => {
@@ -230,7 +237,7 @@
                             </div>
                             <div class="flex-grow">
                                 <h3 class="text-[10px] font-extrabold text-brand-darkText uppercase tracking-tight">${cat}</h3>
-                                <p class="text-[8px] text-brand-lightText font-medium mt-0.5">${count} Packages</p>
+                                <p class="text-[8px] text-brand-lightText font-medium mt-0.5">${count} Packages Available</p>
                             </div>
                             <div class="text-brand-blue opacity-0 group-hover:opacity-100 transition-opacity">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
@@ -239,7 +246,7 @@
                     `;
                 }).join('');
             }
-        } catch (e) { container.innerHTML = '<p class="text-[10px] text-center w-full">Failed to load proxies.</p>'; }
+        } catch (e) { container.innerHTML = '<p class="text-[10px] text-center w-full p-4">Proxy data currently unavailable.</p>'; }
     }
 
     async function fetchFeaturedVPNs() {
@@ -257,12 +264,12 @@
                         <div class="overflow-hidden">
                             <p class="text-[10px] font-bold text-brand-darkText truncate">${vpn.name}</p>
                             <p class="text-[8px] text-brand-lightText uppercase">${vpn.region || 'Global'}</p>
-                            <p class="text-[10px] font-bold text-brand-blue mt-0.5">$${vpn.plans[0].price}</p>
+                            <p class="text-[10px] font-bold text-brand-blue mt-0.5">$${vpn.plans?.[0]?.price || '0.00'}</p>
                         </div>
                     </div>
                 `).join('');
             }
-        } catch (e) { container.innerHTML = '<p class="text-[10px] text-center w-full">Nodes loading...</p>'; }
+        } catch (e) { container.innerHTML = '<p class="text-[10px] text-center w-full p-4">Failed to load nodes.</p>'; }
     }
 
     async function fetchMessages() {
@@ -270,6 +277,7 @@
         const list = document.getElementById('messageList');
         const table = document.getElementById('messageTable');
         const empty = document.getElementById('emptyState');
+        const statsCount = document.getElementById('activeNumbersCount');
 
         try {
             const res = await fetch(`${API_BASE_URL}/user-messages`, {
@@ -278,17 +286,28 @@
             const messages = await res.json();
 
             if (messages && messages.length > 0) {
+                statsCount.innerText = messages.length;
                 empty.classList.add('hidden');
                 table.classList.remove('hidden');
                 list.innerHTML = messages.map(msg => `
                     <tr class="border-b border-brand-border hover:bg-gray-50 transition-colors">
                         <td class="px-4 py-3 font-bold text-brand-blue">${msg.service}</td>
-                        <td class="px-4 py-3 font-medium"><span class="bg-brand-background px-2 py-1 rounded font-mono font-bold text-brand-darkText">${msg.code}</span></td>
-                        <td class="px-4 py-3 text-brand-lightText text-[9px] uppercase font-bold">${msg.created_at}</td>
+                        <td class="px-4 py-3 font-medium">
+                            <span class="bg-brand-background px-2 py-1 rounded font-mono font-bold text-brand-darkText">${msg.code}</span>
+                        </td>
+                        <td class="px-4 py-3 text-brand-lightText text-[9px] uppercase font-bold">
+                            ${new Date(msg.created_at).toLocaleString([], {hour: '2-digit', minute:'2-digit'})}
+                        </td>
                     </tr>
                 `).join('');
+            } else {
+                empty.classList.remove('hidden');
+                table.classList.add('hidden');
+                statsCount.innerText = "0";
             }
-        } catch (err) { }
+        } catch (err) { 
+            console.error("Message error:", err);
+        }
     }
 
     function logout() {
@@ -296,19 +315,20 @@
         window.location.href = 'user_login.html';
     }
 
+    // Sidebar Logic
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const openBtn = document.getElementById('openSidebar');
     const closeBtn = document.getElementById('closeSidebar');
 
-    const toggle = () => {
+    const toggleSidebar = () => {
         sidebar.classList.toggle('-translate-x-full');
         overlay.classList.toggle('hidden');
     };
 
-    openBtn.addEventListener('click', toggle);
-    closeBtn.addEventListener('click', toggle);
-    overlay.addEventListener('click', toggle);
+    openBtn.addEventListener('click', toggleSidebar);
+    closeBtn.addEventListener('click', toggleSidebar);
+    overlay.addEventListener('click', toggleSidebar);
 
     window.onload = initDashboard;
 </script>

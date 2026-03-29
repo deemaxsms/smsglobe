@@ -36,6 +36,7 @@
         @media (min-width: 1024px) { body { font-size: 14px; } }
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
         .custom-shadow { box-shadow: 0 4px 15px rgba(15, 84, 198, 0.05); }
+        textarea { resize: none; }
     </style>
 </head>
 <body class="min-h-screen font-sans text-brand-darkText">
@@ -78,38 +79,52 @@
         <main class="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full">
             <header class="mb-8">
                 <h2 class="text-xl md:text-2xl font-bold tracking-tight">Carrier Management</h2>
-                <p class="text-brand-lightText text-xs md:text-sm">Upload and configure new eSIM carrier products.</p>
+                <p class="text-brand-lightText text-xs md:text-sm">Configure carriers with prepaid and subscription plan options.</p>
             </header>
 
             <div class="bg-white rounded-3xl border border-brand-border p-6 md:p-8 custom-shadow mb-10">
                 <h3 class="text-brand-blue font-bold text-base mb-6 flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                    Add New Carrier
+                    Configure New Carrier
                 </h3>
                 <form id="carrier-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-[10px] font-bold text-brand-lightText uppercase mb-2 tracking-wider">Carrier Name</label>
-                        <input type="text" id="carrierName" placeholder="e.g. Verizon, T-Mobile" class="w-full px-4 py-3 rounded-xl border border-brand-border focus:ring-2 focus:ring-brand-blue outline-none bg-gray-50/50" required>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-[10px] font-bold text-brand-lightText uppercase mb-2 tracking-wider">Carrier Name</label>
+                            <input type="text" id="carrierName" placeholder="e.g. MTN, Vodafone, Orange" class="w-full px-4 py-3 rounded-xl border border-brand-border focus:ring-2 focus:ring-brand-blue outline-none bg-gray-50/50" required>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-brand-lightText uppercase mb-2 tracking-wider">Account Type</label>
+                            <select id="accountType" class="w-full px-4 py-3 rounded-xl border border-brand-border outline-none bg-gray-50/50">
+                                <option value="Hybrid">Hybrid (Prepaid & Subscription)</option>
+                                <option value="Prepaid Only">Prepaid Only</option>
+                                <option value="Subscription Only">Subscription Only</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-brand-lightText uppercase mb-2 tracking-wider">eSIM Image URL</label>
+                            <input type="url" id="imageUrl" placeholder="https://imgur.com/logo.png" class="w-full px-4 py-3 rounded-xl border border-brand-border focus:ring-2 focus:ring-brand-blue outline-none bg-gray-50/50" required>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-brand-lightText uppercase mb-2 tracking-wider">Account Type</label>
-                        <select id="accountType" class="w-full px-4 py-3 rounded-xl border border-brand-border outline-none bg-gray-50/50">
-                            <option value="Prepaid">Prepaid</option>
-                            <option value="Postpaid">Postpaid</option>
-                            <option value="Data Only">Data Only</option>
-                        </select>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-[10px] font-bold text-brand-lightText uppercase mb-2 tracking-wider">Prepaid Plan Options</label>
+                            <input type="text" id="prepaidPlans" placeholder="e.g. 5GB - $10, 10GB - $18" class="w-full px-4 py-3 rounded-xl border border-brand-border focus:ring-2 focus:ring-brand-blue outline-none bg-gray-50/50">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-brand-lightText uppercase mb-2 tracking-wider">Subscription Plan Options</label>
+                            <input type="text" id="subscriptionPlans" placeholder="e.g. Monthly Unlimited - $45" class="w-full px-4 py-3 rounded-xl border border-brand-border focus:ring-2 focus:ring-brand-blue outline-none bg-gray-50/50">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-brand-lightText uppercase mb-2 tracking-wider">Carrier Description</label>
+                            <textarea id="description" rows="1" placeholder="Briefly describe carrier coverage or perks..." class="w-full px-4 py-3 rounded-xl border border-brand-border focus:ring-2 focus:ring-brand-blue outline-none bg-gray-50/50"></textarea>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-brand-lightText uppercase mb-2 tracking-wider">eSIM Duration</label>
-                        <input type="text" id="duration" placeholder="e.g. 30 Days, Unlimited" class="w-full px-4 py-3 rounded-xl border border-brand-border focus:ring-2 focus:ring-brand-blue outline-none bg-gray-50/50" required>
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-brand-lightText uppercase mb-2 tracking-wider">eSIM Image URL</label>
-                        <input type="url" id="imageUrl" placeholder="https://imgur.com/your-image.png" class="w-full px-4 py-3 rounded-xl border border-brand-border focus:ring-2 focus:ring-brand-blue outline-none bg-gray-50/50" required>
-                    </div>
+
                     <div class="md:col-span-2 pt-2">
                         <button type="submit" class="w-full md:w-fit px-10 py-3.5 bg-brand-blue text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] transition-transform active:scale-95">
-                            Upload Carrier Product
+                            Save Carrier Configuration
                         </button>
                     </div>
                 </form>
@@ -117,17 +132,17 @@
 
             <div class="bg-white rounded-3xl border border-brand-border shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b border-brand-border bg-gray-50/50 flex justify-between items-center">
-                    <h4 class="font-bold text-xs uppercase tracking-widest text-brand-midText">Active Carriers</h4>
+                    <h4 class="font-bold text-xs uppercase tracking-widest text-brand-midText">Active Inventory</h4>
                     <span id="carrier-count" class="bg-brand-blue/10 text-brand-blue px-3 py-1 rounded-full text-[10px] font-bold">0 Total</span>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-[11px] md:text-xs">
                         <thead class="bg-gray-50/50 text-brand-lightText uppercase">
                             <tr>
-                                <th class="px-6 py-4 font-bold">Preview</th>
-                                <th class="px-6 py-4 font-bold">Carrier Details</th>
-                                <th class="px-6 py-4 font-bold">Type</th>
-                                <th class="px-6 py-4 font-bold">Duration</th>
+                                <th class="px-6 py-4 font-bold">Carrier</th>
+                                <th class="px-6 py-4 font-bold">Description</th>
+                                <th class="px-6 py-4 font-bold">Prepaid Plans</th>
+                                <th class="px-6 py-4 font-bold">Subscription Plans</th>
                                 <th class="px-6 py-4 font-bold text-right">Action</th>
                             </tr>
                         </thead>
@@ -147,7 +162,6 @@
 
         const token = localStorage.getItem('smsglobe_admin_token');
 
-        // Fetch and display carriers
         async function loadCarriers() {
             const listBody = document.getElementById('carrier-list-body');
             try {
@@ -161,15 +175,19 @@
                     listBody.innerHTML = data.carriers.map(c => `
                         <tr class="hover:bg-gray-50/50 transition-colors">
                             <td class="px-6 py-4">
-                                <img src="${c.imageUrl}" class="h-10 w-14 object-cover rounded-lg border border-brand-border" alt="carrier">
+                                <div class="flex items-center gap-3">
+                                    <img src="${c.imageUrl}" class="h-8 w-10 object-cover rounded border border-brand-border" alt="logo">
+                                    <div>
+                                        <div class="font-bold text-brand-darkText">${c.carrierName}</div>
+                                        <div class="text-[9px] text-brand-blue font-bold uppercase">${c.accountType}</div>
+                                    </div>
+                                </div>
                             </td>
-                            <td class="px-6 py-4 font-bold text-brand-darkText">${c.carrierName}</td>
-                            <td class="px-6 py-4">
-                                <span class="px-2 py-1 bg-brand-background text-brand-blue rounded-md text-[10px] font-bold uppercase">${c.accountType}</span>
-                            </td>
-                            <td class="px-6 py-4 text-brand-midText">${c.duration}</td>
+                            <td class="px-6 py-4 text-brand-lightText max-w-[200px] truncate">${c.description || 'No description'}</td>
+                            <td class="px-6 py-4 font-medium text-brand-midText">${c.prepaidPlans || '-'}</td>
+                            <td class="px-6 py-4 font-medium text-brand-midText">${c.subscriptionPlans || '-'}</td>
                             <td class="px-6 py-4 text-right">
-                                <button onclick="deleteCarrier('${c._id}')" class="text-red-500 hover:text-red-700 font-bold transition-colors">Remove</button>
+                                <button onclick="deleteCarrier('${c._id}')" class="text-red-500 hover:text-red-700 font-bold">Delete</button>
                             </td>
                         </tr>
                     `).join('');
@@ -179,15 +197,16 @@
             }
         }
 
-        // Handle form submission
         document.getElementById('carrier-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const payload = {
                 carrierName: document.getElementById('carrierName').value,
                 accountType: document.getElementById('accountType').value,
-                duration: document.getElementById('duration').value,
-                imageUrl: document.getElementById('imageUrl').value
+                imageUrl: document.getElementById('imageUrl').value,
+                prepaidPlans: document.getElementById('prepaidPlans').value,
+                subscriptionPlans: document.getElementById('subscriptionPlans').value,
+                description: document.getElementById('description').value
             };
 
             try {
@@ -202,20 +221,19 @@
 
                 const data = await res.json();
                 if (data.success) {
-                    alert("Carrier added successfully!");
+                    alert("Carrier configuration saved!");
                     document.getElementById('carrier-form').reset();
                     loadCarriers();
                 } else {
                     alert("Error: " + data.message);
                 }
             } catch (err) {
-                alert("Server error. Check connection.");
+                alert("Server error.");
             }
         });
 
-        // Delete function
         async function deleteCarrier(id) {
-            if (!confirm("Are you sure you want to remove this carrier?")) return;
+            if (!confirm("Remove this carrier and all associated plans?")) return;
 
             try {
                 const res = await fetch(`/api/admin/delete-carrier/${id}`, {

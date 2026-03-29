@@ -159,12 +159,14 @@
             document.getElementById('sidebar-overlay').classList.toggle('hidden');
         }
 
-        const token = localStorage.getItem('smsglobe_admin_token');
+       const token = localStorage.getItem('smsglobe_admin_token');
 
+        // 1. Fetch and display carriers
         async function loadCarriers() {
             const listBody = document.getElementById('carrier-list-body');
             try {
-                const res = await fetch('/api/get-carriers', {
+                // Changed from /api/get-carriers to /api/carriers
+                const res = await fetch('/api/carriers', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await res.json();
@@ -196,6 +198,7 @@
             }
         }
 
+        // 2. Handle form submission
         document.getElementById('carrier-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -209,7 +212,8 @@
             };
 
             try {
-                const res = await fetch('/api/add-carrier', {
+                // Changed from /api/add-carrier to /api/carriers
+                const res = await fetch('/api/carriers', {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -231,11 +235,14 @@
             }
         });
 
+        // 3. Delete Carrier
         async function deleteCarrier(id) {
             if (!confirm("Remove this carrier and all associated plans?")) return;
 
             try {
-                const res = await fetch(`/api/delete-carrier/${id}`, {
+                // Changed from /api/delete-carrier/${id} to /api/carriers?id=${id}
+                // This matches the handleDeleteCarrier(req.query.id) logic
+                const res = await fetch(`/api/carriers?id=${id}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });

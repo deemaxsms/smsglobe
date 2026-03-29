@@ -203,7 +203,7 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-4 text-center font-bold text-brand-blue">
-                                    $${parseFloat(refill.planAmount || 0).toFixed(2)}
+                                    $${parseFloat(String(refill.planAmount).replace(/[^0-9.]/g, '') || 0).toFixed(2)}
                                 </td>
                                 <td class="px-4 py-4">
                                     <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getStatusClass(status)} inline-flex items-center gap-1">

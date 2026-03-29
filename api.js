@@ -1318,17 +1318,18 @@ async function getEsimRefills(req, res) {
             .limit(100);
 
         // 2. Map the data so the frontend can read it
-        const formattedRefills = refills.map(refill => {
-            return {
-                refId: refill.refId, 
-                createdAt: refill.createdAt,
-                userEmail: refill.userEmail,
-                planAmount: refill.planAmount || "0.00", 
-                status: refill.status || 'pending',
-                mobileNumber: refill.mobileNumber || 'N/A',
-                carrierName: refill.carrierName || 'eSIM'
-            };
-        });
+       const formattedRefills = refills.map(refill => {
+    // Ensure we handle potential nulls from the DB
+    return {
+        refId: refill.refId || refill._id, // Fallback to Mongo ID if refId is missing
+        createdAt: refill.createdAt || new Date(),
+        userEmail: refill.userEmail || 'Unknown User',
+        planAmount: refill.planAmount ? refill.planAmount.toString() : "0.00", 
+        status: (refill.status || 'pending').toLowerCase(),
+        mobileNumber: refill.mobileNumber || refill.phone || 'N/A', // Check for 'phone' field
+        carrierName: refill.carrierName || refill.carrier || 'eSIM'
+    };
+});
 
         return res.json({
             success: true,

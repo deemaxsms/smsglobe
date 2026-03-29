@@ -27,6 +27,9 @@
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .active-scale:active { transform: scale(0.98); }
+        /* Smooth scrolling for the product sliders */
+        .snap-x { scroll-snap-type: x mandatory; scroll-behavior: smooth; }
+        .snap-start { scroll-snap-align: start; }
     </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
@@ -116,12 +119,10 @@
                     <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-tight">Premium Proxy Categories</h4>
                     <a href="user_proxy.html" class="text-[10px] font-bold text-brand-blue hover:underline">View All &rarr;</a>
                 </div>
-                <div id="featuredProxies" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                    <div class="h-20 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
-                    <div class="h-20 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
-                    <div class="h-20 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
-                    <div class="h-20 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
-                    <div class="h-20 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
+                <div id="featuredProxies" class="flex flex-nowrap overflow-x-auto lg:grid lg:grid-cols-5 gap-3 no-scrollbar pb-2 snap-x">
+                    <div class="h-20 min-w-[130px] lg:min-w-0 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
+                    <div class="h-20 min-w-[130px] lg:min-w-0 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
+                    <div class="h-20 min-w-[130px] lg:min-w-0 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
                 </div>
             </section>
 
@@ -130,12 +131,9 @@
                     <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-tight">Featured VPN Nodes</h4>
                     <a href="user_vpn.html" class="text-[10px] font-bold text-brand-blue hover:underline">View All &rarr;</a>
                 </div>
-                <div id="featuredVPNs" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                    <div class="h-24 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
-                    <div class="h-24 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
-                    <div class="h-24 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
-                    <div class="h-24 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
-                    <div class="h-24 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
+                <div id="featuredVPNs" class="flex flex-nowrap overflow-x-auto lg:grid lg:grid-cols-5 gap-3 no-scrollbar pb-2 snap-x">
+                    <div class="h-24 min-w-[130px] lg:min-w-0 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
+                    <div class="h-24 min-w-[130px] lg:min-w-0 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
                 </div>
             </section>
 
@@ -144,12 +142,9 @@
                     <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-tight">eSIM Refill Options</h4>
                     <a href="esim_refill.html" class="text-[10px] font-bold text-brand-blue hover:underline">View All &rarr;</a>
                 </div>
-                <div id="featuredESIMs" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                    <div class="h-24 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
-                    <div class="h-24 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
-                    <div class="h-24 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
-                    <div class="h-24 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
-                    <div class="h-24 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
+                <div id="featuredESIMs" class="flex flex-nowrap overflow-x-auto lg:grid lg:grid-cols-5 gap-3 no-scrollbar pb-2 snap-x">
+                    <div class="h-24 min-w-[130px] lg:min-w-0 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
+                    <div class="h-24 min-w-[130px] lg:min-w-0 bg-white border border-brand-border rounded-2xl animate-pulse"></div>
                 </div>
             </section>
 
@@ -188,14 +183,12 @@
             document.getElementById('userEmail').innerText = userData.email;
             document.getElementById('userInitials').innerText = (userData.full_name || "U").charAt(0).toUpperCase();
 
-            // Load sections in parallel with 5 limit
             await Promise.all([
                 fetchFeaturedProxies(),
                 fetchFeaturedVPNs(),
                 fetchFeaturedESIMs()
             ]);
 
-            // Sync total active count
             fetchActiveCount();
 
         } catch (err) { 
@@ -221,18 +214,16 @@
             const res = await fetch(`${API_BASE_URL}/proxies`);
             const data = await res.json();
             if (data.success && data.proxies) {
-                // Get unique categories and limit to 5
                 const categories = [...new Set(data.proxies.map(p => p.category))].slice(0, 5);
-                
                 container.innerHTML = categories.map(cat => {
                     const count = data.proxies.filter(p => p.category === cat).length;
                     return `
-                        <div onclick="window.location.href='user_proxy.html'" class="bg-white border border-brand-border p-4 rounded-2xl flex flex-col items-center text-center shadow-sm active-scale cursor-pointer hover:border-brand-blue transition-all group">
-                            <div class="w-10 h-10 bg-brand-background rounded-xl flex items-center justify-center mb-3 border border-brand-blue/5 p-2">
+                        <div onclick="window.location.href='user_proxy.html'" class="snap-start min-w-[130px] lg:min-w-0 bg-white border border-brand-border p-4 rounded-2xl flex flex-col items-center text-center shadow-sm active-scale cursor-pointer hover:border-brand-blue transition-all group">
+                            <div class="w-8 h-8 bg-brand-background rounded-xl flex items-center justify-center mb-2 border border-brand-blue/5 p-1.5">
                                 <img src="${PROXY_ICON}" class="w-full h-full object-contain">
                             </div>
-                            <h3 class="text-[9px] font-extrabold text-brand-darkText uppercase truncate w-full">${cat}</h3>
-                            <p class="text-[8px] text-brand-lightText font-medium mt-0.5">${count} Packs</p>
+                            <h3 class="text-[8px] font-extrabold text-brand-darkText uppercase truncate w-full">${cat}</h3>
+                            <p class="text-[7px] text-brand-lightText font-medium mt-0.5">${count} Packs</p>
                         </div>
                     `;
                 }).join('');
@@ -246,15 +237,14 @@
             const res = await fetch(`${API_BASE_URL}/products`);
             const data = await res.json();
             if (data.success && data.products) {
-                // Limit to 5
                 const featured = data.products.slice(0, 5);
                 container.innerHTML = featured.map(vpn => `
-                    <div class="bg-white border border-brand-border p-3 rounded-2xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer group active-scale" onclick="window.location.href='user_vpn.html'">
-                        <div class="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center p-1 border border-gray-100 mb-2">
+                    <div class="snap-start min-w-[130px] lg:min-w-0 bg-white border border-brand-border p-3 rounded-2xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer group active-scale" onclick="window.location.href='user_vpn.html'">
+                        <div class="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center p-1 border border-gray-100 mb-2">
                             <img src="${vpn.image || 'https://via.placeholder.com/50'}" class="max-h-full max-w-full object-contain">
                         </div>
-                        <p class="text-[9px] font-bold text-brand-darkText truncate w-full">${vpn.name}</p>
-                        <p class="text-[10px] font-bold text-brand-blue mt-0.5">$${vpn.plans?.[0]?.price || '0.00'}</p>
+                        <p class="text-[8px] font-bold text-brand-darkText truncate w-full">${vpn.name}</p>
+                        <p class="text-[9px] font-bold text-brand-blue mt-0.5">$${vpn.plans?.[0]?.price || '0.00'}</p>
                     </div>
                 `).join('');
             }
@@ -264,29 +254,31 @@
     async function fetchFeaturedESIMs() {
         const container = document.getElementById('featuredESIMs');
         try {
-            const res = await fetch(`${API_BASE_URL}/esim-products`); // Assuming this endpoint
+            const res = await fetch(`${API_BASE_URL}/esim-refill`); 
             const data = await res.json();
-            const esims = data.success ? data.products.slice(0, 5) : [];
+            const esims = data.success && data.refills ? data.refills.slice(0, 5) : [];
             
             if (esims.length > 0) {
                 container.innerHTML = esims.map(sim => `
-                    <div class="bg-white border border-brand-border p-3 rounded-2xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer group active-scale" onclick="window.location.href='esim_refill.html'">
-                        <div class="w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center p-2 border border-orange-100 mb-2">
-                            <img src="${sim.image || ESIM_ICON}" class="max-h-full max-w-full object-contain">
+                    <div class="snap-start min-w-[130px] lg:min-w-0 bg-white border border-brand-border p-3 rounded-2xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer group active-scale" onclick="window.location.href='esim_refill.html'">
+                        <div class="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center p-1.5 border border-orange-100 mb-2">
+                            <img src="${ESIM_ICON}" class="max-h-full max-w-full object-contain">
                         </div>
-                        <p class="text-[9px] font-bold text-brand-darkText truncate w-full">${sim.name}</p>
-                        <p class="text-[10px] font-bold text-brand-orange mt-0.5">$${sim.price || '0.00'}</p>
+                        <p class="text-[8px] font-bold text-brand-darkText truncate w-full">${sim.carrier}</p>
+                        <p class="text-[7px] text-brand-lightText truncate w-full">${sim.esimIdentifier}</p>
+                        <p class="text-[9px] font-bold text-brand-orange mt-0.5">$${sim.amount || '0.00'}</p>
                     </div>
                 `).join('');
             } else {
-                // Fallback UI if no ESIM data
                 container.innerHTML = `
-                    <div class="col-span-full text-center py-4 bg-white rounded-2xl border border-dashed border-brand-border">
-                         <p class="text-[10px] text-brand-lightText">No eSIM refills currently featured.</p>
+                    <div class="min-w-full text-center py-4 bg-white rounded-2xl border border-dashed border-brand-border">
+                         <p class="text-[9px] text-brand-lightText">No recent eSIM refills.</p>
                     </div>
                 `;
             }
-        } catch (e) { container.innerHTML = '<p class="text-[10px] col-span-full text-center">Unavailable.</p>'; }
+        } catch (e) { 
+            container.innerHTML = '<p class="text-[10px] col-span-full text-center">Unavailable.</p>'; 
+        }
     }
 
     function logout() {
@@ -294,7 +286,6 @@
         window.location.href = 'user_login.html';
     }
 
-    // Sidebar Logic
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const openBtn = document.getElementById('openSidebar');

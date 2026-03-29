@@ -34,7 +34,6 @@
     <style>
         body { background-color: #F0F5FE; font-size: 14px; }
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
-        /* Hide scrollbar for cleaner look while allowing horizontal scroll on mobile */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -140,139 +139,136 @@
             overlay.classList.toggle('hidden');
         }
 
-      async function fetchRefills() {
-    const token = localStorage.getItem('smsglobe_admin_token');
-    const tbody = document.getElementById('refills-body');
+        async function fetchRefills() {
+            const token = localStorage.getItem('smsglobe_admin_token');
+            const tbody = document.getElementById('refills-body');
 
-    try {
-        const response = await fetch('/api/esim-refills', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
+            try {
+                const response = await fetch('/api/esim-refills', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
 
-        if (data.success && data.refills.length > 0) {
-tbody.innerHTML = data.refills.map(refill => {
-    const status = refill.status.toLowerCase();
-    const tid = refill.paymentReference; // Unique ID for this row
-    let actionButton = '';
+                if (data.success && data.refills.length > 0) {
+                    tbody.innerHTML = data.refills.map(refill => {
+                        const status = refill.status.toLowerCase();
+                        const tid = refill.paymentReference;
+                        let actionButton = '';
 
-    // 1. Logic for "Pending" -> Move to Processing
-    if (status === 'pending') {
-        actionButton = `
-            <button onclick="updateRefillStatus('${tid}', 'processing')" 
-                    class="bg-brand-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-blue-700 transition-all shadow-sm">
-                Process
-            </button>`;
-    } 
-    // 2. Logic for "Processing/Successful" -> Input Confirmation and Mark Done
-    else if (status === 'successful' || status === 'processing') {
-        actionButton = `
-            <div class="flex items-center gap-2 justify-end">
-                <input type="text" 
-                       id="conf-${tid}" 
-                       placeholder="Confirmation #" 
-                       class="w-32 px-2 py-1.5 border border-brand-border rounded-lg text-[10px] focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue outline-none transition-all"
-                >
-                <button onclick="updateRefillStatus('${tid}', 'completed')" 
-                        class="bg-green-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-green-600 transition-all shadow-sm whitespace-nowrap">
-                    Mark Done
-                </button>
-            </div>`;
-    }
-    // 3. Final state
-    else if (status === 'completed') {
-        actionButton = `
-            <span class="text-green-600 font-bold text-[10px] flex items-center justify-end gap-1.5 bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                </svg>
-                PROCESSED
-            </span>`;
-    }
+                        if (status === 'pending') {
+                            actionButton = `
+                                <button onclick="updateRefillStatus('${tid}', 'processing')" 
+                                        class="bg-brand-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-blue-700 transition-all shadow-sm">
+                                    Process
+                                </button>`;
+                        } 
+                        else if (status === 'successful' || status === 'processing') {
+                            actionButton = `
+                                <div class="flex items-center gap-2 justify-end">
+                                    <input type="text" 
+                                           id="conf-${tid}" 
+                                           placeholder="Conf #" 
+                                           class="w-24 px-2 py-1.5 border border-brand-border rounded-md text-[10px] focus:ring-1 focus:ring-brand-blue outline-none"
+                                    >
+                                    <button onclick="updateRefillStatus('${tid}', 'completed')" 
+                                            class="bg-green-500 text-white px-3 py-1.5 rounded-md text-[10px] font-bold hover:bg-green-600 transition-all whitespace-nowrap">
+                                        Mark Done
+                                    </button>
+                                </div>`;
+                        }
+                        else if (status === 'completed') {
+                            actionButton = `
+                                <span class="text-green-500 font-bold text-[10px] flex items-center justify-end gap-1 px-2 py-1 bg-green-50 rounded-md">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    Processed
+                                </span>`;
+                        }
 
-    // Return the Table Row (TR)
-    return `
-        <tr class="hover:bg-gray-50/50 transition-colors border-b border-gray-50 last:border-0">
-            <td class="px-4 py-4">
-                <div class="font-bold text-brand-darkText">#${tid.slice(-6)}</div>
-                <div class="text-[10px] text-brand-lightText">${new Date(refill.createdAt).toLocaleDateString()}</div>
-            </td>
-            <td class="px-4 py-4 font-medium text-brand-midText">${refill.userEmail}</td>
-            <td class="px-4 py-4 font-bold text-brand-orange uppercase">${refill.carrierName || 'eSIM'}</td>
-            <td class="px-4 py-4">
-                <div class="text-[11px] font-mono font-bold text-brand-darkText">
-                    ${refill.mobileNumber || 'N/A'}
-                </div>
-            </td>
-            <td class="px-4 py-4 text-center font-bold text-brand-blue text-base">
-                $${parseFloat(refill.planAmount).toFixed(2)}
-            </td>
-            <td class="px-4 py-4">
-                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${getStatusClass(refill.status)} inline-flex items-center gap-1.5">
-                    ${(status === 'processing' || status === 'successful') ? '<span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>' : ''}
-                    ${refill.status}
-                </span>
-            </td>
-            <td class="px-4 py-4 text-right">
-                ${actionButton}
-            </td>
-        </tr>
-    `;
-}).join('');
-        } else {
-            tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center text-brand-lightText italic">No refill requests found.</td></tr>`;
+                        return `
+                            <tr class="hover:bg-gray-50/50 transition-colors">
+                                <td class="px-4 py-4">
+                                    <div class="font-bold text-brand-darkText">#${tid.slice(-4)}</div>
+                                    <div class="text-[9px] text-brand-lightText">${new Date(refill.createdAt).toLocaleDateString()}</div>
+                                </td>
+                                <td class="px-4 py-4 font-medium max-w-[120px] truncate">${refill.userEmail}</td>
+                                <td class="px-4 py-4 font-bold text-brand-orange uppercase">${refill.carrierName || 'eSIM'}</td>
+                                <td class="px-4 py-4">
+                                    <div class="text-[10px] font-mono bg-gray-100 px-1.5 py-0.5 rounded inline-block">
+                                        ${refill.mobileNumber || 'N/A'}
+                                    </div>
+                                </td>
+                                <td class="px-4 py-4 text-center font-bold text-brand-blue">
+                                    $${parseFloat(refill.planAmount).toFixed(2)}
+                                </td>
+                                <td class="px-4 py-4">
+                                    <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getStatusClass(refill.status)} inline-flex items-center gap-1">
+                                        ${(status === 'processing' || status === 'successful') ? '<span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>' : ''}
+                                        ${refill.status}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-4 text-right">
+                                    ${actionButton}
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center text-brand-lightText italic">No refill requests found.</td></tr>`;
+                }
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center text-red-500 font-bold">Failed to load data.</td></tr>`;
+            }
         }
-    } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center text-red-500 font-bold">Failed to load data.</td></tr>`;
-    }
-}
 
-      function getStatusClass(status) {
-    const s = status.toLowerCase();
-    if (s === 'completed' || s === 'successful') return 'bg-green-100 text-green-700';
-    if (s === 'processing') return 'bg-blue-100 text-blue-700';
-    if (s === 'pending') return 'bg-orange-100 text-orange-700';
-    if (s === 'failed') return 'bg-red-100 text-red-700';
-    return 'bg-gray-100 text-gray-700';
-}
-
-async function updateRefillStatus(tid, status) {
-    let confirmationNumber = "";
-
-    // If marking as completed, capture the input from the specific row
-    if (status.toLowerCase() === 'completed') {
-        const inputField = document.getElementById(`conf-${tid}`);
-        confirmationNumber = inputField ? inputField.value.trim() : "";
-
-        if (!confirmationNumber) {
-            alert("⚠️ Please enter the Carrier Confirmation Number before marking as Done.");
-            return;
+        function getStatusClass(status) {
+            const s = status.toLowerCase();
+            if (s === 'completed' || s === 'successful') return 'bg-green-100 text-green-700';
+            if (s === 'processing') return 'bg-blue-100 text-blue-700';
+            if (s === 'pending') return 'bg-orange-100 text-orange-700';
+            if (s === 'failed') return 'bg-red-100 text-red-700';
+            return 'bg-gray-100 text-gray-700';
         }
-    }
 
-    if (!confirm(`Update transaction to ${status.toUpperCase()}?`)) return;
+        async function updateRefillStatus(tid, status) {
+            let confirmationNumber = "";
 
-    const token = localStorage.getItem('smsglobe_admin_token');
-    try {
-        const response = await fetch('/api/update-esim-status', {
-            method: 'POST',
-            headers: { 
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ tid, status, confirmationNumber })
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-            fetchRefills(); // Refresh the table to show updated status
-        } else {
-            alert('Update failed: ' + data.message);
+            // If marking as completed, capture the value from the specific input field in this row
+            if (status.toLowerCase() === 'completed') {
+                const inputField = document.getElementById(`conf-${tid}`);
+                confirmationNumber = inputField ? inputField.value.trim() : "";
+
+                if (!confirmationNumber) {
+                    alert("Please enter a Confirmation Number before marking as Done.");
+                    return;
+                }
+            }
+
+            if (!confirm(`Update transaction status to ${status.toUpperCase()}?`)) return;
+
+            const token = localStorage.getItem('smsglobe_admin_token');
+            try {
+                const response = await fetch('/api/update-esim-status', {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    // Send TID, STATUS, and the CONFIRMATION NUMBER all at once
+                    body: JSON.stringify({ tid, status, confirmationNumber })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    fetchRefills();
+                } else {
+                    alert('Update failed: ' + data.message);
+                }
+            } catch (err) {
+                alert('Error connecting to server.');
+            }
         }
-    } catch (err) {
-        alert('Error connecting to server. Please check your connection.');
-    }
-}
 
         function logout() {
             localStorage.removeItem('smsglobe_admin_token');

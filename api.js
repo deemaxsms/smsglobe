@@ -200,6 +200,7 @@ const verifyToken = (req, res, next) => {
 app.all('/api/:action', async (req, res) => {
     await connectDB();
     const action = req.params.action;
+    console.log("Incoming Action:", action, "Method:", req.method);
 
     switch (action) {
         case 'login': return handleLogin(req, res);
@@ -232,7 +233,9 @@ app.all('/api/:action', async (req, res) => {
         if (req.method === 'POST') return handleEsimRefill(req, res);
         break;
         case 'create-esim-order':return handleCreateEsimOrder(req, res);
-        case 'confirm-esim-refill': return handleConfirmEsimRefill(req, res);
+        case 'update-esim-status': 
+    if (req.method === 'POST') return handleAdminEsimUpdate(req, res);
+    break;
         case 'esim-refills':  return getEsimRefills(req, res);
         case 'update-esim-status':return handleAdminEsimUpdate(req, res);
         case 'status':

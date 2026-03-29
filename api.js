@@ -1310,29 +1310,23 @@ async function handleConfirmEsimRefill(req, res) {
     }
 }
 
-// GET All eSIM Refills for Admin
 async function getEsimRefills(req, res) {
     try {
-        const refills = await Order.find({ 
-            productType: 'eSIM' 
-        })
-        .sort({ createdAt: -1 })
-        .limit(100);
+        // 1. Query the CORRECT collection: EsimRefill
+        const refills = await EsimRefill.find({})
+            .sort({ createdAt: -1 })
+            .limit(100);
 
+        // 2. Map the data so the frontend can read it
         const formattedRefills = refills.map(refill => {
-            // Convert NGN back to USD
-            const amountInUSD = refill.amount / 1650;
-
             return {
-                paymentReference: refill.paymentReference,
+                refId: refill.refId, 
                 createdAt: refill.createdAt,
                 userEmail: refill.userEmail,
-                amount: amountInUSD.toFixed(2), 
+                planAmount: refill.planAmount || "0.00", 
                 status: refill.status || 'pending',
-                // FIX: Use 'targetNumber' as the identifier
-                esimIdentifier: refill.targetNumber || 'N/A',
-                // FIX: Use 'nodeName' (from your DB screenshot) or 'carrierName' 
-                carrier: refill.nodeName || refill.carrierName || refill.productName || 'Global eSIM' 
+                mobileNumber: refill.mobileNumber || 'N/A',
+                carrierName: refill.carrierName || 'eSIM'
             };
         });
 
@@ -1392,10 +1386,10 @@ async function handleAdminEsimUpdate(req, res) {
                     mobileNumber: updatedRefill.mobileNumber,
                     instructions: "Your refill has been applied. Please restart your device or toggle Airplane Mode if the balance doesn't reflect immediately."
                 });
-                console.log(`✅ Refill confirmation email sent to: ${updatedRefill.userEmail}`);
+                console.log(`Refill confirmation email sent to: ${updatedRefill.userEmail}`);
             } catch (emailError) {
                 // We don't want to crash the whole request if only the email fails
-                console.error("❌ Email Delivery Failed:", emailError);
+                console.error("Email Delivery Failed:", emailError);
             }
         }
 

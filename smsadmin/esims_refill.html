@@ -151,8 +151,9 @@
 
                 if (data.success && data.refills.length > 0) {
                     tbody.innerHTML = data.refills.map(refill => {
-                        const status = refill.status.toLowerCase();
-                        const tid = refill.paymentReference;
+                        const status = (refill.status || 'pending').toLowerCase();
+                        // IMPORTANT: Use 'refId' as the tid for processing
+                        const tid = refill.refId; 
                         let actionButton = '';
 
                         if (status === 'pending') {
@@ -189,23 +190,25 @@
                         return `
                             <tr class="hover:bg-gray-50/50 transition-colors">
                                 <td class="px-4 py-4">
-                                    <div class="font-bold text-brand-darkText">#${tid.slice(-4)}</div>
+                                    <div class="font-bold text-brand-darkText">#${(tid || "0000").slice(-4)}</div>
                                     <div class="text-[9px] text-brand-lightText">${new Date(refill.createdAt).toLocaleDateString()}</div>
                                 </td>
                                 <td class="px-4 py-4 font-medium max-w-[120px] truncate">${refill.userEmail}</td>
-                                <td class="px-4 py-4 font-bold text-brand-orange uppercase">${refill.carrierName || 'eSIM'}</td>
+                                <td class="px-4 py-4 font-bold text-brand-orange uppercase">
+                                    ${refill.carrierName || 'eSIM'}
+                                </td>
                                 <td class="px-4 py-4">
                                     <div class="text-[10px] font-mono bg-gray-100 px-1.5 py-0.5 rounded inline-block">
                                         ${refill.mobileNumber || 'N/A'}
                                     </div>
                                 </td>
                                 <td class="px-4 py-4 text-center font-bold text-brand-blue">
-                                    $${parseFloat(refill.planAmount).toFixed(2)}
+                                    $${parseFloat(refill.planAmount || 0).toFixed(2)}
                                 </td>
                                 <td class="px-4 py-4">
-                                    <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getStatusClass(refill.status)} inline-flex items-center gap-1">
+                                    <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getStatusClass(status)} inline-flex items-center gap-1">
                                         ${(status === 'processing' || status === 'successful') ? '<span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>' : ''}
-                                        ${refill.status}
+                                        ${status}
                                     </span>
                                 </td>
                                 <td class="px-4 py-4 text-right">
@@ -218,6 +221,7 @@
                     tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center text-brand-lightText italic">No refill requests found.</td></tr>`;
                 }
             } catch (err) {
+                console.error("Fetch error:", err);
                 tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center text-red-500 font-bold">Failed to load data.</td></tr>`;
             }
         }
@@ -234,7 +238,6 @@
         async function updateRefillStatus(tid, status) {
             let confirmationNumber = "";
 
-            // If marking as completed, capture the value from the specific input field in this row
             if (status.toLowerCase() === 'completed') {
                 const inputField = document.getElementById(`conf-${tid}`);
                 confirmationNumber = inputField ? inputField.value.trim() : "";
@@ -255,7 +258,6 @@
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     },
-                    // Send TID, STATUS, and the CONFIRMATION NUMBER all at once
                     body: JSON.stringify({ tid, status, confirmationNumber })
                 });
                 

@@ -231,6 +231,8 @@ app.all('/api/:action', async (req, res) => {
         break;
         case 'create-esim-order':return handleCreateEsimOrder(req, res);
         case 'confirm-esim-refill': return handleConfirmEsimRefill(req, res);
+        case 'esim-refills':  return getEsimRefills(req, res);
+        case 'update-esim-status':return handleAdminEsimUpdate(req, res);
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
         default:
@@ -1257,65 +1259,65 @@ async function handleCreateEsimOrder(req, res) {
 }
 
 async function handleConfirmEsimRefill(req, res) {
-    const { tid } = req.query; // Get payment reference/ID from the URL link
+    const { tid } = req.query; 
     
-    if (!tid) {
-        return res.status(400).send("<h1>❌ Missing Transaction ID</h1>");
-    }
+    if (!tid) return res.status(400).send("<h1>❌ Missing Transaction ID</h1>");
 
     try {
-        // 1. Find the transaction and update status specifically for eSIM Refills
-        const result = await db.collection('transactions').updateOne(
-            { 
-                paymentReference: tid,
-                productType: 'eSIM' // Safety check: Ensure we are confirming an eSIM
-            },
-            { 
-                $set: { 
-                    status: 'Completed', 
-                    refillStatus: 'Processed', // Additional flag for your records
-                    updatedAt: new Date() 
-                } 
-            }
+        const updatedOrder = await Order.findOneAndUpdate(
+            { paymentReference: tid, productType: 'eSIM' },
+            { $set: { status: 'Completed', updatedAt: new Date() } },
+            { new: true }
         );
 
-        if (result.modifiedCount > 0) {
-            // Success Response
+        if (updatedOrder) {
+            // Trigger the email notification automatically
+            try {
+                await sendDeliveryEmail(updatedOrder.userEmail, {
+                    type: "eSIM",
+                    carrierName: updatedOrder.nodeName || "eSIM Carrier",
+                    mobileNumber: updatedOrder.targetNumber,
+                    instructions: "Your refill has been processed successfully. Please check your device balance."
+                });
+            } catch (err) { console.error("Email error:", err); }
+
             return res.send(`
                 <div style="font-family: sans-serif; text-align: center; padding: 50px;">
                     <h1 style="color: #0F54C6;">✅ eSIM Refill Confirmed!</h1>
-                    <p style="color: #344054;">The database has been updated and the refill is marked as completed.</p>
-                    <hr style="max-width: 400px; border: 1px dashed #EAECF0;">
-                    <p style="font-size: 12px; color: #667085;">Ref ID: ${tid}</p>
+                    <p>The status is now Completed and the user has been notified via email.</p>
                 </div>
             `);
         } else {
-            // Already completed or not found
-            return res.send(`
-                <div style="font-family: sans-serif; text-align: center; padding: 50px;">
-                    <h1 style="color: #F9861E;">ℹ️ Refill Already Processed</h1>
-                    <p style="color: #344054;">This eSIM refill order was either already completed or the ID is invalid.</p>
-                </div>
-            `);
+            return res.send("<h1>ℹ️ Order already processed or not found.</h1>");
         }
     } catch (error) {
-        console.error("Database Update Error:", error);
-        return res.status(500).send("<h1>❌ Internal Server Error</h1><p>Could not update eSIM refill status.</p>");
+        return res.status(500).send("<h1>❌ Server Error</h1>");
     }
 }
 
+// GET All eSIM Refills for Admin
 async function getEsimRefills(req, res) {
     try {
-        // Fetch transactions where type is eSIM, sorted by newest first
-        const refills = await db.collection('transactions')
-            .find({ productType: 'eSIM' })
+        // Use the Order model instead of db.collection('transactions')
+        // Filter by productType 'eSIM'
+        const refills = await Order.find({ productType: 'eSIM' })
             .sort({ createdAt: -1 })
-            .limit(50)
-            .toArray();
+            .limit(50);
+
+        // Ensure we send back 'esimIdentifier' so the HTML table displays it
+        const formattedRefills = refills.map(refill => ({
+            paymentReference: refill.paymentReference,
+            createdAt: refill.createdAt,
+            userEmail: refill.userEmail,
+            amount: refill.amount,
+            status: refill.status,
+            // Map targetNumber to esimIdentifier for the frontend table
+            esimIdentifier: refill.targetNumber || 'N/A' 
+        }));
 
         return res.json({
             success: true,
-            refills: refills // This feeds the data.refills.map in your HTML
+            refills: formattedRefills 
         });
     } catch (error) {
         console.error("Fetch Error:", error);

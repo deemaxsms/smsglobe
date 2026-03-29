@@ -86,20 +86,19 @@ const ProxySchema = new mongoose.Schema({
 const Proxy = mongoose.models.Proxy || mongoose.model('Proxy', ProxySchema);
 
 const esimRefillSchema = new mongoose.Schema({
-    carrierName: { type: String, required: true },    
-    carrierImage: { type: String },    
-    mobileNumber: { type: String, required: true },    
-    planAmount: { type: String, required: true },    
-    userEmail: { type: String, required: true, index: true },    
-    refId: { type: String, unique: true },     
+    nodeName: { type: String, required: true },    // Changed from carrierName
+    targetNumber: { type: String, required: true }, // Changed from mobileNumber
+    planName: { type: String, required: true },    // Changed from planAmount
+    userEmail: { type: String, required: true, index: true },
+    fullName: { type: String },                    // Added based on your DB output
+    paymentReference: { type: String, unique: true }, // Changed from refId to match your DB
     confirmationNumber: { type: String }, 
     status: { 
         type: String, 
-        enum: ['pending', 'processing', 'completed', 'failed', 'successful'], 
+        enum: ['pending', 'processing', 'completed', 'failed', 'successful', 'Completed'], // Added 'Completed' with capital C
         default: 'pending' 
     },    
     adminUpdatedBy: { type: String } 
-    
 }, { timestamps: true });
 
 const EsimRefill = mongoose.models.EsimRefill || mongoose.model('EsimRefill', esimRefillSchema);
@@ -980,7 +979,8 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
 
     // 1. DYNAMIC CONTENT CONFIGURATION
     const isVPN = credentials.type === "VPN";
-    const isESIM = credentials.type === "eSIM";
+    const isESIM = credentials.type === "eSIM" || credentials.type === "eSIM Refill";
+    const isProxy = credentials.type === "Proxy";
     
     let subject, headerTitle, subHeader;
 
@@ -989,13 +989,17 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
         headerTitle = "Node Activated!";
         subHeader = "Your Premium VPN Access is ready.";
     } else if (isESIM) {
-        subject = "📶 eSIM Refill Confirmed";
-        headerTitle = "Refill Successful!";
-        subHeader = "Your eSIM has been successfully topped up.";
+        // If there is a confirmation number, it's the final delivery. Otherwise, it's the "Request Received" notification.
+        const isFinal = !!credentials.confirmationNumber;
+        subject = isFinal ? "✅ eSIM Refill Confirmed" : "📶 eSIM Refill Request Received";
+        headerTitle = isFinal ? "Refill Successful!" : "Processing Refill...";
+        subHeader = isFinal 
+            ? "Your eSIM has been successfully topped up." 
+            : "We have received your refill request and are processing it.";
     } else {
-        subject = "🌐 Your Proxy Access Details";
-        headerTitle = "Proxy Provisioned! 🌐";
-        subHeader = "Your High-Speed Proxy details are below.";
+        subject = "🌐 Your Proxy Activation Code";
+        headerTitle = "Proxy Ready! 🌐";
+        subHeader = "Your Proxy activation details are below.";
     }
     
     // 2. DYNAMIC DATA TABLE
@@ -1016,38 +1020,38 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
                 <strong style="font-size: 13px; color: #101828;">${credentials.deviceLimit || 1} Device(s)</strong>
             </td>`;
     } else if (isESIM) {
-        // ESIM REFILL LAYOUT
-       dataTableHtml = `
-            <tr class="mobile-full">
-                <td width="50%" valign="top" style="padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
-                    <strong style="font-size: 13px; color: #101828;">$${parseFloat(credentials.amount).toFixed(2)}</strong>
-                </td>
-                <td width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Confirmation #</span><br>
-                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.confirmationNumber || credentials.paymentReference}</strong>
-                </td>
-            </tr>
-            <tr class="mobile-full">
-                <td width="50%" valign="top">
+        // ESIM REFILL LAYOUT (Handles both Initial Request and Admin Confirmation)
+        dataTableHtml = `
+            <tr>
+                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
                     <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
                     <strong style="font-size: 13px; color: #0F54C6;">${credentials.carrierName}</strong>
                 </td>
-                <td width="50%" valign="top" style="text-align: right;">
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                     <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Number</span><br>
                     <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.mobileNumber}</strong>
                 </td>
+            </tr>
+            <tr>
+                <td class="mobile-full" width="50%" valign="top">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Plan / Amount</span><br>
+                    <strong style="font-size: 13px; color: #101828;">${credentials.amount}</strong>
+                </td>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Confirmation #</span><br>
+                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #F9861E;">${credentials.confirmationNumber || 'PENDING'}</strong>
+                </td>
             </tr>`;
     } else {
-        // PROXY TABLE LAYOUT
+        // PROXY TABLE LAYOUT (Activation Code & Amount)
         dataTableHtml = `
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Host:Port</span><br>
-                <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.host}:${credentials.port}</strong>
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation Code</span><br>
+                <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.activationCode || credentials.password}</strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">User:Pass</span><br>
-                <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.username}:${credentials.password}</strong>
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
+                <strong style="font-size: 14px; color: #101828;">${credentials.amount}</strong>
             </td>`;
     }
 
@@ -1058,7 +1062,7 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
             @media screen and (max-width: 480px) {
-                .mobile-full { width: 100% !important; display: block !important; text-align: left !important; }
+                .mobile-full { width: 100% !important; display: block !important; text-align: left !important; padding-bottom: 10px !important; }
             }
         </style>
     </head>
@@ -1079,12 +1083,12 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
 
                         <div style="padding: 24px; color: #344054; text-align: left;">
                             <p style="font-size: 14px; line-height: 1.5; margin-bottom: 24px;">
-                                Hello, thank you for choosing <strong>SMSGlobe</strong>. Your payment was confirmed and your ${isESIM ? 'refill' : 'access'} is now active.
+                                Hello, thank you for choosing <strong>SMSGlobe</strong>. Your order details are provided below.
                             </p>
                             
                             <div style="background: #F0F5FE; padding: 20px; border-radius: 12px; border: 1px solid #D1E0FF; margin-bottom: 24px;">
-                                <p style="margin: 0 0 10px 0; font-size: 10px; color: #0F54C6; font-weight: 800; text-transform: uppercase;">${isESIM ? 'Order Summary' : 'Instructions'}</p>
-                                <p style="font-size: 13px; margin: 0 0 20px 0; line-height: 1.6;">${credentials.instructions || 'Please allow a few moments for the carrier to update your balance.'}</p>
+                                <p style="margin: 0 0 10px 0; font-size: 10px; color: #0F54C6; font-weight: 800; text-transform: uppercase;">Service Details</p>
+                                <p style="font-size: 13px; margin: 0 0 20px 0; line-height: 1.6;">${credentials.instructions || 'Please follow the instructions on your dashboard to begin using your service.'}</p>
                                 
                                 <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
                                     <tr>
@@ -1099,7 +1103,7 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
                         </div>
 
                         <div style="background: #F9FAFB; padding: 20px; text-align: center; border-top: 1px solid #EAECF0;">
-                            <p style="font-size: 11px; color: #667085; margin: 0;">&copy; 2026 <strong>SMSGlobe</strong>.</p>
+                            <p style="font-size: 11px; color: #667085; margin: 0;">&copy; 2026 <strong>SMSGlobe</strong>. All rights reserved.</p>
                         </div>
                     </div>
                 </td>
@@ -1353,19 +1357,20 @@ async function getEsimRefills(req, res) {
 async function handleAdminEsimUpdate(req, res) {
     const { tid, status, confirmationNumber } = req.body;
 
+    // Validation: Ensure we have the transaction ID and the new status
     if (!tid || !status) {
         return res.status(400).json({ success: false, message: "Missing Transaction ID or Status" });
     }
 
     try {
-        // 1. Update the Order in your unified Order model
-        const updatedOrder = await Order.findOneAndUpdate(
-            { paymentReference: tid }, // Use the original payment ref to find it
+        // 1. Update the EsimRefill document
+        // We use paymentReference to find it, and update status + confirmationNumber
+        const updatedRefill = await EsimRefill.findOneAndUpdate(
+            { paymentReference: tid }, 
             { 
                 $set: { 
-                    status: status, // This becomes 'Completed'
-                    confirmationNumber: confirmationNumber || null, // Store the admin's input
-                    refillStatus: 'Processed Manually',
+                    status: status, // e.g., 'Completed'
+                    confirmationNumber: confirmationNumber || null, 
                     adminUpdatedBy: req.user?.email || 'System Admin', 
                     updatedAt: new Date() 
                 } 
@@ -1373,30 +1378,36 @@ async function handleAdminEsimUpdate(req, res) {
             { new: true } 
         );
 
-        if (!updatedOrder) {
+        // If the query returns null, the TID provided doesn't exist in the DB
+        if (!updatedRefill) {
             return res.status(404).json({ success: false, message: "Transaction not found" });
         }
 
-        // 2. Trigger Email ONLY if status is set to 'Completed'
-        if (status.toLowerCase() === 'completed') {
+        // 2. Trigger Email ONLY if status is set to 'Completed' or 'successful'
+        const isFinished = status.toLowerCase() === 'completed' || status.toLowerCase() === 'successful';
+        
+        if (isFinished) {
             try {
-                await sendDeliveryEmail(updatedOrder.userEmail, {
-                    type: "eSIM",
-                    amount: updatedOrder.amount, 
-                    confirmationNumber: confirmationNumber || updatedOrder.paymentReference,
-                    carrierName: updatedOrder.nodeName || "Global Carrier",
-                    mobileNumber: updatedOrder.targetNumber,
-                    instructions: "Your refill has been applied. Please restart your device or toggle Airplane Mode if the balance doesn't reflect immediately."
+                // Mapping the DB fields (nodeName, targetNumber) to the email function
+                await sendDeliveryEmail(updatedRefill.userEmail, {
+                    type: "eSIM Refill",
+                    amount: updatedRefill.planName || updatedRefill.amount, 
+                    confirmationNumber: confirmationNumber || "Refill Processed",
+                    carrierName: updatedRefill.nodeName || "Carrier",
+                    mobileNumber: updatedRefill.targetNumber,
+                    instructions: "Your eSIM refill has been applied. Please restart your device or toggle Airplane Mode if the balance doesn't reflect immediately."
                 });
-                console.log(`✅ Refill confirmation email sent to: ${updatedOrder.userEmail}`);
+                console.log(`✅ Email sent to: ${updatedRefill.userEmail}`);
             } catch (emailError) {
+                // We don't crash the whole request if only the email fails
                 console.error("❌ Email Delivery Failed:", emailError);
             }
         }
 
         return res.json({ 
             success: true, 
-            message: `Status updated to ${status}${status.toLowerCase() === 'completed' ? ' and user notified' : ''}` 
+            message: `Order updated to ${status}${isFinished ? ' and user notified' : ''}`,
+            data: updatedRefill // Returning the updated doc helps the frontend refresh
         });
 
     } catch (error) {

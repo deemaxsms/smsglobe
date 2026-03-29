@@ -1312,24 +1312,21 @@ async function handleConfirmEsimRefill(req, res) {
 
 async function getEsimRefills(req, res) {
     try {
-        // 1. Query the CORRECT collection: EsimRefill
         const refills = await EsimRefill.find({})
             .sort({ createdAt: -1 })
             .limit(100);
 
-        // 2. Map the data so the frontend can read it
-       const formattedRefills = refills.map(refill => {
-    // Ensure we handle potential nulls from the DB
-    return {
-        refId: refill.refId || refill._id, // Fallback to Mongo ID if refId is missing
-        createdAt: refill.createdAt || new Date(),
-        userEmail: refill.userEmail || 'Unknown User',
-        planAmount: refill.planAmount ? refill.planAmount.toString() : "0.00", 
-        status: (refill.status || 'pending').toLowerCase(),
-        mobileNumber: refill.mobileNumber || refill.phone || 'N/A', // Check for 'phone' field
-        carrierName: refill.carrierName || refill.carrier || 'eSIM'
-    };
-});
+        const formattedRefills = refills.map(refill => {
+            return {
+                refId: refill.paymentReference || refill._id, 
+                createdAt: refill.createdAt,
+                userEmail: refill.userEmail,
+                planAmount: refill.planName || "0.00", 
+                status: refill.status || 'pending',
+                mobileNumber: refill.targetNumber || 'N/A', 
+                carrierName: refill.nodeName || 'eSIM'
+            };
+        });
 
         return res.json({
             success: true,
@@ -1344,7 +1341,6 @@ async function getEsimRefills(req, res) {
         });
     }
 }
-
 async function handleAdminEsimUpdate(req, res) {
     // 1. Destructure the data from the frontend
     const { tid, status, confirmationNumber } = req.body;

@@ -166,38 +166,37 @@
     const ESIM_ICON = 'https://cdn-icons-png.flaticon.com/512/9183/9183499.png';
 
 async function initDashboard() {
-        const token = localStorage.getItem('userToken');
-        if (!token) { window.location.href = 'user_login.html'; return; }
+    const token = localStorage.getItem('userToken');
+    if (!token) { window.location.href = 'user_login.html'; return; }
 
-        try {
-            const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            
-            if (!profileRes.ok) throw new Error('Session Expired');
-            
-            const userData = await profileRes.json();
-            
-            document.getElementById('userName').innerText = userData.full_name || "User";
-            document.getElementById('userEmail').innerText = userData.email;
-            document.getElementById('userInitials').innerText = (userData.full_name || "U").charAt(0).toUpperCase();
+    try {
+        const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!profileRes.ok) throw new Error('Session Expired');
+        
+        const userData = await profileRes.json();
+        
+        document.getElementById('userName').innerText = userData.full_name || "User";
+        document.getElementById('userEmail').innerText = userData.email;
+        document.getElementById('userInitials').innerText = (userData.full_name || "U").charAt(0).toUpperCase();
 
-            // Run these three
-            await Promise.all([
-                fetchFeaturedProxies(),
-                fetchFeaturedVPNs()
-            ]);
-            
-            // Load the static eSIM cards
-            loadFeaturedCarriers();
+        // Run all data fetches in parallel for speed
+        await Promise.all([
+            fetchFeaturedProxies(),
+            fetchFeaturedVPNs(),
+            fetchActiveCount()
+        ]);
+        
+        // Load the static eSIM cards
+        loadFeaturedCarriers();
 
-            fetchActiveCount();
-
-        } catch (err) { 
-            console.error(err);
-            logout(); 
-        }
+    } catch (err) { 
+        console.error(err);
+        logout(); 
     }
+}
 
     async function fetchActiveCount() {
         const token = localStorage.getItem('userToken');
@@ -286,7 +285,6 @@ async function initDashboard() {
 window.addEventListener('DOMContentLoaded', loadFeaturedCarriers);
 
 // Call this function when the page loads
-window.addEventListener('DOMContentLoaded', loadESIMOptions);
     function logout() {
         localStorage.removeItem('userToken');
         window.location.href = 'user_login.html';

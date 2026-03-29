@@ -1310,21 +1310,29 @@ async function handleConfirmEsimRefill(req, res) {
     }
 }
 
+// GET All eSIM Refills for Admin
 async function getEsimRefills(req, res) {
     try {
-        const refills = await EsimRefill.find({})
-            .sort({ createdAt: -1 })
-            .limit(100);
+        const refills = await Order.find({ 
+            productType: 'eSIM' 
+        })
+        .sort({ createdAt: -1 })
+        .limit(100);
 
         const formattedRefills = refills.map(refill => {
+            // Convert NGN back to USD
+            const amountInUSD = refill.amount / 1650;
+
             return {
-                refId: refill.paymentReference || refill._id, 
+                paymentReference: refill.paymentReference,
                 createdAt: refill.createdAt,
                 userEmail: refill.userEmail,
-                planAmount: refill.planName || "0.00", 
+                amount: amountInUSD.toFixed(2), 
                 status: refill.status || 'pending',
-                mobileNumber: refill.targetNumber || 'N/A', 
-                carrierName: refill.nodeName || 'eSIM'
+                // FIX: Use 'targetNumber' as the identifier
+                esimIdentifier: refill.targetNumber || 'N/A',
+                // FIX: Use 'nodeName' (from your DB screenshot) or 'carrierName' 
+                carrier: refill.nodeName || refill.carrierName || refill.productName || 'Global eSIM' 
             };
         });
 
@@ -1341,6 +1349,7 @@ async function getEsimRefills(req, res) {
         });
     }
 }
+
 async function handleAdminEsimUpdate(req, res) {
     // 1. Destructure the data from the frontend
     const { tid, status, confirmationNumber } = req.body;

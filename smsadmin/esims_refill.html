@@ -34,7 +34,6 @@
     <style>
         body { background-color: #F0F5FE; font-size: 14px; }
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
-        /* Hide scrollbar for cleaner look while allowing horizontal scroll on mobile */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -154,6 +153,9 @@
                     tbody.innerHTML = data.refills.map(refill => {
                         const status = refill.status.toLowerCase();
                         
+                        // FIX: Using nodeName from your database
+                        const displayCarrier = refill.nodeName ? refill.nodeName : 'GLOBAL eSIM';
+                        
                         let actionButton = '';
                         if (status === 'pending') {
                             actionButton = `
@@ -167,7 +169,7 @@
                                         class="bg-green-500 text-white px-2 py-1 rounded-md text-[10px] font-bold hover:bg-green-600 transition-all">
                                     Mark Done
                                 </button>`;
-                        } else if (status === 'completed') {
+                        } else if (status === 'completed' || status === 'successful') {
                             actionButton = `<span class="text-green-500 font-bold text-[10px] flex items-center justify-end gap-1">
                                                 Processed
                                             </span>`;
@@ -180,14 +182,16 @@
                                     <div class="text-[9px] text-brand-lightText">${new Date(refill.createdAt).toLocaleDateString()}</div>
                                 </td>
                                 <td class="px-4 py-4 font-medium max-w-[120px] truncate">${refill.userEmail}</td>
-                                <td class="px-4 py-4 font-bold text-brand-orange uppercase">${refill.carrier || 'eSIM'}</td>
+                                <td class="px-4 py-4 font-bold text-brand-orange uppercase">
+                                    ${displayCarrier}
+                                </td>
                                 <td class="px-4 py-4">
                                     <div class="text-[10px] font-mono bg-gray-100 px-1.5 py-0.5 rounded inline-block">
-                                        ${refill.esimIdentifier || 'N/A'}
+                                        ${refill.targetNumber || 'N/A'}
                                     </div>
                                 </td>
                                 <td class="px-4 py-4 text-center font-bold text-brand-blue">
-                                    $${parseFloat(refill.amount).toFixed(2)}
+                                    $${refill.planName ? refill.planName.replace('$', '') : '0.00'}
                                 </td>
                                 <td class="px-4 py-4">
                                     <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getStatusClass(refill.status)} inline-flex items-center gap-1">
@@ -210,13 +214,12 @@
         }
 
         function getStatusClass(status) {
-            switch(status.toLowerCase()) {
-                case 'completed': return 'bg-green-100 text-green-700';
-                case 'processing': return 'bg-blue-100 text-blue-700';
-                case 'pending': return 'bg-orange-100 text-orange-700';
-                case 'failed': return 'bg-red-100 text-red-700';
-                default: return 'bg-gray-100 text-gray-700';
-            }
+            const s = status.toLowerCase();
+            if (s === 'completed' || s === 'successful') return 'bg-green-100 text-green-700';
+            if (s === 'processing') return 'bg-blue-100 text-blue-700';
+            if (s === 'pending') return 'bg-orange-100 text-orange-700';
+            if (s === 'failed') return 'bg-red-100 text-red-700';
+            return 'bg-gray-100 text-gray-700';
         }
 
         async function updateRefillStatus(tid, status) {

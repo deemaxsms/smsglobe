@@ -1351,7 +1351,6 @@ async function getEsimRefills(req, res) {
 }
 
 async function handleAdminEsimUpdate(req, res) {
-    // 1. Destructure confirmationNumber sent from the frontend input
     const { tid, status, confirmationNumber } = req.body;
 
     if (!tid || !status) {
@@ -1359,13 +1358,14 @@ async function handleAdminEsimUpdate(req, res) {
     }
 
     try {
-        // 2. Update the Order in the database
+        // 1. Update the Order
         const updatedOrder = await Order.findOneAndUpdate(
-            { paymentReference: tid },
+            { paymentReference: tid }, // Find by original ID
             { 
                 $set: { 
                     status: status, 
-                    paymentReference: confirmationNumber || tid, 
+                    // Store the admin's input in its own field
+                    confirmationNumber: confirmationNumber || null, 
                     refillStatus: 'Processed Manually',
                     adminUpdatedBy: req.user?.email || 'System Admin', 
                     updatedAt: new Date() 
@@ -1377,19 +1377,24 @@ async function handleAdminEsimUpdate(req, res) {
         if (!updatedOrder) {
             return res.status(404).json({ success: false, message: "Transaction not found" });
         }
+
+        // 2. Trigger Email if Completed
         if (status.toLowerCase() === 'completed') {
             try {
                 await sendDeliveryEmail(updatedOrder.userEmail, {
                     type: "eSIM",
+                    // Format amount if needed (e.g., from NGN back to display USD)
                     amount: updatedOrder.amount, 
+                    // Priority: manual confirmation > original payment ref
                     confirmationNumber: confirmationNumber || updatedOrder.paymentReference,
                     carrierName: updatedOrder.nodeName || "Global Carrier",
                     mobileNumber: updatedOrder.targetNumber,
-                    instructions: "Your refill has been applied. Please restart your device or toggle Airplane Mode if the balance doesn't reflect immediately."
+                    instructions: "Your refill has been applied. Please restart your device if the balance doesn't reflect immediately."
                 });
-                console.log(`✅ Refill confirmation email sent to: ${updatedOrder.userEmail}`);
+                console.log(`✅ Email sent to: ${updatedOrder.userEmail}`);
             } catch (emailError) {
                 console.error("❌ Email Delivery Failed:", emailError);
+                // We don't return error here because the DB update WAS successful
             }
         }
 

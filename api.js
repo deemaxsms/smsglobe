@@ -1358,14 +1358,13 @@ async function handleAdminEsimUpdate(req, res) {
     }
 
     try {
-        // 1. Update the Order
+        // 1. Update the Order in your unified Order model
         const updatedOrder = await Order.findOneAndUpdate(
-            { paymentReference: tid }, // Find by original ID
+            { paymentReference: tid }, // Use the original payment ref to find it
             { 
                 $set: { 
-                    status: status, 
-                    // Store the admin's input in its own field
-                    confirmationNumber: confirmationNumber || null, 
+                    status: status, // This becomes 'Completed'
+                    confirmationNumber: confirmationNumber || null, // Store the admin's input
                     refillStatus: 'Processed Manually',
                     adminUpdatedBy: req.user?.email || 'System Admin', 
                     updatedAt: new Date() 
@@ -1378,29 +1377,26 @@ async function handleAdminEsimUpdate(req, res) {
             return res.status(404).json({ success: false, message: "Transaction not found" });
         }
 
-        // 2. Trigger Email if Completed
+        // 2. Trigger Email ONLY if status is set to 'Completed'
         if (status.toLowerCase() === 'completed') {
             try {
                 await sendDeliveryEmail(updatedOrder.userEmail, {
                     type: "eSIM",
-                    // Format amount if needed (e.g., from NGN back to display USD)
                     amount: updatedOrder.amount, 
-                    // Priority: manual confirmation > original payment ref
                     confirmationNumber: confirmationNumber || updatedOrder.paymentReference,
                     carrierName: updatedOrder.nodeName || "Global Carrier",
                     mobileNumber: updatedOrder.targetNumber,
-                    instructions: "Your refill has been applied. Please restart your device if the balance doesn't reflect immediately."
+                    instructions: "Your refill has been applied. Please restart your device or toggle Airplane Mode if the balance doesn't reflect immediately."
                 });
-                console.log(`✅ Email sent to: ${updatedOrder.userEmail}`);
+                console.log(`✅ Refill confirmation email sent to: ${updatedOrder.userEmail}`);
             } catch (emailError) {
                 console.error("❌ Email Delivery Failed:", emailError);
-                // We don't return error here because the DB update WAS successful
             }
         }
 
         return res.json({ 
             success: true, 
-            message: `Status updated to ${status}${status === 'completed' ? ' and user notified' : ''}` 
+            message: `Status updated to ${status}${status.toLowerCase() === 'completed' ? ' and user notified' : ''}` 
         });
 
     } catch (error) {

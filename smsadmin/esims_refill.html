@@ -34,7 +34,6 @@
     <style>
         body { background-color: #F0F5FE; font-size: 14px; }
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
-        /* Hide scrollbar for cleaner look while allowing horizontal scroll on mobile */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -70,17 +69,17 @@
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                             Users
                         </a>
-                        <a href="sms_vpn.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
+                          <a href="sms_vpn.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                             VPN
                         </a>
-                        <a href="sms_proxy.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
+                         <a href="sms_proxy.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                            Proxy Nodes
+                           Proxy Nodes
                         </a>
                         <a href="transaction_history.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                            Transaction History
+                            History
                         </a>
                     </nav>
                 </div>
@@ -96,8 +95,8 @@
         <main class="flex-1 p-3 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full overflow-hidden">
             <header class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4 px-1">
                 <div>
-                    <h2 class="text-xl sm:text-2xl font-bold tracking-tight">eSIM Refill Requests</h2>
-                    <p class="text-brand-lightText text-xs sm:text-sm">Manage and process user eSIM balance refills</p>
+                    <h2 class="text-xl sm:text-2xl font-bold tracking-tight">eSIM Refill Management</h2>
+                    <p class="text-brand-lightText text-xs sm:text-sm">Process paid refills and update confirmation numbers</p>
                 </div>
                 <button onclick="fetchRefills()" class="bg-brand-blue text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2 w-fit">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -110,19 +109,18 @@
                     <table class="w-full text-left text-[11px] sm:text-sm whitespace-nowrap">
                         <thead class="bg-gray-50 text-brand-lightText uppercase text-[9px] sm:text-[11px] border-b border-brand-border">
                             <tr>
-                                <th class="px-4 py-4 font-bold">ID / Date</th>
+                                <th class="px-4 py-4 font-bold">Transaction</th>
                                 <th class="px-4 py-4 font-bold">User</th>
-                                <th class="px-4 py-4 font-bold">Carrier</th>
                                 <th class="px-4 py-4 font-bold">Details</th>
                                 <th class="px-4 py-4 font-bold text-center">Amount</th>
                                 <th class="px-4 py-4 font-bold">Status</th>
-                                <th class="px-4 py-4 font-bold text-right">Actions</th>
+                                <th class="px-4 py-4 font-bold text-right">Process Refill</th>
                             </tr>
                         </thead>
                         <tbody id="refills-body" class="divide-y divide-gray-100">
                             <tr>
-                                <td colspan="7" class="px-6 py-12 text-center text-brand-lightText italic">
-                                    Loading eSIM refill data...
+                                <td colspan="6" class="px-6 py-12 text-center text-brand-lightText italic">
+                                    Fetching refill requests...
                                 </td>
                             </tr>
                         </tbody>
@@ -132,7 +130,7 @@
         </main>
     </div>
 
-   <script>
+<script>
     function toggleSidebar() {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebar-overlay');
@@ -154,71 +152,68 @@
                 tbody.innerHTML = data.refills.map(refill => {
                     const status = refill.status.toLowerCase();
                     
-                    let actionButton = '';
+                    let actionArea = '';
                     
-                    // Case 1: Pending (Initial state if not auto-processed)
-                    if (status === 'pending') {
-                        actionButton = `
-                            <button onclick="updateRefillStatus('${refill.paymentReference}', 'processing')" 
-                                    class="bg-brand-blue text-white px-3 py-1.5 rounded-md text-[10px] font-bold hover:bg-blue-700 transition-all">
-                                Process
-                            </button>`;
-                    } 
-                    // Case 2: Processing (This allows the Admin to input confirmation and finish)
-                    else if (status === 'processing') {
-                        actionButton = `
+                    // Show Input + Mark Done button ONLY for paid/processing items
+                    if (status === 'successful' || status === 'processing') {
+                        actionArea = `
                             <div class="flex flex-col gap-2 items-end">
                                 <input type="text" id="conf-${refill.paymentReference}" 
-                                       placeholder="Confirmation #" 
-                                       class="border border-brand-border rounded px-2 py-1 text-[10px] w-32 focus:ring-1 focus:ring-brand-blue outline-none shadow-sm">
-                                <button onclick="markAsDone('${refill.paymentReference}')" 
-                                        class="bg-green-500 text-white px-3 py-1.5 rounded-md text-[10px] font-bold hover:bg-green-600 transition-all">
-                                    Mark Done
+                                       placeholder="Enter Confirmation #" 
+                                       class="border border-brand-border rounded px-2 py-1.5 text-[10px] w-40 focus:ring-1 focus:ring-brand-blue outline-none shadow-sm font-medium">
+                                <button onclick="processRefill('${refill.paymentReference}')" 
+                                        class="bg-green-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold hover:bg-green-700 transition-all shadow-md">
+                                    Mark as Done
                                 </button>
                             </div>`;
                     } 
-                    // Case 3: Completed / Successful
-                    else if (status === 'completed' || status === 'successful') {
-                        actionButton = `
-                            <span class="text-green-500 font-bold text-[10px] flex items-center justify-end gap-1">
-                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                                Processed
-                            </span>`;
+                    else if (status === 'completed') {
+                        actionArea = `
+                            <div class="text-right">
+                                <div class="text-green-600 font-bold text-[10px] flex items-center justify-end gap-1 mb-1">
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                                    Refill Applied
+                                </div>
+                                <div class="text-[9px] text-brand-lightText font-mono">ID: ${refill.confirmationNumber || 'N/A'}</div>
+                            </div>`;
+                    } else {
+                        actionArea = `<span class="text-gray-400 text-[10px] italic">Awaiting Payment</span>`;
                     }
 
                     return `
                         <tr class="hover:bg-gray-50/50 transition-colors">
                             <td class="px-4 py-4">
-                                <div class="font-bold text-brand-darkText">#${refill.paymentReference.slice(-6)}</div>
-                                <div class="text-[9px] text-brand-lightText">${new Date(refill.createdAt).toLocaleString()}</div>
+                                <div class="font-bold text-brand-darkText">#${refill.paymentReference.slice(-8)}</div>
+                                <div class="text-[9px] text-brand-lightText">${new Date(refill.createdAt).toLocaleDateString()}</div>
                             </td>
-                            <td class="px-4 py-4 font-medium max-w-[120px] truncate">${refill.userEmail}</td>
-                            <td class="px-4 py-4 font-bold text-brand-orange uppercase">${refill.carrier || 'eSIM'}</td>
                             <td class="px-4 py-4">
-                                <div class="text-[10px] font-mono bg-gray-100 px-1.5 py-0.5 rounded inline-block">
-                                    ${refill.esimIdentifier || 'N/A'}
+                                <div class="font-medium">${refill.userEmail}</div>
+                                <div class="text-[9px] text-brand-lightText">${refill.fullName || ''}</div>
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="font-bold text-brand-orange uppercase text-[10px]">${refill.carrier || 'eSIM'}</div>
+                                <div class="text-[10px] font-mono bg-gray-100 px-1.5 py-0.5 rounded inline-block mt-1">
+                                    ${refill.targetNumber || refill.esimIdentifier}
                                 </div>
                             </td>
                             <td class="px-4 py-4 text-center font-bold text-brand-blue">
                                 $${parseFloat(refill.amount).toFixed(2)}
                             </td>
                             <td class="px-4 py-4">
-                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getStatusClass(refill.status)} inline-flex items-center gap-1">
-                                    ${status === 'processing' ? '<span class="w-1 h-1 rounded-full bg-blue-500 animate-pulse"></span>' : ''}
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getStatusClass(refill.status)}">
                                     ${refill.status}
                                 </span>
                             </td>
                             <td class="px-4 py-4 text-right">
-                                ${actionButton}
+                                ${actionArea}
                             </td>
-                        </tr>
-                    `;
+                        </tr>`;
                 }).join('');
             } else {
-                tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center text-brand-lightText italic">No refill requests found.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-brand-lightText italic">No requests found.</td></tr>`;
             }
         } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center text-red-500 font-bold">Failed to load data.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-red-500 font-bold">Error loading data.</td></tr>`;
         }
     }
 
@@ -227,41 +222,21 @@
         if (s === 'completed' || s === 'successful') return 'bg-green-100 text-green-700';
         if (s === 'processing') return 'bg-blue-100 text-blue-700';
         if (s === 'pending') return 'bg-orange-100 text-orange-700';
-        if (s === 'failed') return 'bg-red-100 text-red-700';
         return 'bg-gray-100 text-gray-700';
     }
 
-    // Handles simple status updates (e.g., Pending -> Processing)
-    async function updateRefillStatus(tid, status) {
-        const token = localStorage.getItem('smsglobe_admin_token');
-        try {
-            const response = await fetch('/api/update-esim-status', {
-                method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json' 
-                },
-                body: JSON.stringify({ tid, status })
-            });
-            const data = await response.json();
-            if (data.success) fetchRefills();
-        } catch (err) {
-            alert('Error updating status.');
-        }
-    }
-
-    // Handles the final "Mark Done" with the Confirmation Number input
-    async function markAsDone(tid) {
+    // THIS IS THE MAIN FUNCTION FOR ADMIN TO UPDATE STATUS + CONFIRMATION NUMBER
+    async function processRefill(tid) {
         const confInput = document.getElementById(`conf-${tid}`);
         const confirmationNumber = confInput.value.trim();
 
         if (!confirmationNumber) {
-            alert("Please enter the eSIM Confirmation Number before marking as done.");
+            alert("Please enter the confirmation number from the provider before marking as done.");
             confInput.focus();
             return;
         }
 
-        if (!confirm(`Confirm refill for ${tid} with Ref: ${confirmationNumber}?`)) return;
+        if (!confirm("Have you successfully applied the refill to the user's line?")) return;
 
         const token = localStorage.getItem('smsglobe_admin_token');
         try {
@@ -272,19 +247,21 @@
                     'Content-Type': 'application/json' 
                 },
                 body: JSON.stringify({ 
-                    tid, 
+                    tid: tid, 
                     status: 'Completed', 
                     confirmationNumber: confirmationNumber 
                 })
             });
+            
             const data = await response.json();
             if (data.success) {
-                fetchRefills();
+                alert('Success! User has been notified and order marked as complete.');
+                fetchRefills(); // Refresh the table
             } else {
-                alert('Update failed: ' + data.message);
+                alert('Error: ' + data.message);
             }
         } catch (err) {
-            alert('Error connecting to server.');
+            alert('Failed to connect to server.');
         }
     }
 

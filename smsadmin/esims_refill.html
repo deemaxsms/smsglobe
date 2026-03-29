@@ -125,7 +125,7 @@
     const tbody = document.getElementById('refills-body');
 
     try {
-        const response = await fetch('/api/admin/esim-refills', {
+        const response = await fetch('/api/esim-refills', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();
@@ -210,7 +210,7 @@
 
             const token = localStorage.getItem('smsglobe_admin_token');
             try {
-                const response = await fetch('/api/admin/update-esim-status', {
+                const response = await fetch('/api/update-esim-status', {
                     method: 'POST',
                     headers: { 
                         'Authorization': `Bearer ${token}`,

@@ -103,6 +103,17 @@ const esimRefillSchema = new mongoose.Schema({
 
 const EsimRefill = mongoose.models.EsimRefill || mongoose.model('EsimRefill', esimRefillSchema);
 
+const carrierSchema = new mongoose.Schema({
+    carrierName: { type: String, required: true },
+    accountType: { type: String, required: true },
+    imageUrl: { type: String, required: true },
+    prepaidPlans: { type: String },
+    subscriptionPlans: { type: String },
+    description: { type: String },
+}, { timestamps: true });
+
+const Carrier = mongoose.models.Carrier || mongoose.model('Carrier', carrierSchema);
+
 const orderSchema = new mongoose.Schema({
     userEmail: { type: String, required: true, index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -236,7 +247,11 @@ app.all('/api/:action', async (req, res) => {
             break;
         case 'create-esim-order': return handleCreateEsimOrder(req, res);
         case 'esim-refills': return getEsimRefills(req, res);
-        
+        case 'carriers':
+        if (req.method === 'GET') return handleGetCarriers(req, res);
+        if (req.method === 'POST') return handleAddCarrier(req, res);
+        if (req.method === 'DELETE') return handleDeleteCarrier(req, res);
+        break;
         // This is your target case
         case 'update-esim-status':
             return handleAdminEsimUpdate(req, res);
@@ -1417,6 +1432,59 @@ async function handleAdminEsimUpdate(req, res) {
     }
 }
 
+// GET All Carriers
+async function handleGetCarriers(req, res) {
+    try {
+        const carriers = await Carrier.find().sort({ createdAt: -1 });
+        return res.json({ success: true, carriers });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Failed to fetch carriers" });
+    }
+}
+
+// ADD New Carrier
+async function handleAddCarrier(req, res) {
+    try {
+        const { carrierName, accountType, imageUrl, prepaidPlans, subscriptionPlans, description } = req.body;
+
+        if (!carrierName || !imageUrl) {
+            return res.status(400).json({ success: false, message: "Carrier Name and Image are required" });
+        }
+
+        const newCarrier = new Carrier({
+            carrierName,
+            accountType,
+            imageUrl,
+            prepaidPlans,
+            subscriptionPlans,
+            description
+        });
+
+        await newCarrier.save();
+        return res.json({ success: true, message: "Carrier configuration saved!" });
+    } catch (err) {
+        console.error("Add Carrier Error:", err);
+        return res.status(500).json({ success: false, message: "Server error saving carrier" });
+    }
+}
+
+// DELETE Carrier
+async function handleDeleteCarrier(req, res) {
+    try {
+        const { id } = req.query; // Or req.params depending on your URL structure
+        if (!id) {
+             // Fallback for /delete-carrier/:id style
+             const pathParts = req.url.split('/');
+             const idFromPath = pathParts[pathParts.length - 1];
+             await Carrier.findByIdAndDelete(idFromPath);
+        } else {
+             await Carrier.findByIdAndDelete(id);
+        }
+        return res.json({ success: true, message: "Carrier removed" });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Delete failed" });
+    }
+}
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

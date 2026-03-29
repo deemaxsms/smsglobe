@@ -1316,11 +1316,10 @@ async function getEsimRefills(req, res) {
                 paymentReference: refill.paymentReference,
                 createdAt: refill.createdAt,
                 userEmail: refill.userEmail,
-                // The frontend table uses $ sign, so we send the USD float
                 amount: amountInUSD.toFixed(2), 
                 status: refill.status || 'pending',
-                // Map targetNumber (DB) to esimIdentifier (Frontend Table Column)
-                esimIdentifier: refill.targetNumber || 'N/A' 
+                esimIdentifier: refill.targetNumber || 'N/A',
+                carrier: refill.carrier || refill.productName || 'Unknown' 
             };
         });
 

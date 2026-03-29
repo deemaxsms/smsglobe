@@ -165,7 +165,7 @@
     const PROXY_ICON = 'https://i.imgur.com/n5ZZeLf.png';
     const ESIM_ICON = 'https://cdn-icons-png.flaticon.com/512/9183/9183499.png';
 
-    async function initDashboard() {
+async function initDashboard() {
         const token = localStorage.getItem('userToken');
         if (!token) { window.location.href = 'user_login.html'; return; }
 
@@ -182,11 +182,14 @@
             document.getElementById('userEmail').innerText = userData.email;
             document.getElementById('userInitials').innerText = (userData.full_name || "U").charAt(0).toUpperCase();
 
+            // Run these three
             await Promise.all([
                 fetchFeaturedProxies(),
-                fetchFeaturedVPNs(),
-                fetchFeaturedESIMs()
+                fetchFeaturedVPNs()
             ]);
+            
+            // Load the static eSIM cards
+            loadFeaturedCarriers();
 
             fetchActiveCount();
 

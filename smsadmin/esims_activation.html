@@ -164,7 +164,7 @@
         async function loadCarriers() {
             const listBody = document.getElementById('carrier-list-body');
             try {
-                const res = await fetch('/api/admin/get-carriers', {
+                const res = await fetch('/api/get-carriers', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await res.json();
@@ -209,7 +209,7 @@
             };
 
             try {
-                const res = await fetch('/api/admin/add-carrier', {
+                const res = await fetch('/api/add-carrier', {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -235,7 +235,7 @@
             if (!confirm("Remove this carrier and all associated plans?")) return;
 
             try {
-                const res = await fetch(`/api/admin/delete-carrier/${id}`, {
+                const res = await fetch(`/api/delete-carrier/${id}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });

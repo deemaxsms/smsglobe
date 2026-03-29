@@ -140,7 +140,7 @@
             overlay.classList.toggle('hidden');
         }
 
-       async function fetchRefills() {
+      async function fetchRefills() {
     const token = localStorage.getItem('smsglobe_admin_token');
     const tbody = document.getElementById('refills-body');
 
@@ -153,19 +153,18 @@
         if (data.success && data.refills.length > 0) {
             tbody.innerHTML = data.refills.map(refill => {
                 const status = refill.status.toLowerCase();
-                
                 let actionButton = '';
 
-                // 1. Logic for "Pending" or "Successful" (Initial payment confirmed)
-                if (status === 'pending' || status === 'successful') {
+                // 1. Logic for "Pending"
+                if (status === 'pending') {
                     actionButton = `
                         <button onclick="updateRefillStatus('${refill.paymentReference}', 'Processing')" 
                                 class="bg-brand-blue text-white px-2 py-1 rounded-md text-[10px] font-bold hover:bg-blue-700 transition-all">
                             Process
                         </button>`;
                 } 
-                // 2. Logic for "Processing" (Admin is working on it)
-                else if (status === 'processing') {
+                // 2. Automated Logic: If payment is SUCCESSFUL or currently PROCESSING, show "Mark Done"
+                else if (status === 'successful' || status === 'processing') {
                     actionButton = `
                         <button onclick="updateRefillStatus('${refill.paymentReference}', 'Completed')" 
                                 class="bg-green-500 text-white px-2 py-1 rounded-md text-[10px] font-bold hover:bg-green-600 transition-all">
@@ -176,7 +175,9 @@
                 else if (status === 'completed') {
                     actionButton = `
                         <span class="text-green-500 font-bold text-[10px] flex items-center justify-end gap-1">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                            </svg>
                             Processed
                         </span>`;
                 }
@@ -199,7 +200,7 @@
                         </td>
                         <td class="px-4 py-4">
                             <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getStatusClass(refill.status)} inline-flex items-center gap-1">
-                                ${status === 'processing' ? '<span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>' : ''}
+                                ${(status === 'processing' || status === 'successful') ? '<span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>' : ''}
                                 ${refill.status}
                             </span>
                         </td>

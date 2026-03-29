@@ -226,44 +226,70 @@
     }
 
     // THIS IS THE MAIN FUNCTION FOR ADMIN TO UPDATE STATUS + CONFIRMATION NUMBER
-    async function processRefill(tid) {
-        const confInput = document.getElementById(`conf-${tid}`);
-        const confirmationNumber = confInput.value.trim();
+   async function processRefill(tid) {
+    // 1. Get the specific input and button elements
+    const confInput = document.getElementById(`conf-${tid}`);
+    const confirmationNumber = confInput.value.trim();
+    
+    // Find the button that was clicked to show loading state
+    const btn = event.target;
 
-        if (!confirmationNumber) {
-            alert("Please enter the confirmation number from the provider before marking as done.");
-            confInput.focus();
-            return;
-        }
-
-        if (!confirm("Have you successfully applied the refill to the user's line?")) return;
-
-        const token = localStorage.getItem('smsglobe_admin_token');
-        try {
-            const response = await fetch('/api/update-esim-status', {
-                method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json' 
-                },
-                body: JSON.stringify({ 
-                    tid: tid, 
-                    status: 'Completed', 
-                    confirmationNumber: confirmationNumber 
-                })
-            });
-            
-            const data = await response.json();
-            if (data.success) {
-                alert('Success! User has been notified and order marked as complete.');
-                fetchRefills(); // Refresh the table
-            } else {
-                alert('Error: ' + data.message);
-            }
-        } catch (err) {
-            alert('Failed to connect to server.');
-        }
+    // 2. Validation
+    if (!confirmationNumber) {
+        alert("Please enter the confirmation number from the provider before marking as done.");
+        confInput.focus();
+        return;
     }
+
+    if (!confirm("Confirm: Have you applied this refill? This will notify the user via email.")) return;
+
+    // 3. Prepare UI for loading
+    const originalText = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = "Processing...";
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+    const token = localStorage.getItem('smsglobe_admin_token');
+
+    try {
+        // 4. Send the Request
+        const response = await fetch('/api/update-esim-status', {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({ 
+                tid: tid, 
+                status: 'Completed', 
+                confirmationNumber: confirmationNumber 
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            alert('Success! Order updated and delivery email sent.');
+            // 5. Refresh the list to hide the input/button for this row
+            await fetchRefills(); 
+        } else {
+            // Handle logical errors (e.g., Transaction ID not found)
+            alert('Error: ' + (data.message || data.error || 'Update failed'));
+            resetButton(btn, originalText);
+        }
+    } catch (err) {
+        console.error("Network Error:", err);
+        alert('Failed to connect to server. Please check your internet.');
+        resetButton(btn, originalText);
+    }
+}
+
+// Helper function to restore button if the request fails
+function resetButton(btn, text) {
+    btn.disabled = false;
+    btn.innerText = text;
+    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+}
 
     function logout() {
         localStorage.removeItem('smsglobe_admin_token');

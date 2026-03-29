@@ -233,9 +233,6 @@ app.all('/api/:action', async (req, res) => {
         if (req.method === 'POST') return handleEsimRefill(req, res);
         break;
         case 'create-esim-order':return handleCreateEsimOrder(req, res);
-        case 'update-esim-status': 
-    if (req.method === 'POST') return handleAdminEsimUpdate(req, res);
-    break;
         case 'esim-refills':  return getEsimRefills(req, res);
         case 'update-esim-status':return handleAdminEsimUpdate(req, res);
         case 'status':
@@ -1360,19 +1357,16 @@ async function getEsimRefills(req, res) {
 async function handleAdminEsimUpdate(req, res) {
     const { tid, status, confirmationNumber } = req.body;
 
-    // Validation: Ensure we have the transaction ID and the new status
     if (!tid || !status) {
         return res.status(400).json({ success: false, message: "Missing Transaction ID or Status" });
     }
 
     try {
-        // 1. Update the EsimRefill document
-        // We use paymentReference to find it, and update status + confirmationNumber
         const updatedRefill = await EsimRefill.findOneAndUpdate(
             { paymentReference: tid }, 
             { 
                 $set: { 
-                    status: status, // e.g., 'Completed'
+                    status: status, 
                     confirmationNumber: confirmationNumber || null, 
                     adminUpdatedBy: req.user?.email || 'System Admin', 
                     updatedAt: new Date() 
@@ -1381,36 +1375,31 @@ async function handleAdminEsimUpdate(req, res) {
             { new: true } 
         );
 
-        // If the query returns null, the TID provided doesn't exist in the DB
         if (!updatedRefill) {
             return res.status(404).json({ success: false, message: "Transaction not found" });
         }
 
-        // 2. Trigger Email ONLY if status is set to 'Completed' or 'successful'
         const isFinished = status.toLowerCase() === 'completed' || status.toLowerCase() === 'successful';
         
         if (isFinished) {
             try {
-                // Mapping the DB fields (nodeName, targetNumber) to the email function
                 await sendDeliveryEmail(updatedRefill.userEmail, {
                     type: "eSIM Refill",
                     amount: updatedRefill.planName || updatedRefill.amount, 
                     confirmationNumber: confirmationNumber || "Refill Processed",
-                    carrierName: updatedRefill.nodeName || "Carrier",
-                    mobileNumber: updatedRefill.targetNumber,
+                    carrierName: updatedRefill.carrier || updatedRefill.nodeName || "eSIM Service",
+                    mobileNumber: updatedRefill.targetNumber || updatedRefill.esimIdentifier,
                     instructions: "Your eSIM refill has been applied. Please restart your device or toggle Airplane Mode if the balance doesn't reflect immediately."
                 });
-                console.log(`✅ Email sent to: ${updatedRefill.userEmail}`);
             } catch (emailError) {
-                // We don't crash the whole request if only the email fails
-                console.error("❌ Email Delivery Failed:", emailError);
+                console.error("Email Delivery Failed:", emailError);
             }
         }
 
         return res.json({ 
             success: true, 
             message: `Order updated to ${status}${isFinished ? ' and user notified' : ''}`,
-            data: updatedRefill // Returning the updated doc helps the frontend refresh
+            data: updatedRefill 
         });
 
     } catch (error) {

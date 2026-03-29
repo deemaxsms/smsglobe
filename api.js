@@ -116,6 +116,7 @@ const orderSchema = new mongoose.Schema({
     nodeName: { type: String }, 
     productImage: { type: String },
     targetNumber: { type: String }, 
+    confirmationNumber: String,
     amount: { type: Number, required: true },
     currency: { type: String, default: 'USD' }, 
     paymentGateway: { type: String }, 
@@ -1341,10 +1342,9 @@ async function getEsimRefills(req, res) {
                 userEmail: refill.userEmail,
                 amount: amountInUSD.toFixed(2), 
                 status: refill.status || 'pending',
-                // FIX: Use 'targetNumber' as the identifier
                 esimIdentifier: refill.targetNumber || 'N/A',
-                // FIX: Use 'nodeName' (from your DB screenshot) or 'carrierName' 
-                carrier: refill.nodeName || refill.carrierName || refill.productName || 'Global eSIM' 
+                carrier: refill.nodeName || refill.carrierName || refill.productName || 'Global eSIM',
+                confirmationNumber: refill.confirmationNumber || 'PENDING'
             };
         });
 

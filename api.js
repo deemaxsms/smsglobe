@@ -1298,30 +1298,43 @@ async function handleConfirmEsimRefill(req, res) {
 // GET All eSIM Refills for Admin
 async function getEsimRefills(req, res) {
     try {
-        // Use the Order model instead of db.collection('transactions')
-        // Filter by productType 'eSIM'
-        const refills = await Order.find({ productType: 'eSIM' })
-            .sort({ createdAt: -1 })
-            .limit(50);
+        // 1. Fetch orders specifically for eSIMs
+        // We use .find() on the Order model for better performance and validation
+        const refills = await Order.find({ 
+            productType: 'eSIM' 
+        })
+        .sort({ createdAt: -1 }) // Newest first
+        .limit(100);             // Increased limit slightly for better admin visibility
 
-        // Ensure we send back 'esimIdentifier' so the HTML table displays it
-        const formattedRefills = refills.map(refill => ({
-            paymentReference: refill.paymentReference,
-            createdAt: refill.createdAt,
-            userEmail: refill.userEmail,
-            amount: refill.amount,
-            status: refill.status,
-            // Map targetNumber to esimIdentifier for the frontend table
-            esimIdentifier: refill.targetNumber || 'N/A' 
-        }));
+        // 2. Format the data for the Frontend Table
+        const formattedRefills = refills.map(refill => {
+            // Since you stored the amount as NGN (amountUSD * 1650),
+            // we convert it back to USD for the admin table display.
+            const amountInUSD = refill.amount / 1650;
+
+            return {
+                paymentReference: refill.paymentReference,
+                createdAt: refill.createdAt,
+                userEmail: refill.userEmail,
+                // The frontend table uses $ sign, so we send the USD float
+                amount: amountInUSD.toFixed(2), 
+                status: refill.status || 'pending',
+                // Map targetNumber (DB) to esimIdentifier (Frontend Table Column)
+                esimIdentifier: refill.targetNumber || 'N/A' 
+            };
+        });
 
         return res.json({
             success: true,
             refills: formattedRefills 
         });
+
     } catch (error) {
-        console.error("Fetch Error:", error);
-        return res.status(500).json({ success: false, message: "Failed to fetch refills" });
+        console.error("❌ Admin Fetch Error:", error);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Failed to fetch eSIM refill records" 
+        });
     }
 }
 

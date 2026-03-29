@@ -87,16 +87,19 @@ const Proxy = mongoose.models.Proxy || mongoose.model('Proxy', ProxySchema);
 
 const esimRefillSchema = new mongoose.Schema({
     carrierName: { type: String, required: true },    
-    carrierImage: { type: String },     
+    carrierImage: { type: String },    
     mobileNumber: { type: String, required: true },    
     planAmount: { type: String, required: true },    
     userEmail: { type: String, required: true, index: true },    
-    refId: { type: String, unique: true }, 
+    refId: { type: String, unique: true },     
+    confirmationNumber: { type: String }, 
     status: { 
         type: String, 
-        enum: ['pending', 'completed', 'failed'], 
+        enum: ['pending', 'processing', 'completed', 'failed', 'successful'], 
         default: 'pending' 
-    }
+    },    
+    adminUpdatedBy: { type: String } 
+    
 }, { timestamps: true });
 
 const EsimRefill = mongoose.models.EsimRefill || mongoose.model('EsimRefill', esimRefillSchema);
@@ -1014,15 +1017,27 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
             </td>`;
     } else if (isESIM) {
         // ESIM REFILL LAYOUT
-        dataTableHtml = `
-            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
-                <strong style="font-size: 13px; color: #101828;">${credentials.carrierName}</strong>
-            </td>
-            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Number</span><br>
-                <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.mobileNumber}</strong>
-            </td>`;
+       dataTableHtml = `
+            <tr class="mobile-full">
+                <td width="50%" valign="top" style="padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
+                    <strong style="font-size: 13px; color: #101828;">$${parseFloat(credentials.amount).toFixed(2)}</strong>
+                </td>
+                <td width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Confirmation #</span><br>
+                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.confirmationNumber || credentials.paymentReference}</strong>
+                </td>
+            </tr>
+            <tr class="mobile-full">
+                <td width="50%" valign="top">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
+                    <strong style="font-size: 13px; color: #0F54C6;">${credentials.carrierName}</strong>
+                </td>
+                <td width="50%" valign="top" style="text-align: right;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Number</span><br>
+                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.mobileNumber}</strong>
+                </td>
+            </tr>`;
     } else {
         // PROXY TABLE LAYOUT
         dataTableHtml = `
@@ -1336,45 +1351,44 @@ async function getEsimRefills(req, res) {
 }
 
 async function handleAdminEsimUpdate(req, res) {
-    const { tid, status } = req.body;
+    // 1. Destructure confirmationNumber sent from the frontend input
+    const { tid, status, confirmationNumber } = req.body;
 
     if (!tid || !status) {
         return res.status(400).json({ success: false, message: "Missing Transaction ID or Status" });
     }
 
     try {
-        // 1. Update the Order in the database
-        // We use findOneAndUpdate to get the document back for the email details
+        // 2. Update the Order in the database
         const updatedOrder = await Order.findOneAndUpdate(
             { paymentReference: tid },
             { 
                 $set: { 
                     status: status, 
-                    refillStatus: 'Processed Manually', // Tracking flag
+                    paymentReference: confirmationNumber || tid, 
+                    refillStatus: 'Processed Manually',
                     adminUpdatedBy: req.user?.email || 'System Admin', 
                     updatedAt: new Date() 
                 } 
             },
-            { new: true } // This returns the document AFTER the update
+            { new: true } 
         );
 
         if (!updatedOrder) {
             return res.status(404).json({ success: false, message: "Transaction not found" });
         }
-
-        // 2. Trigger Email Notification if status is 'Completed'
         if (status.toLowerCase() === 'completed') {
             try {
-                // Mapping Order fields to the email helper's expected 'credentials' object
                 await sendDeliveryEmail(updatedOrder.userEmail, {
                     type: "eSIM",
+                    amount: updatedOrder.amount, 
+                    confirmationNumber: confirmationNumber || updatedOrder.paymentReference,
                     carrierName: updatedOrder.nodeName || "Global Carrier",
                     mobileNumber: updatedOrder.targetNumber,
                     instructions: "Your refill has been applied. Please restart your device or toggle Airplane Mode if the balance doesn't reflect immediately."
                 });
                 console.log(`✅ Refill confirmation email sent to: ${updatedOrder.userEmail}`);
             } catch (emailError) {
-                // We log the error but don't fail the request because the DB update was successful
                 console.error("❌ Email Delivery Failed:", emailError);
             }
         }
@@ -1389,6 +1403,7 @@ async function handleAdminEsimUpdate(req, res) {
         return res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 }
+
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

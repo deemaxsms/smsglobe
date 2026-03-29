@@ -163,14 +163,21 @@
                             Process
                         </button>`;
                 } 
-                // 2. Automated Logic: If payment is SUCCESSFUL or currently PROCESSING, show "Mark Done"
-                else if (status === 'successful' || status === 'processing') {
-                    actionButton = `
-                        <button onclick="updateRefillStatus('${refill.paymentReference}', 'Completed')" 
-                                class="bg-green-500 text-white px-2 py-1 rounded-md text-[10px] font-bold hover:bg-green-600 transition-all">
-                            Mark Done
-                        </button>`;
-                } 
+              // 2. Automated Logic: If payment is SUCCESSFUL or currently PROCESSING
+else if (status === 'successful' || status === 'processing') {
+    actionButton = `
+        <div class="flex items-center gap-2 justify-end">
+            <input type="text" 
+                   id="conf-${refill.paymentReference}" 
+                   placeholder="Conf #" 
+                   class="w-24 px-2 py-1 border border-brand-border rounded-md text-[10px] focus:ring-1 focus:ring-brand-blue outline-none"
+            >
+            <button onclick="updateRefillStatus('${refill.paymentReference}', 'Completed')" 
+                    class="bg-green-500 text-white px-2 py-1 rounded-md text-[10px] font-bold hover:bg-green-600 transition-all whitespace-nowrap">
+                Mark Done
+            </button>
+        </div>`;
+}
                 // 3. Final state logic
                 else if (status === 'completed') {
                     actionButton = `
@@ -227,29 +234,44 @@
     return 'bg-gray-100 text-gray-700';
 }
 
-        async function updateRefillStatus(tid, status) {
-            if (!confirm(`Mark transaction ${tid} as ${status}?`)) return;
+       async function updateRefillStatus(tid, status) {
+    let confirmationNumber = "";
 
-            const token = localStorage.getItem('smsglobe_admin_token');
-            try {
-                const response = await fetch('/api/update-esim-status', {
-                    method: 'POST',
-                    headers: { 
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ tid, status })
-                });
-                const data = await response.json();
-                if (data.success) {
-                    fetchRefills();
-                } else {
-                    alert('Update failed: ' + data.message);
-                }
-            } catch (err) {
-                alert('Error connecting to server.');
-            }
+    // If we are marking as completed, grab the manual input
+    if (status === 'Completed') {
+        const inputField = document.getElementById(`conf-${tid}`);
+        confirmationNumber = inputField ? inputField.value.trim() : "";
+
+        if (!confirmationNumber) {
+            alert("Please enter a Confirmation Number before marking as Done.");
+            return;
         }
+    }
+
+    if (!confirm(`Mark transaction ${tid} as ${status}?`)) return;
+
+    const token = localStorage.getItem('smsglobe_admin_token');
+    try {
+        const response = await fetch('/api/update-esim-status', {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            // SENDING THE TID, STATUS, AND THE MANUAL CONFIRMATION NUMBER
+            body: JSON.stringify({ tid, status, confirmationNumber })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            fetchRefills();
+        } else {
+            alert('Update failed: ' + data.message);
+        }
+    } catch (err) {
+        alert('Error connecting to server.');
+    }
+}
 
         function logout() {
             localStorage.removeItem('smsglobe_admin_token');

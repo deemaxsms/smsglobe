@@ -171,11 +171,31 @@
                             <div class="grid grid-cols-2 gap-4 border-t border-brand-border pt-6">
                                 <div class="p-4 bg-brand-background rounded-2xl">
                                     <p class="text-[10px] font-bold text-brand-lightText uppercase">Hardware</p>
-                                    <p id="displayHardware" class="text-xs font-black text-brand-darkText mt-1">4GB RAM / 2 CPU</p>
+                                    <p id="displayHardware" class="text-xs font-black text-brand-darkText mt-1">4GB RAM | 2 CPU</p>
                                 </div>
                                 <div class="p-4 bg-brand-background rounded-2xl">
                                     <p class="text-[10px] font-bold text-brand-lightText uppercase">Storage</p>
                                     <p id="displayStorage" class="text-xs font-black text-brand-darkText mt-1">60GB SSD NVMe</p>
+                                </div>
+                            </div>
+
+                            <div class="mt-8 border-t border-brand-border pt-6">
+                                <h4 class="text-xs font-bold text-brand-darkText mb-4 uppercase tracking-widest">Additional Customization (Optional)</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-brand-lightText uppercase mb-2">Extra CPU Cores (₦5,000 / core)</label>
+                                        <div class="relative">
+                                            <input type="number" id="extraCPU" min="0" placeholder="0" oninput="calculateTotal()" class="w-full bg-gray-50 border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all">
+                                            <span class="absolute right-4 top-3 text-[10px] font-bold text-brand-lightText uppercase">Cores</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-brand-lightText uppercase mb-2">Extra NVMe Storage (₦200 / GB)</label>
+                                        <div class="relative">
+                                            <input type="number" id="extraStorage" min="0" placeholder="0" oninput="calculateTotal()" class="w-full bg-gray-50 border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all">
+                                            <span class="absolute right-4 top-3 text-[10px] font-bold text-brand-lightText uppercase">GB</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -211,14 +231,28 @@
                     </div>
 
                     <div class="space-y-4">
-                        <div class="bg-white border border-brand-border rounded-3xl p-6 shadow-sm">
+                        <div class="bg-white border border-brand-border rounded-3xl p-6 shadow-sm sticky top-24">
                             <h3 class="text-sm font-bold text-brand-darkText mb-4">Order Summary</h3>
+                            <div class="space-y-3 mb-6 border-b border-brand-border pb-6">
+                                <div class="flex justify-between text-[11px]">
+                                    <span class="text-brand-lightText">Base Plan</span>
+                                    <span id="basePriceSummary" class="font-bold">₦0</span>
+                                </div>
+                                <div id="cpuAddonRow" class="flex justify-between text-[11px] hidden">
+                                    <span class="text-brand-lightText">Extra CPU</span>
+                                    <span id="cpuAddonPrice" class="font-bold text-green-600">+₦0</span>
+                                </div>
+                                <div id="storageAddonRow" class="flex justify-between text-[11px] hidden">
+                                    <span class="text-brand-lightText">Extra Storage</span>
+                                    <span id="storageAddonPrice" class="font-bold text-green-600">+₦0</span>
+                                </div>
+                            </div>
                             <div class="flex justify-between mb-6">
                                 <span class="text-sm font-bold text-brand-darkText">Total to Pay</span>
-                                <span id="summaryTotal" class="text-sm font-black text-brand-blue">₦45,000</span>
+                                <span id="summaryTotal" class="text-sm font-black text-brand-blue">₦0</span>
                             </div>
-                            <button onclick="initiatePayment()" class="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold text-xs hover:bg-blue-700 active-scale shadow-lg shadow-blue-200 transition-all">
-                                Pay Now
+                            <button onclick="requestRDP()" class="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold text-xs hover:bg-blue-700 active-scale shadow-lg shadow-blue-200 transition-all">
+                                Request RDP
                             </button>
                         </div>
                     </div>
@@ -254,13 +288,15 @@
     const tableBody = document.getElementById('plansTableBody');
 
     const plans = {
-        tier1: { id: "tier1", name: "USA Tier 1", price: "₦45,000", hardware: "4GB RAM | 2 CPU Cores", storage: "60GB SSD", net: "100Mbps" },
-        tier2: { id: "tier2", name: "USA Tier 2", price: "₦55,000", hardware: "6GB RAM | 3 CPU Cores", storage: "100GB SSD", net: "100Mbps" },
-        tier3: { id: "tier3", name: "USA Tier 3", price: "₦65,000", hardware: "8GB RAM | 4 CPU Cores", storage: "140GB SSD", net: "200Mbps" },
-        tier4: { id: "tier4", name: "USA Tier 4", price: "₦80,000", hardware: "12GB RAM | 6 CPU Cores", storage: "180GB SSD", net: "200Mbps" },
-        tier5: { id: "tier5", name: "USA Tier 5", price: "₦90,000", hardware: "18GB RAM | 8 CPU Cores", storage: "240GB SSD", net: "300Mbps" },
-        tier6: { id: "tier6", name: "USA Tier 6", price: "₦130,000", hardware: "24GB RAM | 8 CPU Cores", storage: "280GB SSD", net: "300Mbps" }
+        tier1: { id: "tier1", name: "USA Tier 1", price: 45000, hardware: "4GB RAM | 2 CPU Cores", storage: "60GB SSD", net: "100Mbps" },
+        tier2: { id: "tier2", name: "USA Tier 2", price: 55000, hardware: "6GB RAM | 3 CPU Cores", storage: "100GB SSD", net: "100Mbps" },
+        tier3: { id: "tier3", name: "USA Tier 3", price: 65000, hardware: "8GB RAM | 4 CPU Cores", storage: "140GB SSD", net: "200Mbps" },
+        tier4: { id: "tier4", name: "USA Tier 4", price: 80000, hardware: "12GB RAM | 6 CPU Cores", storage: "180GB SSD", net: "200Mbps" },
+        tier5: { id: "tier5", name: "USA Tier 5", price: 90000, hardware: "18GB RAM | 8 CPU Cores", storage: "240GB SSD", net: "300Mbps" },
+        tier6: { id: "tier6", name: "USA Tier 6", price: 130000, hardware: "24GB RAM | 8 CPU Cores", storage: "280GB SSD", net: "300Mbps" }
     };
+
+    let activePlan = null;
 
     function renderPlans() {
         tableBody.innerHTML = Object.values(plans).map(plan => `
@@ -274,7 +310,7 @@
                     <p class="text-[10px] text-green-600 font-bold uppercase">${plan.net} Unmetered</p>
                 </td>
                 <td class="px-6 py-6 border-b border-brand-border text-center">
-                    <p class="text-lg font-black">${plan.price}</p>
+                    <p class="text-lg font-black">₦${plan.price.toLocaleString()}</p>
                 </td>
                 <td class="px-6 py-6 border-b border-brand-border text-right">
                     <span class="bg-brand-blue text-white text-[10px] font-bold px-6 py-2.5 rounded-xl">Continue</span>
@@ -283,31 +319,73 @@
         `).join('');
     }
 
+    function selectPlan(planKey) {
+        activePlan = plans[planKey];
+        
+        document.getElementById('displayPlanName').innerText = activePlan.name;
+        document.getElementById('displayPlanPrice').innerText = `₦${activePlan.price.toLocaleString()}`;
+        document.getElementById('displayHardware').innerText = activePlan.hardware;
+        document.getElementById('displayStorage').innerText = activePlan.storage + " NVMe";
+        
+        // Reset custom fields
+        document.getElementById('extraCPU').value = "";
+        document.getElementById('extraStorage').value = "";
+        
+        calculateTotal();
+
+        selectionView.classList.add('hidden');
+        checkoutView.classList.remove('hidden');
+        headerTitle.innerText = "Checkout / " + activePlan.name;
+        window.scrollTo(0, 0);
+    }
+
+    function calculateTotal() {
+        if (!activePlan) return;
+
+        const extraCPUCount = parseInt(document.getElementById('extraCPU').value) || 0;
+        const extraStorageCount = parseInt(document.getElementById('extraStorage').value) || 0;
+
+        const cpuCost = extraCPUCount * 5000;
+        const storageCost = extraStorageCount * 200;
+        const total = activePlan.price + cpuCost + storageCost;
+
+        // Update Summary Sidebar
+        document.getElementById('basePriceSummary').innerText = `₦${activePlan.price.toLocaleString()}`;
+        document.getElementById('summaryTotal').innerText = `₦${total.toLocaleString()}`;
+
+        // Handle CPU Addon UI
+        const cpuRow = document.getElementById('cpuAddonRow');
+        if(extraCPUCount > 0) {
+            cpuRow.classList.remove('hidden');
+            document.getElementById('cpuAddonPrice').innerText = `+₦${cpuCost.toLocaleString()}`;
+        } else {
+            cpuRow.classList.add('hidden');
+        }
+
+        // Handle Storage Addon UI
+        const storageRow = document.getElementById('storageAddonRow');
+        if(extraStorageCount > 0) {
+            storageRow.classList.remove('hidden');
+            document.getElementById('storageAddonPrice').innerText = `+₦${storageCost.toLocaleString()}`;
+        } else {
+            storageRow.classList.add('hidden');
+        }
+    }
+
+    function showSelectionView() {
+        selectionView.classList.remove('hidden');
+        checkoutView.classList.add('hidden');
+        headerTitle.innerText = "RDP Management";
+    }
+
+    function requestRDP() {
+        alert("RDP request submitted. Redirecting to payment...");
+    }
+
     const toggleSidebar = () => {
         sidebar.classList.toggle('-translate-x-full');
         overlay.classList.toggle('hidden');
     };
-
-    function selectPlan(planKey) {
-        const plan = plans[planKey];
-        
-        document.getElementById('displayPlanName').innerText = plan.name;
-        document.getElementById('displayPlanPrice').innerText = plan.price;
-        document.getElementById('displayHardware').innerText = plan.hardware;
-        document.getElementById('displayStorage').innerText = plan.storage + " NVMe";
-        document.getElementById('summaryTotal').innerText = plan.price;
-
-        selectionView.classList.add('hidden');
-        checkoutView.classList.remove('hidden');
-        headerTitle.innerText = "Checkout / " + plan.name;
-        window.scrollTo(0, 0);
-    }
-
-  
-
-    function initiatePayment() {
-        alert("Redirecting to Secure Gateway...");
-    }
 
     document.getElementById('openSidebar').addEventListener('click', toggleSidebar);
     document.getElementById('closeSidebar').addEventListener('click', toggleSidebar);
@@ -315,7 +393,6 @@
 
     function logout() { window.location.href = 'user_login.html'; }
 
-    // Initialize the table
     renderPlans();
 </script>
 </body>

@@ -140,7 +140,7 @@
     const tbody = document.getElementById('orders-body');
 
     try {
-        const response = await fetch('/api/esim-activation', {
+        const response = await fetch('/api/esim-activations', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();

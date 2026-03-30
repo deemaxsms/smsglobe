@@ -345,61 +345,83 @@
             return str ? str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])) : '--';
         }
 
-        async function initiatePayment() {
-            const firstName = document.getElementById('firstName').value.trim();
-            const lastName = document.getElementById('lastName').value.trim();
-            const email = document.getElementById('emailAddress').value.trim();
-            const address = document.getElementById('fullAddress').value.trim();
-            const zip = document.getElementById('zipCode').value.trim();
-            const activationType = document.getElementById('prepaidType').value.trim();
+       async function initiatePayment() {
+    // 1. Get Input Values
+    const firstName = document.getElementById('firstName').value.trim();
+    const lastName = document.getElementById('lastName').value.trim();
+    const email = document.getElementById('emailAddress').value.trim();
+    const address = document.getElementById('fullAddress').value.trim();
+    const zip = document.getElementById('zipCode').value.trim();
+    const activationType = document.getElementById('prepaidType').value.trim();
+    const deviceName = document.getElementById('targetNumber').value.trim(); // Renamed internally
 
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-            if(!firstName || !lastName || !email || !address || !zip || !activationType) {
-                alert("Please ensure all fields are filled.");
-                return;
-            }
+    // 2. Validation
+    if(!firstName || !lastName || !email || !address || !zip || !activationType || !deviceName) {
+        alert("Please ensure all fields, including the Device Name, are filled.");
+        return;
+    }
 
-            if(!emailRegex.test(email)) {
-                alert("Please enter a valid email address.");
-                return;
-            }
+    if(!emailRegex.test(email)) {
+        alert("Please enter a valid activation email address.");
+        return;
+    }
 
-            const device = document.getElementById('targetNumber').value.trim() || "eSIM Device";
-            const plan = document.getElementById('planSelector').value; 
-            const carrier = window.currentSelectedCarrier;
+    // 3. Prepare Data
+    const plan = document.getElementById('planSelector').value; 
+    const carrier = window.currentSelectedCarrier;
+    const token = localStorage.getItem('userToken');
 
-            const btn = document.getElementById('payBtn');
-            btn.disabled = true;
-            btn.innerText = "Securing Payment Link...";
+    if (!token) {
+        alert("Session expired. Please log in again.");
+        window.location.href = "/login.html";
+        return;
+    }
 
-            try {
-                const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('userToken')}` },
-                    body: JSON.stringify({
-                        carrierName: carrier.name,
-                        mobileNumber: device,
-                        planAmount: plan,
-                        productType: 'eSIM_Activation',
-                        metadata: { firstName, lastName, email, address, zip }
-                    })
-                });
+    const btn = document.getElementById('payBtn');
+    btn.disabled = true;
+    btn.innerText = "Securing Payment Link...";
 
-                const data = await res.json();
-                if(data.success && data.link) {
-                    window.location.href = data.link; 
-                } else {
-                    alert(data.message || "Failed to start activation.");
-                    btn.disabled = false;
-                    updateButtonPrice();
+    try {
+        const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({
+                carrierName: carrier.name,
+                deviceName: deviceName, // Changed key from mobileNumber to deviceName
+                planAmount: plan,
+                productType: 'eSIM_Activation',
+                metadata: { 
+                    firstName, 
+                    lastName, 
+                    email, 
+                    address, 
+                    zip,
+                    deviceName // Include it in metadata for safety
                 }
-            } catch (err) {
-                alert("Connection error.");
-                btn.disabled = false;
-                updateButtonPrice();
-            }
+            })
+        });
+
+        const data = await res.json();
+        
+        if(data.success && data.link) {
+            window.location.href = data.link; 
+        } else {
+            alert(data.message || "Failed to start activation.");
+            btn.disabled = false;
+            updateButtonPrice();
         }
+    } catch (err) {
+        console.error("Payment Initiation Error:", err);
+        alert("Connection error. Please check your internet.");
+        btn.disabled = false;
+        updateButtonPrice();
+    }
+}
 
         window.onload = () => {
             initPage(); 

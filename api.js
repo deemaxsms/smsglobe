@@ -844,6 +844,7 @@ async function handleInitiatePayment(req, res) {
 
         const amountInNGN = Math.round(amountInUSD * USD_TO_NGN_RATE);
         const tx_ref = `SMS-${itemType}-${Date.now()}-${decoded.id.slice(-4)}`;
+        const activationEmail = metadata?.email || null;
 
         const response = await fetch("https://api.flutterwave.com/v3/payments", {
             method: "POST",
@@ -862,7 +863,7 @@ async function handleInitiatePayment(req, res) {
                 },
                 meta: {
                     userId: decoded.id,
-                    email: activationEmail || null,
+                    email: activationEmail,
                     productType: itemType,
                     productId: vpnId || proxyId || carrierName, 
                     planIndex: planIndex,

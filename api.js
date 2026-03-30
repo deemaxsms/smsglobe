@@ -103,13 +103,32 @@ const esimRefillSchema = new mongoose.Schema({
 
 const EsimRefill = mongoose.models.EsimRefill || mongoose.model('EsimRefill', esimRefillSchema);
 
+const esimActivationSchema = new mongoose.Schema({
+    userEmail: { type: String, required: true, index: true },
+    email: { type: String, required: true,   lowercase: true,  trim: true}, 
+    fullName: { type: String },
+    nodeName: { type: String, required: true }, // The carrier/provider name
+    planName: { type: String, required: true }, // e.g., "10GB - 30 Days"
+    confirmationNumber: { type: String },       // Added for tracking activation status
+    amount: { type: Number, required: true },
+    paymentReference: { type: String, unique: true },
+    status: { 
+        type: String, 
+        enum: ['pending', 'processing', 'completed', 'failed', 'successful'], 
+        default: 'pending' 
+    },
+    adminUpdatedBy: { type: String }
+}, { timestamps: true });
+
+const EsimActivation = mongoose.models.EsimActivation || mongoose.model('EsimActivation', esimActivationSchema);
+
 const orderSchema = new mongoose.Schema({
     userEmail: { type: String, required: true, index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     fullName: { type: String },         
     productType: { 
         type: String, 
-        enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill'], 
+        enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill', 'eSIM_Activation'], 
         required: true 
     },
     planName: { type: String }, 
@@ -124,7 +143,14 @@ const orderSchema = new mongoose.Schema({
         type: String, 
         enum: ['pending', 'successful', 'failed', 'completed'], 
         default: 'pending' 
-    },    
+    }, 
+    activationDetails: {
+        address: String,
+        zip: String,
+        firstName: String,
+        lastName: String,
+        email: String
+    },   
     paymentReference: { type: String, unique: true },
     activationCode: String, 
     vpnCredentials: {
@@ -238,7 +264,13 @@ app.all('/api/:action', async (req, res) => {
         case 'esim-refills': return getEsimRefills(req, res);
         case 'update-esim-status':
             return handleAdminEsimUpdate(req, res);
-            
+        case 'create-esim-order-activation': return handleCreateEsimActivation(req, res);
+       case 'esim-activations': if (req.method === 'GET') return handleGetEsimActivations(req, res); 
+        break;
+        case 'update-esim-activation': if (req.method === 'POST' || req.method === 'PATCH') {
+        return handleAdminEsimActivationUpdate(req, res);
+        }
+        break;
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
             
@@ -756,8 +788,7 @@ async function handlePurchaseVPN(req, res) {
 }
 
 async function handleInitiatePayment(req, res) {
-    // Added carrierName, mobileNumber, and planAmount for eSIM
-    const { vpnId, proxyId, carrierName, mobileNumber, planAmount, planIndex } = req.body;
+    const { vpnId, proxyId, carrierName, mobileNumber, planAmount, planIndex, metadata } = req.body;
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
@@ -772,7 +803,7 @@ async function handleInitiatePayment(req, res) {
         let itemType;
         let title;
         let amountInUSD;
-        let redirectUrl = "https://smsglobe.vercel.app/smsuser/user_dashboard.html"; // Default
+        let redirectUrl = "https://smsglobe.vercel.app/smsuser/user_dashboard.html";
 
         // 1. Logic for VPN
         if (vpnId) {
@@ -792,14 +823,22 @@ async function handleInitiatePayment(req, res) {
             amountInUSD = item.plans[planIndex].price;
             redirectUrl = "https://smsglobe.vercel.app/smsuser/user_proxy.html";
         } 
-        // 3. Logic for eSIM Refill
+        // 3. Logic for eSIM ACTIVATION (Checks for metadata)
+        else if (carrierName && metadata) {
+            itemType = "eSIM_Activation";
+            title = `eSIM Activation: ${carrierName}`;
+            amountInUSD = parseFloat(planAmount.replace(/[$,]/g, ''));
+            redirectUrl = "https://smsglobe.vercel.app/smsuser/esim_activation.html";
+        }
+        // 4. Logic for eSIM REFILL (No metadata)
         else if (carrierName) {
             itemType = "eSIM";
             title = `eSIM Refill: ${carrierName}`;
-            // Convert "$15.00" string from frontend to number 15
             amountInUSD = parseFloat(planAmount.replace(/[$,]/g, ''));
             redirectUrl = "https://smsglobe.vercel.app/smsuser/esim_refill.html";
-        } else {
+        } 
+        // 5. Final Fallback if nothing matches
+        else {
             return res.status(400).json({ success: false, message: "No product specified" });
         }
 
@@ -823,18 +862,24 @@ async function handleInitiatePayment(req, res) {
                 },
                 meta: {
                     userId: decoded.id,
+                    email: activationEmail || null,
                     productType: itemType,
-                    // If eSIM, we store carrier and number. If VPN/Proxy, we store productId
                     productId: vpnId || proxyId || carrierName, 
                     planIndex: planIndex,
-                    mobileNumber: mobileNumber || null, // Specific to eSIM
-                    planAmount: planAmount || null      // Specific to eSIM
+                    mobileNumber: mobileNumber || null,
+                    planAmount: planAmount || null,
+                    firstName: metadata?.firstName || null,
+                    lastName: metadata?.lastName || null,
+                    address: metadata?.address || null,
+                    zip: metadata?.zip || null
                 },
                 customizations: {
                     title: title,
-                    description: itemType === "eSIM" 
+                    description: itemType === "eSIM_Activation" 
+                        ? `New eSIM Activation for ${metadata?.firstName} ${metadata?.lastName}` 
+                        : itemType === "eSIM"
                         ? `Refill for ${mobileNumber} (${planAmount})` 
-                        : `${item.name} ($${amountInUSD} USD)`,
+                        : `${item?.name || 'Service'} ($${amountInUSD} USD)`,
                     logo: "https://imgur.com/8YeZgfx.png"
                 },
             }),
@@ -864,21 +909,34 @@ async function handleVerifyPayment(req, res) {
         const data = await response.json();
 
         if (data.status === "success" && data.data.status === "successful") {
-            // 1. Extract Meta data (Including eSIM specific fields)
-            const { productId, productType, planIndex, userId, mobileNumber, planAmount } = data.data.meta;
+            // 1. Extract ALL Meta data (Including new Activation fields)
+            const { 
+                productId, 
+                productType, 
+                planIndex, 
+                userId, 
+                activationEmail,
+                mobileNumber, 
+                planAmount,
+                firstName,
+                lastName,
+                address,
+                zip 
+            } = data.data.meta;
             
             // 2. Fetch the User
             const actualUser = await User.findById(userId);
             if (!actualUser) return res.status(404).json({ success: false, message: "User account not found" });
 
             const userEmail = actualUser.email; 
+            const recipientEmail = activationEmail;
             const amountPaid = data.data.amount;
             const paymentRef = data.data.tx_ref;
             const currency = data.data.currency;
 
             let credentials = {};
             let productDetails = { name: "", plan: "" };
-            let targetNum = null;
+            let targetNum = mobileNumber || null;
 
             // --- 3. HANDLE VPN PURCHASE ---
             if (productType === "VPN") {
@@ -915,33 +973,54 @@ async function handleVerifyPayment(req, res) {
                     instructions: item.instructions || "Check dashboard."
                 };
 
-            // --- 5. NEW: HANDLE ESIM REFILL ---
+            // --- 5. HANDLE ESIM REFILL ---
             } else if (productType === "eSIM") {
-                productDetails.name = productId; // In eSIM initiate, we passed Carrier Name as productId
-                productDetails.plan = planAmount; // e.g., "$15.00"
-                targetNum = mobileNumber;         // The phone number to refill
+                productDetails.name = productId; 
+                productDetails.plan = planAmount;
+                targetNum = mobileNumber;
 
                 credentials = {
                     type: "eSIM",
                     instructions: "Your refill request has been received. Processing usually takes 5-30 minutes."
                 };
+
+            // --- 6. NEW: HANDLE ESIM ACTIVATION ---
+            } else if (productType === "eSIM_Activation") {
+                productDetails.name = productId; // Carrier Name
+                productDetails.plan = planAmount;
+                targetNum = mobileNumber; // Usually 'eSIM Device' or specific phone model
+
+                credentials = {
+                    type: "eSIM_Activation",
+                    instructions: "Activation received! We are generating your QR code. Check your email/WhatsApp shortly."
+                };
             }
 
-            // --- 6. CREATE ORDER (Saves everything to DB) ---
+            // --- 7. CREATE ORDER (Saves everything to DB) ---
             try {
                 await Order.create({
                     userId: userId,
                     userEmail: userEmail,
-                    fullName: actualUser.fullName,
+                    // For activations, we prefer the provided metadata name
+                    fullName: (productType === "eSIM_Activation" && firstName) 
+                                ? `${firstName} ${lastName}`.trim() 
+                                : actualUser.fullName,
                     productType: productType,
                     planName: productDetails.plan,
                     nodeName: productDetails.name,
-                    targetNumber: targetNum, // CRITICAL: This saves the eSIM mobile number
-                    amount: amountPaid,      // The Naira amount paid
+                    targetNumber: targetNum,
+                    amount: amountPaid,
                     currency: currency, 
                     status: "successful",
                     paymentReference: paymentRef,
-                    activationCode: credentials.activationCode,
+                    activationCode: credentials.activationCode || null,
+                    // Storing the physical address in a metadata field
+                    metadata: {
+                        address: address || null,
+                        zip: zip || null,
+                        firstName: firstName || null,
+                        lastName: lastName || null
+                    },
                     vpnCredentials: productType === "VPN" ? {
                         username: credentials.username,
                         password: credentials.password
@@ -951,13 +1030,13 @@ async function handleVerifyPayment(req, res) {
                 console.error("Order Record Failed:", dbErr);
             }
 
-            // --- 7. DELIVERY EMAIL ---
+            // --- 8. DELIVERY EMAIL ---
             try {
-                // You can modify your email template to handle eSIM instructions
                 await sendDeliveryEmail(userEmail, credentials); 
             } catch (emailErr) {
                 console.error("Email Delivery Failed:", emailErr);
             }
+
             const savedOrder = await Order.findOne({ paymentReference: paymentRef });
             
             return res.json({ 
@@ -975,7 +1054,6 @@ async function handleVerifyPayment(req, res) {
     }
 }
 
-
 const sendDeliveryEmail = async (userEmail, credentials) => {
     const transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -987,7 +1065,8 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
 
     // 1. DYNAMIC CONTENT CONFIGURATION
     const isVPN = credentials.type === "VPN";
-    const isESIM = credentials.type === "eSIM" || credentials.type === "eSIM Refill";
+    const isESIM_Refill = credentials.type === "eSIM";
+    const isESIM_Activation = credentials.type === "eSIM_Activation";
     const isProxy = credentials.type === "Proxy";
     
     let subject, headerTitle, subHeader;
@@ -996,8 +1075,11 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
         subject = "🔑 Your VPN Access Credentials";
         headerTitle = "Node Activated!";
         subHeader = "Your Premium VPN Access is ready.";
-    } else if (isESIM) {
-        // If there is a confirmation number, it's the final delivery. Otherwise, it's the "Request Received" notification.
+    } else if (isESIM_Activation) {
+        subject = "📶 eSIM Activation Request Received";
+        headerTitle = "Activation in Progress!";
+        subHeader = "We are preparing your new eSIM profile.";
+    } else if (isESIM_Refill) {
         const isFinal = !!credentials.confirmationNumber;
         subject = isFinal ? "✅ eSIM Refill Confirmed" : "📶 eSIM Refill Request Received";
         headerTitle = isFinal ? "Refill Successful!" : "Processing Refill...";
@@ -1027,8 +1109,36 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Limit</span><br>
                 <strong style="font-size: 13px; color: #101828;">${credentials.deviceLimit || 1} Device(s)</strong>
             </td>`;
-    } else if (isESIM) {
-        // ESIM REFILL LAYOUT (Handles both Initial Request and Admin Confirmation)
+    } else if (isESIM_Activation) {
+        // UPDATED: ESIM ACTIVATION LAYOUT WITH SHIPPING & TARGET EMAIL
+        dataTableHtml = `
+            <tr>
+                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation Email</span><br>
+                    <strong style="font-size: 13px; color: #0F54C6;">${credentials.email || userEmail}</strong>
+                </td>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
+                    <strong style="font-size: 13px; color: #101828;">${credentials.carrierName || 'Global eSIM'}</strong>
+                </td>
+            </tr>
+            <tr>
+                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Delivery Address</span><br>
+                    <strong style="font-size: 12px; color: #344054;">${credentials.address || 'N/A'}</strong>
+                </td>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Zip Code</span><br>
+                    <strong style="font-size: 13px; color: #101828;">${credentials.zipCode || 'N/A'}</strong>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Next Steps</span><br>
+                    <p style="font-size: 12px; color: #344054; margin: 5px 0;">Our technical team is generating your unique QR code for <strong>${credentials.planName || 'your plan'}</strong>. This will be sent to <strong>${credentials.email || userEmail}</strong> within 30 minutes.</p>
+                </td>
+            </tr>`;
+    } else if (isESIM_Refill) {
         dataTableHtml = `
             <tr>
                 <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
@@ -1042,16 +1152,15 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
             </tr>
             <tr>
                 <td class="mobile-full" width="50%" valign="top">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Plan / Amount</span><br>
-                    <strong style="font-size: 13px; color: #101828;">${credentials.amount}</strong>
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Plan Amount</span><br>
+                    <strong style="font-size: 13px; color: #101828;">${credentials.amount || credentials.planAmount}</strong>
                 </td>
                 <td class="mobile-full" width="50%" valign="top" style="text-align: right;">
                     <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Confirmation #</span><br>
-                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #F9861E;">${credentials.confirmationNumber || 'PENDING'}</strong>
+                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #F9861E;">${credentials.confirmationNumber || 'PROCESSING'}</strong>
                 </td>
             </tr>`;
     } else {
-        // PROXY TABLE LAYOUT (Activation Code & Amount)
         dataTableHtml = `
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation Code</span><br>
@@ -1070,7 +1179,7 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
             @media screen and (max-width: 480px) {
-                .mobile-full { width: 100% !important; display: block !important; text-align: left !important; padding-bottom: 10px !important; }
+                .mobile-full { width: 100% !important; display: block !important; text-align: left !important; padding-bottom: 15px !important; }
             }
         </style>
     </head>
@@ -1096,12 +1205,10 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
                             
                             <div style="background: #F0F5FE; padding: 20px; border-radius: 12px; border: 1px solid #D1E0FF; margin-bottom: 24px;">
                                 <p style="margin: 0 0 10px 0; font-size: 10px; color: #0F54C6; font-weight: 800; text-transform: uppercase;">Service Details</p>
-                                <p style="font-size: 13px; margin: 0 0 20px 0; line-height: 1.6;">${credentials.instructions || 'Please follow the instructions on your dashboard to begin using your service.'}</p>
+                                <p style="font-size: 13px; margin: 0 0 20px 0; line-height: 1.6;">${credentials.instructions || 'Please keep this information for your records.'}</p>
                                 
                                 <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
-                                    <tr>
-                                        ${dataTableHtml}
-                                    </tr>
+                                    ${isESIM_Refill || isESIM_Activation ? dataTableHtml : `<tr>${dataTableHtml}</tr>`}
                                 </table>
                             </div>
 
@@ -1360,7 +1467,7 @@ async function getEsimRefills(req, res) {
     }
 }
 
-async function handleAdminEsimUpdate(req, res) {
+async function handleAdminEsimActivationUpdate(req, res) {
     const { tid, status, confirmationNumber } = req.body;
 
     if (!tid || !status) {
@@ -1368,9 +1475,10 @@ async function handleAdminEsimUpdate(req, res) {
     }
 
     try {
-        // FIX: Change 'EsimRefill' to 'Order' to match where the data is actually stored
-        const updatedRefill = await Order.findOneAndUpdate(
-            { paymentReference: tid, productType: 'eSIM' }, 
+        // 1. Update the General Order record
+        // We ensure we match the specific productType to avoid accidental updates
+        const updatedOrder = await Order.findOneAndUpdate(
+            { paymentReference: tid, productType: 'eSIM_Activation' }, 
             { 
                 $set: { 
                     status: status, 
@@ -1381,37 +1489,159 @@ async function handleAdminEsimUpdate(req, res) {
             { new: true } 
         );
 
-        if (!updatedRefill) {
-            return res.status(404).json({ success: false, message: "Transaction not found in Orders" });
+        if (!updatedOrder) {
+            return res.status(404).json({ success: false, message: "Activation record not found in Orders" });
         }
+
+        // 2. Sync the update to the specialized EsimActivation collection
+        await EsimActivation.findOneAndUpdate(
+            { paymentReference: tid },
+            { 
+                $set: { 
+                    status: status, 
+                    esimProfileId: confirmationNumber || null, 
+                    updatedAt: new Date() 
+                } 
+            }
+        );
 
         const isFinished = status.toLowerCase() === 'completed' || status.toLowerCase() === 'successful';
         
+        // 3. Trigger Email for successful activations with Address and Zip included
         if (isFinished) {
             try {
-                // Ensure all fields are mapped correctly from the Order model
-                await sendDeliveryEmail(updatedRefill.userEmail, {
-                    type: "eSIM",
-                    amount: updatedRefill.planName, 
-                    confirmationNumber: confirmationNumber || "Refill Processed",
-                    carrierName: updatedRefill.nodeName || "eSIM Service",
-                    mobileNumber: updatedRefill.targetNumber,
-                    instructions: "Your eSIM refill has been applied successfully."
+                await sendDeliveryEmail(updatedOrder.userEmail, {
+                    type: "eSIM Activation",
+                    amount: updatedOrder.planName, 
+                    confirmationNumber: confirmationNumber || "Activation Complete",
+                    carrierName: updatedOrder.nodeName || "Global eSIM",
+                    
+                    // --- PERSONAL DATA FROM METADATA ---
+                    customerName: `${updatedOrder.metadata?.firstName || ''} ${updatedOrder.metadata?.lastName || ''}`.trim(),
+                    shippingAddress: updatedOrder.metadata?.address || "N/A",
+                    zipCode: updatedOrder.metadata?.zip || "N/A",
+                    // ------------------------------------
+
+                    instructions: "Your eSIM activation is complete. Please use the Profile ID/Activation code provided to set up your device."
                 });
             } catch (emailError) {
-                console.error("Email Delivery Failed:", emailError);
+                console.error("📧 Email Delivery Failed:", emailError);
             }
         }
 
         return res.json({ 
             success: true, 
-            message: `Order updated to ${status}`,
-            data: updatedRefill 
+            message: `Activation order updated to ${status}`,
+            data: updatedOrder 
         });
 
     } catch (error) {
-        console.error("Admin Update Error:", error);
+        console.error("❌ Admin Activation Update Error:", error);
         return res.status(500).json({ success: false, message: "Internal Server error" });
+    }
+}
+
+async function handleCreateEsimActivation(req, res) {
+    // 1. Destructure 'email' from the request body
+    const { email, carrierName, mobileNumber, planAmount, metadata, productType } = req.body;
+    const userEmail = req.user?.email; 
+
+    // 2. Validation: Ensure the new email field is present
+    if (!userEmail || !email || !carrierName || !planAmount) {
+        return res.status(400).json({ success: false, message: "Missing required fields (including Email)" });
+    }
+
+    try {
+        const txRef = `ACT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+        // 3. Save to EsimActivation collection
+        const newActivation = new EsimActivation({
+            userEmail,
+            email, // <--- Added here
+            fullName: `${metadata?.firstName || ''} ${metadata?.lastName || ''}`.trim(),
+            nodeName: carrierName,
+            planName: planAmount,
+            amount: parseFloat(planAmount.replace(/[$,]/g, '')),
+            paymentReference: txRef,
+            status: 'pending'
+        });
+
+        await newActivation.save();
+
+        // 4. Save to General Order record
+        const newOrder = new Order({
+            userEmail,
+            productType: 'eSIM_Activation',
+            nodeName: carrierName,
+            planName: planAmount,
+            amount: newActivation.amount,
+            status: 'pending',
+            paymentReference: txRef,
+            metadata: {
+                email, // <--- Store in metadata for the general Order record
+                address: metadata?.address,
+                zip: metadata?.zip,
+                firstName: metadata?.firstName,
+                lastName: metadata?.lastName
+            }
+        });
+
+        await newOrder.save();
+
+        res.json({ 
+            success: true, 
+            message: "Activation order initialized", 
+            tx_ref: txRef 
+        });
+
+    } catch (error) {
+        console.error("eSIM Activation Order Error:", error);
+        res.status(500).json({ success: false, error: "Internal Server Error" });
+    }
+}
+
+// Renamed to match the switch case exactly
+async function handleGetEsimActivations(req, res) { 
+    try {
+        const activations = await Order.find({ 
+            productType: 'eSIM_Activation' 
+        })
+        .sort({ createdAt: -1 })
+        .limit(100);
+
+        const formattedActivations = activations.map(activation => {
+            const amountInUSD = activation.amount / 1650;
+
+            return {
+                paymentReference: activation.paymentReference,
+                productType: 'eSIM_Activation', 
+                createdAt: activation.createdAt,
+                userEmail: activation.userEmail, 
+                email: activation.metadata?.email || 'N/A',
+                fullName: `${activation.metadata?.firstName || ''} ${activation.metadata?.lastName || ''}`.trim(),
+                amount: amountInUSD.toFixed(2), 
+                status: activation.status || 'pending',
+                
+                nodeName: activation.nodeName || activation.carrierName || 'Global eSIM',
+                planName: activation.planName || 'Standard Plan',
+                
+                confirmationNumber: activation.confirmationNumber || 'PENDING',
+                address: activation.metadata?.address || 'N/A',
+                zipCode: activation.metadata?.zip || 'N/A'
+            };
+        });
+
+        return res.json({
+            success: true,
+            orders: formattedActivations 
+        });
+
+    } catch (error) {
+        console.error("❌ Admin Fetch Error:", error);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Failed to fetch eSIM activation records" 
+        });
     }
 }
 

@@ -135,7 +135,7 @@ const orderSchema = new mongoose.Schema({
 
 orderSchema.index({ createdAt: -1 });
 
-const Order = mongoose.models.Order || mongoose.model('Order', orderSchema);
+const Order = mongoose.models.Order || mongoose.model('Order', new mongoose.Schema({}, { strict: false }), 'orders');
 
 // --- 3. OPTIMIZED MONGOOSE CONNECTION ---
 let isConnected = false;

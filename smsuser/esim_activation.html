@@ -83,10 +83,10 @@
             
             <div id="selectionView">
                 <div class="mb-6">
-                    <h2 class="text-lg md:text-xl font-bold text-brand-darkText mobile-title">Select a Prepaid Carrier</h2>
-                    <p class="text-[10px] md:text-xs text-brand-lightText">Choose your network to begin new prepaid eSIM activation.</p>
+                    <h2 class="text-lg md:text-xl font-bold text-brand-darkText mobile-title">Select an eSIM Plan</h2>
+                    <p class="text-[10px] md:text-xs text-brand-lightText">Choose your specific carrier or term-based plan to begin activation.</p>
                 </div>
-                <div id="carrierGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6"></div>
+                <div id="carrierGrid" class="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6"></div>
 
                 <div id="promoBanner" class="mt-10 bg-gradient-to-r from-brand-blue to-blue-800 rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
                     <div class="relative z-10">
@@ -101,7 +101,7 @@
             <div id="formView" class="hidden animate-flow">
                 <button onclick="goBackToGrid()" class="mb-5 flex items-center gap-2 text-[10px] font-bold text-brand-blue uppercase hover:translate-x-[-4px] transition-transform">
                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                    Back to Carriers
+                    Back to Plans
                 </button>
                 
                 <div class="bg-white border border-brand-border rounded-2xl md:rounded-3xl overflow-hidden shadow-sm max-w-2xl mx-auto">
@@ -110,7 +110,7 @@
                             <img id="formCarrierLogo" src="" class="w-full h-full object-contain">
                         </div>
                         <h2 id="formCarrierName" class="text-xl md:text-2xl font-bold">--</h2>
-                        <p class="text-blue-100 text-[9px] uppercase font-bold tracking-widest mt-1">Direct Prepaid Activation Portal</p>
+                        <p class="text-blue-100 text-[9px] uppercase font-bold tracking-widest mt-1">Direct Activation Portal</p>
                     </div>
 
                     <div class="p-5 md:p-10 space-y-6">
@@ -143,11 +143,11 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="text-[9px] md:text-[10px] font-bold text-brand-blue uppercase tracking-wider mb-2 block">Prepaid Plan Type</label>
+                                <label class="text-[9px] md:text-[10px] font-bold text-brand-blue uppercase tracking-wider mb-2 block">Activation Type</label>
                                 <select id="prepaidType" class="w-full bg-brand-background border border-brand-border p-3 rounded-xl text-xs font-bold focus:ring-2 focus:ring-brand-blue outline-none cursor-pointer mobile-input">
+                                    <option value="Standard Activation">Standard Activation</option>
                                     <option value="Data Only">Data Only</option>
                                     <option value="Voice & Data">Voice & Data</option>
-                                    <option value="International Roaming">International Roaming</option>
                                 </select>
                             </div>
                             <div>
@@ -178,7 +178,7 @@
                             <span class="flex-shrink-0 w-6 h-6 bg-brand-blue text-white text-[10px] font-bold rounded-full flex items-center justify-center">01</span>
                             <div>
                                 <p class="text-xs font-bold text-brand-darkText">Verify eSIM Compatibility</p>
-                                <p class="text-[11px] text-brand-midText mt-1 leading-relaxed">Dial <span class="font-mono font-bold text-brand-blue">*#06#</span> or <span class="font-mono font-bold text-brand-blue">*563#</span> on your device. Ensure an <b>EID Number</b> is displayed. If no EID is found, your device is not eSIM compatible.</p>
+                                <p class="text-[11px] text-brand-midText mt-1 leading-relaxed">Dial <span class="font-mono font-bold text-brand-blue">*#06#</span> or <span class="font-mono font-bold text-brand-blue">*563#</span> on your device. Ensure an <b>EID Number</b> is displayed.</p>
                             </div>
                         </div>
 
@@ -186,13 +186,13 @@
                             <span class="flex-shrink-0 w-6 h-6 bg-brand-blue text-white text-[10px] font-bold rounded-full flex items-center justify-center">02</span>
                             <div>
                                 <p class="text-xs font-bold text-brand-darkText">Carrier Lock Status</p>
-                                <p class="text-[11px] text-brand-midText mt-1 leading-relaxed">Confirm your device is <b>Network Unlocked</b>. eSIMs will not activate on devices restricted to a specific carrier.</p>
+                                <p class="text-[11px] text-brand-midText mt-1 leading-relaxed">Confirm your device is <b>Network Unlocked</b>. eSIMs will not activate on carrier-locked devices.</p>
                             </div>
                         </div>
 
                         <div class="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-xl mt-2">
                             <p class="text-[10px] font-bold text-orange-800 uppercase tracking-wide">
-                                ⚠️ Non-Refundable Policy: Once the eSIM QR code is generated, the transaction is final and cannot be reversed. Activation typically completes within 5-15 minutes.
+                                ⚠️ Non-Refundable Policy: Once the eSIM QR code is generated, the transaction is final.
                             </p>
                         </div>
                     </div>
@@ -209,9 +209,9 @@
                         <p class="text-[9px] md:text-[10px] text-brand-lightText mt-1">Ref ID: <span id="rID" class="font-mono bg-gray-100 px-1 rounded">--</span></p>
                     </div>
                     <div class="my-5 space-y-2.5 border-t border-b border-dashed border-brand-border py-5 font-mono text-[10px] md:text-xs">
-                        <div class="flex justify-between items-center"><span class="text-brand-lightText">Carrier:</span> <span id="rCarrier" class="font-bold text-right text-brand-darkText uppercase">--</span></div>
+                        <div class="flex justify-between items-center"><span class="text-brand-lightText">Plan:</span> <span id="rCarrier" class="font-bold text-right text-brand-darkText uppercase">--</span></div>
                         <div class="flex justify-between items-center"><span class="text-brand-lightText">Name:</span> <span id="rName" class="font-bold text-right text-brand-darkText">--</span></div>
-                        <div class="flex justify-between items-center"><span class="text-brand-lightText">Plan:</span> <span id="rPlan" class="font-bold text-right text-brand-darkText">--</span></div>
+                        <div class="flex justify-between items-center"><span class="text-brand-lightText">Amount:</span> <span id="rPlan" class="font-bold text-right text-brand-darkText">--</span></div>
                         <div class="flex justify-between items-center"><span class="text-brand-lightText">Payment:</span> <span class="bg-green-500 text-white px-2 py-0.5 rounded font-bold text-[8px] md:text-[9px] uppercase">Confirmed ✅</span></div>
                         <div class="flex justify-between items-center pt-1"><span class="text-brand-lightText">Status:</span> <span class="text-orange-600 font-bold text-[9px] uppercase animate-pulse">Awaiting QR Generation</span></div>
                     </div>
@@ -227,13 +227,13 @@
     <script>
         const API_BASE_URL = '/api';
         const NAIRA_RATE = 1650;
+        
         const carriers = [
-            { id: '1', name: 'T-Mobile USA', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Prepaid' },
-            { id: '2', name: 'AT&T', image: 'https://i.imgur.com/WDCo1gM.png', type: 'Prepaid' },
-            { id: '3', name: 'Verizon', image: 'https://i.imgur.com/ylEL7gO.jpeg', type: 'Prepaid' },
-            { id: '4', name: 'Vodafone UK', image: 'https://i.imgur.com/r7a0fpw.png', type: 'Prepaid' },
-            { id: '5', name: 'Orange FR', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Orange_logo.svg/2048px-Orange_logo.svg.png', type: 'Prepaid' },
-            { id: '6', name: 'Claro Brazil', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Claro.svg/1200px-Claro.svg.png', type: 'Prepaid' }
+            { id: 'tmobile', name: 'T-Mobile (Prepaid)', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Carrier' },
+            { id: 'att', name: 'AT&T (Prepaid)', image: 'https://i.imgur.com/WDCo1gM.png', type: 'Carrier' },
+            { id: '1month', name: 'One Month Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan' },
+            { id: '3months', name: '3 Months Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan' },
+            { id: '1year', name: 'One Year Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan' }
         ];
 
         const activationPlans = [];
@@ -248,11 +248,11 @@
             const grid = document.getElementById('carrierGrid');
             grid.innerHTML = carriers.map(c => `
                 <div onclick="selectCarrier('${c.id}')" class="bg-white border border-brand-border p-4 md:p-6 rounded-2xl md:rounded-3xl cursor-pointer hover:shadow-xl transition-all group text-center relative overflow-hidden">
-                    <span class="absolute top-2 right-2 bg-orange-500 text-white text-[8px] font-bold px-2 py-0.5 rounded-full uppercase">${c.type}</span>
+                    <span class="absolute top-2 right-2 bg-brand-blue text-white text-[7px] font-bold px-2 py-0.5 rounded-full uppercase">${c.type}</span>
                     <div class="h-12 md:h-16 mb-3 flex items-center justify-center transition-all">
                         <img src="${c.image}" class="max-h-full object-contain">
                     </div>
-                    <h3 class="text-[10px] md:text-xs font-bold text-brand-darkText uppercase group-hover:text-brand-blue">${c.name}</h3>
+                    <h3 class="text-[9px] md:text-[10px] font-bold text-brand-darkText uppercase group-hover:text-brand-blue leading-tight">${c.name}</h3>
                 </div>
             `).join('');
             
@@ -265,7 +265,7 @@
             window.currentSelectedCarrier = carrier; 
             document.getElementById('selectionView').classList.add('hidden');
             document.getElementById('formView').classList.remove('hidden');
-            document.getElementById('formCarrierName').innerText = carrier.name + " Prepaid";
+            document.getElementById('formCarrierName').innerText = carrier.name;
             document.getElementById('formCarrierLogo').src = carrier.image;
             updateButtonPrice();
         }
@@ -302,7 +302,7 @@
                 return;
             }
 
-            const device = document.getElementById('targetNumber').value.trim() || "Standard Device";
+            const device = document.getElementById('targetNumber').value.trim() || "eSIM Device";
             const plan = document.getElementById('planSelector').value; 
             const carrier = window.currentSelectedCarrier;
 
@@ -371,7 +371,7 @@
         function contactManagement() {
             const carrier = document.getElementById('rCarrier').innerText;
             const tid = document.getElementById('rID').innerText;
-            const msg = `🚀 *SMSGlobe: NEW PREPAID eSIM ORDER*\nREF ID: ${tid}\nCARRIER: ${carrier}\nAction: Send QR Code`;
+            const msg = `🚀 *SMSGlobe: NEW eSIM ORDER*\nREF ID: ${tid}\nPLAN: ${carrier}\nAction: Send QR Code`;
             window.open(`https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`, '_blank');
         }
     </script>

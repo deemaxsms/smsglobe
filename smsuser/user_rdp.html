@@ -296,8 +296,7 @@
 </div>
 
 <script>
-        const API_BASE_URL = '/api';
-
+    const API_BASE_URL = '/api';
 
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
@@ -317,7 +316,21 @@
 
     let activePlan = null;
 
+    // Initialize page: Check if we are returning from a payment
+    window.onload = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const transactionId = urlParams.get('transaction_id');
+        const txRef = urlParams.get('tx_ref');
+        const status = urlParams.get('status');
+
+        if ((transactionId || txRef) && status !== 'cancelled') {
+            verifyRDPPayment(transactionId, txRef);
+        }
+        renderPlans();
+    };
+
     function renderPlans() {
+        if(!tableBody) return;
         tableBody.innerHTML = Object.values(plans).map(plan => `
             <tr onclick="selectPlan('${plan.id}')" class="cursor-pointer hover:bg-gray-50 transition-all active-scale">
                 <td class="px-6 py-6 border-b border-brand-border">
@@ -338,207 +351,195 @@
         `).join('');
     }
 
-   function selectPlan(planKey) {
-    // Set the global reference for the initiate function
-    activePlan = plans[planKey];
-    
-    // IMPORTANT: Map the local 'plans' object to the structure expected by your backend
-    window.currentSelectedRDP = {
-        _id: activePlan.id, // Or the actual database ID if available
-        name: activePlan.name,
-        ram: activePlan.hardware.split('|')[0].trim(),
-        cpu: activePlan.hardware.split('|')[1].trim(),
-        storage: activePlan.storage,
-        category: "RDP"
-    };
+    function selectPlan(planKey) {
+        activePlan = plans[planKey];
+        
+        // Map data for the initiation function
+        window.currentSelectedRDP = {
+            _id: activePlan.id,
+            name: activePlan.name,
+            ram: activePlan.hardware.split('|')[0].trim(),
+            cpu: activePlan.hardware.split('|')[1].trim(),
+            storage: activePlan.storage,
+            category: "RDP"
+        };
 
-    // Update the UI fields
-    document.getElementById('displayPlanName').innerText = activePlan.name;
-    document.getElementById('displayPlanPrice').innerText = `₦${activePlan.price.toLocaleString()}`;
-    document.getElementById('displayHardware').innerText = activePlan.hardware;
-    document.getElementById('displayStorage').innerText = activePlan.storage + " NVMe";
-    
-    // Switch views
-    selectionView.classList.add('hidden');
-    checkoutView.classList.remove('hidden');
-    headerTitle.innerText = "Checkout / " + activePlan.name;
-    
-    calculateTotal(); // Ensure price is calculated
-    window.scrollTo(0, 0);
-}
+        // Update UI Summary
+        document.getElementById('displayPlanName').innerText = activePlan.name;
+        document.getElementById('displayPlanPrice').innerText = `₦${activePlan.price.toLocaleString()}`;
+        document.getElementById('displayHardware').innerText = activePlan.hardware;
+        document.getElementById('displayStorage').innerText = activePlan.storage + " NVMe";
+        
+        // Reset Inputs if they exist
+        if(document.getElementById('extraCPU')) document.getElementById('extraCPU').value = "";
+        if(document.getElementById('extraStorage')) document.getElementById('extraStorage').value = "";
+        
+        calculateTotal();
+
+        selectionView.classList.add('hidden');
+        checkoutView.classList.remove('hidden');
+        headerTitle.innerText = "Checkout / " + activePlan.name;
+        window.scrollTo(0, 0);
+    }
+
     function calculateTotal() {
         if (!activePlan) return;
 
-        const extraCPUCount = parseInt(document.getElementById('extraCPU').value) || 0;
-        const extraStorageCount = parseInt(document.getElementById('extraStorage').value) || 0;
+        const extraCPUCount = parseInt(document.getElementById('extraCPU')?.value) || 0;
+        const extraStorageCount = parseInt(document.getElementById('extraStorage')?.value) || 0;
 
         const cpuCost = extraCPUCount * 5000;
         const storageCost = extraStorageCount * 200;
         const total = activePlan.price + cpuCost + storageCost;
 
-        // Update Summary Sidebar
-        document.getElementById('basePriceSummary').innerText = `₦${activePlan.price.toLocaleString()}`;
-        document.getElementById('summaryTotal').innerText = `₦${total.toLocaleString()}`;
+        // Update Summary Elements
+        if(document.getElementById('basePriceSummary')) document.getElementById('basePriceSummary').innerText = `₦${activePlan.price.toLocaleString()}`;
+        if(document.getElementById('summaryTotal')) document.getElementById('summaryTotal').innerText = `₦${total.toLocaleString()}`;
 
-        // Handle CPU Addon UI
+        // Addon UI Logic
         const cpuRow = document.getElementById('cpuAddonRow');
-        if(extraCPUCount > 0) {
-            cpuRow.classList.remove('hidden');
-            document.getElementById('cpuAddonPrice').innerText = `+₦${cpuCost.toLocaleString()}`;
-        } else {
-            cpuRow.classList.add('hidden');
+        if(cpuRow) {
+            if(extraCPUCount > 0) {
+                cpuRow.classList.remove('hidden');
+                document.getElementById('cpuAddonPrice').innerText = `+₦${cpuCost.toLocaleString()}`;
+            } else {
+                cpuRow.classList.add('hidden');
+            }
         }
 
-        // Handle Storage Addon UI
         const storageRow = document.getElementById('storageAddonRow');
-        if(extraStorageCount > 0) {
-            storageRow.classList.remove('hidden');
-            document.getElementById('storageAddonPrice').innerText = `+₦${storageCost.toLocaleString()}`;
-        } else {
-            storageRow.classList.add('hidden');
+        if(storageRow) {
+            if(extraStorageCount > 0) {
+                storageRow.classList.remove('hidden');
+                document.getElementById('storageAddonPrice').innerText = `+₦${storageCost.toLocaleString()}`;
+            } else {
+                storageRow.classList.add('hidden');
+            }
         }
     }
-
-    function showSelectionView() {
-        selectionView.classList.remove('hidden');
-        checkoutView.classList.add('hidden');
-        headerTitle.innerText = "RDP Management";
-    }
-
-   
 
     async function initiateRDPPayment() {
-    // 1. Get the current selected RDP object (set this when user clicks a plan)
-    const selectedRDP = window.currentSelectedRDP; 
-    
-    if (!selectedRDP) {
-        alert("Please select an RDP plan first.");
-        return;
-    }
+        const selectedRDP = window.currentSelectedRDP; 
+        
+        if (!selectedRDP) {
+            alert("Please select an RDP plan first.");
+            return;
+        }
 
-    const cpuExtra = parseInt(document.getElementById('extraCPU').value) || 0;
-    const storageExtra = parseInt(document.getElementById('extraStorage').value) || 0;
-    const selectedOS = document.getElementById('osSelector').value;
-    
-    const btn = document.getElementById('payBtn');
-    const originalText = btn.innerText;
-    
-    btn.disabled = true;
-    btn.innerText = "Generating Secure Link...";
+        // Null-safe element checks
+        const cpuInput = document.getElementById('extraCPU');
+        const storageInput = document.getElementById('extraStorage');
+        const osInput = document.getElementById('osSelector');
 
-    try {
-        const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
-            },
-            body: JSON.stringify({
-                productType: 'RDP',
-                rdpId: selectedRDP._id, // Critical for looking up the schema on backend
-                planName: selectedRDP.name,
-                metadata: {
-                    baseRAM: selectedRDP.ram,
-                    baseCPU: selectedRDP.cpu,
-                    baseStorage: selectedRDP.storage,
-                    extraCPU: cpuExtra,
-                    extraStorage: storageExtra,
-                    osChoice: selectedOS,
-                    category: selectedRDP.category
-                }
-            })
-        });
+        const cpuExtra = cpuInput ? (parseInt(cpuInput.value) || 0) : 0;
+        const storageExtra = storageInput ? (parseInt(storageInput.value) || 0) : 0;
+        const selectedOS = osInput ? osInput.value : "Windows Server (Default)";
+        
+        const btn = document.getElementById('payBtn');
+        const originalText = btn.innerText;
+        
+        btn.disabled = true;
+        btn.innerText = "Generating Secure Link...";
 
-        const data = await res.json();
-        if(data.success && data.link) {
-            window.location.href = data.link; 
-        } else {
-            alert(data.message || "Initialization failed");
+        try {
+            const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
+                },
+                body: JSON.stringify({
+                    productType: 'RDP',
+                    rdpId: selectedRDP._id,
+                    planName: selectedRDP.name,
+                    metadata: {
+                        baseRAM: selectedRDP.ram,
+                        baseCPU: selectedRDP.cpu,
+                        baseStorage: selectedRDP.storage,
+                        extraCPU: cpuExtra,
+                        extraStorage: storageExtra,
+                        osChoice: selectedOS,
+                        category: selectedRDP.category
+                    }
+                })
+            });
+
+            const data = await res.json();
+            if(data.success && data.link) {
+                window.location.href = data.link; 
+            } else {
+                alert(data.message || "Initialization failed");
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Connection error. Please try again.");
             btn.disabled = false;
             btn.innerText = originalText;
         }
-    } catch (err) {
-        console.error(err);
-        alert("Connection error. Please try again.");
-        btn.disabled = false;
-        btn.innerText = originalText;
     }
-}
 
-async function verifyRDPPayment(tid, txRef) {
-    try {
-        // Show a loading state if necessary
-        const payBtn = document.getElementById('payBtn');
-        if (payBtn) payBtn.innerText = "Verifying Payment...";
+    async function verifyRDPPayment(tid, txRef) {
+        try {
+            const payBtn = document.getElementById('payBtn');
+            if (payBtn) payBtn.innerText = "Verifying Payment...";
 
-        const res = await fetch(`${API_BASE_URL}/verify-payment`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
-            },
-            body: JSON.stringify({ transactionId: tid, txRef: txRef })
-        });
-        
-        const data = await res.json();
-
-        if (data.success) {
-            // 1. Hide selection and checkout views
-            document.getElementById('selectionView').classList.add('hidden');
-            document.getElementById('checkoutView').classList.add('hidden');
+            const res = await fetch(`${API_BASE_URL}/verify-payment`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
+                },
+                body: JSON.stringify({ transactionId: tid, txRef: txRef })
+            });
             
-            // 2. Show the receipt/success view
-            // Note: Ensure you have an element with id="receiptView" in your HTML
-            const receiptView = document.getElementById('receiptView');
-            if (receiptView) receiptView.classList.remove('hidden');
+            const data = await res.json();
 
-            // 3. Populate RDP specific data
-            const order = data.order || {};
-            
-            // Map these to your receipt IDs (Make sure these IDs exist in your HTML)
-            if (document.getElementById('rPlanName')) {
-                document.getElementById('rPlanName').innerText = order.planName || "USA RDP";
-            }
-            if (document.getElementById('rSpecs')) {
+            if (data.success) {
+                selectionView.classList.add('hidden');
+                checkoutView.classList.add('hidden');
+                
+                const receiptView = document.getElementById('receiptView');
+                if (receiptView) receiptView.classList.remove('hidden');
+
+                const order = data.order || {};
                 const meta = order.metadata || {};
-                const specText = `${meta.baseRAM || ''} RAM | ${meta.baseCPU || ''} + ${meta.extraCPU || 0} Cores`;
-                document.getElementById('rSpecs').innerText = specText;
-            }
-            if (document.getElementById('rStorage')) {
-                const meta = order.metadata || {};
-                document.getElementById('rStorage').innerText = `${meta.baseStorage || ''} + ${meta.extraStorage || 0}GB NVMe`;
-            }
-            if (document.getElementById('rReference')) {
-                document.getElementById('rReference').innerText = order.paymentReference || tid;
-            }
+                
+                // Populate Receipt Fields
+                if (document.getElementById('rPlanName')) document.getElementById('rPlanName').innerText = order.planName || "RDP Plan";
+                if (document.getElementById('rSpecs')) document.getElementById('rSpecs').innerText = `${meta.baseRAM || ''} RAM | ${meta.baseCPU || ''} + ${meta.extraCPU || 0} Cores`;
+                if (document.getElementById('rStorage')) document.getElementById('rStorage').innerText = `${meta.baseStorage || ''} + ${meta.extraStorage || 0}GB NVMe`;
+                if (document.getElementById('rReference')) document.getElementById('rReference').innerText = order.paymentReference || tid;
+                
+                // Optional Fields for WhatsApp
+                if (document.getElementById('rID')) document.getElementById('rID').innerText = order.paymentReference || tid;
+                if (document.getElementById('rPlan')) document.getElementById('rPlan').innerText = order.planName;
+                if (document.getElementById('rRAM')) document.getElementById('rRAM').innerText = meta.baseRAM;
+                if (document.getElementById('rCPU')) document.getElementById('rCPU').innerText = `${meta.baseCPU} (+${meta.extraCPU} Extra)`;
+                if (document.getElementById('rOS')) document.getElementById('rOS').innerText = meta.osChoice;
 
-            // Update Header
-            document.getElementById('headerTitle').innerText = "Order Confirmed";
-            
-            alert("Payment successful! Your RDP is being provisioned.");
-        } else {
-            alert("Payment verification failed: " + (data.message || "Unknown error"));
+                headerTitle.innerText = "Order Confirmed";
+                alert("Payment successful! Your RDP is being provisioned.");
+            } else {
+                alert("Payment verification failed: " + (data.message || "Unknown error"));
+            }
+        } catch (e) { 
+            console.error("Verification Error:", e);
+        } finally {
+            if (document.getElementById('payBtn')) document.getElementById('payBtn').innerText = "Pay Securely Now";
         }
-    } catch (e) { 
-        console.error("Verification Error:", e);
-        alert("An error occurred while verifying your payment.");
-    } finally {
-        const payBtn = document.getElementById('payBtn');
-        if (payBtn) payBtn.innerText = "Pay Securely Now";
     }
-}
 
-function contactRDPAdmin() {
-    const tid = document.getElementById('rID').innerText;
-    const plan = document.getElementById('rPlan').innerText;
-    
-    // Constructing a detailed spec string for the admin
-    const ram = document.getElementById('rRAM').innerText; // e.g. "16GB"
-    const cpu = document.getElementById('rCPU').innerText; // e.g. "4 Core (+2 Extra)"
-    const storage = document.getElementById('rStorage').innerText; // e.g. "100GB (+50GB Extra)"
-    const os = document.getElementById('rOS').innerText; // e.g. "Windows Server 2022"
+    function contactRDPAdmin() {
+        const tid = document.getElementById('rID')?.innerText || "N/A";
+        const plan = document.getElementById('rPlan')?.innerText || "N/A";
+        const ram = document.getElementById('rRAM')?.innerText || "N/A";
+        const cpu = document.getElementById('rCPU')?.innerText || "N/A";
+        const storage = document.getElementById('rStorage')?.innerText || "N/A";
+        const os = document.getElementById('rOS')?.innerText || "N/A";
 
-    const msg = `🚀 *SMSGlobe: NEW RDP PROVISIONING*
+        const msg = `🚀 *SMSGlobe: NEW RDP PROVISIONING*
 __________________________________
 
 ✅ *PAYMENT STATUS:* CONFIRMED
@@ -554,12 +555,16 @@ __________________________________
 ━━━━━━━━━━━━━━━━━━
 
 ⚡ *ACTION REQUIRED:*
-Please provision this server and update the user's dashboard credentials.
+Please provision this server and update the user's dashboard credentials.`;
 
-_Sent via SMSGlobe Automated System_`;
+        window.open(`https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`, '_blank');
+    }
 
-    window.open(`https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`, '_blank');
-}
+    function showSelectionView() {
+        selectionView.classList.remove('hidden');
+        checkoutView.classList.add('hidden');
+        headerTitle.innerText = "RDP Management";
+    }
 
     const toggleSidebar = () => {
         sidebar.classList.toggle('-translate-x-full');
@@ -571,8 +576,6 @@ _Sent via SMSGlobe Automated System_`;
     overlay.addEventListener('click', toggleSidebar);
 
     function logout() { window.location.href = 'user_login.html'; }
-
-    renderPlans();
 </script>
 </body>
 </html>

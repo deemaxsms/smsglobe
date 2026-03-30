@@ -181,27 +181,24 @@
                                 </ul>
                             </div>
                         </div>
+
+                        <div class="bg-white border border-brand-border rounded-3xl p-8 shadow-sm">
+                            <h4 class="text-sm font-bold text-brand-darkText mb-3 uppercase tracking-widest">Installation & Usage Guide</h4>
+                            <p class="text-xs text-brand-lightText leading-relaxed">
+                                General setup instructions and login credentials will be provided automatically via email and your dashboard immediately after a successful purchase.
+                            </p>
+                        </div>
                     </div>
 
                     <div class="space-y-4">
                         <div class="bg-white border border-brand-border rounded-3xl p-6 shadow-sm">
                             <h3 class="text-sm font-bold text-brand-darkText mb-4">Order Summary</h3>
-                            <div class="space-y-3 text-xs border-b border-brand-border pb-4 mb-4">
-                                <div class="flex justify-between">
-                                    <span class="text-brand-lightText">Subtotal</span>
-                                    <span id="summarySubtotal" class="font-bold text-brand-darkText">₦45,000</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-brand-lightText">Setup Fee</span>
-                                    <span class="font-bold text-green-600">FREE</span>
-                                </div>
-                            </div>
                             <div class="flex justify-between mb-6">
                                 <span class="text-sm font-bold text-brand-darkText">Total to Pay</span>
                                 <span id="summaryTotal" class="text-sm font-black text-brand-blue">₦45,000</span>
                             </div>
                             <button onclick="initiatePayment()" class="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold text-xs hover:bg-blue-700 active-scale shadow-lg shadow-blue-200 transition-all">
-                                Pay Now with Paystack
+                                Pay Now
                             </button>
                         </div>
                     </div>
@@ -278,7 +275,6 @@
         document.getElementById('displayPlanPrice').innerText = plan.price;
         document.getElementById('displayHardware').innerText = plan.hardware;
         document.getElementById('displayStorage').innerText = plan.storage + " NVMe";
-        document.getElementById('summarySubtotal').innerText = plan.price;
         document.getElementById('summaryTotal').innerText = plan.price;
 
         selectionView.classList.add('hidden');
@@ -294,7 +290,7 @@
     }
 
     function initiatePayment() {
-        alert("Redirecting to Paystack Secure Gateway...");
+        alert("Redirecting to Secure Gateway...");
     }
 
     document.getElementById('openSidebar').addEventListener('click', toggleSidebar);

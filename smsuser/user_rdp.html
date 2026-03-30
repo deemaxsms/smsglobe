@@ -78,7 +78,7 @@
             </div>
             <div class="hidden md:block overflow-hidden w-64 relative bg-gray-50 rounded-full py-1 px-4 border border-brand-border">
                 <p class="animate-marquee whitespace-nowrap text-[10px] font-bold text-green-600">
-                    ● USA Server Status: Optimal (24ms) | All Tier 1-5 Nodes Online | Instant Provisioning Active
+                    ● USA Server Status: Optimal (24ms) | All Tier 1-6 Nodes Online | Instant Provisioning Active
                 </p>
             </div>
         </header>
@@ -121,40 +121,8 @@
                                     <th class="px-6 py-4 border-b border-brand-border text-right">Action</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr onclick="selectPlan('tier1')" class="cursor-pointer hover:bg-gray-50 transition-all active-scale">
-                                    <td class="px-6 py-6 border-b border-brand-border">
-                                        <p class="text-sm font-bold text-brand-darkText">USA Tier 1</p>
-                                        <p class="text-[11px] text-brand-lightText">4GB RAM | 2 CPU Cores</p>
-                                    </td>
-                                    <td class="px-6 py-6 border-b border-brand-border">
-                                        <p class="text-[11px] font-bold">60GB SSD</p>
-                                        <p class="text-[10px] text-green-600 font-bold uppercase">100Mbps</p>
-                                    </td>
-                                    <td class="px-6 py-6 border-b border-brand-border text-center">
-                                        <p class="text-lg font-black">₦45,000</p>
-                                    </td>
-                                    <td class="px-6 py-6 border-b border-brand-border text-right">
-                                        <span class="bg-brand-blue text-white text-[10px] font-bold px-6 py-2.5 rounded-xl">Continue</span>
-                                    </td>
-                                </tr>
-                                <tr onclick="selectPlan('tier2')" class="cursor-pointer hover:bg-gray-50 transition-all active-scale">
-                                    <td class="px-6 py-6 border-b border-brand-border">
-                                        <p class="text-sm font-bold text-brand-darkText">USA Tier 2</p>
-                                        <p class="text-[11px] text-brand-lightText">6GB RAM | 3 CPU Cores</p>
-                                    </td>
-                                    <td class="px-6 py-6 border-b border-brand-border">
-                                        <p class="text-[11px] font-bold">100GB SSD</p>
-                                        <p class="text-[10px] text-green-600 font-bold uppercase">100Mbps</p>
-                                    </td>
-                                    <td class="px-6 py-6 border-b border-brand-border text-center">
-                                        <p class="text-lg font-black">₦55,000</p>
-                                    </td>
-                                    <td class="px-6 py-6 border-b border-brand-border text-right">
-                                        <span class="bg-brand-blue text-white text-[10px] font-bold px-6 py-2.5 rounded-xl">Continue</span>
-                                    </td>
-                                </tr>
-                            </tbody>
+                            <tbody id="plansTableBody">
+                                </tbody>
                         </table>
                     </div>
                 </div>
@@ -266,12 +234,37 @@
     const selectionView = document.getElementById('selectionView');
     const checkoutView = document.getElementById('checkoutView');
     const headerTitle = document.getElementById('headerTitle');
+    const tableBody = document.getElementById('plansTableBody');
 
     const plans = {
-        tier1: { name: "USA Tier 1", price: "₦45,000", hardware: "4GB RAM | 2 CPU Cores", storage: "60GB SSD NVMe" },
-        tier2: { name: "USA Tier 2", price: "₦55,000", hardware: "6GB RAM | 3 CPU Cores", storage: "100GB SSD NVMe" },
-        tier3: { name: "USA Tier 3", price: "₦65,000", hardware: "8GB RAM | 4 CPU Cores", storage: "140GB SSD NVMe" }
+        tier1: { id: "tier1", name: "USA Tier 1", price: "₦45,000", hardware: "4GB RAM | 2 CPU Cores", storage: "60GB SSD", net: "100Mbps" },
+        tier2: { id: "tier2", name: "USA Tier 2", price: "₦55,000", hardware: "6GB RAM | 3 CPU Cores", storage: "100GB SSD", net: "100Mbps" },
+        tier3: { id: "tier3", name: "USA Tier 3", price: "₦65,000", hardware: "8GB RAM | 4 CPU Cores", storage: "140GB SSD", net: "200Mbps" },
+        tier4: { id: "tier4", name: "USA Tier 4", price: "₦80,000", hardware: "12GB RAM | 6 CPU Cores", storage: "180GB SSD", net: "200Mbps" },
+        tier5: { id: "tier5", name: "USA Tier 5", price: "₦90,000", hardware: "18GB RAM | 8 CPU Cores", storage: "240GB SSD", net: "300Mbps" },
+        tier6: { id: "tier6", name: "USA Tier 6", price: "₦130,000", hardware: "24GB RAM | 8 CPU Cores", storage: "280GB SSD", net: "300Mbps" }
     };
+
+    function renderPlans() {
+        tableBody.innerHTML = Object.values(plans).map(plan => `
+            <tr onclick="selectPlan('${plan.id}')" class="cursor-pointer hover:bg-gray-50 transition-all active-scale">
+                <td class="px-6 py-6 border-b border-brand-border">
+                    <p class="text-sm font-bold text-brand-darkText">${plan.name}</p>
+                    <p class="text-[11px] text-brand-lightText">${plan.hardware}</p>
+                </td>
+                <td class="px-6 py-6 border-b border-brand-border">
+                    <p class="text-[11px] font-bold">${plan.storage}</p>
+                    <p class="text-[10px] text-green-600 font-bold uppercase">${plan.net} Unmetered</p>
+                </td>
+                <td class="px-6 py-6 border-b border-brand-border text-center">
+                    <p class="text-lg font-black">${plan.price}</p>
+                </td>
+                <td class="px-6 py-6 border-b border-brand-border text-right">
+                    <span class="bg-brand-blue text-white text-[10px] font-bold px-6 py-2.5 rounded-xl">Continue</span>
+                </td>
+            </tr>
+        `).join('');
+    }
 
     const toggleSidebar = () => {
         sidebar.classList.toggle('-translate-x-full');
@@ -281,15 +274,13 @@
     function selectPlan(planKey) {
         const plan = plans[planKey];
         
-        // Update Checkout UI
         document.getElementById('displayPlanName').innerText = plan.name;
         document.getElementById('displayPlanPrice').innerText = plan.price;
         document.getElementById('displayHardware').innerText = plan.hardware;
-        document.getElementById('displayStorage').innerText = plan.storage;
+        document.getElementById('displayStorage').innerText = plan.storage + " NVMe";
         document.getElementById('summarySubtotal').innerText = plan.price;
         document.getElementById('summaryTotal').innerText = plan.price;
 
-        // Switch Views
         selectionView.classList.add('hidden');
         checkoutView.classList.remove('hidden');
         headerTitle.innerText = "Checkout / " + plan.name;
@@ -304,7 +295,6 @@
 
     function initiatePayment() {
         alert("Redirecting to Paystack Secure Gateway...");
-        // Integration logic here
     }
 
     document.getElementById('openSidebar').addEventListener('click', toggleSidebar);
@@ -312,6 +302,9 @@
     overlay.addEventListener('click', toggleSidebar);
 
     function logout() { window.location.href = 'user_login.html'; }
+
+    // Initialize the table
+    renderPlans();
 </script>
 </body>
 </html>

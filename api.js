@@ -1025,8 +1025,16 @@ async function handleVerifyPayment(req, res) {
                         address: address || null,
                         zip: zip || null,
                         firstName: firstName || null,
-                        lastName: lastName || null
+                        lastName: lastName || null,
+                        email: activationEmail || null
                     },
+                    activationDetails: {
+                    address: address || null,
+                    zip: zip || null,
+                     firstName: firstName || null,
+                     lastName: lastName || null,
+                     email: activationEmail || null 
+                     },
                     vpnCredentials: productType === "VPN" ? {
                         username: credentials.username,
                         password: credentials.password
@@ -1626,8 +1634,7 @@ async function handleGetEsimActivations(req, res) {
                 productType: 'eSIM_Activation', 
                 createdAt: activation.createdAt,
                 userEmail: activation.userEmail, 
-                email: details.email || 'N/A',
-                
+                email: details.email || activation.userEmail || 'N/A',
                 fullName: `${details.firstName || ''} ${details.lastName || ''}`.trim() || activation.fullName || 'N/A',
                 amount: amountInUSD.toFixed(2), 
                 status: activation.status || 'pending',

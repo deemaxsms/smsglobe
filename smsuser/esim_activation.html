@@ -345,7 +345,7 @@
             return str ? str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])) : '--';
         }
 
-       async function initiatePayment() {
+async function initiatePayment() {
     // 1. Get Input Values
     const firstName = document.getElementById('firstName').value.trim();
     const lastName = document.getElementById('lastName').value.trim();
@@ -353,7 +353,7 @@
     const address = document.getElementById('fullAddress').value.trim();
     const zip = document.getElementById('zipCode').value.trim();
     const activationType = document.getElementById('prepaidType').value.trim();
-    const deviceName = document.getElementById('targetNumber').value.trim(); // Renamed internally
+    const deviceName = document.getElementById('targetNumber').value.trim(); 
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -392,17 +392,15 @@
             },
             body: JSON.stringify({
                 carrierName: carrier.name,
-                deviceName: deviceName, // Changed key from mobileNumber to deviceName
                 planAmount: plan,
                 productType: 'eSIM_Activation',
-                metadata: { 
-                    firstName, 
-                    lastName, 
-                    email, 
-                    address, 
-                    zip,
-                    deviceName // Include it in metadata for safety
-                }
+                // Flattening these out so the Backend verify API can find them easily
+                mobileNumber: deviceName, 
+                activationEmail: email,   
+                firstName: firstName,
+                lastName: lastName,
+                address: address,
+                zip: zip
             })
         });
 

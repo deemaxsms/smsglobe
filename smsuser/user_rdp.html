@@ -26,7 +26,16 @@
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .active-scale:active { transform: scale(0.98); }
-        .clickable-row { cursor: pointer; }
+        @keyframes marquee {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        .animate-marquee { animation: marquee 20s linear infinite; }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
@@ -41,11 +50,11 @@
         
         <nav class="flex-grow p-4 space-y-1">
             <p class="px-3 text-[10px] font-bold text-brand-lightText uppercase tracking-widest mb-2">Navigation</p>
-            <a href="user_dashboard.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium">
+            <a href="#" onclick="showSelectionView()" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                 <span>Dashboard</span>
             </a>
-            <a href="user_rdp.html" class="flex items-center space-x-3 px-3 py-2 bg-brand-background text-brand-blue rounded-lg text-xs font-semibold">
+            <a href="#" onclick="showSelectionView()" class="flex items-center space-x-3 px-3 py-2 bg-brand-background text-brand-blue rounded-lg text-xs font-semibold">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
                 <span>RDP</span>
             </a>
@@ -65,95 +74,188 @@
                 <button id="openSidebar" class="lg:hidden p-1.5 text-brand-midText border border-brand-border rounded-md">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
-                <span class="text-sm font-bold text-brand-darkText uppercase tracking-tight">RDP Management</span>
+                <span id="headerTitle" class="text-sm font-bold text-brand-darkText uppercase tracking-tight">RDP Management</span>
+            </div>
+            <div class="hidden md:block overflow-hidden w-64 relative bg-gray-50 rounded-full py-1 px-4 border border-brand-border">
+                <p class="animate-marquee whitespace-nowrap text-[10px] font-bold text-green-600">
+                    ● USA Server Status: Optimal (24ms) | All Tier 1-5 Nodes Online | Instant Provisioning Active
+                </p>
             </div>
         </header>
 
         <main class="p-4 md:p-8 max-w-5xl w-full mx-auto space-y-6">
             
-            <div class="bg-blue-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
-                <div class="relative z-10">
-                    <h2 class="text-xl font-bold">USA RDP LIST</h2>
-                    <p class="text-blue-100 text-xs mt-1">High-performance RDP works on all operating systems.</p>
+            <div id="selectionView" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2 bg-blue-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+                        <div class="relative z-10">
+                            <span class="bg-blue-500/50 text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-widest">Promotion</span>
+                            <h2 class="text-2xl font-black mt-2 leading-tight">Elite USA RDP Infrastructure</h2>
+                            <p class="text-blue-100 text-xs mt-2 max-w-md">SMSGlobe provides the most stable RDP connections. Experience zero-lag browsing and residential IPs.</p>
+                        </div>
+                        <svg class="absolute right-[-20px] bottom-[-20px] w-48 h-48 text-blue-500 opacity-20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"></path></svg>
+                    </div>
+
+                    <div class="bg-white border border-brand-border rounded-2xl p-5 shadow-sm">
+                        <h3 class="text-xs font-bold text-brand-darkText border-b border-brand-border pb-2 mb-3 flex items-center justify-between">
+                            Latest RDP News
+                            <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                        </h3>
+                        <ul class="space-y-4">
+                            <li class="group cursor-pointer">
+                                <p class="text-[10px] font-bold text-brand-blue group-hover:underline">Instant Activation</p>
+                                <p class="text-[10px] text-brand-lightText">Fulfilled in under 60 seconds.</p>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
-                <svg class="absolute right-[-20px] bottom-[-20px] w-32 h-32 text-blue-500 opacity-20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"></path></svg>
-            </div>
 
-            <div class="bg-white rounded-3xl border border-brand-border shadow-sm overflow-hidden">
-                <div class="overflow-x-auto no-scrollbar">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-gray-50 text-[10px] font-bold text-brand-lightText uppercase tracking-wider">
-                                <th class="px-6 py-4 border-b border-brand-border">RDP Specification</th>
-                                <th class="px-6 py-4 border-b border-brand-border">Storage & Network</th>
-                                <th class="px-6 py-4 border-b border-brand-border text-center">Monthly Price</th>
-                                <th class="px-6 py-4 border-b border-brand-border text-right">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="rdpList">
-                            <tr onclick="navigateToPurchase('usa-starter')" class="clickable-row hover:bg-brand-background/40 transition-all active-scale group">
-                                <td class="px-6 py-6 border-b border-brand-border">
-                                    <div class="flex items-center space-x-4">
-                                        <div class="w-10 h-10 bg-brand-background rounded-xl flex items-center justify-center text-brand-blue shadow-sm group-hover:scale-110 transition-transform">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                                        </div>
-                                        <div>
-                                            <p class="text-sm font-bold text-brand-darkText">USA Premium RDP - Tier 1</p>
-                                            <p class="text-[11px] text-brand-lightText font-medium">4GB RAM | 2 CPU Cores</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-6 border-b border-brand-border">
-                                    <p class="text-[11px] font-bold text-brand-midText">60GB SSD Disk Space</p>
-                                    <p class="text-[10px] text-green-600 font-bold uppercase tracking-tight">100Mbps Unmetered</p>
-                                </td>
-                                <td class="px-6 py-6 border-b border-brand-border text-center">
-                                    <p class="text-lg font-black text-brand-darkText">₦45,000</p>
-                                    <p class="text-[9px] font-bold text-brand-lightText uppercase">Auto-Renewable</p>
-                                </td>
-                                <td class="px-6 py-6 border-b border-brand-border text-right">
-                                    <span class="inline-block bg-brand-blue text-white text-[10px] font-bold px-6 py-2.5 rounded-xl group-hover:bg-blue-700 transition-colors shadow-sm">
-                                        Continue
-                                    </span>
-                                </td>
-                            </tr>
-
-                            <tr onclick="navigateToPurchase('usa-pro')" class="clickable-row hover:bg-brand-background/40 transition-all active-scale group">
-                                <td class="px-6 py-6 border-b border-brand-border">
-                                    <div class="flex items-center space-x-4">
-                                        <div class="w-10 h-10 bg-brand-background rounded-xl flex items-center justify-center text-brand-blue shadow-sm group-hover:scale-110 transition-transform">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                                        </div>
-                                        <div>
-                                            <p class="text-sm font-bold text-brand-darkText">USA Premium RDP - Tier 2</p>
-                                            <p class="text-[11px] text-brand-lightText font-medium">6GB RAM | 3 CPU Cores</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-6 border-b border-brand-border">
-                                    <p class="text-[11px] font-bold text-brand-midText">100GB SSD Disk Space</p>
-                                    <p class="text-[10px] text-green-600 font-bold uppercase tracking-tight">100Mbps Unmetered</p>
-                                </td>
-                                <td class="px-6 py-6 border-b border-brand-border text-center">
-                                    <p class="text-lg font-black text-brand-darkText">₦55,000</p>
-                                    <p class="text-[9px] font-bold text-brand-lightText uppercase">Auto-Renewable</p>
-                                </td>
-                                <td class="px-6 py-6 border-b border-brand-border text-right">
-                                    <span class="inline-block bg-brand-blue text-white text-[10px] font-bold px-6 py-2.5 rounded-xl group-hover:bg-blue-700 transition-colors shadow-sm">
-                                        Continue
-                                    </span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="bg-white rounded-3xl border border-brand-border shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto no-scrollbar">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 text-[10px] font-bold text-brand-lightText uppercase tracking-wider">
+                                    <th class="px-6 py-4 border-b border-brand-border">RDP Specification</th>
+                                    <th class="px-6 py-4 border-b border-brand-border">Storage & Network</th>
+                                    <th class="px-6 py-4 border-b border-brand-border text-center">Price</th>
+                                    <th class="px-6 py-4 border-b border-brand-border text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr onclick="selectPlan('tier1')" class="cursor-pointer hover:bg-gray-50 transition-all active-scale">
+                                    <td class="px-6 py-6 border-b border-brand-border">
+                                        <p class="text-sm font-bold text-brand-darkText">USA Tier 1</p>
+                                        <p class="text-[11px] text-brand-lightText">4GB RAM | 2 CPU Cores</p>
+                                    </td>
+                                    <td class="px-6 py-6 border-b border-brand-border">
+                                        <p class="text-[11px] font-bold">60GB SSD</p>
+                                        <p class="text-[10px] text-green-600 font-bold uppercase">100Mbps</p>
+                                    </td>
+                                    <td class="px-6 py-6 border-b border-brand-border text-center">
+                                        <p class="text-lg font-black">₦45,000</p>
+                                    </td>
+                                    <td class="px-6 py-6 border-b border-brand-border text-right">
+                                        <span class="bg-brand-blue text-white text-[10px] font-bold px-6 py-2.5 rounded-xl">Continue</span>
+                                    </td>
+                                </tr>
+                                <tr onclick="selectPlan('tier2')" class="cursor-pointer hover:bg-gray-50 transition-all active-scale">
+                                    <td class="px-6 py-6 border-b border-brand-border">
+                                        <p class="text-sm font-bold text-brand-darkText">USA Tier 2</p>
+                                        <p class="text-[11px] text-brand-lightText">6GB RAM | 3 CPU Cores</p>
+                                    </td>
+                                    <td class="px-6 py-6 border-b border-brand-border">
+                                        <p class="text-[11px] font-bold">100GB SSD</p>
+                                        <p class="text-[10px] text-green-600 font-bold uppercase">100Mbps</p>
+                                    </td>
+                                    <td class="px-6 py-6 border-b border-brand-border text-center">
+                                        <p class="text-lg font-black">₦55,000</p>
+                                    </td>
+                                    <td class="px-6 py-6 border-b border-brand-border text-right">
+                                        <span class="bg-brand-blue text-white text-[10px] font-bold px-6 py-2.5 rounded-xl">Continue</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            <div class="flex items-center space-x-2 bg-white p-4 rounded-xl border border-brand-border">
-                <div class="p-2 bg-orange-50 rounded-lg text-brand-orange">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <div id="checkoutView" class="hidden fade-in space-y-6">
+                <button onclick="showSelectionView()" class="flex items-center text-xs font-bold text-brand-blue hover:underline">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    Back to Plans
+                </button>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-2 space-y-6">
+                        <div class="bg-white border border-brand-border rounded-3xl p-8 shadow-sm">
+                            <div class="flex justify-between items-start mb-6">
+                                <div>
+                                    <h2 id="displayPlanName" class="text-2xl font-black text-brand-darkText">USA Tier 1</h2>
+                                    <p class="text-brand-blue font-bold text-sm mt-1">Enterprise Configuration</p>
+                                </div>
+                                <div class="text-right">
+                                    <p id="displayPlanPrice" class="text-3xl font-black text-brand-darkText">₦45,000</p>
+                                    <p class="text-[10px] text-brand-lightText uppercase font-bold tracking-widest">Per Month</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 border-t border-brand-border pt-6">
+                                <div class="p-4 bg-brand-background rounded-2xl">
+                                    <p class="text-[10px] font-bold text-brand-lightText uppercase">Hardware</p>
+                                    <p id="displayHardware" class="text-xs font-black text-brand-darkText mt-1">4GB RAM / 2 CPU</p>
+                                </div>
+                                <div class="p-4 bg-brand-background rounded-2xl">
+                                    <p class="text-[10px] font-bold text-brand-lightText uppercase">Storage</p>
+                                    <p id="displayStorage" class="text-xs font-black text-brand-darkText mt-1">60GB SSD NVMe</p>
+                                </div>
+                            </div>
+
+                            <div class="mt-8">
+                                <h4 class="text-xs font-bold text-brand-darkText mb-4 uppercase tracking-widest">Standard Features</h4>
+                                <ul class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <li class="flex items-center space-x-3 text-xs">
+                                        <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                                        <span>Full Admin Access (RDP)</span>
+                                    </li>
+                                    <li class="flex items-center space-x-3 text-xs">
+                                        <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                                        <span>Windows Server 2022/2025</span>
+                                    </li>
+                                    <li class="flex items-center space-x-3 text-xs">
+                                        <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                                        <span>99.9% Uptime SLA</span>
+                                    </li>
+                                    <li class="flex items-center space-x-3 text-xs">
+                                        <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                                        <span>Instant Provisioning</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="bg-white border border-brand-border rounded-3xl p-6 shadow-sm">
+                            <h3 class="text-sm font-bold text-brand-darkText mb-4">Order Summary</h3>
+                            <div class="space-y-3 text-xs border-b border-brand-border pb-4 mb-4">
+                                <div class="flex justify-between">
+                                    <span class="text-brand-lightText">Subtotal</span>
+                                    <span id="summarySubtotal" class="font-bold text-brand-darkText">₦45,000</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-brand-lightText">Setup Fee</span>
+                                    <span class="font-bold text-green-600">FREE</span>
+                                </div>
+                            </div>
+                            <div class="flex justify-between mb-6">
+                                <span class="text-sm font-bold text-brand-darkText">Total to Pay</span>
+                                <span id="summaryTotal" class="text-sm font-black text-brand-blue">₦45,000</span>
+                            </div>
+                            <button onclick="initiatePayment()" class="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold text-xs hover:bg-blue-700 active-scale shadow-lg shadow-blue-200 transition-all">
+                                Pay Now with Paystack
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <p class="text-[11px] text-brand-midText font-medium">All USA instances come with full administrative access and static IP addresses.</p>
+            </div>
+
+            <div class="bg-brand-darkText rounded-2xl p-6 text-white flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-brand-orange/10 rounded-full flex items-center justify-center border border-brand-orange/20 text-brand-orange">
+                        <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold">Nigeria's #1 RDP Provider</h4>
+                        <p class="text-[10px] text-brand-lightText">Join 5,000+ developers using SMSGlobe.</p>
+                    </div>
+                </div>
+                <div class="flex space-x-2">
+                    <div class="text-center px-4 py-2 bg-white/5 rounded-lg border border-white/10">
+                        <p class="text-lg font-black text-brand-orange">99.9%</p>
+                        <p class="text-[8px] uppercase font-bold text-brand-lightText">Uptime</p>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -161,23 +263,55 @@
 <script>
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
+    const selectionView = document.getElementById('selectionView');
+    const checkoutView = document.getElementById('checkoutView');
+    const headerTitle = document.getElementById('headerTitle');
+
+    const plans = {
+        tier1: { name: "USA Tier 1", price: "₦45,000", hardware: "4GB RAM | 2 CPU Cores", storage: "60GB SSD NVMe" },
+        tier2: { name: "USA Tier 2", price: "₦55,000", hardware: "6GB RAM | 3 CPU Cores", storage: "100GB SSD NVMe" },
+        tier3: { name: "USA Tier 3", price: "₦65,000", hardware: "8GB RAM | 4 CPU Cores", storage: "140GB SSD NVMe" }
+    };
+
     const toggleSidebar = () => {
         sidebar.classList.toggle('-translate-x-full');
         overlay.classList.toggle('hidden');
     };
 
+    function selectPlan(planKey) {
+        const plan = plans[planKey];
+        
+        // Update Checkout UI
+        document.getElementById('displayPlanName').innerText = plan.name;
+        document.getElementById('displayPlanPrice').innerText = plan.price;
+        document.getElementById('displayHardware').innerText = plan.hardware;
+        document.getElementById('displayStorage').innerText = plan.storage;
+        document.getElementById('summarySubtotal').innerText = plan.price;
+        document.getElementById('summaryTotal').innerText = plan.price;
+
+        // Switch Views
+        selectionView.classList.add('hidden');
+        checkoutView.classList.remove('hidden');
+        headerTitle.innerText = "Checkout / " + plan.name;
+        window.scrollTo(0, 0);
+    }
+
+    function showSelectionView() {
+        checkoutView.classList.add('hidden');
+        selectionView.classList.remove('hidden');
+        headerTitle.innerText = "RDP Management";
+    }
+
+    function initiatePayment() {
+        alert("Redirecting to Paystack Secure Gateway...");
+        // Integration logic here
+    }
+
     document.getElementById('openSidebar').addEventListener('click', toggleSidebar);
     document.getElementById('closeSidebar').addEventListener('click', toggleSidebar);
     overlay.addEventListener('click', toggleSidebar);
 
-    // Redirect to purchase/checkout page
-    function navigateToPurchase(planId) {
-        window.location.href = `purchase_rdp.html?plan=${planId}`;
-    }
-
-    function logout() {
-        window.location.href = 'user_login.html';
-    }
+    function logout() { window.location.href = 'user_login.html'; }
 </script>
 </body>
 </html>

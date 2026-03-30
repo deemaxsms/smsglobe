@@ -122,13 +122,33 @@ const esimActivationSchema = new mongoose.Schema({
 
 const EsimActivation = mongoose.models.EsimActivation || mongoose.model('EsimActivation', esimActivationSchema);
 
+const rdpSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    category: { type: String, enum: ['Windows', 'Linux', 'Server', 'All RDP'], default: 'Windows' },
+    ram: { type: String, required: true }, 
+    cpu: { type: String, required: true }, 
+    storage: { type: String, required: true }, 
+    network: { type: String, default: "100Mbps" },
+    // Optional Customization
+    extraCPU: { type: Number, default: 0 },
+    extraStorage: { type: Number, default: 0 },
+    
+    os: { type: String, default: "Windows Server 2022/2025" },
+    price: { type: Number, required: true },
+    isInstant: { type: Boolean, default: true },
+    instructions: { type: String, default: "General setup instructions will be provided after purchase." },
+    adminUpdatedBy: String
+}, { timestamps: true });
+
+const RDP = mongoose.models.RDP || mongoose.model('RDP', rdpSchema);
+
 const orderSchema = new mongoose.Schema({
     userEmail: { type: String, required: true, index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     fullName: { type: String },         
     productType: { 
         type: String, 
-        enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill', 'eSIM_Activation'], 
+        enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill', 'eSIM_Activation', 'RDP'], 
         required: true 
     },
     planName: { type: String }, 
@@ -156,6 +176,10 @@ const orderSchema = new mongoose.Schema({
     vpnCredentials: {
         username: String,
         password: { type: String }
+    },
+    rdpDetails: {
+        os: String,
+        specs: String
     }
 }, { timestamps: true });
 
@@ -224,10 +248,7 @@ const verifyToken = (req, res, next) => {
 
 app.all('/api/:action', async (req, res) => {
     await connectDB();
-    
-    // Normalize the action string to avoid hidden spaces or casing issues
     const action = (req.params.action || '').toLowerCase().trim();
-    
     console.log("Incoming Action:", action, "Method:", req.method);
 
     switch (action) {
@@ -275,7 +296,12 @@ case 'update-esim-activation':
         return handleAdminEsimActivationUpdate(req, res);
     }
     break;
-        break;
+case 'rdps': 
+    if (req.method === 'GET') return handleGetRDPs(req, res); // You'll need to create this
+    if (req.method === 'POST') return handleAddRDP(req, res); // You'll need to create this
+    if (req.method === 'PATCH') return handleUpdateRDP(req, res);
+    if (req.method === 'DELETE') return handleDeleteRDP(req, res);
+    break;
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
             
@@ -793,7 +819,7 @@ async function handlePurchaseVPN(req, res) {
 }
 
 async function handleInitiatePayment(req, res) {
-    const { vpnId, proxyId, carrierName, mobileNumber, planAmount, planIndex, metadata } = req.body;
+    const { vpnId, proxyId, rdpId, carrierName, mobileNumber, planAmount, planIndex, metadata } = req.body;
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
@@ -842,6 +868,15 @@ async function handleInitiatePayment(req, res) {
             amountInUSD = parseFloat(planAmount.replace(/[$,]/g, ''));
             redirectUrl = "https://smsglobe.vercel.app/smsuser/esim_refill.html";
         } 
+        else if (rdpId) {
+    item = await RDP.findById(rdpId);
+    if (!item) return res.status(404).json({ success: false, message: "RDP not found" });
+    
+    itemType = "RDP";
+    title = `SMSGlobe RDP: ${item.name}`;
+    amountInUSD = item.price; // RDP uses a flat price in your schema
+    redirectUrl = "https://smsglobe.vercel.app/smsuser/user_rdp.html";
+}
         // 5. Final Fallback if nothing matches
         else {
             return res.status(400).json({ success: false, message: "No product specified" });
@@ -915,7 +950,7 @@ async function handleVerifyPayment(req, res) {
         const data = await response.json();
 
         if (data.status === "success" && data.data.status === "successful") {
-            // 1. Extract ALL Meta data (Including new Activation fields)
+            // 1. Extract ALL Meta data
             const { 
                 productId, 
                 productType, 
@@ -935,7 +970,6 @@ async function handleVerifyPayment(req, res) {
             if (!actualUser) return res.status(404).json({ success: false, message: "User account not found" });
 
             const userEmail = actualUser.email; 
-            const recipientEmail = activationEmail;
             const amountPaid = data.data.amount;
             const paymentRef = data.data.tx_ref;
             const currency = data.data.currency;
@@ -979,7 +1013,25 @@ async function handleVerifyPayment(req, res) {
                     instructions: item.instructions || "Check dashboard."
                 };
 
-            // --- 5. HANDLE ESIM REFILL ---
+            // --- 5. HANDLE RDP PURCHASE ---
+            } else if (productType === "RDP") {
+                const item = await RDP.findOneAndUpdate(
+                    { _id: productId, stock: { $gt: 0 } },
+                    { $inc: { stock: -1 } },
+                    { new: true }
+                );
+                if (!item) return res.status(400).json({ success: false, message: "RDP out of stock" });
+
+                productDetails.name = item.name;
+                productDetails.plan = `${item.ram} RAM / ${item.cpu}`;
+                credentials = {
+                    type: "RDP",
+                    os: item.os,
+                    specs: `${item.ram} RAM, ${item.cpu}, ${item.storage}`,
+                    instructions: item.instructions || "Your RDP details will be sent shortly."
+                };
+
+            // --- 6. HANDLE ESIM REFILL ---
             } else if (productType === "eSIM") {
                 productDetails.name = productId; 
                 productDetails.plan = planAmount;
@@ -990,24 +1042,23 @@ async function handleVerifyPayment(req, res) {
                     instructions: "Your refill request has been received. Processing usually takes 5-30 minutes."
                 };
 
-            // --- 6. NEW: HANDLE ESIM ACTIVATION ---
+            // --- 7. HANDLE ESIM ACTIVATION ---
             } else if (productType === "eSIM_Activation") {
-                productDetails.name = productId; // Carrier Name
+                productDetails.name = productId; 
                 productDetails.plan = planAmount;
-                targetNum = mobileNumber; // Usually 'eSIM Device' or specific phone model
+                targetNum = mobileNumber;
 
                 credentials = {
                     type: "eSIM_Activation",
-                    instructions: "Activation received! We are generating your QR code. Check your email/WhatsApp shortly."
+                    instructions: "Activation received! We are generating your QR code. Check your email shortly."
                 };
             }
 
-            // --- 7. CREATE ORDER (Saves everything to DB) ---
+            // --- 8. CREATE ORDER ---
             try {
                 await Order.create({
                     userId: userId,
                     userEmail: userEmail,
-                    // For activations, we prefer the provided metadata name
                     fullName: (productType === "eSIM_Activation" && firstName) 
                                 ? `${firstName} ${lastName}`.trim() 
                                 : actualUser.fullName,
@@ -1020,7 +1071,6 @@ async function handleVerifyPayment(req, res) {
                     status: "successful",
                     paymentReference: paymentRef,
                     activationCode: credentials.activationCode || null,
-                    // Storing the physical address in a metadata field
                     metadata: {
                         address: address || null,
                         zip: zip || null,
@@ -1028,23 +1078,21 @@ async function handleVerifyPayment(req, res) {
                         lastName: lastName || null,
                         email: activationEmail || null
                     },
-                    activationDetails: {
-                    address: address || null,
-                    zip: zip || null,
-                     firstName: firstName || null,
-                     lastName: lastName || null,
-                     email: activationEmail || null 
-                     },
+                    // Product Specific Data
                     vpnCredentials: productType === "VPN" ? {
                         username: credentials.username,
                         password: credentials.password
+                    } : undefined,
+                    rdpDetails: productType === "RDP" ? {
+                        os: credentials.os,
+                        specs: credentials.specs
                     } : undefined
                 });
             } catch (dbErr) {
                 console.error("Order Record Failed:", dbErr);
             }
 
-            // --- 8. DELIVERY EMAIL ---
+            // --- 9. DELIVERY EMAIL ---
             try {
                 await sendDeliveryEmail(userEmail, credentials); 
             } catch (emailErr) {

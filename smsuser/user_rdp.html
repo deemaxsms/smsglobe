@@ -278,8 +278,27 @@
             </div>
         </main>
     </div>
+    <div id="receiptView" class="hidden fade-in bg-white border border-brand-border rounded-3xl p-8 shadow-sm text-center">
+    <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+    </div>
+    <h2 class="text-2xl font-black text-brand-darkText">Payment Successful!</h2>
+    <p class="text-brand-lightText text-sm mb-6">Your RDP credentials will be sent to your email shortly.</p>
+    
+    <div class="max-w-xs mx-auto space-y-3 text-left bg-gray-50 p-4 rounded-2xl border border-brand-border">
+        <div class="flex justify-between text-xs"><span class="text-brand-lightText">Plan:</span> <span id="rPlanName" class="font-bold"></span></div>
+        <div class="flex justify-between text-xs"><span class="text-brand-lightText">Hardware:</span> <span id="rSpecs" class="font-bold"></span></div>
+        <div class="flex justify-between text-xs"><span class="text-brand-lightText">Storage:</span> <span id="rStorage" class="font-bold"></span></div>
+        <div class="flex justify-between text-xs"><span class="text-brand-lightText">Ref:</span> <span id="rReference" class="font-mono text-[10px]"></span></div>
+    </div>
+    
+    <button onclick="window.location.reload()" class="mt-8 text-brand-blue font-bold text-xs hover:underline">Back to Dashboard</button>
+</div>
 
 <script>
+        const API_BASE_URL = '/api';
+
+
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const selectionView = document.getElementById('selectionView');
@@ -381,6 +400,160 @@
     function requestRDP() {
         alert("RDP request submitted. Redirecting to payment...");
     }
+
+    async function initiateRDPPayment() {
+    // 1. Get the current selected RDP object (set this when user clicks a plan)
+    const selectedRDP = window.currentSelectedRDP; 
+    
+    if (!selectedRDP) {
+        alert("Please select an RDP plan first.");
+        return;
+    }
+
+    const cpuExtra = parseInt(document.getElementById('extraCPU').value) || 0;
+    const storageExtra = parseInt(document.getElementById('extraStorage').value) || 0;
+    const selectedOS = document.getElementById('osSelector').value;
+    
+    const btn = document.getElementById('payBtn');
+    const originalText = btn.innerText;
+    
+    btn.disabled = true;
+    btn.innerText = "Generating Secure Link...";
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
+            },
+            body: JSON.stringify({
+                productType: 'RDP',
+                rdpId: selectedRDP._id, // Critical for looking up the schema on backend
+                planName: selectedRDP.name,
+                metadata: {
+                    baseRAM: selectedRDP.ram,
+                    baseCPU: selectedRDP.cpu,
+                    baseStorage: selectedRDP.storage,
+                    extraCPU: cpuExtra,
+                    extraStorage: storageExtra,
+                    osChoice: selectedOS,
+                    category: selectedRDP.category
+                }
+            })
+        });
+
+        const data = await res.json();
+        if(data.success && data.link) {
+            window.location.href = data.link; 
+        } else {
+            alert(data.message || "Initialization failed");
+            btn.disabled = false;
+            btn.innerText = originalText;
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Connection error. Please try again.");
+        btn.disabled = false;
+        btn.innerText = originalText;
+    }
+}
+
+async function verifyRDPPayment(tid, txRef) {
+    try {
+        // Show a loading state if necessary
+        const payBtn = document.getElementById('payBtn');
+        if (payBtn) payBtn.innerText = "Verifying Payment...";
+
+        const res = await fetch(`${API_BASE_URL}/verify-payment`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
+            },
+            body: JSON.stringify({ transactionId: tid, txRef: txRef })
+        });
+        
+        const data = await res.json();
+
+        if (data.success) {
+            // 1. Hide selection and checkout views
+            document.getElementById('selectionView').classList.add('hidden');
+            document.getElementById('checkoutView').classList.add('hidden');
+            
+            // 2. Show the receipt/success view
+            // Note: Ensure you have an element with id="receiptView" in your HTML
+            const receiptView = document.getElementById('receiptView');
+            if (receiptView) receiptView.classList.remove('hidden');
+
+            // 3. Populate RDP specific data
+            const order = data.order || {};
+            
+            // Map these to your receipt IDs (Make sure these IDs exist in your HTML)
+            if (document.getElementById('rPlanName')) {
+                document.getElementById('rPlanName').innerText = order.planName || "USA RDP";
+            }
+            if (document.getElementById('rSpecs')) {
+                const meta = order.metadata || {};
+                const specText = `${meta.baseRAM || ''} RAM | ${meta.baseCPU || ''} + ${meta.extraCPU || 0} Cores`;
+                document.getElementById('rSpecs').innerText = specText;
+            }
+            if (document.getElementById('rStorage')) {
+                const meta = order.metadata || {};
+                document.getElementById('rStorage').innerText = `${meta.baseStorage || ''} + ${meta.extraStorage || 0}GB NVMe`;
+            }
+            if (document.getElementById('rReference')) {
+                document.getElementById('rReference').innerText = order.paymentReference || tid;
+            }
+
+            // Update Header
+            document.getElementById('headerTitle').innerText = "Order Confirmed";
+            
+            alert("Payment successful! Your RDP is being provisioned.");
+        } else {
+            alert("Payment verification failed: " + (data.message || "Unknown error"));
+        }
+    } catch (e) { 
+        console.error("Verification Error:", e);
+        alert("An error occurred while verifying your payment.");
+    } finally {
+        const payBtn = document.getElementById('payBtn');
+        if (payBtn) payBtn.innerText = "Pay Securely Now";
+    }
+}
+
+function contactRDPAdmin() {
+    const tid = document.getElementById('rID').innerText;
+    const plan = document.getElementById('rPlan').innerText;
+    
+    // Constructing a detailed spec string for the admin
+    const ram = document.getElementById('rRAM').innerText; // e.g. "16GB"
+    const cpu = document.getElementById('rCPU').innerText; // e.g. "4 Core (+2 Extra)"
+    const storage = document.getElementById('rStorage').innerText; // e.g. "100GB (+50GB Extra)"
+    const os = document.getElementById('rOS').innerText; // e.g. "Windows Server 2022"
+
+    const msg = `🚀 *SMSGlobe: NEW RDP PROVISIONING*
+__________________________________
+
+✅ *PAYMENT STATUS:* CONFIRMED
+🆔 *REF ID:* ${tid}
+
+*SERVER CONFIGURATION:*
+━━━━━━━━━━━━━━━━━━
+🖥️ *PLAN:* ${plan}
+💿 *OS:* ${os}
+🧠 *RAM:* ${ram}
+⚡ *CPU:* ${cpu}
+💾 *STORAGE:* ${storage}
+━━━━━━━━━━━━━━━━━━
+
+⚡ *ACTION REQUIRED:*
+Please provision this server and update the user's dashboard credentials.
+
+_Sent via SMSGlobe Automated System_`;
+
+    window.open(`https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`, '_blank');
+}
 
     const toggleSidebar = () => {
         sidebar.classList.toggle('-translate-x-full');

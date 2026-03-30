@@ -25,8 +25,35 @@
     <style>
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .active-scale:active { transform: scale(0.98); }
-        .tab-active { border-bottom: 2px solid #0F54C6; color: #0F54C6; }
+        .active-scale:active { transform: scale(0.95); }
+        
+        /* Tab Pill Styles */
+        .tab-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+            border: 1px solid #EAECF0;
+            background: white;
+            color: #344054;
+            white-space: nowrap;
+        }
+
+        .tab-pill.active {
+            background: #0F54C6;
+            color: white;
+            border-color: #0F54C6;
+            box-shadow: 0 4px 12px rgba(15, 84, 198, 0.2);
+        }
+
+        .tab-pill svg {
+            width: 16px;
+            height: 16px;
+        }
     </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
@@ -41,7 +68,7 @@
         
         <nav class="flex-grow p-4 space-y-1">
             <p class="px-3 text-[10px] font-bold text-brand-lightText uppercase tracking-widest mb-2">Navigation</p>
-            <a href="user_dashboard.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium transition-all">
+            <a href="user_dashboard.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                 <span>Dashboard</span>
             </a>
@@ -49,7 +76,7 @@
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
                 <span>RDP</span>
             </a>
-            </nav>
+        </nav>
 
         <div class="p-4 border-t border-brand-border">
             <button onclick="logout()" class="flex items-center space-x-3 w-full px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg text-xs font-bold transition-all">
@@ -66,57 +93,52 @@
                 <button id="openSidebar" class="lg:hidden p-1.5 text-brand-midText border border-brand-border rounded-md">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
-                <span class="text-sm font-bold text-brand-darkText">Remote Desktop Instances</span>
+                <span class="text-sm font-bold text-brand-darkText uppercase tracking-tight">RDP Instances</span>
             </div>
         </header>
 
-        <main class="p-4 md:p-6 max-w-6xl w-full mx-auto space-y-6">
+        <main class="p-4 md:p-8 max-w-6xl w-full mx-auto space-y-8">
             
-            <div class="bg-brand-blue rounded-3xl p-6 text-white shadow-lg overflow-hidden relative">
-                <div class="relative z-10">
-                    <h2 class="text-xl font-bold mb-1">Premium RDP Access</h2>
-                    <p class="text-xs opacity-80 max-w-md">High-performance Windows Desktop and Server instances with 1Gbps uplink and 99.9% uptime.</p>
+            <div class="flex items-center justify-center">
+                <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
+                    <button onclick="switchTab('all')" id="tab-all" class="tab-pill active active-scale">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                        All RDP
+                    </button>
+                    <button onclick="switchTab('windows')" id="tab-windows" class="tab-pill active-scale">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                        Windows
+                    </button>
+                    <button onclick="switchTab('linux')" id="tab-linux" class="tab-pill active-scale">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path></svg>
+                        Linux
+                    </button>
+                    <button onclick="switchTab('server')" id="tab-server" class="tab-pill active-scale">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path></svg>
+                        Server
+                    </button>
                 </div>
-                <svg class="absolute right-[-20px] bottom-[-20px] w-40 h-40 opacity-10" fill="currentColor" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
             </div>
 
-            <div class="bg-white rounded-2xl border border-brand-border overflow-hidden shadow-sm">
-                <div class="flex border-b border-brand-border">
-                    <button onclick="switchTab('desktop')" id="tab-desktop" class="flex-1 py-4 text-xs font-bold uppercase tracking-wider tab-active transition-all">Windows Desktop</button>
-                    <button onclick="switchTab('server')" id="tab-server" class="flex-1 py-4 text-xs font-bold uppercase tracking-wider text-brand-lightText hover:text-brand-blue transition-all">Windows Server</button>
-                </div>
-
-                <div class="p-4 bg-gray-50/50 flex flex-col md:flex-row gap-3">
-                    <div class="relative flex-grow">
-                        <span class="absolute inset-y-0 left-3 flex items-center text-brand-lightText">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                        </span>
-                        <input type="text" id="rdpSearch" placeholder="Search by location or OS..." class="w-full pl-10 pr-4 py-2 bg-white border border-brand-border rounded-xl text-xs focus:ring-2 focus:ring-brand-blue/20 outline-none">
-                    </div>
-                    <select class="px-4 py-2 bg-white border border-brand-border rounded-xl text-xs font-medium outline-none">
-                        <option>All Locations</option>
-                        <option>United States</option>
-                        <option>United Kingdom</option>
-                        <option>Germany</option>
-                    </select>
+            <div class="bg-white rounded-3xl border border-brand-border shadow-sm overflow-hidden">
+                <div class="p-5 border-b border-brand-border flex items-center justify-between bg-gray-50/30">
+                    <h3 class="text-xs font-bold text-brand-darkText uppercase">Available Instances</h3>
+                    <div class="text-[10px] text-brand-lightText font-medium">Showing <span id="itemCount">0</span> results</div>
                 </div>
 
                 <div class="overflow-x-auto no-scrollbar">
-                    <table class="w-full text-left border-collapse">
+                    <table class="w-full text-left border-collapse min-w-[700px]">
                         <thead>
-                            <tr class="bg-gray-50/50 text-[10px] font-bold text-brand-lightText uppercase">
-                                <th class="px-6 py-4 border-b border-brand-border">Instance / OS</th>
-                                <th class="px-6 py-4 border-b border-brand-border">Specifications</th>
-                                <th class="px-6 py-4 border-b border-brand-border">Location</th>
-                                <th class="px-6 py-4 border-b border-brand-border text-center">Price</th>
-                                <th class="px-6 py-4 border-b border-brand-border text-right">Action</th>
+                            <tr class="bg-white text-[10px] font-bold text-brand-lightText uppercase tracking-wider">
+                                <th class="px-8 py-5 border-b border-brand-border">Operating System</th>
+                                <th class="px-8 py-5 border-b border-brand-border">Configuration</th>
+                                <th class="px-8 py-5 border-b border-brand-border">Region</th>
+                                <th class="px-8 py-5 border-b border-brand-border text-center">Pricing</th>
+                                <th class="px-8 py-5 border-b border-brand-border text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody id="rdpList">
-                            <tr class="animate-pulse">
-                                <td colspan="5" class="p-10 text-center text-xs text-brand-lightText">Loading available instances...</td>
-                            </tr>
-                        </tbody>
+                            </tbody>
                     </table>
                 </div>
             </div>
@@ -124,69 +146,66 @@
     </div>
 
 <script>
-    const API_BASE_URL = '/api';
-    let currentTab = 'desktop';
+    const mockData = [
+        { id: 1, type: 'windows', name: 'Windows 10 Pro', specs: '8GB RAM / 4 vCPU', loc: 'Virginia, US', price: '15.00', icon: 'https://cdn-icons-png.flaticon.com/512/732/732221.png' },
+        { id: 2, type: 'windows', name: 'Windows 11 Pro', specs: '16GB RAM / 6 vCPU', loc: 'London, UK', price: '22.50', icon: 'https://cdn-icons-png.flaticon.com/512/732/732221.png' },
+        { id: 3, type: 'linux', name: 'Ubuntu 22.04 LTS', specs: '4GB RAM / 2 vCPU', loc: 'Frankfurt, DE', price: '10.00', icon: 'https://cdn-icons-png.flaticon.com/512/5969/5969241.png' },
+        { id: 4, type: 'server', name: 'Win Server 2022', specs: '32GB RAM / 8 vCPU', loc: 'Singapore, SG', price: '45.00', icon: 'https://cdn-icons-png.flaticon.com/512/3663/3663365.png' },
+        { id: 5, type: 'server', name: 'Win Server 2019', specs: '16GB RAM / 4 vCPU', loc: 'Chicago, US', price: '30.00', icon: 'https://cdn-icons-png.flaticon.com/512/3663/3663365.png' }
+    ];
 
-    // Mock Data (Replace with your actual API fetch)
-    const mockRDPs = {
-        desktop: [
-            { id: 1, name: 'Win 10 Pro - USA', specs: '8GB RAM / 4 vCPU', loc: 'New York, US', price: '15.00', icon: 'https://cdn-icons-png.flaticon.com/512/732/732221.png' },
-            { id: 2, name: 'Win 11 Pro - UK', specs: '16GB RAM / 6 vCPU', loc: 'London, UK', price: '25.00', icon: 'https://cdn-icons-png.flaticon.com/512/732/732221.png' }
-        ],
-        server: [
-            { id: 3, name: 'Win Server 2022', specs: '32GB RAM / 8 vCPU', loc: 'Frankfurt, DE', price: '45.00', icon: 'https://cdn-icons-png.flaticon.com/512/3663/3663365.png' },
-            { id: 4, name: 'Win Server 2019', specs: '16GB RAM / 4 vCPU', loc: 'Chicago, US', price: '30.00', icon: 'https://cdn-icons-png.flaticon.com/512/3663/3663365.png' }
-        ]
-    };
-
-    function switchTab(tab) {
-        currentTab = tab;
-        document.getElementById('tab-desktop').classList.toggle('tab-active', tab === 'desktop');
-        document.getElementById('tab-desktop').classList.toggle('text-brand-lightText', tab !== 'desktop');
-        document.getElementById('tab-server').classList.toggle('tab-active', tab === 'server');
-        document.getElementById('tab-server').classList.toggle('text-brand-lightText', tab !== 'server');
-        renderRDPs();
+    function switchTab(type) {
+        // Update UI Tabs
+        document.querySelectorAll('.tab-pill').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`tab-${type}`).classList.add('active');
+        
+        renderItems(type);
     }
 
-    function renderRDPs() {
+    function renderItems(filter) {
         const container = document.getElementById('rdpList');
-        const data = mockRDPs[currentTab];
+        const countSpan = document.getElementById('itemCount');
+        
+        const filtered = filter === 'all' ? mockData : mockData.filter(item => item.type === filter);
+        countSpan.innerText = filtered.length;
 
-        container.innerHTML = data.map(item => `
-            <tr class="hover:bg-gray-50/50 transition-colors group">
-                <td class="px-6 py-4 border-b border-brand-border">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-8 h-8 bg-brand-background rounded-lg flex items-center justify-center p-1.5 border border-brand-blue/10">
+        container.innerHTML = filtered.map(item => `
+            <tr class="hover:bg-brand-background/30 transition-colors group">
+                <td class="px-8 py-5 border-b border-brand-border">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-10 h-10 bg-white border border-brand-border rounded-xl flex items-center justify-center p-2 shadow-sm group-hover:border-brand-blue/30 transition-all">
                             <img src="${item.icon}" class="w-full h-full object-contain">
                         </div>
                         <div>
                             <p class="text-xs font-bold text-brand-darkText">${item.name}</p>
-                            <p class="text-[10px] text-brand-lightText">Instant Delivery</p>
+                            <p class="text-[10px] text-brand-lightText">Enterprise Grade</p>
                         </div>
                     </div>
                 </td>
-                <td class="px-6 py-4 border-b border-brand-border text-xs font-medium text-brand-midText">
-                    ${item.specs}
+                <td class="px-8 py-5 border-b border-brand-border">
+                    <p class="text-xs font-semibold text-brand-midText">${item.specs}</p>
+                    <p class="text-[9px] text-green-500 font-bold uppercase tracking-tighter mt-0.5">1Gbps Uplink</p>
                 </td>
-                <td class="px-6 py-4 border-b border-brand-border">
-                    <span class="text-[10px] font-bold text-brand-midText bg-white border border-brand-border px-2 py-1 rounded-md uppercase">
-                        ${item.loc}
-                    </span>
+                <td class="px-8 py-5 border-b border-brand-border">
+                    <div class="flex items-center gap-2">
+                        <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                        <span class="text-[10px] font-bold text-brand-midText uppercase">${item.loc}</span>
+                    </div>
                 </td>
-                <td class="px-6 py-4 border-b border-brand-border text-center">
-                    <p class="text-xs font-black text-brand-blue">$${item.price}</p>
-                    <p class="text-[9px] text-brand-lightText">/month</p>
+                <td class="px-8 py-5 border-b border-brand-border text-center">
+                    <p class="text-sm font-black text-brand-blue">$${item.price}</p>
+                    <p class="text-[9px] font-medium text-brand-lightText">Monthly Billing</p>
                 </td>
-                <td class="px-6 py-4 border-b border-brand-border text-right">
-                    <button class="bg-brand-blue text-white text-[10px] font-bold px-4 py-2 rounded-lg hover:bg-blue-700 transition-all active-scale shadow-sm">
-                        Purchase
+                <td class="px-8 py-5 border-b border-brand-border text-right">
+                    <button class="bg-brand-blue text-white text-[10px] font-bold px-6 py-2.5 rounded-xl hover:shadow-lg hover:bg-blue-700 transition-all active-scale">
+                        Deploy Now
                     </button>
                 </td>
             </tr>
         `).join('');
     }
 
-    // Sidebar Logic
+    // Sidebar & Init
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const openBtn = document.getElementById('openSidebar');
@@ -201,15 +220,7 @@
     closeBtn.addEventListener('click', toggleSidebar);
     overlay.addEventListener('click', toggleSidebar);
 
-    window.onload = () => {
-        // Replace with real initialization logic
-        renderRDPs();
-    };
-
-    function logout() {
-        localStorage.removeItem('userToken');
-        window.location.href = 'user_login.html';
-    }
+    window.onload = () => switchTab('all');
 </script>
 </body>
 </html>

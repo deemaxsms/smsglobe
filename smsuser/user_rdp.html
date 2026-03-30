@@ -27,7 +27,6 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .active-scale:active { transform: scale(0.95); }
         
-        /* Tab Pill Styles */
         .tab-pill {
             display: flex;
             align-items: center;
@@ -50,10 +49,7 @@
             box-shadow: 0 4px 12px rgba(15, 84, 198, 0.2);
         }
 
-        .tab-pill svg {
-            width: 16px;
-            height: 16px;
-        }
+        .tab-pill svg { width: 16px; height: 16px; }
     </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
@@ -68,7 +64,7 @@
         
         <nav class="flex-grow p-4 space-y-1">
             <p class="px-3 text-[10px] font-bold text-brand-lightText uppercase tracking-widest mb-2">Navigation</p>
-            <a href="user_dashboard.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium">
+            <a href="user_dashboard.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                 <span>Dashboard</span>
             </a>
@@ -87,7 +83,6 @@
     </aside>
 
     <div class="flex-grow lg:ml-64 flex flex-col min-h-screen">
-        
         <header class="bg-white border-b border-brand-border sticky top-0 z-30 px-4 md:px-8 py-3 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <button id="openSidebar" class="lg:hidden p-1.5 text-brand-midText border border-brand-border rounded-md">
@@ -98,7 +93,6 @@
         </header>
 
         <main class="p-4 md:p-8 max-w-6xl w-full mx-auto space-y-8">
-            
             <div class="flex items-center justify-center">
                 <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
                     <button onclick="switchTab('all')" id="tab-all" class="tab-pill active active-scale">
@@ -122,17 +116,17 @@
 
             <div class="bg-white rounded-3xl border border-brand-border shadow-sm overflow-hidden">
                 <div class="p-5 border-b border-brand-border flex items-center justify-between bg-gray-50/30">
-                    <h3 class="text-xs font-bold text-brand-darkText uppercase">Available Instances</h3>
-                    <div class="text-[10px] text-brand-lightText font-medium">Showing <span id="itemCount">0</span> results</div>
+                    <h3 class="text-xs font-bold text-brand-darkText uppercase">Premium RDP Inventory</h3>
+                    <div class="text-[10px] text-brand-lightText font-medium">Available Units: <span id="itemCount">0</span></div>
                 </div>
 
                 <div class="overflow-x-auto no-scrollbar">
-                    <table class="w-full text-left border-collapse min-w-[700px]">
+                    <table class="w-full text-left border-collapse min-w-[800px]">
                         <thead>
                             <tr class="bg-white text-[10px] font-bold text-brand-lightText uppercase tracking-wider">
                                 <th class="px-8 py-5 border-b border-brand-border">Operating System</th>
                                 <th class="px-8 py-5 border-b border-brand-border">Configuration</th>
-                                <th class="px-8 py-5 border-b border-brand-border">Region</th>
+                                <th class="px-8 py-5 border-b border-brand-border text-center">Bandwidth</th>
                                 <th class="px-8 py-5 border-b border-brand-border text-center">Pricing</th>
                                 <th class="px-8 py-5 border-b border-brand-border text-right">Action</th>
                             </tr>
@@ -147,27 +141,58 @@
 
 <script>
     const mockData = [
-        { id: 1, type: 'windows', name: 'Windows 10 Pro', specs: '8GB RAM / 4 vCPU', loc: 'Virginia, US', price: '15.00', icon: 'https://cdn-icons-png.flaticon.com/512/732/732221.png' },
-        { id: 2, type: 'windows', name: 'Windows 11 Pro', specs: '16GB RAM / 6 vCPU', loc: 'London, UK', price: '22.50', icon: 'https://cdn-icons-png.flaticon.com/512/732/732221.png' },
-        { id: 3, type: 'linux', name: 'Ubuntu 22.04 LTS', specs: '4GB RAM / 2 vCPU', loc: 'Frankfurt, DE', price: '10.00', icon: 'https://cdn-icons-png.flaticon.com/512/5969/5969241.png' },
-        { id: 4, type: 'server', name: 'Win Server 2022', specs: '32GB RAM / 8 vCPU', loc: 'Singapore, SG', price: '45.00', icon: 'https://cdn-icons-png.flaticon.com/512/3663/3663365.png' },
-        { id: 5, type: 'server', name: 'Win Server 2019', specs: '16GB RAM / 4 vCPU', loc: 'Chicago, US', price: '30.00', icon: 'https://cdn-icons-png.flaticon.com/512/3663/3663365.png' }
+        { 
+            id: 1, 
+            type: 'windows', 
+            name: 'Windows 10 Pro', 
+            specs: '8GB RAM / 4 vCPU', 
+            uplink: '1Gbps Uplink',
+            bandwidth: 'Unlimited', 
+            price: '15.00', 
+            icon: 'https://cdn-icons-png.flaticon.com/512/732/732221.png' 
+        },
+        { 
+            id: 2, 
+            type: 'windows', 
+            name: 'Windows 11 Pro', 
+            specs: '16GB RAM / 6 vCPU', 
+            uplink: '1Gbps Uplink',
+            bandwidth: 'Unlimited', 
+            price: '22.50', 
+            icon: 'https://cdn-icons-png.flaticon.com/512/732/732221.png' 
+        },
+        { 
+            id: 3, 
+            type: 'linux', 
+            name: 'Ubuntu 22.04 LTS', 
+            specs: '4GB RAM / 2 vCPU', 
+            uplink: '1Gbps Uplink',
+            bandwidth: 'Unlimited', 
+            price: '10.00', 
+            icon: 'https://cdn-icons-png.flaticon.com/512/5969/5969241.png' 
+        },
+        { 
+            id: 4, 
+            type: 'server', 
+            name: 'Win Server 2022', 
+            specs: '32GB RAM / 8 vCPU', 
+            uplink: '1Gbps Uplink',
+            bandwidth: 'Unlimited', 
+            price: '45.00', 
+            icon: 'https://cdn-icons-png.flaticon.com/512/3663/3663365.png' 
+        }
     ];
 
     function switchTab(type) {
-        // Update UI Tabs
         document.querySelectorAll('.tab-pill').forEach(btn => btn.classList.remove('active'));
         document.getElementById(`tab-${type}`).classList.add('active');
-        
         renderItems(type);
     }
 
     function renderItems(filter) {
         const container = document.getElementById('rdpList');
-        const countSpan = document.getElementById('itemCount');
-        
         const filtered = filter === 'all' ? mockData : mockData.filter(item => item.type === filter);
-        countSpan.innerText = filtered.length;
+        document.getElementById('itemCount').innerText = filtered.length;
 
         container.innerHTML = filtered.map(item => `
             <tr class="hover:bg-brand-background/30 transition-colors group">
@@ -178,47 +203,51 @@
                         </div>
                         <div>
                             <p class="text-xs font-bold text-brand-darkText">${item.name}</p>
-                            <p class="text-[10px] text-brand-lightText">Enterprise Grade</p>
+                            <p class="text-[10px] text-brand-lightText">Verified Instance</p>
                         </div>
                     </div>
                 </td>
                 <td class="px-8 py-5 border-b border-brand-border">
                     <p class="text-xs font-semibold text-brand-midText">${item.specs}</p>
-                    <p class="text-[9px] text-green-500 font-bold uppercase tracking-tighter mt-0.5">1Gbps Uplink</p>
+                    <p class="text-[9px] text-brand-blue font-bold uppercase tracking-tighter mt-0.5">${item.uplink}</p>
                 </td>
-                <td class="px-8 py-5 border-b border-brand-border">
-                    <div class="flex items-center gap-2">
-                        <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                        <span class="text-[10px] font-bold text-brand-midText uppercase">${item.loc}</span>
-                    </div>
+                <td class="px-8 py-5 border-b border-brand-border text-center">
+                    <span class="text-[10px] font-bold text-brand-darkText bg-gray-100 px-3 py-1 rounded-full uppercase">
+                        ${item.bandwidth}
+                    </span>
                 </td>
                 <td class="px-8 py-5 border-b border-brand-border text-center">
                     <p class="text-sm font-black text-brand-blue">$${item.price}</p>
-                    <p class="text-[9px] font-medium text-brand-lightText">Monthly Billing</p>
+                    <p class="text-[9px] font-medium text-brand-lightText">Per Month</p>
                 </td>
                 <td class="px-8 py-5 border-b border-brand-border text-right">
-                    <button class="bg-brand-blue text-white text-[10px] font-bold px-6 py-2.5 rounded-xl hover:shadow-lg hover:bg-blue-700 transition-all active-scale">
-                        Deploy Now
+                    <button onclick="handlePurchase(${item.id})" class="bg-brand-blue text-white text-[10px] font-bold px-6 py-2.5 rounded-xl hover:shadow-lg hover:bg-blue-700 transition-all active-scale">
+                        Purchase
                     </button>
                 </td>
             </tr>
         `).join('');
     }
 
-    // Sidebar & Init
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
-    const openBtn = document.getElementById('openSidebar');
-    const closeBtn = document.getElementById('closeSidebar');
-
     const toggleSidebar = () => {
         sidebar.classList.toggle('-translate-x-full');
         overlay.classList.toggle('hidden');
     };
 
-    openBtn.addEventListener('click', toggleSidebar);
-    closeBtn.addEventListener('click', toggleSidebar);
+    document.getElementById('openSidebar').addEventListener('click', toggleSidebar);
+    document.getElementById('closeSidebar').addEventListener('click', toggleSidebar);
     overlay.addEventListener('click', toggleSidebar);
+
+    function handlePurchase(id) {
+        console.log('Initiating purchase for ID:', id);
+        // Add your logic here
+    }
+
+    function logout() {
+        window.location.href = 'user_login.html';
+    }
 
     window.onload = () => switchTab('all');
 </script>

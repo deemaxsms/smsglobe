@@ -251,8 +251,8 @@
                                 <span class="text-sm font-bold text-brand-darkText">Total to Pay</span>
                                 <span id="summaryTotal" class="text-sm font-black text-brand-blue">₦0</span>
                             </div>
-                            <button onclick="requestRDP()" class="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold text-xs hover:bg-blue-700 active-scale shadow-lg shadow-blue-200 transition-all">
-                                Request RDP
+                            <button id="payBtn" onclick="initiateRDPPayment()" class="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold">
+                            Pay Securely Now
                             </button>
                         </div>
                     </div>
@@ -338,26 +338,34 @@
         `).join('');
     }
 
-    function selectPlan(planKey) {
-        activePlan = plans[planKey];
-        
-        document.getElementById('displayPlanName').innerText = activePlan.name;
-        document.getElementById('displayPlanPrice').innerText = `₦${activePlan.price.toLocaleString()}`;
-        document.getElementById('displayHardware').innerText = activePlan.hardware;
-        document.getElementById('displayStorage').innerText = activePlan.storage + " NVMe";
-        
-        // Reset custom fields
-        document.getElementById('extraCPU').value = "";
-        document.getElementById('extraStorage').value = "";
-        
-        calculateTotal();
+   function selectPlan(planKey) {
+    // Set the global reference for the initiate function
+    activePlan = plans[planKey];
+    
+    // IMPORTANT: Map the local 'plans' object to the structure expected by your backend
+    window.currentSelectedRDP = {
+        _id: activePlan.id, // Or the actual database ID if available
+        name: activePlan.name,
+        ram: activePlan.hardware.split('|')[0].trim(),
+        cpu: activePlan.hardware.split('|')[1].trim(),
+        storage: activePlan.storage,
+        category: "RDP"
+    };
 
-        selectionView.classList.add('hidden');
-        checkoutView.classList.remove('hidden');
-        headerTitle.innerText = "Checkout / " + activePlan.name;
-        window.scrollTo(0, 0);
-    }
-
+    // Update the UI fields
+    document.getElementById('displayPlanName').innerText = activePlan.name;
+    document.getElementById('displayPlanPrice').innerText = `₦${activePlan.price.toLocaleString()}`;
+    document.getElementById('displayHardware').innerText = activePlan.hardware;
+    document.getElementById('displayStorage').innerText = activePlan.storage + " NVMe";
+    
+    // Switch views
+    selectionView.classList.add('hidden');
+    checkoutView.classList.remove('hidden');
+    headerTitle.innerText = "Checkout / " + activePlan.name;
+    
+    calculateTotal(); // Ensure price is calculated
+    window.scrollTo(0, 0);
+}
     function calculateTotal() {
         if (!activePlan) return;
 
@@ -397,9 +405,7 @@
         headerTitle.innerText = "RDP Management";
     }
 
-    function requestRDP() {
-        alert("RDP request submitted. Redirecting to payment...");
-    }
+   
 
     async function initiateRDPPayment() {
     // 1. Get the current selected RDP object (set this when user clicks a plan)

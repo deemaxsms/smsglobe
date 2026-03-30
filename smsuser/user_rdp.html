@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Desktop (RDP) | SMSGlobe</title>
+    <link rel="icon" type="image/png" href="https://i.imgur.com/syKFaNI.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            blue: '#0F54C6', orange: '#F9861E', darkText: '#101828',
+                            midText: '#344054', lightText: '#667085', background: '#F0F5FE', border: '#EAECF0',
+                        }
+                    },
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                },
+            },
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .sidebar-transition { transition: transform 0.3s ease-in-out; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .active-scale:active { transform: scale(0.98); }
+        .tab-active { border-bottom: 2px solid #0F54C6; color: #0F54C6; }
+    </style>
+</head>
+<body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
+
+    <div id="sidebarOverlay" class="fixed inset-0 bg-black/20 z-40 hidden lg:hidden"></div>
+
+    <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white border-r border-brand-border z-50 transform -translate-x-full lg:translate-x-0 sidebar-transition flex flex-col">
+        <div class="p-5 border-b border-brand-border flex items-center justify-between">
+            <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-6 w-auto">
+            <button id="closeSidebar" class="lg:hidden text-gray-400 text-xl">&times;</button>
+        </div>
+        
+        <nav class="flex-grow p-4 space-y-1">
+            <p class="px-3 text-[10px] font-bold text-brand-lightText uppercase tracking-widest mb-2">Navigation</p>
+            <a href="user_dashboard.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                <span>Dashboard</span>
+            </a>
+            <a href="user_rdp.html" class="flex items-center space-x-3 px-3 py-2 bg-brand-background text-brand-blue rounded-lg text-xs font-semibold">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
+                <span>RDP</span>
+            </a>
+            </nav>
+
+        <div class="p-4 border-t border-brand-border">
+            <button onclick="logout()" class="flex items-center space-x-3 w-full px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg text-xs font-bold transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                <span>Log Out</span>
+            </button>
+        </div>
+    </aside>
+
+    <div class="flex-grow lg:ml-64 flex flex-col min-h-screen">
+        
+        <header class="bg-white border-b border-brand-border sticky top-0 z-30 px-4 md:px-8 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <button id="openSidebar" class="lg:hidden p-1.5 text-brand-midText border border-brand-border rounded-md">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <span class="text-sm font-bold text-brand-darkText">Remote Desktop Instances</span>
+            </div>
+        </header>
+
+        <main class="p-4 md:p-6 max-w-6xl w-full mx-auto space-y-6">
+            
+            <div class="bg-brand-blue rounded-3xl p-6 text-white shadow-lg overflow-hidden relative">
+                <div class="relative z-10">
+                    <h2 class="text-xl font-bold mb-1">Premium RDP Access</h2>
+                    <p class="text-xs opacity-80 max-w-md">High-performance Windows Desktop and Server instances with 1Gbps uplink and 99.9% uptime.</p>
+                </div>
+                <svg class="absolute right-[-20px] bottom-[-20px] w-40 h-40 opacity-10" fill="currentColor" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-brand-border overflow-hidden shadow-sm">
+                <div class="flex border-b border-brand-border">
+                    <button onclick="switchTab('desktop')" id="tab-desktop" class="flex-1 py-4 text-xs font-bold uppercase tracking-wider tab-active transition-all">Windows Desktop</button>
+                    <button onclick="switchTab('server')" id="tab-server" class="flex-1 py-4 text-xs font-bold uppercase tracking-wider text-brand-lightText hover:text-brand-blue transition-all">Windows Server</button>
+                </div>
+
+                <div class="p-4 bg-gray-50/50 flex flex-col md:flex-row gap-3">
+                    <div class="relative flex-grow">
+                        <span class="absolute inset-y-0 left-3 flex items-center text-brand-lightText">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </span>
+                        <input type="text" id="rdpSearch" placeholder="Search by location or OS..." class="w-full pl-10 pr-4 py-2 bg-white border border-brand-border rounded-xl text-xs focus:ring-2 focus:ring-brand-blue/20 outline-none">
+                    </div>
+                    <select class="px-4 py-2 bg-white border border-brand-border rounded-xl text-xs font-medium outline-none">
+                        <option>All Locations</option>
+                        <option>United States</option>
+                        <option>United Kingdom</option>
+                        <option>Germany</option>
+                    </select>
+                </div>
+
+                <div class="overflow-x-auto no-scrollbar">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50/50 text-[10px] font-bold text-brand-lightText uppercase">
+                                <th class="px-6 py-4 border-b border-brand-border">Instance / OS</th>
+                                <th class="px-6 py-4 border-b border-brand-border">Specifications</th>
+                                <th class="px-6 py-4 border-b border-brand-border">Location</th>
+                                <th class="px-6 py-4 border-b border-brand-border text-center">Price</th>
+                                <th class="px-6 py-4 border-b border-brand-border text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rdpList">
+                            <tr class="animate-pulse">
+                                <td colspan="5" class="p-10 text-center text-xs text-brand-lightText">Loading available instances...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+<script>
+    const API_BASE_URL = '/api';
+    let currentTab = 'desktop';
+
+    // Mock Data (Replace with your actual API fetch)
+    const mockRDPs = {
+        desktop: [
+            { id: 1, name: 'Win 10 Pro - USA', specs: '8GB RAM / 4 vCPU', loc: 'New York, US', price: '15.00', icon: 'https://cdn-icons-png.flaticon.com/512/732/732221.png' },
+            { id: 2, name: 'Win 11 Pro - UK', specs: '16GB RAM / 6 vCPU', loc: 'London, UK', price: '25.00', icon: 'https://cdn-icons-png.flaticon.com/512/732/732221.png' }
+        ],
+        server: [
+            { id: 3, name: 'Win Server 2022', specs: '32GB RAM / 8 vCPU', loc: 'Frankfurt, DE', price: '45.00', icon: 'https://cdn-icons-png.flaticon.com/512/3663/3663365.png' },
+            { id: 4, name: 'Win Server 2019', specs: '16GB RAM / 4 vCPU', loc: 'Chicago, US', price: '30.00', icon: 'https://cdn-icons-png.flaticon.com/512/3663/3663365.png' }
+        ]
+    };
+
+    function switchTab(tab) {
+        currentTab = tab;
+        document.getElementById('tab-desktop').classList.toggle('tab-active', tab === 'desktop');
+        document.getElementById('tab-desktop').classList.toggle('text-brand-lightText', tab !== 'desktop');
+        document.getElementById('tab-server').classList.toggle('tab-active', tab === 'server');
+        document.getElementById('tab-server').classList.toggle('text-brand-lightText', tab !== 'server');
+        renderRDPs();
+    }
+
+    function renderRDPs() {
+        const container = document.getElementById('rdpList');
+        const data = mockRDPs[currentTab];
+
+        container.innerHTML = data.map(item => `
+            <tr class="hover:bg-gray-50/50 transition-colors group">
+                <td class="px-6 py-4 border-b border-brand-border">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-brand-background rounded-lg flex items-center justify-center p-1.5 border border-brand-blue/10">
+                            <img src="${item.icon}" class="w-full h-full object-contain">
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-brand-darkText">${item.name}</p>
+                            <p class="text-[10px] text-brand-lightText">Instant Delivery</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 border-b border-brand-border text-xs font-medium text-brand-midText">
+                    ${item.specs}
+                </td>
+                <td class="px-6 py-4 border-b border-brand-border">
+                    <span class="text-[10px] font-bold text-brand-midText bg-white border border-brand-border px-2 py-1 rounded-md uppercase">
+                        ${item.loc}
+                    </span>
+                </td>
+                <td class="px-6 py-4 border-b border-brand-border text-center">
+                    <p class="text-xs font-black text-brand-blue">$${item.price}</p>
+                    <p class="text-[9px] text-brand-lightText">/month</p>
+                </td>
+                <td class="px-6 py-4 border-b border-brand-border text-right">
+                    <button class="bg-brand-blue text-white text-[10px] font-bold px-4 py-2 rounded-lg hover:bg-blue-700 transition-all active-scale shadow-sm">
+                        Purchase
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // Sidebar Logic
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const openBtn = document.getElementById('openSidebar');
+    const closeBtn = document.getElementById('closeSidebar');
+
+    const toggleSidebar = () => {
+        sidebar.classList.toggle('-translate-x-full');
+        overlay.classList.toggle('hidden');
+    };
+
+    openBtn.addEventListener('click', toggleSidebar);
+    closeBtn.addEventListener('click', toggleSidebar);
+    overlay.addEventListener('click', toggleSidebar);
+
+    window.onload = () => {
+        // Replace with real initialization logic
+        renderRDPs();
+    };
+
+    function logout() {
+        localStorage.removeItem('userToken');
+        window.location.href = 'user_login.html';
+    }
+</script>
+</body>
+</html>

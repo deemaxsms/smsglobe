@@ -418,67 +418,83 @@
         }
     }
 
-    async function initiateRDPPayment() {
-        const selectedRDP = window.currentSelectedRDP; 
-        
-        if (!selectedRDP) {
-            alert("Please select an RDP plan first.");
+  async function initiateRDPPayment() {
+    const selectedRDP = window.currentSelectedRDP; 
+    
+    if (!selectedRDP) {
+        alert("Please select an RDP plan first.");
+        return;
+    }
+
+    // 1. Check for token before even making the request
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+        alert("Your session has expired. Please log in again.");
+        window.location.href = 'user_login.html';
+        return;
+    }
+
+    const cpuInput = document.getElementById('extraCPU');
+    const storageInput = document.getElementById('extraStorage');
+    const osInput = document.getElementById('osSelector');
+
+    const cpuExtra = cpuInput ? (parseInt(cpuInput.value) || 0) : 0;
+    const storageExtra = storageInput ? (parseInt(storageInput.value) || 0) : 0;
+    const selectedOS = osInput ? osInput.value : "Windows Server (Default)";
+    
+    const btn = document.getElementById('payBtn');
+    const originalText = btn.innerText;
+    
+    btn.disabled = true;
+    btn.innerText = "Generating Secure Link...";
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({
+                productType: 'RDP',
+                rdpId: selectedRDP._id,
+                planName: selectedRDP.name,
+                metadata: {
+                    baseRAM: selectedRDP.ram,
+                    baseCPU: selectedRDP.cpu,
+                    baseStorage: selectedRDP.storage,
+                    extraCPU: cpuExtra,
+                    extraStorage: storageExtra,
+                    osChoice: selectedOS,
+                    category: selectedRDP.category
+                }
+            })
+        });
+
+        // 2. Handle 401 (Unauthorized) status specifically
+        if (res.status === 401) {
+            alert("Unauthorized access. Redirecting to login...");
+            localStorage.removeItem('userToken');
+            window.location.href = 'user_login.html';
             return;
         }
 
-        // Null-safe element checks
-        const cpuInput = document.getElementById('extraCPU');
-        const storageInput = document.getElementById('extraStorage');
-        const osInput = document.getElementById('osSelector');
-
-        const cpuExtra = cpuInput ? (parseInt(cpuInput.value) || 0) : 0;
-        const storageExtra = storageInput ? (parseInt(storageInput.value) || 0) : 0;
-        const selectedOS = osInput ? osInput.value : "Windows Server (Default)";
-        
-        const btn = document.getElementById('payBtn');
-        const originalText = btn.innerText;
-        
-        btn.disabled = true;
-        btn.innerText = "Generating Secure Link...";
-
-        try {
-            const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
-                },
-                body: JSON.stringify({
-                    productType: 'RDP',
-                    rdpId: selectedRDP._id,
-                    planName: selectedRDP.name,
-                    metadata: {
-                        baseRAM: selectedRDP.ram,
-                        baseCPU: selectedRDP.cpu,
-                        baseStorage: selectedRDP.storage,
-                        extraCPU: cpuExtra,
-                        extraStorage: storageExtra,
-                        osChoice: selectedOS,
-                        category: selectedRDP.category
-                    }
-                })
-            });
-
-            const data = await res.json();
-            if(data.success && data.link) {
-                window.location.href = data.link; 
-            } else {
-                alert(data.message || "Initialization failed");
-                btn.disabled = false;
-                btn.innerText = originalText;
-            }
-        } catch (err) {
-            console.error(err);
-            alert("Connection error. Please try again.");
+        const data = await res.json();
+        if(data.success && data.link) {
+            // Redirect to Flutterwave
+            window.location.href = data.link; 
+        } else {
+            alert(data.message || "Initialization failed");
             btn.disabled = false;
             btn.innerText = originalText;
         }
+    } catch (err) {
+        console.error("Payment Init Error:", err);
+        alert("Connection error. Please check your internet and try again.");
+        btn.disabled = false;
+        btn.innerText = originalText;
     }
+}
 
     async function verifyRDPPayment(tid, txRef) {
         try {

@@ -269,9 +269,12 @@ app.all('/api/:action', async (req, res) => {
         case 'esim-activations': 
         if (req.method === 'GET') return handleGetEsimActivations(req, res); 
         break;
-        case 'update-esim-activation': if (req.method === 'POST' || req.method === 'PATCH') {
+case 'esim-activation-complete': 
+case 'update-esim-activation': 
+    if (req.method === 'POST' || req.method === 'PATCH') {
         return handleAdminEsimActivationUpdate(req, res);
-        }
+    }
+    break;
         break;
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
@@ -1623,17 +1626,11 @@ async function handleGetEsimActivations(req, res) {
                 productType: 'eSIM_Activation', 
                 createdAt: activation.createdAt,
                 userEmail: activation.userEmail, 
-                
-                // Activation-specific email (different from account email)
                 email: details.email || 'N/A',
                 
                 fullName: `${details.firstName || ''} ${details.lastName || ''}`.trim() || activation.fullName || 'N/A',
                 amount: amountInUSD.toFixed(2), 
                 status: activation.status || 'pending',
-                
-                // --- DEVICE NAME FETCHING LOGIC ---
-                // We use targetNumber because that's where the phone model is saved
-                // We fallback to nodeName or carrierName if targetNumber is empty
                 nodeName: activation.targetNumber || activation.nodeName || activation.carrierName || 'eSIM Device',
                 
                 planName: activation.planName || 'Standard Plan',

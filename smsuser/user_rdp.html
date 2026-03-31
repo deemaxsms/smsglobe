@@ -286,7 +286,7 @@
     </div>
     
     <h2 class="text-2xl font-black text-brand-darkText uppercase tracking-tight">Payment Successful!</h2>
-    <p class="text-brand-lightText text-sm mb-6">Your RDP is being provisioned. Please notify admin to speed up setup.</p>
+    <p class="text-brand-lightText text-sm mb-6">Your RDP is being provisioned. Please notify SMS Globe to speed up setup.</p>
     
     <div class="max-w-sm mx-auto space-y-3 text-left bg-gray-50 p-6 rounded-2xl border border-brand-border mb-6">
         <div class="flex justify-between text-xs border-b border-gray-100 pb-2">
@@ -333,6 +333,7 @@
     const overlay = document.getElementById('sidebarOverlay');
     const selectionView = document.getElementById('selectionView');
     const checkoutView = document.getElementById('checkoutView');
+    const receiptView = document.getElementById('receiptView'); // Ensure this ID exists in your HTML
     const headerTitle = document.getElementById('headerTitle');
     const tableBody = document.getElementById('plansTableBody');
 
@@ -348,26 +349,22 @@
     let activePlan = null;
 
     // Initialize page: Check if we are returning from a payment
-  window.onload = () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const transactionId = urlParams.get('transaction_id');
-    const txRef = urlParams.get('tx_ref');
-    const status = urlParams.get('status');
+    window.onload = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const transactionId = urlParams.get('transaction_id');
+        const txRef = urlParams.get('tx_ref');
+        const status = urlParams.get('status');
 
-    // 1. Check if we have a successful redirect from Flutterwave
-    if ((transactionId || txRef) && status !== 'cancelled') {
+        if ((transactionId || txRef) && status !== 'cancelled') {
+            verifyRDPPayment(transactionId, txRef);
+
+            // Cleanup URL to prevent duplicate verification on refresh
+            const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+        }
         
-        // 2. Trigger the verification
-        verifyRDPPayment(transactionId, txRef);
-
-        // 3. CLEANUP: This removes the ?transaction_id=... from the address bar
-        // without reloading the page. This stops the "Duplicate Key" error on refresh.
-        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
-    }
-    
-    renderPlans();
-};
+        renderPlans();
+    };
 
     function renderPlans() {
         if(!tableBody) return;
@@ -394,7 +391,6 @@
     function selectPlan(planKey) {
         activePlan = plans[planKey];
         
-        // Map data for the initiation function
         window.currentSelectedRDP = {
             _id: activePlan.id,
             name: activePlan.name,
@@ -404,13 +400,11 @@
             category: "RDP"
         };
 
-        // Update UI Summary
         document.getElementById('displayPlanName').innerText = activePlan.name;
         document.getElementById('displayPlanPrice').innerText = `₦${activePlan.price.toLocaleString()}`;
         document.getElementById('displayHardware').innerText = activePlan.hardware;
         document.getElementById('displayStorage').innerText = activePlan.storage + " NVMe";
         
-        // Reset Inputs if they exist
         if(document.getElementById('extraCPU')) document.getElementById('extraCPU').value = "";
         if(document.getElementById('extraStorage')) document.getElementById('extraStorage').value = "";
         
@@ -432,11 +426,9 @@
         const storageCost = extraStorageCount * 200;
         const total = activePlan.price + cpuCost + storageCost;
 
-        // Update Summary Elements
         if(document.getElementById('basePriceSummary')) document.getElementById('basePriceSummary').innerText = `₦${activePlan.price.toLocaleString()}`;
         if(document.getElementById('summaryTotal')) document.getElementById('summaryTotal').innerText = `₦${total.toLocaleString()}`;
 
-        // Addon UI Logic
         const cpuRow = document.getElementById('cpuAddonRow');
         if(cpuRow) {
             if(extraCPUCount > 0) {
@@ -460,20 +452,11 @@
 
     async function initiateRDPPayment() {
         const selectedRDP = window.currentSelectedRDP; 
-        
-        if (!selectedRDP) {
-            alert("Please select an RDP plan first.");
-            return;
-        }
+        if (!selectedRDP) return alert("Please select an RDP plan first.");
 
-        // Null-safe element checks
-        const cpuInput = document.getElementById('extraCPU');
-        const storageInput = document.getElementById('extraStorage');
-        const osInput = document.getElementById('osSelector');
-
-        const cpuExtra = cpuInput ? (parseInt(cpuInput.value) || 0) : 0;
-        const storageExtra = storageInput ? (parseInt(storageInput.value) || 0) : 0;
-        const selectedOS = osInput ? osInput.value : "Windows Server (Default)";
+        const cpuExtra = parseInt(document.getElementById('extraCPU')?.value) || 0;
+        const storageExtra = parseInt(document.getElementById('extraStorage')?.value) || 0;
+        const selectedOS = document.getElementById('osSelector')?.value || "Windows Server (Default)";
         
         const btn = document.getElementById('payBtn');
         const originalText = btn.innerText;
@@ -520,109 +503,104 @@
         }
     }
 
-   async function verifyRDPPayment(tid, txRef) {
-    try {
-        const payBtn = document.getElementById('payBtn');
-        if (payBtn) {
-            payBtn.disabled = true; // Disable to prevent double-clicks
-            payBtn.innerText = "Verifying Payment...";
-        }
+    async function verifyRDPPayment(tid, txRef) {
+        try {
+            const payBtn = document.getElementById('payBtn');
+            if (payBtn) {
+                payBtn.disabled = true;
+                payBtn.innerText = "Verifying Payment...";
+            }
 
-        const res = await fetch(`${API_BASE_URL}/verify-payment`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
-            },
-            body: JSON.stringify({ transactionId: tid, txRef: txRef })
-        });
-        
-        const data = await res.json();
-
-        if (data.success) {
-            // 1. Switch Views
-            document.getElementById('selectionView')?.classList.add('hidden');
-            document.getElementById('checkoutView')?.classList.add('hidden');
-            document.getElementById('receiptView')?.classList.remove('hidden');
-
-            const order = data.order || {};
-            const meta = order.metadata || {};
+            const res = await fetch(`${API_BASE_URL}/verify-payment`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
+                },
+                body: JSON.stringify({ transactionId: tid, txRef: txRef })
+            });
             
-            // 2. POPULATE RECEIPT FIELDS (Safe UI update)
-            // We use optional chaining and logical ORs to prevent "undefined" appearing on screen
-            const setField = (id, value) => {
-                const el = document.getElementById(id);
-                if (el) el.innerText = value;
-            };
+            const data = await res.json();
 
-            setField('rPlan', order.planName || "RDP Plan");
-            setField('rOS', meta.osChoice || "Windows Server");
-            
-            // Formatting RAM/CPU/Storage for a clean receipt look
-            const ramDisplay = meta.baseRAM || "Standard";
-            const cpuDisplay = meta.extraCPU > 0 ? `Standard (+${meta.extraCPU} Core)` : "Standard";
-            const storageDisplay = meta.extraStorage > 0 ? `Standard (+${meta.extraStorage}GB)` : "Standard";
+            if (data.success) {
+                // Switch Views
+                selectionView?.classList.add('hidden');
+                checkoutView?.classList.add('hidden');
+                receiptView?.classList.remove('hidden');
 
-            setField('rRAM', ramDisplay);
-            setField('rCPU', cpuDisplay);
-            setField('rStorage', storageDisplay);
-            setField('rID', order.paymentReference || tid);
+                const order = data.order || {};
+                const meta = order.metadata || {};
+                
+                // POPULATE RECEIPT FIELDS
+                const setField = (id, value) => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerText = value;
+                };
 
-            // 3. Update Header & Notify
-            if (typeof headerTitle !== 'undefined') headerTitle.innerText = "Order Confirmed";
-            
-            // Small Delay on alert so the user sees the receipt first
-            setTimeout(() => {
-                alert("Payment successful! Please click 'Notify Admin' to speed up your setup.");
-            }, 500);
+                setField('rPlan', order.planName || "USA Tier RDP");
+                setField('rOS', meta.osChoice || "Windows Server (Default)");
+                
+                // Logical hardware formatting
+                const ramDisplay = meta.baseRAM || "Standard";
+                const cpuDisplay = meta.extraCPU > 0 ? `${meta.baseCPU || "2 Cores"} (+${meta.extraCPU} Extra)` : (meta.baseCPU || "Standard");
+                const storageDisplay = meta.extraStorage > 0 ? `${meta.baseStorage || "60GB"} (+${meta.extraStorage}GB Extra)` : (meta.baseStorage || "Standard");
 
-        } else {
-            alert("Payment verification failed: " + (data.message || "Unknown error"));
-        }
-    } catch (e) { 
-        console.error("Frontend Verification Error:", e);
-        alert("An error occurred while verifying your payment. Please contact support.");
-    } finally {
-        const payBtn = document.getElementById('payBtn');
-        if (payBtn) {
-            payBtn.disabled = false;
-            payBtn.innerText = "Pay Securely Now";
+                setField('rRAM', ramDisplay);
+                setField('rCPU', cpuDisplay);
+                setField('rStorage', storageDisplay);
+                setField('rID', order.paymentReference || tid);
+
+                if (headerTitle) headerTitle.innerText = "Order Confirmed";
+                
+                setTimeout(() => {
+                    alert("Payment successful! Please click 'Notify Admin' to complete setup.");
+                }, 500);
+
+            } else {
+                alert("Verification failed: " + (data.message || "Unknown error"));
+            }
+        } catch (e) { 
+            console.error("Frontend Verification Error:", e);
+            alert("An error occurred during verification.");
+        } finally {
+            const payBtn = document.getElementById('payBtn');
+            if (payBtn) {
+                payBtn.disabled = false;
+                payBtn.innerText = "Pay Securely Now";
+            }
         }
     }
-}
 
-function contactRDPAdmin() {
-    // These IDs MUST exist in your HTML receiptView
-    const tid = document.getElementById('rID')?.innerText || "N/A";
-    const plan = document.getElementById('rPlan')?.innerText || "N/A";
-    const ram = document.getElementById('rRAM')?.innerText || "N/A";
-    const cpu = document.getElementById('rCPU')?.innerText || "N/A";
-    const storage = document.getElementById('rStorage')?.innerText || "N/A";
-    const os = document.getElementById('rOS')?.innerText || "N/A";
+    function contactRDPAdmin() {
+        const tid = document.getElementById('rID')?.innerText || "N/A";
+        const plan = document.getElementById('rPlan')?.innerText || "N/A";
+        const ram = document.getElementById('rRAM')?.innerText || "N/A";
+        const cpu = document.getElementById('rCPU')?.innerText || "N/A";
+        const storage = document.getElementById('rStorage')?.innerText || "N/A";
+        const os = document.getElementById('rOS')?.innerText || "N/A";
 
-    const msg = `🚀 *SMSGlobe: NEW RDP PROVISIONING*
-__________________________________
+        const msg = `🚀 *SMSGlobe: NEW RDP PROVISIONING*\n` +
+                    `__________________________________\n\n` +
+                    `✅ *PAYMENT STATUS:* CONFIRMED\n` +
+                    `🆔 *REF ID:* ${tid}\n\n` +
+                    `*SERVER CONFIGURATION:*\n` +
+                    `━━━━━━━━━━━━━━━━━━\n` +
+                    `🖥️ *PLAN:* ${plan}\n` +
+                    `💿 *OS:* ${os}\n` +
+                    `🧠 *RAM:* ${ram}\n` +
+                    `⚡ *CPU:* ${cpu}\n` +
+                    `💾 *STORAGE:* ${storage}\n` +
+                    `━━━━━━━━━━━━━━━━━━\n\n` +
+                    `⚡ *ACTION REQUIRED:*\n` +
+                    `We will notify you immediately your RDP Activation is complete.`;
 
-✅ *PAYMENT STATUS:* CONFIRMED
-🆔 *REF ID:* ${tid}
+        window.open(`https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`, '_blank');
+    }
 
-*SERVER CONFIGURATION:*
-━━━━━━━━━━━━━━━━━━
-🖥️ *PLAN:* ${plan}
-💿 *OS:* ${os}
-🧠 *RAM:* ${ram}
-⚡ *CPU:* ${cpu}
-💾 *STORAGE:* ${storage}
-━━━━━━━━━━━━━━━━━━
-
-⚡ *ACTION REQUIRED:*
-Please provision this server and update the user's dashboard credentials.`;
-
-    window.open(`https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`, '_blank');
-}
     function showSelectionView() {
         selectionView.classList.remove('hidden');
         checkoutView.classList.add('hidden');
+        receiptView.classList.add('hidden');
         headerTitle.innerText = "RDP Management";
     }
 
@@ -631,9 +609,9 @@ Please provision this server and update the user's dashboard credentials.`;
         overlay.classList.toggle('hidden');
     };
 
-    document.getElementById('openSidebar').addEventListener('click', toggleSidebar);
-    document.getElementById('closeSidebar').addEventListener('click', toggleSidebar);
-    overlay.addEventListener('click', toggleSidebar);
+    document.getElementById('openSidebar')?.addEventListener('click', toggleSidebar);
+    document.getElementById('closeSidebar')?.addEventListener('click', toggleSidebar);
+    overlay?.addEventListener('click', toggleSidebar);
 
     function logout() { window.location.href = 'user_login.html'; }
 </script>

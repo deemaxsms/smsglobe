@@ -308,8 +308,8 @@ app.all('/api/:action', async (req, res) => {
     case 'rdp-requests': // This matches the fetch URL in your HTML file
     if (req.method === 'GET') return handleGetRdpRequests(req, res);
     break;
-     case 'rdp-requests-complete': // This matches the fetch URL in your HTML file
-    if (req.method === 'GET') return handleCompleteRDPOrder(req, res);
+     case 'rdp-request-complete': // This matches the fetch URL in your HTML file
+    if (req.method === 'POST') return handleCompleteRDPOrder(req, res);
     break;
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
@@ -1179,13 +1179,18 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
 
     // 1. DYNAMIC CONTENT CONFIGURATION
     const isVPN = credentials.type === "VPN";
+    const isRDP = credentials.type === "RDP";
     const isESIM_Refill = credentials.type === "eSIM";
     const isESIM_Activation = credentials.type === "eSIM_Activation";
     const isProxy = credentials.type === "Proxy";
     
     let subject, headerTitle, subHeader;
 
-    if (isVPN) {
+    if (isRDP) {
+        subject = "🖥️ Your RDP Server is Ready!";
+        headerTitle = "Server Provisioned!";
+        subHeader = "Your high-performance RDP access details are below.";
+    } else if (isVPN) {
         subject = "🔑 Your VPN Access Credentials";
         headerTitle = "Node Activated!";
         subHeader = "Your Premium VPN Access is ready.";
@@ -1209,22 +1214,50 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
     // 2. DYNAMIC DATA TABLE
     let dataTableHtml = '';
 
-    if (isVPN) {
+    if (isRDP) {
+        // RDP LAYOUT: Focusing on IP/Login and Hardware Specs
         dataTableHtml = `
-            <td class="mobile-full" width="33%" valign="top" style="padding-bottom: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Username</span><br>
-                <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.username}</strong>
-            </td>
-            <td class="mobile-full" width="33%" valign="top" style="padding-bottom: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Security Key</span><br>
-                <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.password}</strong>
-            </td>
-            <td class="mobile-full" width="33%" valign="top" style="text-align: right; padding-bottom: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Limit</span><br>
-                <strong style="font-size: 13px; color: #101828;">${credentials.deviceLimit || 1} Device(s)</strong>
-            </td>`;
+            <tr>
+                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Login Credentials (IP/User/Pass)</span><br>
+                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.confirmationNumber || credentials.loginDetails || 'Provisioning...'}</strong>
+                </td>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Operating System</span><br>
+                    <strong style="font-size: 13px; color: #101828;">${credentials.osChoice || 'Windows Server'}</strong>
+                </td>
+            </tr>
+            <tr>
+                <td class="mobile-full" width="33%" valign="top">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">RAM</span><br>
+                    <strong style="font-size: 12px; color: #101828;">${credentials.ram || 'Standard'}</strong>
+                </td>
+                <td class="mobile-full" width="33%" valign="top" style="text-align: center;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">CPU</span><br>
+                    <strong style="font-size: 12px; color: #101828;">${credentials.cpu || 'Standard'}</strong>
+                </td>
+                <td class="mobile-full" width="33%" valign="top" style="text-align: right;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Storage</span><br>
+                    <strong style="font-size: 12px; color: #101828;">${credentials.storage || 'Standard'}</strong>
+                </td>
+            </tr>`;
+    } else if (isVPN) {
+        dataTableHtml = `
+            <tr>
+                <td class="mobile-full" width="33%" valign="top" style="padding-bottom: 10px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Username</span><br>
+                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.username}</strong>
+                </td>
+                <td class="mobile-full" width="33%" valign="top" style="padding-bottom: 10px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Security Key</span><br>
+                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.password}</strong>
+                </td>
+                <td class="mobile-full" width="33%" valign="top" style="text-align: right; padding-bottom: 10px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Limit</span><br>
+                    <strong style="font-size: 13px; color: #101828;">${credentials.deviceLimit || 1} Device(s)</strong>
+                </td>
+            </tr>`;
     } else if (isESIM_Activation) {
-        // UPDATED: ESIM ACTIVATION LAYOUT WITH SHIPPING & TARGET EMAIL
         dataTableHtml = `
             <tr>
                 <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
@@ -1276,14 +1309,16 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
             </tr>`;
     } else {
         dataTableHtml = `
-            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation Code</span><br>
-                <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.activationCode || credentials.password}</strong>
-            </td>
-            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
-                <strong style="font-size: 14px; color: #101828;">${credentials.amount}</strong>
-            </td>`;
+            <tr>
+                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation Code</span><br>
+                    <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.activationCode || credentials.password}</strong>
+                </td>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 10px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
+                    <strong style="font-size: 14px; color: #101828;">${credentials.amount}</strong>
+                </td>
+            </tr>`;
     }
 
     const htmlContent = `
@@ -1322,7 +1357,7 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
                                 <p style="font-size: 13px; margin: 0 0 20px 0; line-height: 1.6;">${credentials.instructions || 'Please keep this information for your records.'}</p>
                                 
                                 <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
-                                    ${isESIM_Refill || isESIM_Activation ? dataTableHtml : `<tr>${dataTableHtml}</tr>`}
+                                    ${dataTableHtml}
                                 </table>
                             </div>
 
@@ -1795,17 +1830,16 @@ async function handleAddRDP(req, res) {
     }
 }
 
-// Function to fulfill an RDP order
 async function handleCompleteRDPOrder(req, res) {
     const { tid, status, confirmationNumber } = req.body;
 
     try {
-        // We find the order by the paymentReference (tid) sent from the frontend
+        // 1. Update the order in MongoDB
         const order = await Order.findOneAndUpdate(
             { paymentReference: tid },
             { 
                 status: status || 'completed',
-                confirmationNumber: confirmationNumber, // This stores the IP/Login details
+                confirmationNumber: confirmationNumber, // Stores IP/Login Details
                 deliveredAt: new Date()
             },
             { new: true }
@@ -1815,14 +1849,29 @@ async function handleCompleteRDPOrder(req, res) {
             return res.status(404).json({ success: false, message: "Order not found" });
         }
 
-        // OPTIONAL: Trigger an email to the user here
-        // await sendDeliveryEmail(order.userEmail, { type: 'RDP', details: confirmationNumber }, order);
+        // 2. Trigger the Email Notification
+        // We pass the RDP metadata so the email shows RAM, CPU, etc.
+        try {
+            await sendDeliveryEmail(order.userEmail, { 
+                type: 'RDP', 
+                confirmationNumber: confirmationNumber, // This is the IP/Login details
+                osChoice: order.metadata?.osChoice || 'Windows Server',
+                ram: order.metadata?.ram || 'Standard',
+                cpu: order.metadata?.cpu || 'Standard',
+                storage: order.metadata?.storage || 'Standard',
+                instructions: order.instructions || "Your RDP server is now active. Use the credentials below to connect via Remote Desktop Connection."
+            });
+        } catch (mailError) {
+            console.error("Email failed to send, but order was updated:", mailError);
+            // We don't return error here because the DB update was successful
+        }
 
         res.json({ 
             success: true, 
-            message: "RDP marked as delivered", 
+            message: "RDP marked as delivered and email sent.", 
             order 
         });
+
     } catch (error) {
         console.error("RDP Completion Error:", error);
         res.status(500).json({ success: false, message: "Server error during RDP completion" });

@@ -1056,23 +1056,42 @@ async function handleVerifyPayment(req, res) {
                     instructions: item.instructions || "Check dashboard."
                 };
 
-            } else if (productType === "RDP") {
-                const item = await RDP.findById(productId); 
-                if (!item) return res.status(404).json({ success: false, message: "RDP Plan not found" });
+       } else if (productType === "RDP") {
+    // 1. DATA LOOKUP: Define the plans exactly as they appear in your user_rdp.html
+    const rdpPlans = {
+        "tier1": { name: "USA Tier 1", ram: "4GB", cpu: "2 Cores", storage: "60GB SSD" },
+        "tier2": { name: "USA Tier 2", ram: "6GB", cpu: "3 Cores", storage: "100GB SSD" },
+        "tier3": { name: "USA Tier 3", ram: "8GB", cpu: "4 Cores", storage: "140GB SSD" },
+        "tier4": { name: "USA Tier 4", ram: "12GB", cpu: "6 Cores", storage: "180GB SSD" },
+        "tier5": { name: "USA Tier 5", ram: "18GB", cpu: "8 Cores", storage: "240GB SSD" },
+        "tier6": { name: "USA Tier 6", ram: "24GB", cpu: "8 Cores", storage: "280GB SSD" }
+    };
 
-                productDetails.name = item.name;
-                const cpuDisplay = extraCPU > 0 ? `${item.cpu} (+${extraCPU} Extra)` : item.cpu;
-                const storageDisplay = extraStorage > 0 ? `${item.storage} (+${extraStorage}GB Extra)` : item.storage;
-                
-                productDetails.plan = `${item.ram} RAM | ${cpuDisplay} | ${osChoice || 'Windows'}`;
-                
-                credentials = {
-                    type: "RDP",
-                    os: osChoice || item.os || "Windows",
-                    specs: `${item.ram} RAM, ${cpuDisplay}, ${storageDisplay}`,
-                    instructions: "Your custom RDP is being provisioned. Credentials will be sent to your email within 1-6 hours."
-                };
+    // 2. RETRIEVE THE SELECTED PLAN
+    // Note: We use 'productId' which contains the "tier1" string from your frontend
+    const item = rdpPlans[productId];
 
+    if (!item) {
+        console.error(`RDP Error: Frontend sent '${productId}', but it's not defined in the backend rdpPlans.`);
+        return res.status(404).json({ success: false, message: "RDP Plan definition not found." });
+    }
+
+    // 3. MAP THE SPECS (Including your frontend Add-ons)
+    productDetails.name = item.name;
+    
+    // extraCPU and extraStorage are pulled from the payment metadata sent by initiate-payment
+    const cpuDisplay = extraCPU > 0 ? `${item.cpu} (+${extraCPU} Extra)` : item.cpu;
+    const storageDisplay = extraStorage > 0 ? `${item.storage} (+${extraStorage}GB Extra)` : item.storage;
+    
+    productDetails.plan = `${item.ram} RAM | ${cpuDisplay} | ${osChoice || 'Windows Server'}`;
+    
+    credentials = {
+        type: "RDP",
+        os: osChoice || "Windows Server",
+        specs: `${item.ram} RAM, ${cpuDisplay}, ${storageDisplay}`,
+        instructions: "Your custom RDP is being provisioned. Credentials will be sent to your email within 1-6 hours."
+    };
+    
             } else if (productType === "eSIM" || productType === "eSIM_Activation") {
                 productDetails.name = productId || "eSIM Service"; 
                 productDetails.plan = planAmount || "Standard";

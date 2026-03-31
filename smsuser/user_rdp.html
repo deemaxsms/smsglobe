@@ -480,56 +480,63 @@
         }
     }
 
-    async function verifyRDPPayment(tid, txRef) {
-        try {
-            const payBtn = document.getElementById('payBtn');
-            if (payBtn) payBtn.innerText = "Verifying Payment...";
+   async function verifyRDPPayment(tid, txRef) {
+    try {
+        const payBtn = document.getElementById('payBtn');
+        if (payBtn) payBtn.innerText = "Verifying Payment...";
 
-            const res = await fetch(`${API_BASE_URL}/verify-payment`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
-                },
-                body: JSON.stringify({ transactionId: tid, txRef: txRef })
-            });
+        const res = await fetch(`${API_BASE_URL}/verify-payment`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
+            },
+            body: JSON.stringify({ transactionId: tid, txRef: txRef })
+        });
+        
+        const data = await res.json();
+
+        if (data.success) {
+            // UI Transition
+            document.getElementById('selectionView')?.classList.add('hidden');
+            document.getElementById('checkoutView')?.classList.add('hidden');
+            document.getElementById('receiptView')?.classList.remove('hidden');
+
+            const order = data.order || {};
+            const meta = order.metadata || {};
             
-            const data = await res.json();
+            // Populate Receipt Fields with fallbacks to avoid blank spaces
+            const rPlanName = document.getElementById('rPlanName');
+            if (rPlanName) rPlanName.innerText = order.planName || "RDP Plan";
 
-            if (data.success) {
-                selectionView.classList.add('hidden');
-                checkoutView.classList.add('hidden');
-                
-                const receiptView = document.getElementById('receiptView');
-                if (receiptView) receiptView.classList.remove('hidden');
-
-                const order = data.order || {};
-                const meta = order.metadata || {};
-                
-                // Populate Receipt Fields
-                if (document.getElementById('rPlanName')) document.getElementById('rPlanName').innerText = order.planName || "RDP Plan";
-                if (document.getElementById('rSpecs')) document.getElementById('rSpecs').innerText = `${meta.baseRAM || ''} RAM | ${meta.baseCPU || ''} + ${meta.extraCPU || 0} Cores`;
-                if (document.getElementById('rStorage')) document.getElementById('rStorage').innerText = `${meta.baseStorage || ''} + ${meta.extraStorage || 0}GB NVMe`;
-                if (document.getElementById('rReference')) document.getElementById('rReference').innerText = order.paymentReference || tid;
-                
-                // Optional Fields for WhatsApp
-                if (document.getElementById('rID')) document.getElementById('rID').innerText = order.paymentReference || tid;
-                if (document.getElementById('rPlan')) document.getElementById('rPlan').innerText = order.planName;
-                if (document.getElementById('rRAM')) document.getElementById('rRAM').innerText = meta.baseRAM;
-                if (document.getElementById('rCPU')) document.getElementById('rCPU').innerText = `${meta.baseCPU} (+${meta.extraCPU} Extra)`;
-                if (document.getElementById('rOS')) document.getElementById('rOS').innerText = meta.osChoice;
-
-                headerTitle.innerText = "Order Confirmed";
-                alert("Payment successful! Your RDP is being provisioned.");
-            } else {
-                alert("Payment verification failed: " + (data.message || "Unknown error"));
+            const rSpecs = document.getElementById('rSpecs');
+            if (rSpecs) {
+                rSpecs.innerText = `${meta.baseRAM || 'Standard'} RAM | ${meta.baseCPU || ''} (+${meta.extraCPU || 0} Cores)`;
             }
-        } catch (e) { 
-            console.error("Verification Error:", e);
-        } finally {
-            if (document.getElementById('payBtn')) document.getElementById('payBtn').innerText = "Pay Securely Now";
+
+            const rStorage = document.getElementById('rStorage');
+            if (rStorage) {
+                rStorage.innerText = `${meta.baseStorage || ''} (+${meta.extraStorage || 0}GB) NVMe`;
+            }
+
+            const rReference = document.getElementById('rReference');
+            if (rReference) rReference.innerText = order.paymentReference || tid;
+
+            // WhatsApp/Summary fields
+            if (document.getElementById('rOS')) document.getElementById('rOS').innerText = meta.osChoice || "Windows";
+
+            headerTitle.innerText = "Order Confirmed";
+            alert("Payment successful! Your RDP is being provisioned.");
+        } else {
+            alert("Payment verification failed: " + (data.message || "Unknown error"));
         }
+    } catch (e) { 
+        console.error("Frontend Verification Error:", e);
+        alert("An error occurred while verifying your payment. Please contact support.");
+    } finally {
+        if (document.getElementById('payBtn')) document.getElementById('payBtn').innerText = "Pay Securely Now";
     }
+}
 
     function contactRDPAdmin() {
         const tid = document.getElementById('rID')?.innerText || "N/A";

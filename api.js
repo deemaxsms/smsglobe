@@ -977,7 +977,7 @@ async function handleVerifyPayment(req, res) {
         console.log("Flutterwave Verification Response:", JSON.stringify(data, null, 2));
 
         if (data.status === "success" && data.data.status === "successful") {
-            // 1. Extract ALL Meta data safely (Added fallback to empty object)
+            // 1. Extract Meta safely
             const meta = data.data.meta || {};
             
             const { 
@@ -995,19 +995,23 @@ async function handleVerifyPayment(req, res) {
                 osChoice
             } = meta;
 
-            // CRITICAL FIX: Ensure numeric values are actual numbers and NOT NaN
-            // Using (val || 0) inside Number() ensures we get 0 instead of NaN if the field is missing
-            const extraCPU = Number(meta.extraCPU || 0) || 0;
-            const extraStorage = Number(meta.extraStorage || 0) || 0;
+            // 2. SANITIZATION: Ensure numeric values are actual numbers and NOT NaN
+            // This prevents Mongoose "Cast to Number failed" errors
+            const extraCPU = parseInt(meta.extraCPU) || 0;
+            const extraStorage = parseInt(meta.extraStorage) || 0;
+            const cleanPlanIndex = parseInt(planIndex) || 0;
             
-            // 2. Fetch the User
+            // 3. User Validation
             if (!userId) {
-                console.error("Payment Error: No userId found in metadata.");
+                console.error("Verification Blocked: No userId in metadata.");
                 return res.status(400).json({ success: false, message: "User ID missing in transaction metadata" });
             }
             
             const actualUser = await User.findById(userId);
-            if (!actualUser) return res.status(404).json({ success: false, message: "User account not found" });
+            if (!actualUser) {
+                console.error(`Verification Blocked: User ${userId} not found in DB.`);
+                return res.status(404).json({ success: false, message: "User account not found" });
+            }
 
             const userEmail = actualUser.email; 
             const amountPaid = data.data.amount;
@@ -1018,7 +1022,7 @@ async function handleVerifyPayment(req, res) {
             let productDetails = { name: "", plan: "" };
             let targetNum = mobileNumber || null;
 
-            // --- 3. HANDLE VPN PURCHASE ---
+            // --- 4. HANDLE PRODUCT TYPES ---
             if (productType === "VPN") {
                 const item = await VPN.findOneAndUpdate(
                     { _id: productId, stock: { $gt: 0 } },
@@ -1028,7 +1032,7 @@ async function handleVerifyPayment(req, res) {
                 if (!item) return res.status(400).json({ success: false, message: "VPN out of stock" });
 
                 productDetails.name = item.name;
-                productDetails.plan = item.plans[planIndex]?.duration || "Standard Plan";
+                productDetails.plan = item.plans[cleanPlanIndex]?.duration || "Standard Plan";
                 credentials = {
                     type: "VPN",
                     username: item.username,
@@ -1036,7 +1040,6 @@ async function handleVerifyPayment(req, res) {
                     instructions: item.instructions || "Check dashboard."
                 };
 
-            // --- 4. HANDLE PROXY PURCHASE ---
             } else if (productType === "Proxy") {
                 const item = await Proxy.findOneAndUpdate(
                     { _id: productId, stock: { $gt: 0 } },
@@ -1046,20 +1049,18 @@ async function handleVerifyPayment(req, res) {
                 if (!item) return res.status(400).json({ success: false, message: "Proxy out of stock" });
 
                 productDetails.name = item.name;
-                productDetails.plan = `${item.plans[planIndex]?.ip_count || 0} IPs`;
+                productDetails.plan = `${item.plans[cleanPlanIndex]?.ip_count || 0} IPs`;
                 credentials = {
                     type: "Proxy",
                     activationCode: item.activationCode,
                     instructions: item.instructions || "Check dashboard."
                 };
 
-            // --- 5. HANDLE RDP PURCHASE ---
             } else if (productType === "RDP") {
                 const item = await RDP.findById(productId); 
                 if (!item) return res.status(404).json({ success: false, message: "RDP Plan not found" });
 
                 productDetails.name = item.name;
-                
                 const cpuDisplay = extraCPU > 0 ? `${item.cpu} (+${extraCPU} Extra)` : item.cpu;
                 const storageDisplay = extraStorage > 0 ? `${item.storage} (+${extraStorage}GB Extra)` : item.storage;
                 
@@ -1072,10 +1073,9 @@ async function handleVerifyPayment(req, res) {
                     instructions: "Your custom RDP is being provisioned. Credentials will be sent to your email within 1-6 hours."
                 };
 
-            // --- 6. HANDLE ESIM ---
             } else if (productType === "eSIM" || productType === "eSIM_Activation") {
-                productDetails.name = productId; 
-                productDetails.plan = planAmount;
+                productDetails.name = productId || "eSIM Service"; 
+                productDetails.plan = planAmount || "Standard";
                 targetNum = mobileNumber;
                 credentials = {
                     type: productType,
@@ -1083,19 +1083,20 @@ async function handleVerifyPayment(req, res) {
                 };
             }
 
-            // --- 8. CREATE ORDER ---
+            // --- 5. ASSEMBLE ORDER OBJECT ---
+            // We use explicit fallback to null for optional strings to satisfy Schema requirements
             const orderData = {
                 userId: userId,
                 userEmail: userEmail,
                 fullName: (productType === "eSIM_Activation" && firstName) 
                             ? `${firstName} ${lastName}`.trim() 
-                            : actualUser.fullName,
-                productType: productType,
-                planName: productDetails.plan,
-                nodeName: productDetails.name,
+                            : (actualUser.fullName || "User"),
+                productType: productType || "Unknown",
+                planName: productDetails.plan || "Generic Plan",
+                nodeName: productDetails.name || "Generic Node",
                 targetNumber: targetNum,
                 amount: amountPaid,
-                currency: currency, 
+                currency: currency || "USD", 
                 status: "successful",
                 paymentReference: paymentRef,
                 activationCode: credentials.activationCode || null,
@@ -1111,7 +1112,7 @@ async function handleVerifyPayment(req, res) {
                 }
             };
 
-            // Handle nested detail objects safely
+            // Safely attach sub-objects
             if (productType === "VPN") {
                 orderData.vpnCredentials = { username: credentials.username, password: credentials.password };
             }
@@ -1119,14 +1120,14 @@ async function handleVerifyPayment(req, res) {
                 orderData.rdpDetails = { os: credentials.os, specs: credentials.specs };
             }
 
-            // This is usually where the 500 happens if validation fails
+            // --- 6. DATABASE PERSISTENCE ---
             const newOrder = await Order.create(orderData);
 
-            // --- 9. DELIVERY EMAIL ---
+            // --- 7. DELIVERY EMAIL (Non-blocking) ---
             try {
                 await sendDeliveryEmail(userEmail, credentials, newOrder); 
             } catch (emailErr) {
-                console.error("Email Delivery Failed:", emailErr);
+                console.error("Email Delivery Failed (Order Saved):", emailErr.message);
             }
 
             return res.json({ 
@@ -1139,10 +1140,12 @@ async function handleVerifyPayment(req, res) {
         return res.status(400).json({ success: false, message: "Transaction verification failed." });
 
     } catch (err) {
-        // Detailed logging to identify exactly what failed
+        // This will now catch the exact line that failed
         console.error("CRITICAL: Payment Verification Error:", err.message);
-        console.error(err.stack);
-        return res.status(500).json({ success: false, message: "Internal server error." });
+        if (err.name === 'ValidationError') {
+            console.error("Mongoose Validation Error Details:", JSON.stringify(err.errors, null, 2));
+        }
+        return res.status(500).json({ success: false, message: `Internal server error: ${err.message}` });
     }
 }
 

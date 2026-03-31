@@ -302,11 +302,14 @@ app.all('/api/:action', async (req, res) => {
     case 'rdps': 
     if (req.method === 'GET') return handleGetRDPs(req, res); // You'll need to create this
     if (req.method === 'POST') return handleAddRDP(req, res); // You'll need to create this
-    if (req.method === 'PATCH') return handleUpdateRDP(req, res);
+    if (req.method === 'PATCH') return handleCompleteRDPOrder(req, res);
     if (req.method === 'DELETE') return handleDeleteRDP(req, res);
     break;
     case 'rdp-requests': // This matches the fetch URL in your HTML file
     if (req.method === 'GET') return handleGetRdpRequests(req, res);
+    break;
+     case 'rdp-requests-complete': // This matches the fetch URL in your HTML file
+    if (req.method === 'GET') return handleCompleteRDPOrder(req, res);
     break;
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
@@ -966,6 +969,7 @@ async function handleVerifyPayment(req, res) {
     const { transactionId } = req.body;
 
     try {
+        // 1. Verify with Flutterwave
         const response = await fetch(`https://api.flutterwave.com/v3/transactions/${transactionId}/verify`, {
             method: "GET",
             headers: { Authorization: `Bearer ${process.env.FLW_SECRET_KEY}` },
@@ -973,13 +977,27 @@ async function handleVerifyPayment(req, res) {
 
         const data = await response.json();
 
-        // Debugging: Log the verification data to see exactly what Flutterwave returns
+        // Debugging: Log the verification data
         console.log("Flutterwave Verification Response:", JSON.stringify(data, null, 2));
 
         if (data.status === "success" && data.data.status === "successful") {
-            // 1. Extract Meta safely
             const meta = data.data.meta || {};
-            
+            const paymentRef = data.data.tx_ref;
+
+            // --- CRITICAL: DUPLICATE CHECK (PREVENTS E11000 ERROR) ---
+            // If the user refreshes the page, this prevents creating the same order twice.
+            const existingOrder = await Order.findOne({ paymentReference: paymentRef });
+            if (existingOrder) {
+                console.log(`Order ${paymentRef} already exists. Returning existing data.`);
+                return res.json({ 
+                    success: true, 
+                    message: "Payment already verified", 
+                    order: existingOrder,
+                    // Note: In a real app, you might want to reconstruct 'credentials' 
+                    // based on the existing order if needed for the frontend receipt.
+                });
+            }
+
             const { 
                 productId, 
                 productType, 
@@ -995,27 +1013,23 @@ async function handleVerifyPayment(req, res) {
                 osChoice
             } = meta;
 
-            // 2. SANITIZATION: Ensure numeric values are actual numbers and NOT NaN
-            // This prevents Mongoose "Cast to Number failed" errors
+            // 2. SANITIZATION
             const extraCPU = parseInt(meta.extraCPU) || 0;
             const extraStorage = parseInt(meta.extraStorage) || 0;
             const cleanPlanIndex = parseInt(planIndex) || 0;
             
             // 3. User Validation
             if (!userId) {
-                console.error("Verification Blocked: No userId in metadata.");
                 return res.status(400).json({ success: false, message: "User ID missing in transaction metadata" });
             }
             
             const actualUser = await User.findById(userId);
             if (!actualUser) {
-                console.error(`Verification Blocked: User ${userId} not found in DB.`);
                 return res.status(404).json({ success: false, message: "User account not found" });
             }
 
             const userEmail = actualUser.email; 
             const amountPaid = data.data.amount;
-            const paymentRef = data.data.tx_ref;
             const currency = data.data.currency;
 
             let credentials = {};
@@ -1056,42 +1070,34 @@ async function handleVerifyPayment(req, res) {
                     instructions: item.instructions || "Check dashboard."
                 };
 
-       } else if (productType === "RDP") {
-    // 1. DATA LOOKUP: Define the plans exactly as they appear in your user_rdp.html
-    const rdpPlans = {
-        "tier1": { name: "USA Tier 1", ram: "4GB", cpu: "2 Cores", storage: "60GB SSD" },
-        "tier2": { name: "USA Tier 2", ram: "6GB", cpu: "3 Cores", storage: "100GB SSD" },
-        "tier3": { name: "USA Tier 3", ram: "8GB", cpu: "4 Cores", storage: "140GB SSD" },
-        "tier4": { name: "USA Tier 4", ram: "12GB", cpu: "6 Cores", storage: "180GB SSD" },
-        "tier5": { name: "USA Tier 5", ram: "18GB", cpu: "8 Cores", storage: "240GB SSD" },
-        "tier6": { name: "USA Tier 6", ram: "24GB", cpu: "8 Cores", storage: "280GB SSD" }
-    };
+            } else if (productType === "RDP") {
+                const rdpPlans = {
+                    "tier1": { name: "USA Tier 1", ram: "4GB", cpu: "2 Cores", storage: "60GB SSD" },
+                    "tier2": { name: "USA Tier 2", ram: "6GB", cpu: "3 Cores", storage: "100GB SSD" },
+                    "tier3": { name: "USA Tier 3", ram: "8GB", cpu: "4 Cores", storage: "140GB SSD" },
+                    "tier4": { name: "USA Tier 4", ram: "12GB", cpu: "6 Cores", storage: "180GB SSD" },
+                    "tier5": { name: "USA Tier 5", ram: "18GB", cpu: "8 Cores", storage: "240GB SSD" },
+                    "tier6": { name: "USA Tier 6", ram: "24GB", cpu: "8 Cores", storage: "280GB SSD" }
+                };
 
-    // 2. RETRIEVE THE SELECTED PLAN
-    // Note: We use 'productId' which contains the "tier1" string from your frontend
-    const item = rdpPlans[productId];
+                const item = rdpPlans[productId];
+                if (!item) {
+                    return res.status(404).json({ success: false, message: "RDP Plan definition not found." });
+                }
 
-    if (!item) {
-        console.error(`RDP Error: Frontend sent '${productId}', but it's not defined in the backend rdpPlans.`);
-        return res.status(404).json({ success: false, message: "RDP Plan definition not found." });
-    }
-
-    // 3. MAP THE SPECS (Including your frontend Add-ons)
-    productDetails.name = item.name;
-    
-    // extraCPU and extraStorage are pulled from the payment metadata sent by initiate-payment
-    const cpuDisplay = extraCPU > 0 ? `${item.cpu} (+${extraCPU} Extra)` : item.cpu;
-    const storageDisplay = extraStorage > 0 ? `${item.storage} (+${extraStorage}GB Extra)` : item.storage;
-    
-    productDetails.plan = `${item.ram} RAM | ${cpuDisplay} | ${osChoice || 'Windows Server'}`;
-    
-    credentials = {
-        type: "RDP",
-        os: osChoice || "Windows Server",
-        specs: `${item.ram} RAM, ${cpuDisplay}, ${storageDisplay}`,
-        instructions: "Your custom RDP is being provisioned. Credentials will be sent to your email within 1-6 hours."
-    };
-    
+                productDetails.name = item.name;
+                const cpuDisplay = extraCPU > 0 ? `${item.cpu} (+${extraCPU} Extra)` : item.cpu;
+                const storageDisplay = extraStorage > 0 ? `${item.storage} (+${extraStorage}GB Extra)` : item.storage;
+                
+                productDetails.plan = `${item.ram} RAM | ${cpuDisplay} | ${osChoice || 'Windows Server'}`;
+                
+                credentials = {
+                    type: "RDP",
+                    os: osChoice || "Windows Server",
+                    specs: `${item.ram} RAM, ${cpuDisplay}, ${storageDisplay}`,
+                    instructions: "Your custom RDP is being provisioned. Credentials will be sent to your email within 1-6 hours."
+                };
+                
             } else if (productType === "eSIM" || productType === "eSIM_Activation") {
                 productDetails.name = productId || "eSIM Service"; 
                 productDetails.plan = planAmount || "Standard";
@@ -1103,7 +1109,6 @@ async function handleVerifyPayment(req, res) {
             }
 
             // --- 5. ASSEMBLE ORDER OBJECT ---
-            // We use explicit fallback to null for optional strings to satisfy Schema requirements
             const orderData = {
                 userId: userId,
                 userEmail: userEmail,
@@ -1131,7 +1136,6 @@ async function handleVerifyPayment(req, res) {
                 }
             };
 
-            // Safely attach sub-objects
             if (productType === "VPN") {
                 orderData.vpnCredentials = { username: credentials.username, password: credentials.password };
             }
@@ -1159,11 +1163,7 @@ async function handleVerifyPayment(req, res) {
         return res.status(400).json({ success: false, message: "Transaction verification failed." });
 
     } catch (err) {
-        // This will now catch the exact line that failed
         console.error("CRITICAL: Payment Verification Error:", err.message);
-        if (err.name === 'ValidationError') {
-            console.error("Mongoose Validation Error Details:", JSON.stringify(err.errors, null, 2));
-        }
         return res.status(500).json({ success: false, message: `Internal server error: ${err.message}` });
     }
 }
@@ -1795,19 +1795,37 @@ async function handleAddRDP(req, res) {
     }
 }
 
-// PATCH: Update an existing RDP plan
-async function handleUpdateRDP(req, res) {
-    const { id, ...updateData } = req.body;
+// Function to fulfill an RDP order
+async function handleCompleteRDPOrder(req, res) {
+    const { tid, status, confirmationNumber } = req.body;
+
     try {
-        const updated = await RDP.findByIdAndUpdate(id, { 
-            ...updateData, 
-            adminUpdatedBy: req.user?.email 
-        }, { new: true });
-        
-        if (!updated) return res.status(404).json({ success: false, message: "RDP not found" });
-        res.json({ success: true, message: "RDP updated", rdp: updated });
+        // We find the order by the paymentReference (tid) sent from the frontend
+        const order = await Order.findOneAndUpdate(
+            { paymentReference: tid },
+            { 
+                status: status || 'completed',
+                confirmationNumber: confirmationNumber, // This stores the IP/Login details
+                deliveredAt: new Date()
+            },
+            { new: true }
+        );
+
+        if (!order) {
+            return res.status(404).json({ success: false, message: "Order not found" });
+        }
+
+        // OPTIONAL: Trigger an email to the user here
+        // await sendDeliveryEmail(order.userEmail, { type: 'RDP', details: confirmationNumber }, order);
+
+        res.json({ 
+            success: true, 
+            message: "RDP marked as delivered", 
+            order 
+        });
     } catch (error) {
-        res.status(500).json({ success: false, message: "Update failed" });
+        console.error("RDP Completion Error:", error);
+        res.status(500).json({ success: false, message: "Server error during RDP completion" });
     }
 }
 

@@ -118,32 +118,33 @@
                 </div>
             </div>
 
-            <section class="space-y-3">
-                <div class="flex items-center justify-between px-1">
-                    <h4 class="text-[10px] md:text-xs font-bold text-brand-darkText uppercase tracking-tight">Proxies (Limit 4)</h4>
-                    <a href="user_proxy.html" class="text-[9px] font-bold text-brand-blue hover:underline">View All &rarr;</a>
-                </div>
-                <div id="featuredProxies" class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    </div>
-            </section>
 
             <section class="space-y-3">
-                <div class="flex items-center justify-between px-1">
-                    <h4 class="text-[10px] md:text-xs font-bold text-brand-darkText uppercase tracking-tight">VPN Nodes (Limit 4)</h4>
-                    <a href="user_vpn.html" class="text-[9px] font-bold text-brand-blue hover:underline">View All &rarr;</a>
-                </div>
-                <div id="featuredVPNs" class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    </div>
-            </section>
+    <div class="flex items-center justify-between px-1">
+        <h4 class="text-[10px] md:text-xs font-bold text-brand-darkText uppercase tracking-tight">VPN Nodes (Limit 4)</h4>
+        <a href="user_vpn.html" class="text-[9px] font-bold text-brand-blue hover:underline">View All &rarr;</a>
+    </div>
+    <div id="featuredVPNs" class="flex overflow-x-auto md:grid md:grid-cols-4 gap-3 no-scrollbar snap-x pb-2">
+    </div>
+</section>
 
-            <section class="space-y-3">
-                <div class="flex items-center justify-between px-1">
-                    <h4 class="text-[10px] md:text-xs font-bold text-brand-darkText uppercase tracking-tight">eSIM Refills (Limit 4)</h4>
-                    <a href="esim_refill.html" class="text-[9px] font-bold text-brand-blue hover:underline">View All &rarr;</a>
-                </div>
-                <div id="featuredESIMs" class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    </div>
-            </section>
+          <section class="space-y-3">
+    <div class="flex items-center justify-between px-1">
+        <h4 class="text-[10px] md:text-xs font-bold text-brand-darkText uppercase tracking-tight">Proxies (Limit 4)</h4>
+        <a href="user_proxy.html" class="text-[9px] font-bold text-brand-blue hover:underline">View All &rarr;</a>
+    </div>
+    <div id="featuredProxies" class="flex overflow-x-auto md:grid md:grid-cols-4 gap-3 no-scrollbar snap-x pb-2">
+        </div>
+</section>
+
+<section class="space-y-3">
+    <div class="flex items-center justify-between px-1">
+        <h4 class="text-[10px] md:text-xs font-bold text-brand-darkText uppercase tracking-tight">eSIM Refills (Limit 4)</h4>
+        <a href="esim_refill.html" class="text-[9px] font-bold text-brand-blue hover:underline">View All &rarr;</a>
+    </div>
+    <div id="featuredESIMs" class="flex overflow-x-auto md:grid md:grid-cols-4 gap-3 no-scrollbar snap-x pb-2">
+    </div>
+</section>
 
             <div class="bg-white rounded-2xl border border-brand-border p-5 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
                 <div class="text-center md:text-left">
@@ -210,61 +211,70 @@
                 const categories = [...new Set(data.proxies.map(p => p.category))].slice(0, 4);
                 container.innerHTML = categories.map(cat => {
                     const count = data.proxies.filter(p => p.category === cat).length;
-                    return `
-                        <div onclick="window.location.href='user_proxy.html'" class="bg-white border border-brand-border p-3 rounded-xl flex flex-col items-center text-center shadow-sm active-scale cursor-pointer hover:border-brand-blue transition-all group">
-                            <div class="w-7 h-7 bg-brand-background rounded-lg flex items-center justify-center mb-2 p-1.5">
-                                <img src="${PROXY_ICON}" class="w-full h-full object-contain">
-                            </div>
-                            <h3 class="text-[9px] font-extrabold text-brand-darkText uppercase truncate w-full">${cat}</h3>
-                            <p class="text-[8px] text-brand-lightText font-medium mt-0.5">${count} Packs</p>
-                        </div>
-                    `;
+return `
+    <div onclick="window.location.href='user_proxy.html'" class="min-w-[130px] md:min-w-0 bg-white border border-brand-border p-3 rounded-xl flex flex-col items-center text-center shadow-sm active-scale cursor-pointer hover:border-brand-blue transition-all group snap-center">
+        <div class="w-6 h-6 md:w-7 md:h-7 bg-brand-background rounded-lg flex items-center justify-center mb-2 p-1">
+            <img src="${PROXY_ICON}" class="w-full h-full object-contain">
+        </div>
+        <h3 class="text-[8px] md:text-[9px] font-extrabold text-brand-darkText uppercase truncate w-full">${cat}</h3>
+        <p class="text-[7px] md:text-[8px] text-brand-lightText font-medium mt-0.5">${count} Packs</p>
+    </div>
+`;
                 }).join('');
             }
         } catch (e) { container.innerHTML = '<p class="text-[10px] col-span-full text-center">Data unavailable.</p>'; }
     }
 
-    async function fetchFeaturedVPNs() {
-        const container = document.getElementById('featuredVPNs');
-        try {
-            const res = await fetch(`${API_BASE_URL}/products`);
-            const data = await res.json();
-            if (data.success && data.products) {
-                // Limit to 4 items
-                const featured = data.products.slice(0, 4);
-                container.innerHTML = featured.map(vpn => `
-                    <div class="bg-white border border-brand-border p-3 rounded-xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer active-scale" onclick="window.location.href='user_vpn.html'">
-                        <div class="w-7 h-7 bg-gray-50 rounded-lg flex items-center justify-center p-1 mb-2">
-                            <img src="${vpn.image || 'https://via.placeholder.com/50'}" class="max-h-full max-w-full object-contain">
-                        </div>
-                        <p class="text-[9px] font-bold text-brand-darkText truncate w-full">${vpn.name}</p>
-                        <p class="text-[9px] font-bold text-brand-blue mt-0.5">$${vpn.plans?.[0]?.price || '0.00'}</p>
+  async function fetchFeaturedVPNs() {
+    const container = document.getElementById('featuredVPNs');
+    try {
+        // Ensure the container has the correct layout classes for mobile scrolling
+        container.className = "flex overflow-x-auto md:grid md:grid-cols-4 gap-3 no-scrollbar snap-x pb-2";
+
+        const res = await fetch(`${API_BASE_URL}/products`);
+        const data = await res.json();
+        if (data.success && data.products) {
+            // Limit to 4 items
+            const featured = data.products.slice(0, 4);
+            container.innerHTML = featured.map(vpn => `
+                <div class="min-w-[130px] md:min-w-0 bg-white border border-brand-border p-3 rounded-xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer active-scale snap-center" onclick="window.location.href='user_vpn.html'">
+                    <div class="w-6 h-6 md:w-7 md:h-7 bg-gray-50 rounded-lg flex items-center justify-center p-1 mb-2">
+                        <img src="${vpn.image || 'https://via.placeholder.com/50'}" class="max-h-full max-w-full object-contain">
                     </div>
-                `).join('');
-            }
-        } catch (e) { container.innerHTML = '<p class="text-[10px] col-span-full text-center">Data unavailable.</p>'; }
-    }
-
-    function loadFeaturedCarriers() {
-        const container = document.getElementById('featuredESIMs');
-        // Static carriers limited to 4
-        const featured = [
-            { name: 'T-Mobile USA', image: 'https://i.imgur.com/pyDMW1t.png' },
-            { name: 'AT&T', image: 'https://i.imgur.com/WDCo1gM.png' },
-            { name: 'Verizon', image: 'https://i.imgur.com/ylEL7gO.jpeg' },
-            { name: 'Vodafone UK', image: 'https://i.imgur.com/r7a0fpw.png' }
-        ];
-
-        container.innerHTML = featured.map(carrier => `
-            <div onclick="window.location.href='esim_refill.html'" class="bg-white border border-brand-border p-3 rounded-xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer active-scale group">
-                <div class="h-8 w-full flex items-center justify-center mb-2">
-                    <img src="${carrier.image}" alt="${carrier.name}" class="max-h-full max-w-full object-contain">
+                    <p class="text-[8px] md:text-[9px] font-bold text-brand-darkText truncate w-full">${vpn.name}</p>
+                    <p class="text-[8px] md:text-[9px] font-bold text-brand-blue mt-0.5">$${vpn.plans?.[0]?.price || '0.00'}</p>
                 </div>
-                <p class="text-[9px] font-bold text-brand-darkText uppercase truncate w-full mb-1">${carrier.name}</p>
-                <span class="text-[8px] font-bold text-brand-blue bg-blue-50 px-2 py-0.5 rounded uppercase">Refill</span>
-            </div>
-        `).join('');
+            `).join('');
+        }
+    } catch (e) { 
+        container.innerHTML = '<p class="text-[10px] col-span-full text-center">Data unavailable.</p>'; 
     }
+}
+
+  function loadFeaturedCarriers() {
+    const container = document.getElementById('featuredESIMs');
+    
+    // Ensure the container allows horizontal scrolling on mobile and grid on desktop
+    container.className = "flex overflow-x-auto md:grid md:grid-cols-4 gap-3 no-scrollbar snap-x pb-2";
+
+    // Static carriers limited to 4
+    const featured = [
+        { name: 'T-Mobile USA', image: 'https://i.imgur.com/pyDMW1t.png' },
+        { name: 'AT&T', image: 'https://i.imgur.com/WDCo1gM.png' },
+        { name: 'Verizon', image: 'https://i.imgur.com/ylEL7gO.jpeg' },
+        { name: 'Vodafone UK', image: 'https://i.imgur.com/r7a0fpw.png' }
+    ];
+
+    container.innerHTML = featured.map(carrier => `
+        <div onclick="window.location.href='esim_refill.html'" class="min-w-[130px] md:min-w-0 bg-white border border-brand-border p-3 rounded-xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer active-scale group snap-center">
+            <div class="h-6 md:h-8 w-full flex items-center justify-center mb-2">
+                <img src="${carrier.image}" alt="${carrier.name}" class="max-h-full max-w-full object-contain">
+            </div>
+            <p class="text-[8px] md:text-[9px] font-bold text-brand-darkText uppercase truncate w-full mb-1">${carrier.name}</p>
+            <span class="text-[7px] md:text-[8px] font-bold text-brand-blue bg-blue-50 px-2 py-0.5 rounded uppercase">Refill</span>
+        </div>
+    `).join('');
+}
 
     function logout() {
         localStorage.removeItem('userToken');

@@ -817,7 +817,6 @@ async function handlePurchaseVPN(req, res) {
         return res.status(401).json({ success: false, message: "Unauthorized or Session Expired" });
     }
 }
-
 async function handleInitiatePayment(req, res) {
     const { vpnId, proxyId, rdpId, carrierName, mobileNumber, planAmount, planIndex, metadata } = req.body;
     const authHeader = req.headers['authorization'];
@@ -833,56 +832,63 @@ async function handleInitiatePayment(req, res) {
         let item;
         let itemType;
         let title;
-        let amountInUSD;
+        let amountInUSD = 0;
+        let finalAmountNGN = 0;
         let redirectUrl = "https://smsglobe.vercel.app/smsuser/user_dashboard.html";
 
-        // 1. Logic for VPN
+        // 1. Logic for VPN (USD Based)
         if (vpnId) {
             item = await VPN.findById(vpnId);
             if (!item || !item.plans[planIndex]) return res.status(404).json({ success: false, message: "VPN Plan not found" });
             itemType = "VPN";
             title = "SMSGlobe VPN";
             amountInUSD = item.plans[planIndex].price;
+            finalAmountNGN = Math.round(amountInUSD * USD_TO_NGN_RATE);
             redirectUrl = "https://smsglobe.vercel.app/smsuser/user_vpn.html";
         } 
-        // 2. Logic for Proxy
+        // 2. Logic for Proxy (USD Based)
         else if (proxyId) {
             item = await Proxy.findById(proxyId);
             if (!item || !item.plans[planIndex]) return res.status(404).json({ success: false, message: "Proxy Plan not found" });
             itemType = "Proxy";
             title = "SMSGlobe Proxy";
             amountInUSD = item.plans[planIndex].price;
+            finalAmountNGN = Math.round(amountInUSD * USD_TO_NGN_RATE);
             redirectUrl = "https://smsglobe.vercel.app/smsuser/user_proxy.html";
         } 
-        // 3. Logic for eSIM ACTIVATION (Checks for metadata)
-        else if (carrierName && metadata) {
-            itemType = "eSIM_Activation";
-            title = `eSIM Activation: ${carrierName}`;
-            amountInUSD = parseFloat(planAmount.replace(/[$,]/g, ''));
-            redirectUrl = "https://smsglobe.vercel.app/smsuser/esim_activation.html";
-        }
-        // 4. Logic for eSIM REFILL (No metadata)
+        // 3. Logic for eSIM (USD Based)
         else if (carrierName) {
-            itemType = "eSIM";
-            title = `eSIM Refill: ${carrierName}`;
+            itemType = metadata ? "eSIM_Activation" : "eSIM";
+            title = metadata ? `eSIM Activation: ${carrierName}` : `eSIM Refill: ${carrierName}`;
             amountInUSD = parseFloat(planAmount.replace(/[$,]/g, ''));
-            redirectUrl = "https://smsglobe.vercel.app/smsuser/esim_refill.html";
+            finalAmountNGN = Math.round(amountInUSD * USD_TO_NGN_RATE);
+            redirectUrl = metadata 
+                ? "https://smsglobe.vercel.app/smsuser/esim_activation.html" 
+                : "https://smsglobe.vercel.app/smsuser/esim_refill.html";
         } 
+        // 4. Logic for RDP (NAIRA Based)
         else if (rdpId) {
-    item = await RDP.findById(rdpId);
-    if (!item) return res.status(404).json({ success: false, message: "RDP not found" });
-    
-    itemType = "RDP";
-    title = `SMSGlobe RDP: ${item.name}`;
-    amountInUSD = item.price; // RDP uses a flat price in your schema
-    redirectUrl = "https://smsglobe.vercel.app/smsuser/user_rdp.html";
-}
-        // 5. Final Fallback if nothing matches
+            item = await RDP.findById(rdpId);
+            if (!item) return res.status(404).json({ success: false, message: "RDP not found" });
+            
+            itemType = "RDP";
+            title = `SMSGlobe RDP: ${item.name}`;
+            
+            // Base price from DB (Assuming 45000, 55000 etc.)
+            const basePriceNGN = item.price; 
+            
+            // Addon logic from metadata (5000 per CPU, 200 per Storage)
+            const extraCPU = metadata?.extraCPU || 0;
+            const extraStorage = metadata?.extraStorage || 0;
+            const addonTotal = (extraCPU * 5000) + (extraStorage * 200);
+
+            finalAmountNGN = basePriceNGN + addonTotal;
+            redirectUrl = "https://smsglobe.vercel.app/smsuser/user_rdp.html";
+        } 
         else {
             return res.status(400).json({ success: false, message: "No product specified" });
         }
 
-        const amountInNGN = Math.round(amountInUSD * USD_TO_NGN_RATE);
         const tx_ref = `SMS-${itemType}-${Date.now()}-${decoded.id.slice(-4)}`;
         const activationEmail = metadata?.email || null;
 
@@ -894,7 +900,7 @@ async function handleInitiatePayment(req, res) {
             },
             body: JSON.stringify({
                 tx_ref: tx_ref,
-                amount: amountInNGN,
+                amount: finalAmountNGN,
                 currency: "NGN",
                 redirect_url: redirectUrl,
                 customer: {
@@ -905,22 +911,20 @@ async function handleInitiatePayment(req, res) {
                     userId: decoded.id,
                     email: activationEmail,
                     productType: itemType,
-                    productId: vpnId || proxyId || carrierName, 
+                    productId: rdpId || vpnId || proxyId || carrierName, 
                     planIndex: planIndex,
-                    mobileNumber: mobileNumber || null,
-                    planAmount: planAmount || null,
-                    firstName: metadata?.firstName || null,
-                    lastName: metadata?.lastName || null,
-                    address: metadata?.address || null,
-                    zip: metadata?.zip || null
+                    extraCPU: metadata?.extraCPU || 0,
+                    extraStorage: metadata?.extraStorage || 0,
+                    osChoice: metadata?.osChoice || null,
+                    mobileNumber: mobileNumber || null
                 },
                 customizations: {
                     title: title,
-                    description: itemType === "eSIM_Activation" 
-                        ? `New eSIM Activation for ${metadata?.firstName} ${metadata?.lastName}` 
-                        : itemType === "eSIM"
-                        ? `Refill for ${mobileNumber} (${planAmount})` 
-                        : `${item?.name || 'Service'} ($${amountInUSD} USD)`,
+                    description: itemType === "RDP" 
+                        ? `${item.name} (${metadata?.osChoice || 'Windows'})` 
+                        : itemType.includes("eSIM")
+                        ? `Refill/Activation for ${mobileNumber || carrierName}`
+                        : `${item?.name || title} ($${amountInUSD} USD)`,
                     logo: "https://imgur.com/8YeZgfx.png"
                 },
             }),
@@ -930,14 +934,20 @@ async function handleInitiatePayment(req, res) {
         if (data.status === "success") {
             return res.json({ success: true, link: data.data.link });
         } else {
+            console.error("Flutterwave API Error:", data);
             return res.status(500).json({ success: false, message: "Flutterwave Error" });
         }
     } catch (err) {
         console.error("Initiate Payment Error:", err);
-        return res.status(401).json({ success: false, message: "Unauthorized or Session Expired" });
+        // If JWT fails, it returns 401. If other logic fails, it still returns 401.
+        // You might want to use res.status(500) if the error isn't 'JsonWebTokenError'
+        const statusCode = err.name === 'JsonWebTokenError' ? 401 : 500;
+        return res.status(statusCode).json({ 
+            success: false, 
+            message: err.name === 'JsonWebTokenError' ? "Session Expired" : "Internal Server Error" 
+        });
     }
 }
-
 async function handleVerifyPayment(req, res) {
     const { transactionId } = req.body;
 
@@ -950,7 +960,7 @@ async function handleVerifyPayment(req, res) {
         const data = await response.json();
 
         if (data.status === "success" && data.data.status === "successful") {
-            // 1. Extract ALL Meta data
+            // 1. Extract ALL Meta data (Including our new RDP fields)
             const { 
                 productId, 
                 productType, 
@@ -962,7 +972,10 @@ async function handleVerifyPayment(req, res) {
                 firstName,
                 lastName,
                 address,
-                zip 
+                zip,
+                extraCPU,       // Added
+                extraStorage,   // Added
+                osChoice        // Added
             } = data.data.meta;
             
             // 2. Fetch the User
@@ -1013,22 +1026,24 @@ async function handleVerifyPayment(req, res) {
                     instructions: item.instructions || "Check dashboard."
                 };
 
-            // --- 5. HANDLE RDP PURCHASE ---
+            // --- 5. HANDLE RDP PURCHASE (Updated) ---
             } else if (productType === "RDP") {
-                const item = await RDP.findOneAndUpdate(
-                    { _id: productId, stock: { $gt: 0 } },
-                    { $inc: { stock: -1 } },
-                    { new: true }
-                );
-                if (!item) return res.status(400).json({ success: false, message: "RDP out of stock" });
+                const item = await RDP.findById(productId); // Don't decr stock if it's "On Demand"
+                if (!item) return res.status(404).json({ success: false, message: "RDP Plan not found" });
 
                 productDetails.name = item.name;
-                productDetails.plan = `${item.ram} RAM / ${item.cpu}`;
+                
+                // Construct a detailed plan string including the addons
+                const cpuDisplay = extraCPU > 0 ? `${item.cpu} (+${extraCPU} Extra)` : item.cpu;
+                const storageDisplay = extraStorage > 0 ? `${item.storage} (+${extraStorage}GB Extra)` : item.storage;
+                
+                productDetails.plan = `${item.ram} RAM | ${cpuDisplay} | ${osChoice || 'Windows'}`;
+                
                 credentials = {
                     type: "RDP",
-                    os: item.os,
-                    specs: `${item.ram} RAM, ${item.cpu}, ${item.storage}`,
-                    instructions: item.instructions || "Your RDP details will be sent shortly."
+                    os: osChoice || item.os,
+                    specs: `${item.ram} RAM, ${cpuDisplay}, ${storageDisplay}`,
+                    instructions: "Your custom RDP is being provisioned. Credentials will be sent to your email within 1-6 hours."
                 };
 
             // --- 6. HANDLE ESIM REFILL ---
@@ -1036,7 +1051,6 @@ async function handleVerifyPayment(req, res) {
                 productDetails.name = productId; 
                 productDetails.plan = planAmount;
                 targetNum = mobileNumber;
-
                 credentials = {
                     type: "eSIM",
                     instructions: "Your refill request has been received. Processing usually takes 5-30 minutes."
@@ -1047,7 +1061,6 @@ async function handleVerifyPayment(req, res) {
                 productDetails.name = productId; 
                 productDetails.plan = planAmount;
                 targetNum = mobileNumber;
-
                 credentials = {
                     type: "eSIM_Activation",
                     instructions: "Activation received! We are generating your QR code. Check your email shortly."
@@ -1055,56 +1068,55 @@ async function handleVerifyPayment(req, res) {
             }
 
             // --- 8. CREATE ORDER ---
-            try {
-                await Order.create({
-                    userId: userId,
-                    userEmail: userEmail,
-                    fullName: (productType === "eSIM_Activation" && firstName) 
-                                ? `${firstName} ${lastName}`.trim() 
-                                : actualUser.fullName,
-                    productType: productType,
-                    planName: productDetails.plan,
-                    nodeName: productDetails.name,
-                    targetNumber: targetNum,
-                    amount: amountPaid,
-                    currency: currency, 
-                    status: "successful",
-                    paymentReference: paymentRef,
-                    activationCode: credentials.activationCode || null,
-                    metadata: {
-                        address: address || null,
-                        zip: zip || null,
-                        firstName: firstName || null,
-                        lastName: lastName || null,
-                        email: activationEmail || null
-                    },
-                    // Product Specific Data
-                    vpnCredentials: productType === "VPN" ? {
-                        username: credentials.username,
-                        password: credentials.password
-                    } : undefined,
-                    rdpDetails: productType === "RDP" ? {
-                        os: credentials.os,
-                        specs: credentials.specs
-                    } : undefined
-                });
-            } catch (dbErr) {
-                console.error("Order Record Failed:", dbErr);
+            const orderData = {
+                userId: userId,
+                userEmail: userEmail,
+                fullName: (productType === "eSIM_Activation" && firstName) 
+                            ? `${firstName} ${lastName}`.trim() 
+                            : actualUser.fullName,
+                productType: productType,
+                planName: productDetails.plan,
+                nodeName: productDetails.name,
+                targetNumber: targetNum,
+                amount: amountPaid,
+                currency: currency, 
+                status: "successful",
+                paymentReference: paymentRef,
+                activationCode: credentials.activationCode || null,
+                metadata: {
+                    address: address || null,
+                    zip: zip || null,
+                    firstName: firstName || null,
+                    lastName: lastName || null,
+                    email: activationEmail || null,
+                    extraCPU: extraCPU || 0,        // Save to DB
+                    extraStorage: extraStorage || 0, // Save to DB
+                    osChoice: osChoice || null       // Save to DB
+                }
+            };
+
+            // Attach product specific detail objects
+            if (productType === "VPN") {
+                orderData.vpnCredentials = { username: credentials.username, password: credentials.password };
             }
+            if (productType === "RDP") {
+                orderData.rdpDetails = { os: credentials.os, specs: credentials.specs };
+            }
+
+            const newOrder = await Order.create(orderData);
 
             // --- 9. DELIVERY EMAIL ---
             try {
-                await sendDeliveryEmail(userEmail, credentials); 
+                // Pass the whole order to the email function for better formatting
+                await sendDeliveryEmail(userEmail, credentials, newOrder); 
             } catch (emailErr) {
                 console.error("Email Delivery Failed:", emailErr);
             }
 
-            const savedOrder = await Order.findOne({ paymentReference: paymentRef });
-            
             return res.json({ 
                 success: true, 
                 credentials: credentials,
-                order: savedOrder
+                order: newOrder
             });
         }
 

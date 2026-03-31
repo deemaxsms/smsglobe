@@ -820,8 +820,9 @@ async function handlePurchaseVPN(req, res) {
         return res.status(401).json({ success: false, message: "Unauthorized or Session Expired" });
     }
 }
+
 async function handleInitiatePayment(req, res) {
-    const { vpnId, proxyId, rdpId, carrierName, mobileNumber, planAmount, planIndex, metadata } = req.body;
+    const { vpnId, proxyId, rdpId, carrierName, mobileNumber, planAmount, planIndex, metadata, planName } = req.body;
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
@@ -839,7 +840,6 @@ async function handleInitiatePayment(req, res) {
         let finalAmountNGN = 0;
         let redirectUrl = "https://smsglobe.vercel.app/smsuser/user_dashboard.html";
 
-        // 1. Logic for VPN (USD Based)
         if (vpnId) {
             item = await VPN.findById(vpnId);
             if (!item || !item.plans[planIndex]) return res.status(404).json({ success: false, message: "VPN Plan not found" });
@@ -849,7 +849,6 @@ async function handleInitiatePayment(req, res) {
             finalAmountNGN = Math.round(amountInUSD * USD_TO_NGN_RATE);
             redirectUrl = "https://smsglobe.vercel.app/smsuser/user_vpn.html";
         } 
-        // 2. Logic for Proxy (USD Based)
         else if (proxyId) {
             item = await Proxy.findById(proxyId);
             if (!item || !item.plans[planIndex]) return res.status(404).json({ success: false, message: "Proxy Plan not found" });
@@ -859,7 +858,6 @@ async function handleInitiatePayment(req, res) {
             finalAmountNGN = Math.round(amountInUSD * USD_TO_NGN_RATE);
             redirectUrl = "https://smsglobe.vercel.app/smsuser/user_proxy.html";
         } 
-        // 3. Logic for eSIM (USD Based)
         else if (carrierName) {
             itemType = metadata ? "eSIM_Activation" : "eSIM";
             title = metadata ? `eSIM Activation: ${carrierName}` : `eSIM Refill: ${carrierName}`;
@@ -877,7 +875,6 @@ async function handleInitiatePayment(req, res) {
             const extraStorage = metadata?.extraStorage || 0;
             const addonTotal = (extraCPU * 5000) + (extraStorage * 200);
 
-            // Handle Frontend Tier IDs (tier1, tier2, etc.)
             if (typeof rdpId === 'string' && rdpId.startsWith('tier')) {
                 const tierPrices = {
                     tier1: 45000, tier2: 55000, tier3: 65000,
@@ -885,7 +882,7 @@ async function handleInitiatePayment(req, res) {
                 };
 
                 const basePriceNGN = tierPrices[rdpId] || 45000;
-                title = `SMSGlobe RDP: ${req.body.planName || rdpId.toUpperCase()}`;
+                title = `SMSGlobe RDP: ${planName || rdpId.toUpperCase()}`;
                 finalAmountNGN = basePriceNGN + addonTotal;
             } 
             else {
@@ -896,7 +893,6 @@ async function handleInitiatePayment(req, res) {
                     title = `SMSGlobe RDP: ${item.name}`;
                     finalAmountNGN = item.price + addonTotal;
                 } catch (err) {
-                    // If findById fails because of an invalid ID format
                     return res.status(400).json({ success: false, message: "Invalid RDP ID provided" });
                 }
             }
@@ -937,7 +933,7 @@ async function handleInitiatePayment(req, res) {
                 customizations: {
                     title: title,
                     description: itemType === "RDP" 
-                        ? `${item.name} (${metadata?.osChoice || 'Windows'})` 
+                        ? `${planName || title} (${metadata?.osChoice || 'Windows'})` 
                         : itemType.includes("eSIM")
                         ? `Refill/Activation for ${mobileNumber || carrierName}`
                         : `${item?.name || title} ($${amountInUSD} USD)`,
@@ -955,8 +951,6 @@ async function handleInitiatePayment(req, res) {
         }
     } catch (err) {
         console.error("Initiate Payment Error:", err);
-        // If JWT fails, it returns 401. If other logic fails, it still returns 401.
-        // You might want to use res.status(500) if the error isn't 'JsonWebTokenError'
         const statusCode = err.name === 'JsonWebTokenError' ? 401 : 500;
         return res.status(statusCode).json({ 
             success: false, 

@@ -995,12 +995,16 @@ async function handleVerifyPayment(req, res) {
                 osChoice
             } = meta;
 
-            // Ensure numeric values are actually numbers to prevent DB validation errors
-            const extraCPU = Number(meta.extraCPU || 0);
-            const extraStorage = Number(meta.extraStorage || 0);
+            // CRITICAL FIX: Ensure numeric values are actual numbers and NOT NaN
+            // Using (val || 0) inside Number() ensures we get 0 instead of NaN if the field is missing
+            const extraCPU = Number(meta.extraCPU || 0) || 0;
+            const extraStorage = Number(meta.extraStorage || 0) || 0;
             
             // 2. Fetch the User
-            if (!userId) return res.status(400).json({ success: false, message: "User ID missing in transaction metadata" });
+            if (!userId) {
+                console.error("Payment Error: No userId found in metadata.");
+                return res.status(400).json({ success: false, message: "User ID missing in transaction metadata" });
+            }
             
             const actualUser = await User.findById(userId);
             if (!actualUser) return res.status(404).json({ success: false, message: "User account not found" });
@@ -1049,14 +1053,13 @@ async function handleVerifyPayment(req, res) {
                     instructions: item.instructions || "Check dashboard."
                 };
 
-            // --- 5. HANDLE RDP PURCHASE (Updated) ---
+            // --- 5. HANDLE RDP PURCHASE ---
             } else if (productType === "RDP") {
                 const item = await RDP.findById(productId); 
                 if (!item) return res.status(404).json({ success: false, message: "RDP Plan not found" });
 
                 productDetails.name = item.name;
                 
-                // Construct a detailed plan string including the addons
                 const cpuDisplay = extraCPU > 0 ? `${item.cpu} (+${extraCPU} Extra)` : item.cpu;
                 const storageDisplay = extraStorage > 0 ? `${item.storage} (+${extraStorage}GB Extra)` : item.storage;
                 
@@ -1069,24 +1072,14 @@ async function handleVerifyPayment(req, res) {
                     instructions: "Your custom RDP is being provisioned. Credentials will be sent to your email within 1-6 hours."
                 };
 
-            // --- 6. HANDLE ESIM REFILL ---
-            } else if (productType === "eSIM") {
+            // --- 6. HANDLE ESIM ---
+            } else if (productType === "eSIM" || productType === "eSIM_Activation") {
                 productDetails.name = productId; 
                 productDetails.plan = planAmount;
                 targetNum = mobileNumber;
                 credentials = {
-                    type: "eSIM",
-                    instructions: "Your refill request has been received. Processing usually takes 5-30 minutes."
-                };
-
-            // --- 7. HANDLE ESIM ACTIVATION ---
-            } else if (productType === "eSIM_Activation") {
-                productDetails.name = productId; 
-                productDetails.plan = planAmount;
-                targetNum = mobileNumber;
-                credentials = {
-                    type: "eSIM_Activation",
-                    instructions: "Activation received! We are generating your QR code. Check your email shortly."
+                    type: productType,
+                    instructions: "Request received. Processing usually takes 5-30 minutes."
                 };
             }
 
@@ -1118,6 +1111,7 @@ async function handleVerifyPayment(req, res) {
                 }
             };
 
+            // Handle nested detail objects safely
             if (productType === "VPN") {
                 orderData.vpnCredentials = { username: credentials.username, password: credentials.password };
             }
@@ -1125,6 +1119,7 @@ async function handleVerifyPayment(req, res) {
                 orderData.rdpDetails = { os: credentials.os, specs: credentials.specs };
             }
 
+            // This is usually where the 500 happens if validation fails
             const newOrder = await Order.create(orderData);
 
             // --- 9. DELIVERY EMAIL ---
@@ -1144,7 +1139,9 @@ async function handleVerifyPayment(req, res) {
         return res.status(400).json({ success: false, message: "Transaction verification failed." });
 
     } catch (err) {
-        console.error("Payment Verification Error:", err);
+        // Detailed logging to identify exactly what failed
+        console.error("CRITICAL: Payment Verification Error:", err.message);
+        console.error(err.stack);
         return res.status(500).json({ success: false, message: "Internal server error." });
     }
 }

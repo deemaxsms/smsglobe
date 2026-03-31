@@ -164,13 +164,16 @@ const orderSchema = new mongoose.Schema({
         enum: ['pending', 'successful', 'failed', 'completed'], 
         default: 'pending' 
     }, 
-    activationDetails: {
+   metadata: {
         address: String,
         zip: String,
         firstName: String,
         lastName: String,
-        email: String
-    },   
+        email: String,
+        extraCPU: { type: Number, default: 0 },
+        extraStorage: { type: Number, default: 0 },
+        osChoice: String
+    },
     paymentReference: { type: String, unique: true },
     activationCode: String, 
     vpnCredentials: {
@@ -866,24 +869,37 @@ async function handleInitiatePayment(req, res) {
                 ? "https://smsglobe.vercel.app/smsuser/esim_activation.html" 
                 : "https://smsglobe.vercel.app/smsuser/esim_refill.html";
         } 
-        // 4. Logic for RDP (NAIRA Based)
         else if (rdpId) {
-            item = await RDP.findById(rdpId);
-            if (!item) return res.status(404).json({ success: false, message: "RDP not found" });
-            
             itemType = "RDP";
-            title = `SMSGlobe RDP: ${item.name}`;
-            
-            // Base price from DB (Assuming 45000, 55000 etc.)
-            const basePriceNGN = item.price; 
-            
-            // Addon logic from metadata (5000 per CPU, 200 per Storage)
+            redirectUrl = "https://smsglobe.vercel.app/smsuser/user_rdp.html";
+
             const extraCPU = metadata?.extraCPU || 0;
             const extraStorage = metadata?.extraStorage || 0;
             const addonTotal = (extraCPU * 5000) + (extraStorage * 200);
 
-            finalAmountNGN = basePriceNGN + addonTotal;
-            redirectUrl = "https://smsglobe.vercel.app/smsuser/user_rdp.html";
+            // Handle Frontend Tier IDs (tier1, tier2, etc.)
+            if (typeof rdpId === 'string' && rdpId.startsWith('tier')) {
+                const tierPrices = {
+                    tier1: 45000, tier2: 55000, tier3: 65000,
+                    tier4: 80000, tier5: 90000, tier6: 130000
+                };
+
+                const basePriceNGN = tierPrices[rdpId] || 45000;
+                title = `SMSGlobe RDP: ${req.body.planName || rdpId.toUpperCase()}`;
+                finalAmountNGN = basePriceNGN + addonTotal;
+            } 
+            else {
+                try {
+                    item = await RDP.findById(rdpId);
+                    if (!item) return res.status(404).json({ success: false, message: "RDP Plan not found" });
+                    
+                    title = `SMSGlobe RDP: ${item.name}`;
+                    finalAmountNGN = item.price + addonTotal;
+                } catch (err) {
+                    // If findById fails because of an invalid ID format
+                    return res.status(400).json({ success: false, message: "Invalid RDP ID provided" });
+                }
+            }
         } 
         else {
             return res.status(400).json({ success: false, message: "No product specified" });
@@ -948,6 +964,7 @@ async function handleInitiatePayment(req, res) {
         });
     }
 }
+
 async function handleVerifyPayment(req, res) {
     const { transactionId } = req.body;
 

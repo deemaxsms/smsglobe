@@ -293,17 +293,20 @@ app.all('/api/:action', async (req, res) => {
         case 'esim-activations': 
         if (req.method === 'GET') return handleGetEsimActivations(req, res); 
         break;
-case 'esim-activation-complete': 
-case 'update-esim-activation': 
+    case 'esim-activation-complete': 
+    case 'update-esim-activation': 
     if (req.method === 'POST' || req.method === 'PATCH') {
         return handleAdminEsimActivationUpdate(req, res);
     }
     break;
-case 'rdps': 
+    case 'rdps': 
     if (req.method === 'GET') return handleGetRDPs(req, res); // You'll need to create this
     if (req.method === 'POST') return handleAddRDP(req, res); // You'll need to create this
     if (req.method === 'PATCH') return handleUpdateRDP(req, res);
     if (req.method === 'DELETE') return handleDeleteRDP(req, res);
+    break;
+    case 'rdp-requests': // This matches the fetch URL in your HTML file
+    if (req.method === 'GET') return handleGetRdpRequests(req, res);
     break;
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
@@ -1730,6 +1733,115 @@ async function handleGetEsimActivations(req, res) {
             success: false, 
             message: "Failed to fetch eSIM activation records" 
         });
+    }
+}
+
+// GET: Fetch all RDP plans (for Admin list or User selection)
+async function handleGetRDPs(req, res) {
+    try {
+        const rdps = await RDP.find({}).sort({ createdAt: -1 });
+        res.json({ success: true, rdps });
+    } catch (error) {
+        console.error("Fetch RDP Error:", error);
+        res.status(500).json({ success: false, message: "Failed to fetch RDP plans" });
+    }
+}
+
+// POST: Add a new RDP plan
+async function handleAddRDP(req, res) {
+    const { name, category, ram, cpu, storage, network, os, price, isInstant, instructions } = req.body;
+    
+    if (!name || !ram || !cpu || !storage || !price) {
+        return res.status(400).json({ success: false, message: "Missing required RDP fields" });
+    }
+
+    try {
+        const newRDP = new RDP({
+            name, category, ram, cpu, storage, network, os, 
+            price, isInstant, instructions,
+            adminUpdatedBy: req.user?.email
+        });
+        await newRDP.save();
+        res.json({ success: true, message: "RDP Plan added successfully", rdp: newRDP });
+    } catch (error) {
+        console.error("Add RDP Error:", error);
+        res.status(500).json({ success: false, message: "Server error while adding RDP" });
+    }
+}
+
+// PATCH: Update an existing RDP plan
+async function handleUpdateRDP(req, res) {
+    const { id, ...updateData } = req.body;
+    try {
+        const updated = await RDP.findByIdAndUpdate(id, { 
+            ...updateData, 
+            adminUpdatedBy: req.user?.email 
+        }, { new: true });
+        
+        if (!updated) return res.status(404).json({ success: false, message: "RDP not found" });
+        res.json({ success: true, message: "RDP updated", rdp: updated });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Update failed" });
+    }
+}
+
+// DELETE: Remove an RDP plan
+async function handleDeleteRDP(req, res) {
+    const { id } = req.body;
+    try {
+        await RDP.findByIdAndDelete(id);
+        res.json({ success: true, message: "RDP Plan deleted" });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Delete failed" });
+    }
+}
+
+async function handleGetRdpRequests(req, res) {
+    try {
+        const requests = await Order.find({ productType: 'RDP' })
+            .sort({ createdAt: -1 })
+            .limit(100);
+
+        const formattedRequests = requests.map(order => {
+            // If order.amount is already in Naira (e.g., 25000), 
+            // we send it as is. If you need it in USD for the UI, 
+            // keep the division. Otherwise, just format it.
+            const nairaAmount = parseFloat(order.amount) || 0;
+
+            return {
+                paymentReference: order.paymentReference,
+                productType: 'RDP',
+                createdAt: order.createdAt,
+                userEmail: order.userEmail,
+                fullName: order.metadata?.fullName || 'N/A',
+                nodeName: order.nodeName || 'Tier Plan',
+                planName: order.planName || 'RDP Server',
+                osChoice: order.metadata?.osChoice || 'Windows',
+                
+                // Hardware specs
+                ram: order.metadata?.ram || 'N/A',
+                cpu: order.metadata?.cpu || 'N/A',
+                storage: order.metadata?.storage || 'N/A',
+                
+                // Addons
+                extraCPU: order.metadata?.extraCPU || 0,
+                extraStorage: order.metadata?.extraStorage || 0,
+                
+                // Keep as Naira for the Admin Table
+                amount: nairaAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 }), 
+                status: order.status || 'pending',
+                confirmationNumber: order.confirmationNumber || 'PENDING'
+            };
+        });
+
+        return res.json({
+            success: true,
+            orders: formattedRequests
+        });
+
+    } catch (error) {
+        console.error("❌ RDP Fetch Error:", error);
+        return res.status(500).json({ success: false, message: "Failed to fetch RDP requests" });
     }
 }
 

@@ -973,8 +973,13 @@ async function handleVerifyPayment(req, res) {
 
         const data = await response.json();
 
+        // Debugging: Log the verification data to see exactly what Flutterwave returns
+        console.log("Flutterwave Verification Response:", JSON.stringify(data, null, 2));
+
         if (data.status === "success" && data.data.status === "successful") {
-            // 1. Extract ALL Meta data (Including our new RDP fields)
+            // 1. Extract ALL Meta data safely (Added fallback to empty object)
+            const meta = data.data.meta || {};
+            
             const { 
                 productId, 
                 productType, 
@@ -987,12 +992,16 @@ async function handleVerifyPayment(req, res) {
                 lastName,
                 address,
                 zip,
-                extraCPU,       // Added
-                extraStorage,   // Added
-                osChoice        // Added
-            } = data.data.meta;
+                osChoice
+            } = meta;
+
+            // Ensure numeric values are actually numbers to prevent DB validation errors
+            const extraCPU = Number(meta.extraCPU || 0);
+            const extraStorage = Number(meta.extraStorage || 0);
             
             // 2. Fetch the User
+            if (!userId) return res.status(400).json({ success: false, message: "User ID missing in transaction metadata" });
+            
             const actualUser = await User.findById(userId);
             if (!actualUser) return res.status(404).json({ success: false, message: "User account not found" });
 
@@ -1042,7 +1051,7 @@ async function handleVerifyPayment(req, res) {
 
             // --- 5. HANDLE RDP PURCHASE (Updated) ---
             } else if (productType === "RDP") {
-                const item = await RDP.findById(productId); // Don't decr stock if it's "On Demand"
+                const item = await RDP.findById(productId); 
                 if (!item) return res.status(404).json({ success: false, message: "RDP Plan not found" });
 
                 productDetails.name = item.name;
@@ -1055,7 +1064,7 @@ async function handleVerifyPayment(req, res) {
                 
                 credentials = {
                     type: "RDP",
-                    os: osChoice || item.os,
+                    os: osChoice || item.os || "Windows",
                     specs: `${item.ram} RAM, ${cpuDisplay}, ${storageDisplay}`,
                     instructions: "Your custom RDP is being provisioned. Credentials will be sent to your email within 1-6 hours."
                 };
@@ -1103,13 +1112,12 @@ async function handleVerifyPayment(req, res) {
                     firstName: firstName || null,
                     lastName: lastName || null,
                     email: activationEmail || null,
-                    extraCPU: extraCPU || 0,        // Save to DB
-                    extraStorage: extraStorage || 0, // Save to DB
-                    osChoice: osChoice || null       // Save to DB
+                    extraCPU: extraCPU,
+                    extraStorage: extraStorage,
+                    osChoice: osChoice || null
                 }
             };
 
-            // Attach product specific detail objects
             if (productType === "VPN") {
                 orderData.vpnCredentials = { username: credentials.username, password: credentials.password };
             }
@@ -1121,7 +1129,6 @@ async function handleVerifyPayment(req, res) {
 
             // --- 9. DELIVERY EMAIL ---
             try {
-                // Pass the whole order to the email function for better formatting
                 await sendDeliveryEmail(userEmail, credentials, newOrder); 
             } catch (emailErr) {
                 console.error("Email Delivery Failed:", emailErr);

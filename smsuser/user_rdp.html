@@ -278,22 +278,53 @@
             </div>
         </main>
     </div>
-    <div id="receiptView" class="hidden fade-in bg-white border border-brand-border rounded-3xl p-8 shadow-sm text-center">
+   <div id="receiptView" class="hidden fade-in bg-white border border-brand-border rounded-3xl p-8 shadow-sm text-center">
     <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-    </div>
-    <h2 class="text-2xl font-black text-brand-darkText">Payment Successful!</h2>
-    <p class="text-brand-lightText text-sm mb-6">Your RDP credentials will be sent to your email shortly.</p>
-    
-    <div class="max-w-xs mx-auto space-y-3 text-left bg-gray-50 p-4 rounded-2xl border border-brand-border">
-        <div class="flex justify-between text-xs"><span class="text-brand-lightText">Plan:</span> <span id="rPlanName" class="font-bold"></span></div>
-        <div class="flex justify-between text-xs"><span class="text-brand-lightText">Hardware:</span> <span id="rSpecs" class="font-bold"></span></div>
-        <div class="flex justify-between text-xs"><span class="text-brand-lightText">Storage:</span> <span id="rStorage" class="font-bold"></span></div>
-        <div class="flex justify-between text-xs"><span class="text-brand-lightText">Ref:</span> <span id="rReference" class="font-mono text-[10px]"></span></div>
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+        </svg>
     </div>
     
-    <button onclick="window.location.reload()" class="mt-8 text-brand-blue font-bold text-xs hover:underline">Back to Dashboard</button>
+    <h2 class="text-2xl font-black text-brand-darkText uppercase tracking-tight">Payment Successful!</h2>
+    <p class="text-brand-lightText text-sm mb-6">Your RDP is being provisioned. Please notify admin to speed up setup.</p>
+    
+    <div class="max-w-sm mx-auto space-y-3 text-left bg-gray-50 p-6 rounded-2xl border border-brand-border mb-6">
+        <div class="flex justify-between text-xs border-b border-gray-100 pb-2">
+            <span class="text-brand-lightText">Plan:</span> 
+            <span id="rPlan" class="font-bold text-brand-darkText"></span>
+        </div>
+        <div class="flex justify-between text-xs border-b border-gray-100 pb-2">
+            <span class="text-brand-lightText">OS:</span> 
+            <span id="rOS" class="font-bold text-brand-darkText"></span>
+        </div>
+        <div class="flex justify-between text-xs border-b border-gray-100 pb-2">
+            <span class="text-brand-lightText">RAM:</span> 
+            <span id="rRAM" class="font-bold text-brand-darkText"></span>
+        </div>
+        <div class="flex justify-between text-xs border-b border-gray-100 pb-2">
+            <span class="text-brand-lightText">CPU:</span> 
+            <span id="rCPU" class="font-bold text-brand-darkText"></span>
+        </div>
+        <div class="flex justify-between text-xs border-b border-gray-100 pb-2">
+            <span class="text-brand-lightText">Storage:</span> 
+            <span id="rStorage" class="font-bold text-brand-darkText"></span>
+        </div>
+        <div class="flex justify-between text-xs pt-1">
+            <span class="text-brand-lightText">Reference:</span> 
+            <span id="rID" class="font-mono text-[10px] bg-white px-2 py-0.5 rounded border border-gray-200"></span>
+        </div>
+    </div>
+    
+    <button onclick="contactRDPAdmin()" class="w-full max-w-xs bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 mx-auto">
+        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.316 1.592 5.448 0 9.886-4.438 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+        Notify SMS Globe on WhatsApp
+    </button>
+    
+    <button onclick="window.location.reload()" class="mt-6 text-brand-blue font-bold text-xs hover:underline block mx-auto">
+        Finish & Back to Dashboard
+    </button>
 </div>
+
 
 <script>
     const API_BASE_URL = '/api';
@@ -497,7 +528,6 @@
         const data = await res.json();
 
         if (data.success) {
-            // UI Transition
             document.getElementById('selectionView')?.classList.add('hidden');
             document.getElementById('checkoutView')?.classList.add('hidden');
             document.getElementById('receiptView')?.classList.remove('hidden');
@@ -505,48 +535,39 @@
             const order = data.order || {};
             const meta = order.metadata || {};
             
-            // Populate Receipt Fields with fallbacks to avoid blank spaces
-            const rPlanName = document.getElementById('rPlanName');
-            if (rPlanName) rPlanName.innerText = order.planName || "RDP Plan";
-
-            const rSpecs = document.getElementById('rSpecs');
-            if (rSpecs) {
-                rSpecs.innerText = `${meta.baseRAM || 'Standard'} RAM | ${meta.baseCPU || ''} (+${meta.extraCPU || 0} Cores)`;
-            }
-
-            const rStorage = document.getElementById('rStorage');
-            if (rStorage) {
-                rStorage.innerText = `${meta.baseStorage || ''} (+${meta.extraStorage || 0}GB) NVMe`;
-            }
-
-            const rReference = document.getElementById('rReference');
-            if (rReference) rReference.innerText = order.paymentReference || tid;
-
-            // WhatsApp/Summary fields
+            // --- FIX: Populate all fields for the WhatsApp message ---
+            if (document.getElementById('rPlan')) document.getElementById('rPlan').innerText = order.planName || "RDP Plan";
+            if (document.getElementById('rRAM')) document.getElementById('rRAM').innerText = meta.baseRAM || 'Standard';
+            if (document.getElementById('rCPU')) document.getElementById('rCPU').innerText = `${meta.baseCPU || ''} (+${meta.extraCPU || 0} Cores)`;
+            if (document.getElementById('rStorage')) document.getElementById('rStorage').innerText = `${meta.baseStorage || ''} (+${meta.extraStorage || 0}GB) NVMe`;
             if (document.getElementById('rOS')) document.getElementById('rOS').innerText = meta.osChoice || "Windows";
+            
+            // Use rID for the WhatsApp function to find
+            if (document.getElementById('rID')) document.getElementById('rID').innerText = order.paymentReference || tid;
 
             headerTitle.innerText = "Order Confirmed";
-            alert("Payment successful! Your RDP is being provisioned.");
+            alert("Payment successful! Please click the button to notify admin via WhatsApp.");
         } else {
             alert("Payment verification failed: " + (data.message || "Unknown error"));
         }
     } catch (e) { 
         console.error("Frontend Verification Error:", e);
-        alert("An error occurred while verifying your payment. Please contact support.");
+        alert("An error occurred while verifying your payment.");
     } finally {
         if (document.getElementById('payBtn')) document.getElementById('payBtn').innerText = "Pay Securely Now";
     }
 }
 
-    function contactRDPAdmin() {
-        const tid = document.getElementById('rID')?.innerText || "N/A";
-        const plan = document.getElementById('rPlan')?.innerText || "N/A";
-        const ram = document.getElementById('rRAM')?.innerText || "N/A";
-        const cpu = document.getElementById('rCPU')?.innerText || "N/A";
-        const storage = document.getElementById('rStorage')?.innerText || "N/A";
-        const os = document.getElementById('rOS')?.innerText || "N/A";
+function contactRDPAdmin() {
+    // These IDs MUST exist in your HTML receiptView
+    const tid = document.getElementById('rID')?.innerText || "N/A";
+    const plan = document.getElementById('rPlan')?.innerText || "N/A";
+    const ram = document.getElementById('rRAM')?.innerText || "N/A";
+    const cpu = document.getElementById('rCPU')?.innerText || "N/A";
+    const storage = document.getElementById('rStorage')?.innerText || "N/A";
+    const os = document.getElementById('rOS')?.innerText || "N/A";
 
-        const msg = `🚀 *SMSGlobe: NEW RDP PROVISIONING*
+    const msg = `🚀 *SMSGlobe: NEW RDP PROVISIONING*
 __________________________________
 
 ✅ *PAYMENT STATUS:* CONFIRMED
@@ -564,9 +585,8 @@ __________________________________
 ⚡ *ACTION REQUIRED:*
 Please provision this server and update the user's dashboard credentials.`;
 
-        window.open(`https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`, '_blank');
-    }
-
+    window.open(`https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`, '_blank');
+}
     function showSelectionView() {
         selectionView.classList.remove('hidden');
         checkoutView.classList.add('hidden');

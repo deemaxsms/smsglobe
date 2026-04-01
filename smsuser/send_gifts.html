@@ -117,11 +117,11 @@
                     </div>
 
                     <div class="bg-white p-3 rounded-2xl border border-brand-border hover:shadow-md transition-shadow text-center group">
-                        <div class="aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden">
-                            <img src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80&w=300" alt="Phones" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-                        </div>
-                        <p class="text-[11px] font-bold text-brand-darkText">Latest Devices</p>
-                    </div>
+                    <div class="aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden">
+              <img src="https://images.unsplash.com/photo-1579813589973-c88c035678eb?auto=format&fit=crop&q=80&w=300" alt="Frame" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                </div>
+             <p class="text-[11px] font-bold text-brand-darkText">Frame</p>
+                </div>
 
                     <div class="bg-white p-3 rounded-2xl border border-brand-border hover:shadow-md transition-shadow text-center group">
                         <div class="aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden">
@@ -189,159 +189,218 @@
                 </div>
             </section>
 
-            <section id="formContainer" class="hidden bg-white rounded-3xl border border-brand-border p-6 md:p-8 shadow-sm fade-in">
-                <div class="flex items-center justify-between mb-8">
-                    <div>
-                        <h2 class="text-lg font-bold text-brand-darkText">Gift Application Form</h2>
-                        <p class="text-xs text-brand-lightText">Complete the details below to proceed.</p>
+         <section id="formContainer" class="hidden bg-white rounded-3xl border border-brand-border p-6 md:p-8 shadow-sm fade-in">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h2 class="text-lg font-bold text-brand-darkText">Gift Application Form</h2>
+            <p class="text-xs text-brand-lightText">Complete the details below to proceed.</p>
+        </div>
+        <button onclick="showIntro()" class="text-[10px] font-bold text-brand-blue hover:underline">← Go Back</button>
+    </div>
+
+    <form id="giftForm" class="space-y-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+            <div class="space-y-4">
+                <h3 class="text-[10px] font-bold text-brand-blue uppercase border-b border-brand-border pb-2">Sender Details</h3>
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-brand-midText">Your Name</label>
+                    <input type="text" name="senderName" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Full Name">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-brand-midText">Your Phone Number</label>
+                    <input type="tel" name="senderPhone" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="+234...">
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <h3 class="text-[10px] font-bold text-brand-blue uppercase border-b border-brand-border pb-2">Receiver Details</h3>
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-brand-midText">Recipient Name</label>
+                    <input type="text" name="receiverName" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Full Name">
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="space-y-1">
+                        <label class="text-[11px] font-semibold text-brand-midText">Street Address</label>
+                        <input type="text" name="streetAddress" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Street Name">
                     </div>
-                    <button onclick="showIntro()" class="text-[10px] font-bold text-brand-blue hover:underline">← Go Back</button>
+                    <div class="space-y-1">
+                        <label class="text-[11px] font-semibold text-brand-midText">House/Apt No. <span class="text-[9px] opacity-70">(Optional)</span></label>
+                        <input type="text" name="houseNumber" class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="e.g. Apt 4B">
+                    </div>
                 </div>
 
-                <form id="giftForm" class="space-y-8">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-                        <div class="space-y-4">
-                            <h3 class="text-[10px] font-bold text-brand-blue uppercase border-b border-brand-border pb-2">Sender Details</h3>
-                            <div class="space-y-1">
-                                <label class="text-[11px] font-semibold text-brand-midText">Your Name</label>
-                                <input type="text" name="senderName" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Full Name">
-                            </div>
-                            <div class="space-y-1">
-                                <label class="text-[11px] font-semibold text-brand-midText">Your Phone Number</label>
-                                <input type="tel" name="senderPhone" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="+234...">
-                            </div>
-                        </div>
-
-                        <div class="space-y-4">
-                            <h3 class="text-[10px] font-bold text-brand-blue uppercase border-b border-brand-border pb-2">Receiver Details</h3>
-                            <div class="space-y-1">
-                                <label class="text-[11px] font-semibold text-brand-midText">Recipient Name</label>
-                                <input type="text" name="receiverName" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Full Name">
-                            </div>
-                            <div class="space-y-1">
-                                <label class="text-[11px] font-semibold text-brand-midText">Street Address</label>
-                                <input type="text" name="streetAddress" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="House number and street name">
-                            </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div class="space-y-1">
-                                    <label class="text-[11px] font-semibold text-brand-midText">City</label>
-                                    <input type="text" name="city" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="City">
-                                </div>
-                                <div class="space-y-1">
-                                    <label class="text-[11px] font-semibold text-brand-midText">Country</label>
-                                    <input type="text" name="country" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Country">
-                                </div>
-                            </div>
-                        </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="space-y-1">
+                        <label class="text-[11px] font-semibold text-brand-midText">City</label>
+                        <input type="text" name="city" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="City">
                     </div>
-
-                    <div class="space-y-4 pt-4 border-t border-brand-border">
-                        <h3 class="text-[10px] font-bold text-brand-blue uppercase">Gift & Logistics Information</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="space-y-1">
-                                <label class="text-[11px] font-semibold text-brand-midText">Gift Type</label>
-                                <input type="text" name="giftType" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="e.g. Flower Bouquet">
-                            </div>
-                            <div class="space-y-1">
-                                <label class="text-[11px] font-semibold text-brand-midText">Value (USD)</label>
-                                <input type="number" name="budget" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="50.00">
-                            </div>
-                        </div>
-
-                        <div class="space-y-1">
-                            <label class="text-[11px] font-semibold text-brand-midText">Message for Recipient</label>
-                            <textarea name="message" rows="3" class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Your message here..."></textarea>
-                        </div>
+                    <div class="space-y-1">
+                        <label class="text-[11px] font-semibold text-brand-midText">State</label>
+                        <input type="text" name="state" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="State">
                     </div>
+                </div>
 
-                    <button type="submit" class="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold text-sm shadow-lg shadow-brand-blue/30 active-scale hover:bg-blue-700 transition-all flex items-center justify-center space-x-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                        <span>Confirm Gift Details</span>
-                    </button>
-                </form>
-            </section>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="space-y-1">
+                        <label class="text-[11px] font-semibold text-brand-midText">Zip Code</label>
+                        <input type="text" name="zipCode" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Zip/Postcode">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[11px] font-semibold text-brand-midText">Country</label>
+                        <input type="text" name="country" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Country">
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-brand-midText">Recipient Phone <span class="text-[9px] opacity-70">(Optional)</span></label>
+                    <input type="tel" name="receiverPhone" class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="+234...">
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-4 pt-4 border-t border-brand-border">
+            <h3 class="text-[10px] font-bold text-brand-blue uppercase">Gift & Logistics Information</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-brand-midText">Gift Type</label>
+                    <input type="text" name="giftType" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="e.g. Flower Bouquet">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[11px] font-semibold text-brand-midText">Estimated Value (NGN)</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-brand-darkText">₦</span>
+                        <input type="number" name="budget" required class="w-full bg-brand-background border border-brand-border rounded-xl pl-8 pr-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="50,000">
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-[11px] font-semibold text-brand-midText">Message for Recipient</label>
+                <textarea name="message" rows="3" class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Your message here..."></textarea>
+            </div>
+        </div>
+
+        <button type="submit" class="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold text-sm shadow-lg shadow-brand-blue/30 active-scale hover:bg-blue-700 transition-all flex items-center justify-center space-x-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+            <span>Confirm Gift Details</span>
+        </button>
+    </form>
+</section>
         </main>
     </div>
 
-    <script>
-        const API_BASE_URL = '/api';
+   <script>
+    const API_BASE_URL = '/api';
+    // REPLACE THIS WITH THE ACTUAL SMSGLOBE WHATSAPP NUMBER (including country code)
+    const WHATSAPP_NUMBER = "2347059450227"; 
 
-        // CONTINUOUS APPLICATION LOGIC
-        function startApplication() {
-            // Hide intro, show form
-            document.getElementById('introSection').classList.add('hidden');
-            const formContainer = document.getElementById('formContainer');
-            formContainer.classList.remove('hidden');
+    function startApplication() {
+        document.getElementById('introSection').classList.add('hidden');
+        const formContainer = document.getElementById('formContainer');
+        formContainer.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function showIntro() {
+        document.getElementById('formContainer').classList.add('hidden');
+        document.getElementById('introSection').classList.remove('hidden');
+    }
+
+    // Initialize user session
+    async function initGifting() {
+        const token = localStorage.getItem('userToken');
+        if (!token) { window.location.href = 'user_login.html'; return; }
+
+        try {
+            const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!profileRes.ok) throw new Error('Session Expired');
             
-            // Scroll to top of the form for better UX
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            const userData = await profileRes.json();
+            document.getElementById('userName').innerText = userData.full_name || "User";
+            document.getElementById('userEmail').innerText = userData.email;
+            document.getElementById('userInitials').innerText = (userData.full_name || "U").charAt(0).toUpperCase();
+        } catch (err) { 
+            console.error(err);
+            // If you don't have a live backend yet, you can comment out logout() to stay on the page for testing
+            // logout(); 
         }
+    }
 
-        function showIntro() {
-            // Hide form, show intro
-            document.getElementById('formContainer').classList.add('hidden');
-            document.getElementById('introSection').classList.remove('hidden');
-        }
+    // Handle Form Submission via WhatsApp
+    document.getElementById('giftForm').addEventListener('submit', function(e) {
+        e.preventDefault();
 
-        async function initGifting() {
-            const token = localStorage.getItem('userToken');
-            if (!token) { window.location.href = 'user_login.html'; return; }
+        // 1. Ask for confirmation
+        const isSure = confirm("Are you sure you want to send this gift request?");
+        if (!isSure) return;
 
-            try {
-                const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!profileRes.ok) throw new Error('Session Expired');
-                
-                const userData = await profileRes.json();
-                document.getElementById('userName').innerText = userData.full_name || "User";
-                document.getElementById('userEmail').innerText = userData.email;
-                document.getElementById('userInitials').innerText = (userData.full_name || "U").charAt(0).toUpperCase();
-            } catch (err) { 
-                console.error(err);
-                logout(); 
-            }
-        }
+        const btn = e.target.querySelector('button');
+        btn.disabled = true;
+        btn.innerHTML = '<span>Opening WhatsApp...</span>';
 
-        document.getElementById('giftForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = e.target.querySelector('button');
-            btn.disabled = true;
-            btn.innerHTML = '<span>Processing Request...</span>';
+        // 2. Collect Form Data
+        const formData = new FormData(e.target);
+        const d = Object.fromEntries(formData.entries());
 
-            const formData = new FormData(e.target);
-            const payload = Object.fromEntries(formData.entries());
+        // 3. Format the WhatsApp Message
+        // Using *text* for bolding in WhatsApp
+        let message = `*NEW GIFT APPLICATION (SMSGlobe)*\n\n`;
+        message += `*--- SENDER DETAILS ---*\n`;
+        message += `👤 Name: ${d.senderName}\n`;
+        message += `📞 Phone: ${d.senderPhone}\n\n`;
+        
+        message += `*--- RECEIVER DETAILS ---*\n`;
+        message += `👤 Name: ${d.receiverName}\n`;
+        message += `📍 Address: ${d.streetAddress}${d.houseNumber ? ', ' + d.houseNumber : ''}\n`;
+        message += `🏙️ City/State: ${d.city}, ${d.state}\n`;
+        message += `📮 Zip/Country: ${d.zipCode}, ${d.country}\n`;
+        message += `📞 Recipient Phone: ${d.receiverPhone || 'Not provided'}\n\n`;
+
+        message += `*--- GIFT INFO ---*\n`;
+        message += `🎁 Type: ${d.giftType}\n`;
+        message += `💰 Est. Value: ₦${Number(d.budget).toLocaleString()}\n`;
+        message += `📝 Message: ${d.message || 'No personal note'}`;
+
+        // 4. Encode and Redirect
+        const encodedMessage = encodeURIComponent(message);
+        const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+
+        // Small delay to show the "Processing" state before redirecting
+        setTimeout(() => {
+            window.open(whatsappUrl, '_blank');
             
-            setTimeout(() => {
-                alert(`Success! Your request for "${payload.giftType}" has been received.`);
-                btn.disabled = false;
-                btn.innerHTML = '<span>Confirm Gift Details</span>';
-                e.target.reset();
-                showIntro(); // Return to main page after success
-            }, 1500);
-        });
+            // Reset form and UI
+            btn.disabled = false;
+            btn.innerHTML = '<span>Confirm Gift Details</span>';
+            e.target.reset();
+            showIntro();
+        }, 1000);
+    });
 
-        function logout() {
-            localStorage.removeItem('userToken');
-            window.location.href = 'user_login.html';
-        }
+    function logout() {
+        localStorage.removeItem('userToken');
+        window.location.href = 'user_login.html';
+    }
 
-        // Sidebar Toggle Logic
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('sidebarOverlay');
-        const openBtn = document.getElementById('openSidebar');
-        const closeBtn = document.getElementById('closeSidebar');
+    // Sidebar Logic
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const openBtn = document.getElementById('openSidebar');
+    const closeBtn = document.getElementById('closeSidebar');
 
-        const toggleSidebar = () => {
-            sidebar.classList.toggle('-translate-x-full');
-            overlay.classList.toggle('hidden');
-        };
+    const toggleSidebar = () => {
+        sidebar.classList.toggle('-translate-x-full');
+        overlay.classList.toggle('hidden');
+    };
 
-        openBtn.addEventListener('click', toggleSidebar);
-        closeBtn.addEventListener('click', toggleSidebar);
-        overlay.addEventListener('click', toggleSidebar);
+    openBtn.addEventListener('click', toggleSidebar);
+    closeBtn.addEventListener('click', toggleSidebar);
+    overlay.addEventListener('click', toggleSidebar);
 
-        window.onload = initGifting;
-    </script>
+    window.onload = initGifting;
+</script>
 </body>
 </html>

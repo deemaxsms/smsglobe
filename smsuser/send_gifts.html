@@ -12,8 +12,13 @@
                 extend: {
                     colors: {
                         brand: {
-                            blue: '#0F54C6', orange: '#F9861E', darkText: '#101828',
-                            midText: '#344054', lightText: '#667085', background: '#F0F5FE', border: '#EAECF0',
+                            blue: '#0F54C6', 
+                            orange: '#F9861E', 
+                            darkText: '#101828',
+                            midText: '#344054', 
+                            lightText: '#667085', 
+                            background: '#F0F5FE', 
+                            border: '#EAECF0',
                         }
                     },
                     fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
@@ -27,13 +32,6 @@
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
         .active-scale:active { transform: scale(0.98); }
         .custom-radio:checked + label { border-color: #0F54C6; background-color: #F0F5FE; color: #0F54C6; }
-        
-        /* Smooth Fade In Animation */
-        .fade-in { animation: fadeIn 0.5s ease-in-out; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
     </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
@@ -43,7 +41,7 @@
     <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white border-r border-brand-border z-50 transform -translate-x-full lg:translate-x-0 sidebar-transition flex flex-col">
         <div class="p-5 border-b border-brand-border flex items-center justify-between">
             <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-6 w-auto">
-            <button id="closeSidebar" class="lg:hidden text-gray-400 text-xl">&times;</button>
+            <button id="closeSidebar" class="lg:hidden text-gray-400 text-xl font-bold">&times;</button>
         </div>
         
         <nav class="flex-grow p-4 space-y-1">
@@ -51,6 +49,18 @@
             <a href="user_dashboard.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                 <span>Dashboard</span>
+            </a>
+            <a href="buy_number.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                <span>Buy Number</span>
+            </a>
+            <a href="esim_refill.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"></path></svg>
+                <span>eSIMs Refill</span>
+            </a>
+            <a href="user_vpn.html" class="flex items-center space-x-3 px-3 py-2 text-brand-midText hover:bg-gray-50 rounded-lg text-xs font-medium transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                <span>VPNs</span>
             </a>
             <a href="send_gifts.html" class="flex items-center space-x-3 px-3 py-2 bg-brand-background text-brand-blue rounded-lg text-xs font-semibold">
                 <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 5a3 3 0 015-2.236A3 3 0 0114.83 6H16a2 2 0 012 2v2a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h1.17C5.06 5.687 5 5.35 5 5zm4 1V5a1 1 0 10-1 1h1zm3 0a1 1 0 10-1-1v1h1z" clip-rule="evenodd" /><path d="M9 11H3v5a2 2 0 002 2h4v-7zM11 18h4a2 2 0 002-2v-5h-6v7z" /></svg>
@@ -87,50 +97,49 @@
         </header>
 
         <main class="p-4 md:p-8 max-w-4xl w-full mx-auto space-y-8">
-            
-            <section id="introSection" class="space-y-8 fade-in">
+            <section class="space-y-8">
                 <div class="flex items-center justify-between">
                     <h2 class="text-xl font-extrabold text-brand-darkText">Popular Gifts to Send</h2>
                     <span class="text-[10px] font-bold text-brand-blue bg-brand-blue/10 px-3 py-1 rounded-full uppercase">Global Selection</span>
                 </div>
 
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                    <div class="bg-white p-3 rounded-2xl border border-brand-border hover:shadow-md transition-shadow text-center group">
+                    <div class="bg-white p-3 rounded-2xl border border-brand-border hover:shadow-md transition-shadow text-center group cursor-pointer">
                         <div class="aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden">
                             <img src="https://images.unsplash.com/photo-1526047932273-341f2a7631f9?auto=format&fit=crop&q=80&w=300" alt="Flowers" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                         </div>
                         <p class="text-[11px] font-bold text-brand-darkText">Flower Bouquet</p>
                     </div>
 
-                    <div class="bg-white p-3 rounded-2xl border border-brand-border hover:shadow-md transition-shadow text-center group">
+                    <div class="bg-white p-3 rounded-2xl border border-brand-border hover:shadow-md transition-shadow text-center group cursor-pointer">
                         <div class="aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden">
                             <img src="https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80&w=300" alt="Rings" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                         </div>
                         <p class="text-[11px] font-bold text-brand-darkText">Luxury Rings</p>
                     </div>
 
-                    <div class="bg-white p-3 rounded-2xl border border-brand-border hover:shadow-md transition-shadow text-center group">
+                    <div class="bg-white p-3 rounded-2xl border border-brand-border hover:shadow-md transition-shadow text-center group cursor-pointer">
                         <div class="aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden">
                             <img src="https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&q=80&w=300" alt="Cakes" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                         </div>
                         <p class="text-[11px] font-bold text-brand-darkText">Celebration Cakes</p>
                     </div>
 
-                    <div class="bg-white p-3 rounded-2xl border border-brand-border hover:shadow-md transition-shadow text-center group">
+                    <div class="bg-white p-3 rounded-2xl border border-brand-border hover:shadow-md transition-shadow text-center group cursor-pointer">
                         <div class="aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden">
                             <img src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&q=80&w=300" alt="Phones" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                         </div>
                         <p class="text-[11px] font-bold text-brand-darkText">Latest Devices</p>
                     </div>
 
-                    <div class="bg-white p-3 rounded-2xl border border-brand-border hover:shadow-md transition-shadow text-center group">
+                    <div class="bg-white p-3 rounded-2xl border border-brand-border hover:shadow-md transition-shadow text-center group cursor-pointer">
                         <div class="aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden">
                             <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&q=80&w=300" alt="Pizza" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                         </div>
                         <p class="text-[11px] font-bold text-brand-darkText">Hot Pizza</p>
                     </div>
 
-                    <div class="bg-white p-3 rounded-2xl border border-brand-border hover:shadow-md transition-shadow text-center group">
+                    <div class="bg-white p-3 rounded-2xl border border-brand-border hover:shadow-md transition-shadow text-center group cursor-pointer">
                         <div class="aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden">
                             <img src="https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=300" alt="Drinks" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                         </div>
@@ -141,35 +150,97 @@
                 <div class="bg-white border border-brand-border rounded-3xl p-6 md:p-8 space-y-6 shadow-sm">
                     <div class="grid md:grid-cols-2 gap-8">
                         <div class="space-y-4">
-                            <h3 class="text-sm font-bold text-brand-blue uppercase tracking-wider">Why SMSGlobe?</h3>
+                            <h3 class="text-sm font-bold text-brand-blue uppercase tracking-wider">Why SMSGlobe Gifting?</h3>
                             <p class="text-xs text-brand-midText leading-relaxed">
-                                We bridge the gap by delivering emotions. From tech to flowers, our global network ensures your gifts arrive with care.
+                                Distance shouldn't stop you from showing love. At <strong>SMSGlobe</strong>, we bridge the gap by delivering more than just items—we deliver emotions. From the latest tech to fresh flowers, our global logistics network ensures your gifts arrive with the same care you'd give in person. 
                             </p>
-                        </div>
-                        <div class="space-y-4">
-                            <h3 class="text-sm font-bold text-brand-orange uppercase tracking-wider">Simple Process</h3>
-                            <ul class="text-[11px] space-y-2">
-                                <li><strong>1. Fill Request:</strong> Share the gift idea and address.</li>
-                                <li><strong>2. Get Quote:</strong> We source the best price for you.</li>
+                            <ul class="space-y-2">
+                                <li class="flex items-center text-[11px] text-brand-midText">
+                                    <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293l-4 4a1 1 0 01-1.414 0l-2-2a1 1 0 111.414-1.414L9 10.586l3.293-3.293a1 1 0 111.414 1.414z"/></svg>
+                                    Zero-hassle international shipping & customs.
+                                </li>
+                                <li class="flex items-center text-[11px] text-brand-midText">
+                                    <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293l-4 4a1 1 0 01-1.414 0l-2-2a1 1 0 111.414-1.414L9 10.586l3.293-3.293a1 1 0 111.414 1.414z"/></svg>
+                                    Hand-picked quality from local and global vendors.
+                                </li>
+                                <li class="flex items-center text-[11px] text-brand-midText">
+                                    <svg class="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293l-4 4a1 1 0 01-1.414 0l-2-2a1 1 0 111.414-1.414L9 10.586l3.293-3.293a1 1 0 111.414 1.414z"/></svg>
+                                    Real-time updates via WhatsApp & SMS.
+                                </li>
                             </ul>
                         </div>
+
+                        <div class="space-y-4">
+                            <h3 class="text-sm font-bold text-brand-orange uppercase tracking-wider">How to Send a Gift</h3>
+                            <div class="space-y-3">
+                                <div class="flex items-start space-x-3">
+                                    <span class="flex-shrink-0 w-5 h-5 rounded-full bg-brand-orange/10 text-brand-orange flex items-center justify-center text-[10px] font-bold">1</span>
+                                    <p class="text-[11px]"><span class="font-bold text-brand-darkText">Fill the Form:</span> Scroll down and enter the recipient's details and the gift you have in mind.</p>
+                                </div>
+                                <div class="flex items-start space-x-3">
+                                    <span class="flex-shrink-0 w-5 h-5 rounded-full bg-brand-orange/10 text-brand-orange flex items-center justify-center text-[10px] font-bold">2</span>
+                                    <p class="text-[11px]"><span class="font-bold text-brand-darkText">Get a Quote:</span> Our concierge team finds the best price and sends you a quote within hours.</p>
+                                </div>
+                                <div class="flex items-start space-x-3">
+                                    <span class="flex-shrink-0 w-5 h-5 rounded-full bg-brand-orange/10 text-brand-orange flex items-center justify-center text-[10px] font-bold">3</span>
+                                    <p class="text-[11px]"><span class="font-bold text-brand-darkText">Relax:</span> Once payment is confirmed, we buy, pack, and deliver with a personalized note!</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
                     <div class="flex justify-center pt-4 border-t border-brand-border">
-                        <button onclick="startApplication()" class="bg-brand-orange text-white px-10 py-4 rounded-2xl font-bold text-sm shadow-lg shadow-brand-orange/30 active-scale hover:bg-orange-600 transition-all flex items-center space-x-2">
+                        <a href="#formContainer" class="bg-brand-orange text-white px-10 py-4 rounded-2xl font-bold text-sm shadow-lg shadow-brand-orange/30 active-scale hover:bg-orange-600 transition-all flex items-center space-x-2">
                             <span>Send Your First Gift Now</span>
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </button>
+                        </a>
                     </div>
                 </div>
             </section>
 
-            <section id="formContainer" class="hidden bg-white rounded-3xl border border-brand-border p-6 md:p-8 shadow-sm fade-in">
-                <div class="flex items-center justify-between mb-8">
-                    <div>
-                        <h2 class="text-lg font-bold text-brand-darkText">Gift Application Form</h2>
-                        <p class="text-xs text-brand-lightText">Complete the details below to proceed.</p>
+            <div class="relative overflow-hidden bg-brand-blue rounded-3xl p-8 text-white shadow-xl shadow-brand-blue/20">
+                <div class="relative z-10 space-y-4">
+                    <span class="bg-white/20 text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">Premium Service</span>
+                    <h1 class="text-2xl md:text-3xl font-extrabold leading-tight">SMSGlobe: The World's Best <br>Gift Sending Platform.</h1>
+                    <p class="text-sm text-blue-100 max-w-md">Join thousands of users who trust us to deliver happiness globally. Whether it's custom surprises or luxury items, we handle it all.</p>
+                </div>
+                <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+                <div class="absolute bottom-0 right-10 w-32 h-32 bg-brand-orange/40 rounded-full blur-2xl"></div>
+            </div>
+
+            <section class="bg-white rounded-3xl border border-brand-border p-6 md:p-8 shadow-sm">
+                <h2 class="text-lg font-bold text-brand-darkText mb-6 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-brand-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    How it works
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="space-y-2">
+                        <div class="w-8 h-8 rounded-full bg-brand-blue text-white flex items-center justify-center text-xs font-bold">1</div>
+                        <p class="text-xs font-bold text-brand-darkText">Request Review</p>
+                        <p class="text-[10px] text-brand-lightText">We'll review your request once received on WhatsApp within 24 hours.</p>
                     </div>
-                    <button onclick="showIntro()" class="text-[10px] font-bold text-brand-blue hover:underline">← Go Back</button>
+                    <div class="space-y-2">
+                        <div class="w-8 h-8 rounded-full bg-brand-blue text-white flex items-center justify-center text-xs font-bold">2</div>
+                        <p class="text-xs font-bold text-brand-darkText">Sourcing</p>
+                        <p class="text-[10px] text-brand-lightText">Our team will source the best gift options tailored for you.</p>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="w-8 h-8 rounded-full bg-brand-blue text-white flex items-center justify-center text-xs font-bold">3</div>
+                        <p class="text-xs font-bold text-brand-darkText">Get a Quote</p>
+                        <p class="text-[10px] text-brand-lightText">Receive a quote with final pricing and a clear delivery timeline.</p>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="w-8 h-8 rounded-full bg-brand-blue text-white flex items-center justify-center text-xs font-bold">4</div>
+                        <p class="text-xs font-bold text-brand-darkText">Delivery</p>
+                        <p class="text-[10px] text-brand-lightText">Once approved, we handle the entire purchase and delivery process.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="formContainer" class="bg-white rounded-3xl border border-brand-border p-6 md:p-8 shadow-sm">
+                <div class="mb-8">
+                    <h2 class="text-lg font-bold text-brand-darkText">Send Gift Now</h2>
+                    <p class="text-xs text-brand-lightText">Provide details for both sender and receiver to begin.</p>
                 </div>
 
                 <form id="giftForm" class="space-y-8">
@@ -193,17 +264,24 @@
                                 <input type="text" name="receiverName" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Full Name">
                             </div>
                             <div class="space-y-1">
-                                <label class="text-[11px] font-semibold text-brand-midText">Street Address</label>
-                                <input type="text" name="streetAddress" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="House number and street name">
+                                <label class="text-[11px] font-semibold text-brand-midText">Recipient Phone Number (Optional)</label>
+                                <input type="tel" name="receiverPhone" class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="+1...">
                             </div>
-                            <div class="grid grid-cols-2 gap-3">
+                            
+                            <div class="space-y-3 pt-2">
                                 <div class="space-y-1">
-                                    <label class="text-[11px] font-semibold text-brand-midText">City</label>
-                                    <input type="text" name="city" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="City">
+                                    <label class="text-[11px] font-semibold text-brand-midText">Street Address</label>
+                                    <input type="text" name="streetAddress" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="House number and street name">
                                 </div>
-                                <div class="space-y-1">
-                                    <label class="text-[11px] font-semibold text-brand-midText">Country</label>
-                                    <input type="text" name="country" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Country">
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="space-y-1">
+                                        <label class="text-[11px] font-semibold text-brand-midText">City</label>
+                                        <input type="text" name="city" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="City">
+                                    </div>
+                                    <div class="space-y-1">
+                                        <label class="text-[11px] font-semibold text-brand-midText">Country</label>
+                                        <input type="text" name="country" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="United States">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -213,18 +291,38 @@
                         <h3 class="text-[10px] font-bold text-brand-blue uppercase">Gift & Logistics Information</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="space-y-1">
-                                <label class="text-[11px] font-semibold text-brand-midText">Gift Type</label>
-                                <input type="text" name="giftType" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="e.g. Flower Bouquet">
+                                <label class="text-[11px] font-semibold text-brand-midText">Gift Type (What are you sending?)</label>
+                                <input type="text" name="giftType" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="e.g. Wristwatch, Flower Bouquet, iPhone 15">
                             </div>
                             <div class="space-y-1">
-                                <label class="text-[11px] font-semibold text-brand-midText">Value (USD)</label>
+                                <label class="text-[11px] font-semibold text-brand-midText">Gift Value / Budget (USD)</label>
                                 <input type="number" name="budget" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="50.00">
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-semibold text-brand-midText">Delivery Level</label>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <input type="radio" id="normal" name="deliveryLevel" value="normal" checked class="hidden custom-radio">
+                                    <label for="normal" class="block border border-brand-border p-3 rounded-xl text-center cursor-pointer hover:bg-gray-50 transition-all">
+                                        <p class="text-xs font-bold">Normal Delivery</p>
+                                        <p class="text-[10px] text-brand-lightText">5 - 7 Working Days</p>
+                                    </label>
+                                </div>
+                                <div>
+                                    <input type="radio" id="urgent" name="deliveryLevel" value="urgent" class="hidden custom-radio">
+                                    <label for="urgent" class="block border border-brand-border p-3 rounded-xl text-center cursor-pointer hover:bg-gray-50 transition-all">
+                                        <p class="text-xs font-bold text-brand-orange">Urgent Delivery</p>
+                                        <p class="text-[10px] text-brand-lightText">2 - 3 Working Days</p>
+                                    </label>
+                                </div>
                             </div>
                         </div>
 
                         <div class="space-y-1">
                             <label class="text-[11px] font-semibold text-brand-midText">Message for Recipient</label>
-                            <textarea name="message" rows="3" class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Your message here..."></textarea>
+                            <textarea name="message" rows="3" class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Type a message to be included with the gift..."></textarea>
                         </div>
                     </div>
 
@@ -240,26 +338,14 @@
     <script>
         const API_BASE_URL = '/api';
 
-        // CONTINUOUS APPLICATION LOGIC
-        function startApplication() {
-            // Hide intro, show form
-            document.getElementById('introSection').classList.add('hidden');
-            const formContainer = document.getElementById('formContainer');
-            formContainer.classList.remove('hidden');
-            
-            // Scroll to top of the form for better UX
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function showIntro() {
-            // Hide form, show intro
-            document.getElementById('formContainer').classList.add('hidden');
-            document.getElementById('introSection').classList.remove('hidden');
-        }
-
         async function initGifting() {
             const token = localStorage.getItem('userToken');
-            if (!token) { window.location.href = 'user_login.html'; return; }
+            if (!token) { 
+                // Fallback for development/preview:
+                document.getElementById('userName').innerText = "Guest User";
+                document.getElementById('userEmail').innerText = "guest@example.com";
+                return;
+            }
 
             try {
                 const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
@@ -286,12 +372,12 @@
             const formData = new FormData(e.target);
             const payload = Object.fromEntries(formData.entries());
             
+            // Simulating API Call
             setTimeout(() => {
-                alert(`Success! Your request for "${payload.giftType}" has been received.`);
+                alert(`Success! Your gift request for a "${payload.giftType}" to ${payload.receiverName} has been received.`);
                 btn.disabled = false;
                 btn.innerHTML = '<span>Confirm Gift Details</span>';
                 e.target.reset();
-                showIntro(); // Return to main page after success
             }, 1500);
         });
 
@@ -300,7 +386,7 @@
             window.location.href = 'user_login.html';
         }
 
-        // Sidebar Toggle Logic
+        // Sidebar Logic
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebarOverlay');
         const openBtn = document.getElementById('openSidebar');

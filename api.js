@@ -142,6 +142,23 @@ const rdpSchema = new mongoose.Schema({
 
 const RDP = mongoose.models.RDP || mongoose.model('RDP', rdpSchema);
 
+const rentedNumberSchema = new mongoose.Schema({
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    phoneNumber: { type: String, required: true },
+    service: { type: String, required: true, enum: ['wa', 'tg', 'fb', 'tk', 'go'] },
+    country: { name: String, code: String },
+    price: { type: Number, required: true },
+    status: { type: String, enum: ['pending', 'active', 'expired', 'canceled'], default: 'active' },
+    otpReceived: [{ code: String, sender: String, timestamp: { type: Date, default: Date.now } }],
+    expiresAt: { 
+        type: Date, 
+        required: true, 
+        default: () => new Date(Date.now() + 20 * 60000) 
+    }
+}, { timestamps: true });
+
+module.exports = mongoose.models.RentedNumber || mongoose.model('RentedNumber', rentedNumberSchema);
+
 const orderSchema = new mongoose.Schema({
     userEmail: { type: String, required: true, index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -1942,39 +1959,52 @@ async function handleGetRdpRequests(req, res) {
 async function handleGetTellabotNumbers(req, res) {
     const { country, service } = req.query;
 
-    // 1. Basic Validation
     if (!country || !service) {
-        return res.status(400).json({ success: false, message: "Country and Service are required." });
+        return res.status(400).json({ success: false, message: "Selection missing." });
     }
 
     try {
-        // 2. Fetch from Tellabot using your private credentials
-        // Use your VITE_TELL_A_BOT_API_KEY from process.env
-        const tellabotUrl = `https://www.tellabot.com/sims/api_command.php?api_key=${process.env.VITE_TELL_A_BOT_API_KEY}&action=get_numbers&country=${country}&service=${service}`;
+        const apiKey = process.env.VITE_TELL_A_BOT_API_KEY;
+        const tellabotUrl = `https://www.tellabot.com/sims/api_command.php?api_key=${apiKey}&action=get_numbers&country=${country}&service=${service}`;
 
         const response = await fetch(tellabotUrl);
         const data = await response.json();
 
-        if (!data || !data.numbers) {
-            return res.json({ success: true, numbers: [] });
+        // LOG FOR DEBUGGING: Check your terminal to see the real response
+        console.log(`Fetch for Country: ${country}, Service: ${service}`);
+        console.log("Raw Response:", data);
+
+        let numberList = [];
+
+        // Determine how Tellabot sent the data
+        if (Array.isArray(data)) {
+            numberList = data;
+        } else if (data.numbers && Array.isArray(data.numbers)) {
+            numberList = data.numbers;
+        } else if (data.data && Array.isArray(data.data)) {
+            numberList = data.data;
+        } else if (typeof data === 'object') {
+            // If they return an object { "0": "1234", "1": "5678" }, convert to array
+            numberList = Object.values(data).filter(val => typeof val === 'string' && val.length > 5);
         }
 
-        // 3. RANDOMIZATION LOGIC
-        // Shuffling the array so different users see different numbers at the top
-        const shuffledNumbers = data.numbers.sort(() => Math.random() - 0.5);
+        if (numberList.length === 0) {
+            return res.json({ success: true, numbers: [], message: "No stock found for this selection." });
+        }
 
-        // 4. Return the randomized list to the frontend
+        // Randomize
+        const shuffledNumbers = numberList.sort(() => Math.random() - 0.5);
+
         return res.json({ 
             success: true, 
             numbers: shuffledNumbers 
         });
 
     } catch (err) {
-        console.error("Tellabot API Error:", err);
-        return res.status(500).json({ success: false, message: "Failed to fetch numbers from provider." });
+        console.error("Tellabot Error:", err);
+        return res.status(500).json({ success: false, message: "Provider communication error." });
     }
 }
-
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

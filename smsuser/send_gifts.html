@@ -118,7 +118,7 @@
 
                     <div class="bg-white p-3 rounded-2xl border border-brand-border hover:shadow-md transition-shadow text-center group">
                     <div class="aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden">
-              <img src="https://images.unsplash.com/photo-1579813589973-c88c035678eb?auto=format&fit=crop&q=80&w=300" alt="Frame" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+              <img src="https://media.istockphoto.com/id/483627083/photo/blank-photo.jpg?s=2048x2048&w=is&k=20&c=mctjtLZt4rmV-7SFpVgLM34SNA8jOrUhyJzbLmYO1ik=" alt="Frame" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                 </div>
              <p class="text-[11px] font-bold text-brand-darkText">Frame</p>
                 </div>
@@ -266,14 +266,6 @@
                     <label class="text-[11px] font-semibold text-brand-midText">Gift Type</label>
                     <input type="text" name="giftType" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="e.g. Flower Bouquet">
                 </div>
-                <div class="space-y-1">
-                    <label class="text-[11px] font-semibold text-brand-midText">Estimated Value (NGN)</label>
-                    <div class="relative">
-                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-brand-darkText">₦</span>
-                        <input type="number" name="budget" required class="w-full bg-brand-background border border-brand-border rounded-xl pl-8 pr-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="50,000">
-                    </div>
-                </div>
-            </div>
 
             <div class="space-y-1">
                 <label class="text-[11px] font-semibold text-brand-midText">Message for Recipient</label>
@@ -330,55 +322,62 @@
     }
 
     // Handle Form Submission via WhatsApp
-    document.getElementById('giftForm').addEventListener('submit', function(e) {
-        e.preventDefault();
+   document.getElementById('giftForm').addEventListener('submit', function(e) {
+    e.preventDefault();
 
-        // 1. Ask for confirmation
-        const isSure = confirm("Are you sure you want to send this gift request?");
-        if (!isSure) return;
+    // 1. Ask for confirmation
+    const isSure = confirm("Are you sure you want to send this gift request?");
+    if (!isSure) return;
 
-        const btn = e.target.querySelector('button');
-        btn.disabled = true;
-        btn.innerHTML = '<span>Opening WhatsApp...</span>';
+    const btn = e.target.querySelector('button');
+    btn.disabled = true;
+    btn.innerHTML = '<span>Opening WhatsApp...</span>';
 
-        // 2. Collect Form Data
-        const formData = new FormData(e.target);
-        const d = Object.fromEntries(formData.entries());
+    // 2. Collect Form Data
+    const formData = new FormData(e.target);
+    const d = Object.fromEntries(formData.entries());
 
-        // 3. Format the WhatsApp Message
-        // Using *text* for bolding in WhatsApp
-        let message = `*NEW GIFT APPLICATION (SMSGlobe)*\n\n`;
-        message += `*--- SENDER DETAILS ---*\n`;
-        message += `👤 Name: ${d.senderName}\n`;
-        message += `📞 Phone: ${d.senderPhone}\n\n`;
+    // 3. Format the WhatsApp Message
+    let message = `*NEW GIFT APPLICATION (SMSGlobe)*\n\n`;
+    
+    message += `*--- SENDER DETAILS ---*\n`;
+    message += `👤 Name: ${d.senderName}\n`;
+    message += `📞 Phone: ${d.senderPhone}\n\n`;
+    
+    message += `*--- RECEIVER DETAILS ---*\n`;
+    message += `👤 Name: ${d.receiverName}\n`;
+    message += `📍 Address: ${d.streetAddress}${d.houseNumber ? ', ' + d.houseNumber : ''}\n`;
+    message += `🏙️ City/State: ${d.city}, ${d.state}\n`;
+    message += `📮 Zip/Country: ${d.zipCode}, ${d.country}\n`;
+    message += `📞 Recipient Phone: ${d.receiverPhone || 'Not provided'}\n\n`;
+
+    message += `*--- GIFT INFO ---*\n`;
+    message += `🎁 Type: ${d.giftType}\n`;
+    message += `💰 Est. Value: ₦${Number(d.budget).toLocaleString()}\n`;
+    message += `📝 Message: ${d.message || 'No personal note'}\n\n`;
+
+    // 4. IMPORTANT NOTE FOR USERS
+    message += `*--- IMPORTANT NOTICE ---*\n`;
+    message += `⚠️ The final estimated value of your gifts will be provided by SMSGlobe Management. \n`;
+    message += `💳 You are required to make payment through the provided official account number. \n`;
+    message += `📦 Once your gift has been sent out, you will be notified with the tracking details. \n\n`;
+    message += `*Thank you for choosing SMS Globe!*`;
+
+    // 5. Encode and Redirect
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+
+    // Small delay to show the "Processing" state before redirecting
+    setTimeout(() => {
+        window.open(whatsappUrl, '_blank');
         
-        message += `*--- RECEIVER DETAILS ---*\n`;
-        message += `👤 Name: ${d.receiverName}\n`;
-        message += `📍 Address: ${d.streetAddress}${d.houseNumber ? ', ' + d.houseNumber : ''}\n`;
-        message += `🏙️ City/State: ${d.city}, ${d.state}\n`;
-        message += `📮 Zip/Country: ${d.zipCode}, ${d.country}\n`;
-        message += `📞 Recipient Phone: ${d.receiverPhone || 'Not provided'}\n\n`;
-
-        message += `*--- GIFT INFO ---*\n`;
-        message += `🎁 Type: ${d.giftType}\n`;
-        message += `💰 Est. Value: ₦${Number(d.budget).toLocaleString()}\n`;
-        message += `📝 Message: ${d.message || 'No personal note'}`;
-
-        // 4. Encode and Redirect
-        const encodedMessage = encodeURIComponent(message);
-        const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
-
-        // Small delay to show the "Processing" state before redirecting
-        setTimeout(() => {
-            window.open(whatsappUrl, '_blank');
-            
-            // Reset form and UI
-            btn.disabled = false;
-            btn.innerHTML = '<span>Confirm Gift Details</span>';
-            e.target.reset();
-            showIntro();
-        }, 1000);
-    });
+        // Reset form and UI
+        btn.disabled = false;
+        btn.innerHTML = '<span>Confirm Gift Details</span>';
+        e.target.reset();
+        showIntro();
+    }, 1000);
+});
 
     function logout() {
         localStorage.removeItem('userToken');

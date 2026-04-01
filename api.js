@@ -1956,7 +1956,7 @@ async function handleGetRdpRequests(req, res) {
     }
 }
 
-async function handleGetTellabotNumbers(req, res) {
+aasync function handleGetTellabotNumbers(req, res) {
     const { country, service } = req.query;
 
     if (!country || !service) {
@@ -1965,18 +1965,29 @@ async function handleGetTellabotNumbers(req, res) {
 
     try {
         const apiKey = process.env.VITE_TELL_A_BOT_API_KEY;
-        const tellabotUrl = `https://www.tellabot.com/sims/api_command.php?api_key=${apiKey}&action=get_numbers&country=${country}&service=${service}`;
+        // NOTE: If 'any' still says invalid, try 'get_numbers' or 'get_services' 
+        // depending on your specific Tellabot API version documentation.
+        const tellabotUrl = `${process.env.TELLABOT_API_URL}?api_key=${apiKey}&action=any&country=${country}&service=${service}`;
 
         const response = await fetch(tellabotUrl);
         const data = await response.json();
 
-        // LOG FOR DEBUGGING: Check your terminal to see the real response
-        console.log(`Fetch for Country: ${country}, Service: ${service}`);
-        console.log("Raw Response:", data);
+        // 1. LOG FOR DEBUGGING - This is vital to see why it says 'Invalid'
+        console.log(`--- Tellabot Request: Country=${country}, Service=${service} ---`);
+        console.log("Raw Response from Tellabot:", data);
+
+        // 2. CATCH ERROR STRINGS (Like "Invalid command")
+        if (typeof data === 'string' && (data.toLowerCase().includes('invalid') || data.toLowerCase().includes('error'))) {
+            return res.json({ 
+                success: false, 
+                numbers: [], 
+                message: `Provider Error: ${data}` 
+            });
+        }
 
         let numberList = [];
 
-        // Determine how Tellabot sent the data
+        // 3. EXTRACT NUMBERS SAFELY
         if (Array.isArray(data)) {
             numberList = data;
         } else if (data.numbers && Array.isArray(data.numbers)) {
@@ -1984,16 +1995,27 @@ async function handleGetTellabotNumbers(req, res) {
         } else if (data.data && Array.isArray(data.data)) {
             numberList = data.data;
         } else if (typeof data === 'object') {
-            // If they return an object { "0": "1234", "1": "5678" }, convert to array
-            numberList = Object.values(data).filter(val => typeof val === 'string' && val.length > 5);
+            numberList = Object.values(data);
         }
 
-        if (numberList.length === 0) {
-            return res.json({ success: true, numbers: [], message: "No stock found for this selection." });
+        // 4. STRICT FILTER: Only keep strings that are purely numeric (Phone Numbers)
+        // This removes "Invalid command" or other text from your list
+        const validatedNumbers = numberList.filter(val => {
+            if (typeof val !== 'string') return false;
+            const cleanNum = val.replace(/[\s\-\+\(\)]/g, ''); // Remove spaces, dashes, plus
+            return cleanNum.length > 5 && /^\d+$/.test(cleanNum); // Must be digits only
+        });
+
+        if (validatedNumbers.length === 0) {
+            return res.json({ 
+                success: true, 
+                numbers: [], 
+                message: "No stock found or invalid API parameters." 
+            });
         }
 
-        // Randomize
-        const shuffledNumbers = numberList.sort(() => Math.random() - 0.5);
+        // 5. RANDOMIZE
+        const shuffledNumbers = validatedNumbers.sort(() => Math.random() - 0.5);
 
         return res.json({ 
             success: true, 
@@ -2001,10 +2023,11 @@ async function handleGetTellabotNumbers(req, res) {
         });
 
     } catch (err) {
-        console.error("Tellabot Error:", err);
-        return res.status(500).json({ success: false, message: "Provider communication error." });
+        console.error("Tellabot Fetch Error:", err);
+        return res.status(500).json({ success: false, message: "Internal server error connecting to provider." });
     }
 }
+
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

@@ -311,6 +311,7 @@ app.all('/api/:action', async (req, res) => {
      case 'rdp-request-complete': // This matches the fetch URL in your HTML file
     if (req.method === 'POST') return handleCompleteRDPOrder(req, res);
     break;
+    case 'get-numbers': return handleGetTellabotNumbers(req, res);
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
             
@@ -1935,6 +1936,42 @@ async function handleGetRdpRequests(req, res) {
     } catch (error) {
         console.error("❌ RDP Fetch Error:", error);
         return res.status(500).json({ success: false, message: "Failed to fetch RDP requests" });
+    }
+}
+
+async function handleGetTellabotNumbers(req, res) {
+    const { country, service } = req.query;
+
+    // 1. Basic Validation
+    if (!country || !service) {
+        return res.status(400).json({ success: false, message: "Country and Service are required." });
+    }
+
+    try {
+        // 2. Fetch from Tellabot using your private credentials
+        // Use your VITE_TELL_A_BOT_API_KEY from process.env
+        const tellabotUrl = `https://www.tellabot.com/sims/api_command.php?api_key=${process.env.VITE_TELL_A_BOT_API_KEY}&action=get_numbers&country=${country}&service=${service}`;
+
+        const response = await fetch(tellabotUrl);
+        const data = await response.json();
+
+        if (!data || !data.numbers) {
+            return res.json({ success: true, numbers: [] });
+        }
+
+        // 3. RANDOMIZATION LOGIC
+        // Shuffling the array so different users see different numbers at the top
+        const shuffledNumbers = data.numbers.sort(() => Math.random() - 0.5);
+
+        // 4. Return the randomized list to the frontend
+        return res.json({ 
+            success: true, 
+            numbers: shuffledNumbers 
+        });
+
+    } catch (err) {
+        console.error("Tellabot API Error:", err);
+        return res.status(500).json({ success: false, message: "Failed to fetch numbers from provider." });
     }
 }
 

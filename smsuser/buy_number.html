@@ -23,13 +23,10 @@
     </script>
     <style type="text/tailwindcss">
     @layer utilities {
-        /* Custom Active State for Service and Country Cards */
         .country-card.active, .service-card.active {
             @apply border-brand-blue bg-brand-background;
             box-shadow: inset 0 0 0 1px #0F54C6;
         }
-
-        /* Hide scrollbar for the category selector */
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
@@ -37,18 +34,15 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
-
-        /* Custom Hover Transitions */
         .card-hover-effect {
             @apply transition-all duration-200 hover:shadow-sm active:scale-95;
         }
     }
-</style>
+    </style>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
         .service-card.active, .country-card.active, .number-card.active { border-color: #0F54C6; background-color: #F0F5FE; border-width: 2px; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
         @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .loading-skeleton { animation: pulse-soft 1.5s infinite; }
     </style>
@@ -97,7 +91,7 @@
                 <button id="openSidebar" class="lg:hidden p-1.5 text-brand-midText border border-brand-border rounded-md">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
                 </button>
-                <span class="text-sm font-bold text-brand-darkText">Rent a Number</span>
+                <span class="text-sm font-bold text-brand-darkText">Buy a Number</span>
             </div>
             
             <div class="flex items-center space-x-4">
@@ -135,15 +129,14 @@
             </div>
 
             <div class="flex items-center space-x-2 overflow-x-auto no-scrollbar pb-2 px-1">
-                <button onclick="setServiceCategory('popular')" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold bg-brand-blue text-white transition-all">Popular</button>
-                <button onclick="setServiceCategory('social')" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold text-brand-lightText bg-white border border-brand-border hover:border-brand-blue transition-all">Social Network</button>
-                <button onclick="setServiceCategory('dating')" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold text-brand-lightText bg-white border border-brand-border hover:border-brand-blue transition-all">Dating</button>
-                <button onclick="setServiceCategory('betting')" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold text-brand-lightText bg-white border border-brand-border hover:border-brand-blue transition-all">Betting</button>
-                <button onclick="setServiceCategory('marketplace')" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold text-brand-lightText bg-white border border-brand-border hover:border-brand-blue transition-all">Marketplace</button>
+                <button onclick="setServiceCategory('popular', this)" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold bg-brand-blue text-white transition-all">Popular</button>
+                <button onclick="setServiceCategory('social', this)" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold text-brand-lightText bg-white border border-brand-border hover:border-brand-blue transition-all">Social Network</button>
+                <button onclick="setServiceCategory('dating', this)" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold text-brand-lightText bg-white border border-brand-border hover:border-brand-blue transition-all">Dating</button>
+                <button onclick="setServiceCategory('betting', this)" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold text-brand-lightText bg-white border border-brand-border hover:border-brand-blue transition-all">Betting</button>
+                <button onclick="setServiceCategory('marketplace', this)" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold text-brand-lightText bg-white border border-brand-border hover:border-brand-blue transition-all">Marketplace</button>
             </div>
 
-            <div id="serviceGrid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-8 gap-2">
-                </div>
+            <div id="serviceGrid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-8 gap-2"></div>
         </section>
 
        <section class="space-y-3">
@@ -193,7 +186,6 @@
         const API_BASE_URL = '/api';
         
        const countries = [
-    // POPULAR / HIGH DEMAND
     { id: 'US', name: 'USA', flag: '🇺🇸', rate: 1500 },
     { id: 'UK', name: 'UK', flag: '🇬🇧', rate: 1200 },
     { id: 'NG', name: 'Nigeria', flag: '🇳🇬', rate: 850 },
@@ -227,102 +219,29 @@
 ];
 
       const services = [
-    // POPULAR
     { id: 'wa', name: 'WhatsApp', category: 'popular', icon: 'https://cdn-icons-png.flaticon.com/512/733/733585.png' },
     { id: 'tg', name: 'Telegram', category: 'popular', icon: 'https://cdn-icons-png.flaticon.com/512/2111/2111646.png' },
     { id: 'go', name: 'Google/YT', category: 'ecosystem', icon: 'https://cdn-icons-png.flaticon.com/512/300/300221.png' },
-    
-    // SOCIAL NETWORK
     { id: 'fb', name: 'Facebook', category: 'social', icon: 'https://cdn-icons-png.flaticon.com/512/733/733547.png' },
     { id: 'ig', name: 'Instagram', category: 'social', icon: 'https://cdn-icons-png.flaticon.com/512/174/174855.png' },
     { id: 'tk', name: 'TikTok', category: 'social', icon: 'https://cdn-icons-png.flaticon.com/512/3046/3046121.png' },
     { id: 'tw', name: 'X / Twitter', category: 'social', icon: 'https://cdn-icons-png.flaticon.com/512/5968/5968958.png' },
-
-    // DATING SITE
     { id: 'td', name: 'Tinder', category: 'dating', icon: 'https://cdn-icons-png.flaticon.com/512/733/733635.png' },
     { id: 'bm', name: 'Bumble', category: 'dating', icon: 'https://img.icons8.com/color/48/bumble.png' },
-
-    // MARKETPLACE
     { id: 'am', name: 'Amazon', category: 'marketplace', icon: 'https://cdn-icons-png.flaticon.com/512/732/732190.png' },
     { id: 'eb', name: 'eBay', category: 'marketplace', icon: 'https://cdn-icons-png.flaticon.com/512/5968/5968854.png' },
-
-    // BETTING
     { id: 'b3', name: 'Bet365', category: 'betting', icon: 'https://img.icons8.com/color/48/bet365.png' },
     { id: '1x', name: '1xBet', category: 'betting', icon: 'https://img.icons8.com/color/48/1xbet.png' },
-
-    // GAMING
     { id: 'st', name: 'Steam', category: 'gaming', icon: 'https://cdn-icons-png.flaticon.com/512/733/733646.png' },
     { id: 'ps', name: 'PSN', category: 'gaming', icon: 'https://cdn-icons-png.flaticon.com/512/5968/5968332.png' },
-
-    // MESSENGERS (Non-popular)
     { id: 'sc', name: 'Snapchat', category: 'messengers', icon: 'https://cdn-icons-png.flaticon.com/512/196/196577.png' },
     { id: 'vi', name: 'Viber', category: 'messengers', icon: 'https://cdn-icons-png.flaticon.com/512/733/733632.png' }
-];
-
-const categories = [
-    'popular', 'social', 'ecosystem', 'dating', 'marketplace', 
-    'scooters', 'gaming', 'car rent', 'betting', 'messengers', 'others'
 ];
 
         let activeCategory = 'popular';
         let selectedCountry = null;
         let selectedService = null;
         let selectedNumber = null;
-
-
-
-// 2. Updated Render Logic with Category Filter
-function renderServiceGrid() {
-    const grid = document.getElementById('serviceGrid');
-    
-    // Filter services based on the active category (unless "others" is used for everything else)
-    const filtered = services.filter(s => s.category === activeCategory);
-    
-    if (filtered.length === 0) {
-        grid.innerHTML = `<div class="col-span-full py-10 text-center text-[10px] text-brand-lightText italic">No services added to this category yet.</div>`;
-        return;
-    }
-
-    grid.innerHTML = filtered.map(s => `
-        <div onclick="selectService('${s.id}', this)" class="service-card cursor-pointer bg-white border border-brand-border p-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all hover:shadow-md group">
-            <img src="${s.icon}" class="w-8 h-8 mb-2 group-hover:scale-110 transition-transform object-contain">
-            <span class="service-name text-[10px] font-bold text-brand-darkText">${s.name}</span>
-        </div>
-    `).join('');
-}
-
-function setServiceCategory(cat) {
-    activeCategory = cat;
-    // Update UI buttons
-    document.querySelectorAll('.cat-btn').forEach(btn => {
-        btn.classList.remove('bg-brand-blue', 'text-white');
-        btn.classList.add('text-brand-lightText');
-    });
-    event.target.classList.add('bg-brand-blue', 'text-white');
-    event.target.classList.remove('text-brand-lightText');
-    
-    renderServiceGrid();
-}
-
-        // Tab Switching Logic
-        function switchTab(tab) {
-            const actSec = document.getElementById('sectionActivation');
-            const rentSec = document.getElementById('sectionRent');
-            const actBtn = document.getElementById('tabActivation');
-            const rentBtn = document.getElementById('tabRent');
-
-            if (tab === 'activation') {
-                actSec.classList.remove('hidden');
-                rentSec.classList.add('hidden');
-                actBtn.className = "flex-1 md:flex-none px-8 py-2.5 rounded-xl text-xs font-bold transition-all bg-brand-blue text-white shadow-sm";
-                rentBtn.className = "flex-1 md:flex-none px-8 py-2.5 rounded-xl text-xs font-bold transition-all text-brand-lightText hover:text-brand-darkText";
-            } else {
-                actSec.classList.add('hidden');
-                rentSec.classList.remove('hidden');
-                rentBtn.className = "flex-1 md:flex-none px-8 py-2.5 rounded-xl text-xs font-bold transition-all bg-brand-blue text-white shadow-sm";
-                actBtn.className = "flex-1 md:flex-none px-8 py-2.5 rounded-xl text-xs font-bold transition-all text-brand-lightText hover:text-brand-darkText";
-            }
-        }
 
         async function initDashboard() {
             renderServiceGrid();
@@ -340,30 +259,43 @@ function setServiceCategory(cat) {
 
         function renderServiceGrid() {
             const grid = document.getElementById('serviceGrid');
-            grid.innerHTML = services.map(s => `
-                <div onclick="selectService('${s.id}', this)" class="service-card cursor-pointer bg-white border border-brand-border p-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all hover:shadow-md group">
-                    <img src="${s.icon}" class="w-8 h-8 mb-2 group-hover:scale-110 transition-transform">
+            const filtered = services.filter(s => s.category === activeCategory);
+            
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-10 text-center text-[10px] text-brand-lightText italic">No services added to this category yet.</div>`;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(s => `
+                <div onclick="selectService('${s.id}', this)" class="service-card cursor-pointer bg-white border border-brand-border p-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all hover:shadow-md group ${selectedService === s.id ? 'active' : ''}">
+                    <img src="${s.icon}" class="w-8 h-8 mb-2 group-hover:scale-110 transition-transform object-contain">
                     <span class="service-name text-[10px] font-bold text-brand-darkText">${s.name}</span>
                 </div>
             `).join('');
         }
 
-       function renderCountryGrid() {
-    const grid = document.getElementById('countryGrid');
-    grid.innerHTML = countries.map(c => `
-        <div onclick="selectCountry('${c.id}', this)" 
-             class="country-card cursor-pointer bg-white border border-brand-border rounded-lg flex flex-col items-center justify-center text-center transition-all hover:shadow-sm group h-14 md:h-16 px-1">
-            
-            <span class="text-base md:text-lg mb-0.5">${c.flag}</span>
-            
-            <span class="text-[8px] md:text-[9px] font-bold text-brand-darkText leading-tight truncate w-full px-0.5">
-                ${c.name}
-            </span>
-            
-            <span class="text-[7px] text-brand-lightText mt-0.5">₦${c.rate}</span>
-        </div>
-    `).join('');
-}
+        function setServiceCategory(cat, element) {
+            activeCategory = cat;
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                btn.classList.remove('bg-brand-blue', 'text-white');
+                btn.classList.add('text-brand-lightText', 'bg-white', 'border-brand-border');
+            });
+            element.classList.add('bg-brand-blue', 'text-white');
+            element.classList.remove('text-brand-lightText', 'bg-white', 'border-brand-border');
+            renderServiceGrid();
+        }
+
+        function renderCountryGrid() {
+            const grid = document.getElementById('countryGrid');
+            grid.innerHTML = countries.map(c => `
+                <div onclick="selectCountry('${c.id}', this)" 
+                     class="country-card cursor-pointer bg-white border border-brand-border rounded-lg flex flex-col items-center justify-center text-center transition-all hover:shadow-sm group h-14 md:h-16 px-1">
+                    <span class="text-base md:text-lg mb-0.5">${c.flag}</span>
+                    <span class="text-[8px] md:text-[9px] font-bold text-brand-darkText leading-tight truncate w-full px-0.5">${c.name}</span>
+                    <span class="text-[7px] text-brand-lightText mt-0.5">₦${c.rate}</span>
+                </div>
+            `).join('');
+        }
 
         function selectService(id, element) {
             document.querySelectorAll('.service-card').forEach(card => card.classList.remove('active'));
@@ -373,40 +305,28 @@ function setServiceCategory(cat) {
             if(selectedCountry) fetchNumbers(); 
         }
 
-       async function selectCountry(id, element) {
-    if (!selectedService) { 
-        alert("Please select a service in Step 1 first."); 
-        return; 
-    }
-    document.querySelectorAll('.country-card').forEach(card => {
-        card.classList.remove('active', 'border-brand-blue', 'bg-brand-background');
-    });
-    element.classList.add('active');
-    selectedCountry = countries.find(c => c.id === id);
-    updateSummary();
-    const numSection = document.getElementById('numbersSection');
-    if (numSection) {
-        numSection.classList.remove('hidden');
-    }
-
-    await fetchNumbers();
-
-    if (numSection) {
-        numSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-}
+        async function selectCountry(id, element) {
+            if (!selectedService) { 
+                alert("Please select a service in Step 1 first."); 
+                return; 
+            }
+            document.querySelectorAll('.country-card').forEach(card => card.classList.remove('active'));
+            element.classList.add('active');
+            selectedCountry = countries.find(c => c.id === id);
+            updateSummary();
+            await fetchNumbers();
+            document.getElementById('numbersSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
 
         async function fetchNumbers() {
             const numSection = document.getElementById('numbersSection');
             const numGrid = document.getElementById('numberGrid');
-            
             numSection.classList.remove('hidden');
             numGrid.innerHTML = `<div class="col-span-full py-10 text-center loading-skeleton text-[10px] font-bold text-brand-blue">Fetching Randomized Numbers...</div>`;
             
             try {
                 const res = await fetch(`/api/get-numbers?country=${selectedCountry.id}&service=${selectedService}`);
                 const data = await res.json();
-                
                 if(data.success && data.numbers.length > 0) {
                     numGrid.innerHTML = data.numbers.map(num => `
                         <div onclick="pickNumber('${num}', this)" class="number-card cursor-pointer bg-white border border-brand-border p-3 rounded-xl flex items-center justify-between hover:border-brand-blue transition-all group">
@@ -438,7 +358,6 @@ function setServiceCategory(cat) {
             const cName = selectedCountry ? selectedCountry.name : '...';
             const nDisplay = selectedNumber ? `(${selectedNumber})` : '';
             const price = selectedCountry ? `₦${selectedCountry.rate.toLocaleString()}` : '₦0';
-            
             document.getElementById('displayPrice').innerText = price;
             document.getElementById('selectionSummary').innerText = `Renting ${sName} number from ${cName} ${nDisplay}`;
         }
@@ -456,9 +375,22 @@ function setServiceCategory(cat) {
             });
         }
 
+        function switchTab(tab) {
+            const actSec = document.getElementById('sectionActivation'), rentSec = document.getElementById('sectionRent');
+            const actBtn = document.getElementById('tabActivation'), rentBtn = document.getElementById('tabRent');
+            if (tab === 'activation') {
+                actSec.classList.remove('hidden'); rentSec.classList.add('hidden');
+                actBtn.className = "flex-1 md:flex-none px-8 py-2.5 rounded-xl text-xs font-bold transition-all bg-brand-blue text-white shadow-sm";
+                rentBtn.className = "flex-1 md:flex-none px-8 py-2.5 rounded-xl text-xs font-bold transition-all text-brand-lightText hover:text-brand-darkText";
+            } else {
+                actSec.classList.add('hidden'); rentSec.classList.remove('hidden');
+                rentBtn.className = "flex-1 md:flex-none px-8 py-2.5 rounded-xl text-xs font-bold transition-all bg-brand-blue text-white shadow-sm";
+                actBtn.className = "flex-1 md:flex-none px-8 py-2.5 rounded-xl text-xs font-bold transition-all text-brand-lightText hover:text-brand-darkText";
+            }
+        }
+
         function logout() { localStorage.removeItem('userToken'); window.location.href = 'user_login.html'; }
 
-        // Sidebar logic
         const toggle = () => {
             document.getElementById('sidebar').classList.toggle('-translate-x-full');
             document.getElementById('sidebarOverlay').classList.toggle('hidden');

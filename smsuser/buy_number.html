@@ -33,7 +33,7 @@
         .step-hidden { opacity: 0; max-height: 0; overflow: hidden; transition: all 0.5s ease-in-out; pointer-events: none; }
         .step-visible { opacity: 1; max-height: 2000px; overflow: visible; transition: all 0.5s ease-in-out; pointer-events: auto; }
         
-        .service-card.active { 
+        .service-card.active, .number-card.active { 
             border-color: #0F54C6 !important; 
             background-color: #F0F5FE !important; 
             border-width: 2px !important;
@@ -106,7 +106,7 @@
                 </button>
             </div>
 
-            <div id="sectionActivation" class="space-y-6">
+            <div id="sectionActivation" class="space-y-6 pb-24">
                 <section class="space-y-4">
                     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 px-1">
                         <div>
@@ -160,22 +160,22 @@
                             <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-tight">Step 3: Select Available Number</h4>
                             <p class="text-[10px] text-brand-lightText">Pick your preferred number from the list.</p>
                         </div>
-                        <button onclick="fetchNumbers()" class="text-[10px] font-bold text-brand-blue flex items-center gap-1">
+                        <button onclick="fetchNumbers()" class="text-[10px] font-bold text-brand-blue flex items-center gap-1 hover:underline">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-width="2" stroke-linecap="round"/></svg>
                             Shuffle List
                         </button>
                     </div>
-                    <div id="numberGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2"></div>
+                    <div id="numberGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
                 </section>
 
-                <div class="bg-brand-blue text-white rounded-2xl p-4 md:p-6 shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 transition-all">
+                <div class="fixed bottom-6 left-4 right-4 md:left-auto md:right-8 md:w-[450px] bg-brand-blue text-white rounded-2xl p-4 md:p-6 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4 transition-all z-40 border border-white/10">
                     <div class="text-center md:text-left">
                         <p class="text-[9px] font-bold uppercase tracking-widest opacity-80 mb-0.5">Total Due</p>
                         <h2 class="text-2xl md:text-3xl font-extrabold" id="displayPrice">₦0</h2>
-                        <p class="text-[9px] mt-1 opacity-90" id="selectionSummary">Complete steps above to proceed.</p>
+                        <p class="text-[9px] mt-1 opacity-90 leading-tight" id="selectionSummary">Complete steps above to proceed.</p>
                     </div>
-                    <button onclick="processRent()" class="w-full md:w-auto px-8 py-3 bg-white text-brand-blue rounded-xl font-bold text-xs hover:bg-opacity-90 transition-all shadow-xl active:scale-95">
-                        Rent Number Now
+                    <button onclick="processRent()" class="w-full md:w-auto px-8 py-3 bg-white text-brand-blue rounded-xl font-bold text-xs hover:bg-orange-50 transition-all shadow-xl active:scale-95 disabled:opacity-50 disabled:pointer-events-none" id="rentBtn" disabled>
+                        Rent Now
                     </button>
                 </div>
             </div>
@@ -192,36 +192,20 @@
 
     <script>
         const countries = [
-            { id: 'US', name: 'USA', flag: '🇺🇸', rate: 1500 },
-            { id: 'UK', name: 'UK', flag: '🇬🇧', rate: 1200 },
-            { id: 'NG', name: 'Nigeria', flag: '🇳🇬', rate: 850 },
-            { id: 'RU', name: 'Russia', flag: '🇷🇺', rate: 700 },
-            { id: 'UA', name: 'Ukraine', flag: '🇺🇦', rate: 750 },
-            { id: 'DE', name: 'Germany', flag: '🇩🇪', rate: 2100 },
-            { id: 'FR', name: 'France', flag: '🇫🇷', rate: 1900 },
-            { id: 'IN', name: 'India', flag: '🇮🇳', rate: 600 },
-            { id: 'ID', name: 'Indonesia', flag: '🇮🇩', rate: 550 },
-            { id: 'BR', name: 'Brazil', flag: '🇧🇷', rate: 900 },
-            { id: 'ZA', name: 'South Africa', flag: '🇿🇦', rate: 1100 },
-            { id: 'GH', name: 'Ghana', flag: '🇬🇭', rate: 800 },
-            { id: 'KE', name: 'Kenya', flag: '🇰🇪', rate: 850 },
-            { id: 'CI', name: 'Ivory Coast', flag: '🇨🇮', rate: 950 },
-            { id: 'MA', name: 'Morocco', flag: '🇲🇦', rate: 1000 },
-            { id: 'EG', name: 'Egypt', flag: '🇪🇬', rate: 750 },
-            { id: 'CN', name: 'China', flag: '🇨🇳', rate: 1800 },
-            { id: 'PH', name: 'Philippines', flag: '🇵🇭', rate: 650 },
-            { id: 'VN', name: 'Vietnam', flag: '🇻🇳', rate: 600 },
-            { id: 'TH', name: 'Thailand', flag: '🇹🇭', rate: 700 },
-            { id: 'MY', name: 'Malaysia', flag: '🇲🇾', rate: 850 },
-            { id: 'NL', name: 'Netherlands', flag: '🇳🇱', rate: 2200 },
-            { id: 'ES', name: 'Spain', flag: '🇪🇸', rate: 1850 },
-            { id: 'IT', name: 'Italy', flag: '🇮🇹', rate: 1950 },
-            { id: 'PL', name: 'Poland', flag: '🇵🇱', rate: 1100 },
-            { id: 'CA', name: 'Canada', flag: '🇨🇦', rate: 1600 },
-            { id: 'MX', name: 'Mexico', flag: '🇲🇽', rate: 950 },
-            { id: 'CO', name: 'Colombia', flag: '🇨🇴', rate: 800 },
-            { id: 'AR', name: 'Argentina', flag: '🇦🇷', rate: 850 },
-            { id: 'TR', name: 'Turkey', flag: '🇹🇷', rate: 900 }
+            { id: 'US', name: 'USA', flag: '🇺🇸', rate: 1500, prefix: '+1' },
+            { id: 'UK', name: 'UK', flag: '🇬🇧', rate: 1200, prefix: '+44' },
+            { id: 'NG', name: 'Nigeria', flag: '🇳🇬', rate: 850, prefix: '+234' },
+            { id: 'RU', name: 'Russia', flag: '🇷🇺', rate: 700, prefix: '+7' },
+            { id: 'UA', name: 'Ukraine', flag: '🇺🇦', rate: 750, prefix: '+380' },
+            { id: 'DE', name: 'Germany', flag: '🇩🇪', rate: 2100, prefix: '+49' },
+            { id: 'FR', name: 'France', flag: '🇫🇷', rate: 1900, prefix: '+33' },
+            { id: 'IN', name: 'India', flag: '🇮🇳', rate: 600, prefix: '+91' },
+            { id: 'ID', name: 'Indonesia', flag: '🇮🇩', rate: 550, prefix: '+62' },
+            { id: 'BR', name: 'Brazil', flag: '🇧🇷', rate: 900, prefix: '+55' },
+            { id: 'ZA', name: 'South Africa', flag: '🇿🇦', rate: 1100, prefix: '+27' },
+            { id: 'GH', name: 'Ghana', flag: '🇬🇭', rate: 800, prefix: '+233' },
+            { id: 'KE', name: 'Kenya', flag: '🇰🇪', rate: 850, prefix: '+254' },
+            { id: 'TR', name: 'Turkey', flag: '🇹🇷', rate: 900, prefix: '+90' }
         ];
 
         const services = [
@@ -318,6 +302,7 @@
         async function selectCountry(id) {
             const country = countries.find(c => c.id === id);
             selectedCountry = country;
+            selectedNumber = null; // Reset selection
 
             document.getElementById('selectedCountryDisplay').innerHTML = `
                 <span class="text-xl">${country.flag}</span>
@@ -341,34 +326,69 @@
             }, 100);
         }
 
-        function filterCountries() {
-            const term = document.getElementById('countrySearch').value.toLowerCase();
-            const options = document.querySelectorAll('.country-option');
-            
-            options.forEach(opt => {
-                const name = opt.innerText.toLowerCase();
-                opt.style.display = name.includes(term) ? 'flex' : 'none';
-            });
-        }
-
         async function fetchNumbers() {
             const numGrid = document.getElementById('numberGrid');
-            numGrid.innerHTML = `<div class="col-span-full py-6 text-center loading-skeleton text-[10px] font-bold text-brand-blue">Fetching ${selectedCountry.name} numbers...</div>`;
+            numGrid.innerHTML = `
+                <div class="col-span-full py-10 flex flex-col items-center justify-center space-y-3">
+                    <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin"></div>
+                    <p class="text-[10px] font-bold text-brand-blue uppercase tracking-widest">Searching ${selectedCountry.name} Pool...</p>
+                </div>
+            `;
             
-            // Simulating API Call
+            // Simulating API loading
             setTimeout(() => {
-                numGrid.innerHTML = `<div class="col-span-full py-6 text-center text-[10px] text-red-400">No live numbers currently available for ${selectedCountry.name}.</div>`;
-            }, 1000);
+                const dummyNumbers = Array.from({length: 6}, () => {
+                    const randomDigits = Math.floor(10000000 + Math.random() * 90000000);
+                    return `${selectedCountry.prefix} ${randomDigits}`;
+                });
+
+                numGrid.innerHTML = dummyNumbers.map(num => `
+                    <div onclick="selectNumber('${num}', this)" class="number-card cursor-pointer bg-white border border-brand-border p-4 rounded-xl flex items-center justify-between transition-all hover:border-brand-blue group">
+                        <div class="flex flex-col">
+                            <span class="text-[9px] font-bold text-brand-lightText uppercase tracking-tight">Available</span>
+                            <span class="text-xs font-extrabold text-brand-darkText">${num}</span>
+                        </div>
+                        <div class="w-5 h-5 rounded-full border border-brand-border flex items-center justify-center group-hover:border-brand-blue transition-colors">
+                            <div class="w-2.5 h-2.5 rounded-full bg-brand-blue opacity-0 transition-opacity check-dot"></div>
+                        </div>
+                    </div>
+                `).join('');
+            }, 800);
+        }
+
+        function selectNumber(num, element) {
+            document.querySelectorAll('.number-card').forEach(card => {
+                card.classList.remove('active');
+                card.querySelector('.check-dot').classList.add('opacity-0');
+            });
+            
+            element.classList.add('active');
+            element.querySelector('.check-dot').classList.remove('opacity-0');
+            selectedNumber = num;
+            
+            updateSummary();
         }
 
         function updateSummary() {
             const sName = services.find(s => s.id === selectedService)?.name || '...';
             const cName = selectedCountry ? `${selectedCountry.flag} ${selectedCountry.name}` : '...';
-            const nDisplay = selectedNumber ? `(${selectedNumber})` : '';
             const price = selectedCountry ? `₦${selectedCountry.rate.toLocaleString()}` : '₦0';
+            const rentBtn = document.getElementById('rentBtn');
             
             document.getElementById('displayPrice').innerText = price;
-            document.getElementById('selectionSummary').innerText = `Renting ${sName} number from ${cName} ${nDisplay}`;
+            
+            if (selectedNumber) {
+                document.getElementById('selectionSummary').innerHTML = `
+                    <span class="block">Service: <b>${sName}</b></span>
+                    <span class="block">Number: <b class="text-orange-400">${selectedNumber}</b></span>
+                `;
+                rentBtn.disabled = false;
+            } else {
+                document.getElementById('selectionSummary').innerText = selectedCountry 
+                    ? `Please select a number from the list above.` 
+                    : `Complete steps above to proceed.`;
+                rentBtn.disabled = true;
+            }
         }
 
         function switchTab(tab) {
@@ -390,14 +410,14 @@
             }
         }
 
-        window.addEventListener('click', function(e) {
-            const dropdown = document.getElementById('countryDropdownList');
-            const btn = document.getElementById('countryDropdownBtn');
-            if (dropdown && btn && !btn.contains(e.target) && !dropdown.contains(e.target)) {
-                dropdown.classList.add('hidden');
-                document.getElementById('dropdownArrow').classList.remove('rotate-180');
-            }
-        });
+        function filterCountries() {
+            const term = document.getElementById('countrySearch').value.toLowerCase();
+            const options = document.querySelectorAll('.country-option');
+            options.forEach(opt => {
+                const name = opt.innerText.toLowerCase();
+                opt.style.display = name.includes(term) ? 'flex' : 'none';
+            });
+        }
 
         function filterServices() {
             const input = document.getElementById('serviceSearch').value.toLowerCase();
@@ -405,6 +425,10 @@
                 const name = card.querySelector('.service-name').innerText.toLowerCase();
                 card.style.display = name.includes(input) ? 'flex' : 'none';
             });
+        }
+
+        function processRent() {
+            alert(`Initiating purchase for ${selectedNumber}. Redirecting to payment...`);
         }
 
         function logout() { window.location.href = 'user_login.html'; }

@@ -137,7 +137,7 @@
                 </div>
 
                 <form id="giftForm" class="space-y-8">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
                         <div class="space-y-4">
                             <h3 class="text-[10px] font-bold text-brand-blue uppercase border-b border-brand-border pb-2">Sender Details</h3>
                             <div class="space-y-1">
@@ -157,8 +157,39 @@
                                 <input type="text" name="receiverName" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Full Name">
                             </div>
                             <div class="space-y-1">
-                                <label class="text-[11px] font-semibold text-brand-midText">Delivery Address / Email</label>
-                                <input type="text" name="receiverContact" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Physical Address or Email">
+                                <label class="text-[11px] font-semibold text-brand-midText">Recipient Phone Number (Optional)</label>
+                                <input type="tel" name="receiverPhone" class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="+1...">
+                            </div>
+                            
+                            <div class="space-y-3 pt-2">
+                                <div class="space-y-1">
+                                    <label class="text-[11px] font-semibold text-brand-midText">Street Address</label>
+                                    <input type="text" name="streetAddress" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="House number and street name">
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="text-[11px] font-semibold text-brand-midText">Apt, Suite, Unit (Optional)</label>
+                                    <input type="text" name="aptNumber" class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Apartment, suite, unit, etc.">
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="space-y-1">
+                                        <label class="text-[11px] font-semibold text-brand-midText">City</label>
+                                        <input type="text" name="city" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="City">
+                                    </div>
+                                    <div class="space-y-1">
+                                        <label class="text-[11px] font-semibold text-brand-midText">State / Province</label>
+                                        <input type="text" name="state" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="State">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="space-y-1">
+                                        <label class="text-[11px] font-semibold text-brand-midText">Zip / Postal Code</label>
+                                        <input type="text" name="zipCode" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Zip code">
+                                    </div>
+                                    <div class="space-y-1">
+                                        <label class="text-[11px] font-semibold text-brand-midText">Country</label>
+                                        <input type="text" name="country" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="United States">
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -243,10 +274,10 @@
             const formData = new FormData(e.target);
             const payload = Object.fromEntries(formData.entries());
             
-            console.log("Gift Submission:", payload);
+            console.log("Gift Submission Payload:", payload);
             
             setTimeout(() => {
-                alert(`Success! Your gift request for a "${payload.giftType}" via ${payload.deliveryLevel} delivery has been received.`);
+                alert(`Success! Your gift request for a "${payload.giftType}" to ${payload.receiverName} in ${payload.city} has been received.`);
                 btn.disabled = false;
                 btn.innerHTML = '<span>Confirm Gift Details</span>';
                 e.target.reset();

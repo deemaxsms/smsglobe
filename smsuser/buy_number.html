@@ -88,52 +88,71 @@
             </div>
         </header>
 
-        <main class="p-4 md:p-6 max-w-5xl w-full mx-auto space-y-8">
-            <section class="space-y-4">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 px-1">
-                    <div>
-                        <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-tight">Step 1: Select Service</h4>
-                        <p class="text-[10px] text-brand-lightText">Choose the application you want to verify.</p>
-                    </div>
-                    <div class="relative">
-                        <input type="text" id="serviceSearch" onkeyup="filterServices()" placeholder="Search services..." class="pl-8 pr-4 py-2 bg-white border border-brand-border rounded-xl text-xs focus:ring-1 focus:ring-brand-blue outline-none w-full md:w-64">
-                        <svg class="w-3.5 h-3.5 absolute left-3 top-2.5 text-brand-lightText" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    </div>
-                </div>
-                <div id="serviceGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"></div>
-            </section>
+        <main class="p-4 md:p-6 max-w-5xl w-full mx-auto space-y-6">
+            <div class="flex p-1 bg-white border border-brand-border rounded-2xl w-full md:w-fit">
+                <button id="tabActivation" onclick="switchTab('activation')" class="flex-1 md:flex-none px-8 py-2.5 rounded-xl text-xs font-bold transition-all bg-brand-blue text-white shadow-sm">
+                    Activation
+                </button>
+                <button id="tabRent" onclick="switchTab('rent')" class="flex-1 md:flex-none px-8 py-2.5 rounded-xl text-xs font-bold transition-all text-brand-lightText hover:text-brand-darkText">
+                    Rent
+                </button>
+            </div>
 
-            <section class="space-y-4">
-                <div class="px-1">
-                    <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-tight">Step 2: Select Country</h4>
-                    <p class="text-[10px] text-brand-lightText">Choose a region to see number availability.</p>
-                </div>
-                <div id="countryGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3"></div>
-            </section>
-
-            <section id="numbersSection" class="space-y-4 hidden">
-                <div class="px-1 flex justify-between items-center">
-                    <div>
-                        <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-tight">Step 3: Select Available Number</h4>
-                        <p class="text-[10px] text-brand-lightText">Choose one of the numbers retrieved for you.</p>
+            <div id="sectionActivation" class="space-y-8">
+                <section class="space-y-4">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 px-1">
+                        <div>
+                            <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-tight">Step 1: Select Service</h4>
+                            <p class="text-[10px] text-brand-lightText">Choose the application you want to verify.</p>
+                        </div>
+                        <div class="relative">
+                            <input type="text" id="serviceSearch" onkeyup="filterServices()" placeholder="Search services..." class="pl-8 pr-4 py-2 bg-white border border-brand-border rounded-xl text-xs focus:ring-1 focus:ring-brand-blue outline-none w-full md:w-64">
+                            <svg class="w-3.5 h-3.5 absolute left-3 top-2.5 text-brand-lightText" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
                     </div>
-                    <button onclick="refreshNumbers()" class="text-[10px] font-bold text-brand-blue flex items-center gap-1">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-width="2" stroke-linecap="round"/></svg>
-                        Shuffle List
+                    <div id="serviceGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"></div>
+                </section>
+
+                <section class="space-y-4">
+                    <div class="px-1">
+                        <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-tight">Step 2: Select Country</h4>
+                        <p class="text-[10px] text-brand-lightText">Choose a region to see number availability.</p>
+                    </div>
+                    <div id="countryGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3"></div>
+                </section>
+
+                <section id="numbersSection" class="space-y-4 hidden">
+                    <div class="px-1 flex justify-between items-center">
+                        <div>
+                            <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-tight">Step 3: Select Available Number</h4>
+                            <p class="text-[10px] text-brand-lightText">Choose one of the numbers retrieved for you.</p>
+                        </div>
+                        <button onclick="refreshNumbers()" class="text-[10px] font-bold text-brand-blue flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-width="2" stroke-linecap="round"/></svg>
+                            Shuffle List
+                        </button>
+                    </div>
+                    <div id="numberGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
+                </section>
+
+                <div class="bg-brand-blue text-white rounded-2xl p-6 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6 transition-all">
+                    <div class="text-center md:text-left">
+                        <p class="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Total Due</p>
+                        <h2 class="text-3xl font-extrabold" id="displayPrice">₦0</h2>
+                        <p class="text-[10px] mt-2 opacity-90" id="selectionSummary">Please select service, country, and number.</p>
+                    </div>
+                    <button onclick="processRent()" class="w-full md:w-auto px-10 py-4 bg-white text-brand-blue rounded-xl font-bold text-sm hover:bg-opacity-90 transition-all shadow-xl active:scale-95">
+                        Rent Number Now
                     </button>
                 </div>
-                <div id="numberGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
-            </section>
+            </div>
 
-            <div class="bg-brand-blue text-white rounded-2xl p-6 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6 transition-all">
-                <div class="text-center md:text-left">
-                    <p class="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Total Due</p>
-                    <h2 class="text-3xl font-extrabold" id="displayPrice">₦0</h2>
-                    <p class="text-[10px] mt-2 opacity-90" id="selectionSummary">Please select service, country, and number.</p>
+            <div id="sectionRent" class="hidden py-20 text-center space-y-4">
+                <div class="w-16 h-16 bg-white border border-brand-border rounded-full flex items-center justify-center mx-auto text-brand-lightText">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 </div>
-                <button onclick="processRent()" class="w-full md:w-auto px-10 py-4 bg-white text-brand-blue rounded-xl font-bold text-sm hover:bg-opacity-90 transition-all shadow-xl active:scale-95">
-                    Rent Number Now
-                </button>
+                <h3 class="text-sm font-bold text-brand-darkText">Long Term Rental</h3>
+                <p class="text-[10px] text-brand-lightText max-w-[200px] mx-auto">This section is currently empty. Weekly and monthly rentals will be available here soon.</p>
             </div>
         </main>
     </div>
@@ -160,6 +179,26 @@
         let selectedCountry = null;
         let selectedService = null;
         let selectedNumber = null;
+
+        // Tab Switching Logic
+        function switchTab(tab) {
+            const actSec = document.getElementById('sectionActivation');
+            const rentSec = document.getElementById('sectionRent');
+            const actBtn = document.getElementById('tabActivation');
+            const rentBtn = document.getElementById('tabRent');
+
+            if (tab === 'activation') {
+                actSec.classList.remove('hidden');
+                rentSec.classList.add('hidden');
+                actBtn.className = "flex-1 md:flex-none px-8 py-2.5 rounded-xl text-xs font-bold transition-all bg-brand-blue text-white shadow-sm";
+                rentBtn.className = "flex-1 md:flex-none px-8 py-2.5 rounded-xl text-xs font-bold transition-all text-brand-lightText hover:text-brand-darkText";
+            } else {
+                actSec.classList.add('hidden');
+                rentSec.classList.remove('hidden');
+                rentBtn.className = "flex-1 md:flex-none px-8 py-2.5 rounded-xl text-xs font-bold transition-all bg-brand-blue text-white shadow-sm";
+                actBtn.className = "flex-1 md:flex-none px-8 py-2.5 rounded-xl text-xs font-bold transition-all text-brand-lightText hover:text-brand-darkText";
+            }
+        }
 
         async function initDashboard() {
             renderServiceGrid();
@@ -221,7 +260,6 @@
             numGrid.innerHTML = `<div class="col-span-full py-10 text-center loading-skeleton text-[10px] font-bold text-brand-blue">Fetching Randomized Numbers...</div>`;
             
             try {
-                // CALLING YOUR BACKEND PROXY
                 const res = await fetch(`/api/get-numbers?country=${selectedCountry.id}&service=${selectedService}`);
                 const data = await res.json();
                 
@@ -264,7 +302,6 @@
         async function processRent() {
             if(!selectedNumber) { alert('Please select a specific number first.'); return; }
             alert(`Ordering ${selectedNumber} for ${selectedService}...`);
-            // Here you would call your backend purchase endpoint
         }
 
         function filterServices() {

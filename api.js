@@ -1956,7 +1956,7 @@ async function handleGetRdpRequests(req, res) {
     }
 }
 
-aasync function handleGetTellabotNumbers(req, res) {
+async function handleGetTellabotNumbers(req, res) {
     const { country, service } = req.query;
 
     if (!country || !service) {
@@ -2027,7 +2027,6 @@ aasync function handleGetTellabotNumbers(req, res) {
         return res.status(500).json({ success: false, message: "Internal server error connecting to provider." });
     }
 }
-
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

@@ -25,7 +25,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
-        .service-card.active { border-color: #0F54C6; background-color: #F0F5FE; border-width: 2px; }
+        .service-card.active, .country-card.active { border-color: #0F54C6; background-color: #F0F5FE; border-width: 2px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
@@ -92,61 +92,38 @@
             </div>
         </header>
 
-        <main class="p-4 md:p-6 max-w-5xl w-full mx-auto space-y-6">
+        <main class="p-4 md:p-6 max-w-5xl w-full mx-auto space-y-8">
             
+            <section class="space-y-4">
+                <div class="px-1">
+                    <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-tight">Step 1: Select Country</h4>
+                    <p class="text-[10px] text-brand-lightText">Choose a region to see number availability and local pricing.</p>
+                </div>
+                <div id="countryGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                    </div>
+            </section>
+
             <section class="space-y-4">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 px-1">
                     <div>
-                        <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-tight">Step 1: Select Service</h4>
+                        <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-tight">Step 2: Select Service</h4>
                         <p class="text-[10px] text-brand-lightText">Choose the application you want to verify.</p>
                     </div>
                     <div class="relative">
-                        <input type="text" id="serviceSearch" onkeyup="filterServices()" placeholder="Search services..." class="pl-8 pr-4 py-2 bg-white border border-brand-border rounded-xl text-xs focus:ring-1 focus:ring-brand-blue outline-none w-full md:w-64 transition-all">
+                        <input type="text" id="serviceSearch" onkeyup="filterServices()" placeholder="Search (e.g. TikTok, FB)..." class="pl-8 pr-4 py-2 bg-white border border-brand-border rounded-xl text-xs focus:ring-1 focus:ring-brand-blue outline-none w-full md:w-64 transition-all">
                         <svg class="w-3.5 h-3.5 absolute left-3 top-2.5 text-brand-lightText" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     </div>
                 </div>
 
                 <div id="serviceGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                    <div onclick="selectService('WhatsApp', this)" class="service-card cursor-pointer bg-white border border-brand-border p-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all hover:shadow-md group">
-                        <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" class="w-8 h-8 mb-2 group-hover:scale-110 transition-transform">
-                        <span class="service-name text-[10px] font-bold text-brand-darkText">WhatsApp</span>
                     </div>
-                    <div onclick="selectService('Telegram', this)" class="service-card cursor-pointer bg-white border border-brand-border p-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all hover:shadow-md group">
-                        <img src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png" class="w-8 h-8 mb-2 group-hover:scale-110 transition-transform">
-                        <span class="service-name text-[10px] font-bold text-brand-darkText">Telegram</span>
-                    </div>
-                    <div onclick="selectService('Google', this)" class="service-card cursor-pointer bg-white border border-brand-border p-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all hover:shadow-md group">
-                        <img src="https://cdn-icons-png.flaticon.com/512/300/300221.png" class="w-8 h-8 mb-2 group-hover:scale-110 transition-transform">
-                        <span class="service-name text-[10px] font-bold text-brand-darkText">Google/YT</span>
-                    </div>
-                    <div onclick="selectService('Instagram', this)" class="service-card cursor-pointer bg-white border border-brand-border p-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all hover:shadow-md group">
-                        <img src="https://cdn-icons-png.flaticon.com/512/2111/2111463.png" class="w-8 h-8 mb-2 group-hover:scale-110 transition-transform">
-                        <span class="service-name text-[10px] font-bold text-brand-darkText">Instagram</span>
-                    </div>
-                </div>
             </section>
 
-            <section class="space-y-4">
-                <div class="px-1">
-                    <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-tight">Step 2: Select Country</h4>
-                    <p class="text-[10px] text-brand-lightText">Availability and prices vary by region.</p>
-                </div>
-                <div class="bg-white rounded-2xl border border-brand-border p-4 shadow-sm">
-                    <select id="countrySelect" class="w-full bg-brand-background border-none rounded-xl p-3 text-xs font-bold focus:ring-1 focus:ring-brand-blue outline-none">
-                        <option value="">Choose a country...</option>
-                        <option value="US">🇺🇸 United States - $1.50</option>
-                        <option value="UK">🇬🇧 United Kingdom - $1.20</option>
-                        <option value="NG">🇳🇬 Nigeria - $0.80</option>
-                        <option value="DE">🇩🇪 Germany - $2.00</option>
-                    </select>
-                </div>
-            </section>
-
-            <div class="bg-brand-blue text-white rounded-2xl p-6 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="bg-brand-blue text-white rounded-2xl p-6 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6 transition-all">
                 <div class="text-center md:text-left">
                     <p class="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">Total Due</p>
-                    <h2 class="text-3xl font-extrabold" id="displayPrice">$0.00</h2>
-                    <p class="text-[10px] mt-2 opacity-90" id="selectionSummary">Please select a service and country.</p>
+                    <h2 class="text-3xl font-extrabold" id="displayPrice">₦0</h2>
+                    <p class="text-[10px] mt-2 opacity-90" id="selectionSummary">Please select a country and service.</p>
                 </div>
                 <button onclick="processRent()" class="w-full md:w-auto px-10 py-4 bg-white text-brand-blue rounded-xl font-bold text-sm hover:bg-opacity-90 transition-all shadow-xl active:scale-95">
                     Rent Number Now
@@ -157,10 +134,33 @@
 
     <script>
         const API_BASE_URL = '/api';
+        
+        // Data Configuration
+        const countries = [
+            { id: 'US', name: 'United States', flag: '🇺🇸', rate: 1500 },
+            { id: 'UK', name: 'United Kingdom', flag: '🇬🇧', rate: 1200 },
+            { id: 'NG', name: 'Nigeria', flag: '🇳🇬', rate: 850 },
+            { id: 'DE', name: 'Germany', flag: '🇩🇪', rate: 2100 },
+            { id: 'ZA', name: 'South Africa', flag: '🇿🇦', rate: 1100 }
+        ];
+
+        const services = [
+            { id: 'wa', name: 'WhatsApp', icon: 'https://cdn-icons-png.flaticon.com/512/733/733585.png' },
+            { id: 'tg', name: 'Telegram', icon: 'https://cdn-icons-png.flaticon.com/512/2111/2111646.png' },
+            { id: 'fb', name: 'Facebook', icon: 'https://cdn-icons-png.flaticon.com/512/733/733547.png' },
+            { id: 'tk', name: 'TikTok', icon: 'https://cdn-icons-png.flaticon.com/512/3046/3046121.png' },
+            { id: 'go', name: 'Google/YT', icon: 'https://cdn-icons-png.flaticon.com/512/300/300221.png' },
+            { id: 'ig', name: 'Instagram', icon: 'https://cdn-icons-png.flaticon.com/512/2111/2111463.png' }
+        ];
+
+        let selectedCountry = null;
         let selectedService = null;
-        let selectedPrice = 0.00;
 
         async function initDashboard() {
+            // UI Initialization
+            renderCountryGrid();
+            renderServiceGrid();
+
             const token = localStorage.getItem('userToken');
             if (!token) { window.location.href = 'user_login.html'; return; }
 
@@ -177,6 +177,60 @@
             } catch (err) { logout(); }
         }
 
+        function renderCountryGrid() {
+            const grid = document.getElementById('countryGrid');
+            grid.innerHTML = countries.map(c => `
+                <div onclick="selectCountry('${c.id}', this)" class="country-card cursor-pointer bg-white border border-brand-border p-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all hover:shadow-md group">
+                    <span class="text-2xl mb-1">${c.flag}</span>
+                    <span class="text-[10px] font-bold text-brand-darkText">${c.name}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderServiceGrid() {
+            const grid = document.getElementById('serviceGrid');
+            grid.innerHTML = services.map(s => {
+                const currentPrice = selectedCountry ? `₦${selectedCountry.rate.toLocaleString()}` : '---';
+                return `
+                    <div onclick="selectService('${s.name}', this)" class="service-card cursor-pointer bg-white border border-brand-border p-4 rounded-2xl flex flex-col items-center justify-center text-center transition-all hover:shadow-md group">
+                        <img src="${s.icon}" class="w-8 h-8 mb-2 group-hover:scale-110 transition-transform">
+                        <span class="service-name text-[10px] font-bold text-brand-darkText">${s.name}</span>
+                        <span class="service-price text-[9px] font-bold text-brand-blue mt-1">${currentPrice}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectCountry(id, element) {
+            document.querySelectorAll('.country-card').forEach(card => card.classList.remove('active'));
+            element.classList.add('active');
+            selectedCountry = countries.find(c => c.id === id);
+            
+            // Re-render services to update price tags
+            renderServiceGrid();
+            updateSummary();
+        }
+
+        function selectService(name, element) {
+            if (!selectedCountry) {
+                alert("Please select a country first to see pricing.");
+                return;
+            }
+            document.querySelectorAll('.service-card').forEach(card => card.classList.remove('active'));
+            element.classList.add('active');
+            selectedService = name;
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const serviceName = selectedService || '...';
+            const countryName = selectedCountry ? selectedCountry.name : '...';
+            const price = selectedCountry ? `₦${selectedCountry.rate.toLocaleString()}` : '₦0';
+            
+            document.getElementById('displayPrice').innerText = price;
+            document.getElementById('selectionSummary').innerText = `Renting a ${serviceName} number from ${countryName}`;
+        }
+
         function filterServices() {
             const input = document.getElementById('serviceSearch').value.toLowerCase();
             const cards = document.querySelectorAll('.service-card');
@@ -186,38 +240,12 @@
             });
         }
 
-        function selectService(name, element) {
-            document.querySelectorAll('.service-card').forEach(card => card.classList.remove('active'));
-            element.classList.add('active');
-            selectedService = name;
-            updateSummary();
-        }
-
-        document.getElementById('countrySelect').addEventListener('change', function(e) {
-            const val = e.target.value;
-            const pricing = { 'US': 1.50, 'UK': 1.20, 'NG': 0.80, 'DE': 2.00 };
-            selectedPrice = pricing[val] || 0.00;
-            updateSummary();
-        });
-
-        function updateSummary() {
-            const service = selectedService || '...';
-            const countrySelect = document.getElementById('countrySelect');
-            const countryText = countrySelect.options[countrySelect.selectedIndex].text.split('-')[0] || '...';
-            
-            document.getElementById('displayPrice').innerText = `$${selectedPrice.toFixed(2)}`;
-            document.getElementById('selectionSummary').innerText = `Renting a ${service} number from ${countryText}`;
-        }
-
         async function processRent() {
-            const token = localStorage.getItem('userToken');
-            if(!selectedService || selectedPrice === 0) {
-                alert('Please complete your selection first.');
+            if(!selectedService || !selectedCountry) {
+                alert('Please select both a country and a service first.');
                 return;
             }
-            
-            // Example of how you would send this to your backend
-            alert(`Processing order for ${selectedService}...`);
+            alert(`Processing order for ${selectedService} (${selectedCountry.name})...`);
         }
 
         function logout() {

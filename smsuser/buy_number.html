@@ -31,9 +31,9 @@
         @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         
         .step-hidden { opacity: 0; max-height: 0; overflow: hidden; transition: all 0.5s ease-in-out; pointer-events: none; }
-        .step-visible { opacity: 1; max-height: 1000px; overflow: visible; transition: all 0.5s ease-in-out; pointer-events: auto; }
+        .step-visible { opacity: 1; max-height: 2000px; overflow: visible; transition: all 0.5s ease-in-out; pointer-events: auto; }
         
-        .service-card.active, .country-card.active, .number-card.active { 
+        .service-card.active { 
             border-color: #0F54C6 !important; 
             background-color: #F0F5FE !important; 
             border-width: 2px !important;
@@ -87,8 +87,8 @@
             
             <div class="flex items-center space-x-4">
                 <div class="hidden sm:block text-right">
-                    <p id="userName" class="text-[11px] font-bold text-brand-darkText">...</p>
-                    <p id="userEmail" class="text-[10px] text-brand-lightText">...</p>
+                    <p id="userName" class="text-[11px] font-bold text-brand-darkText">Admin</p>
+                    <p id="userEmail" class="text-[10px] text-brand-lightText">admin@smsglobe.app</p>
                 </div>
                 <div class="w-8 h-8 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center text-xs font-bold border border-brand-blue/20">
                     <span id="userInitials">U</span>
@@ -120,39 +120,39 @@
                     </div>
 
                     <div class="flex items-center space-x-2 overflow-x-auto no-scrollbar pb-2 px-1">
-                         <button onclick="setServiceCategory('popular')" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold bg-brand-blue text-white transition-all">Popular</button>
-                <button onclick="setServiceCategory('social')" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold text-brand-lightText bg-white border border-brand-border hover:border-brand-blue transition-all">Social Network</button>
-                <button onclick="setServiceCategory('dating')" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold text-brand-lightText bg-white border border-brand-border hover:border-brand-blue transition-all">Dating</button>
-                <button onclick="setServiceCategory('betting')" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold text-brand-lightText bg-white border border-brand-border hover:border-brand-blue transition-all">Betting</button>
-                <button onclick="setServiceCategory('marketplace')" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold text-brand-lightText bg-white border border-brand-border hover:border-brand-blue transition-all">Marketplace</button>
-            </div>
+                        <button onclick="setServiceCategory('popular')" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold bg-brand-blue text-white transition-all">Popular</button>
+                        <button onclick="setServiceCategory('social')" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold text-brand-lightText bg-white border border-brand-border hover:border-brand-blue transition-all">Social Network</button>
+                        <button onclick="setServiceCategory('dating')" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold text-brand-lightText bg-white border border-brand-border hover:border-brand-blue transition-all">Dating</button>
+                        <button onclick="setServiceCategory('betting')" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold text-brand-lightText bg-white border border-brand-border hover:border-brand-blue transition-all">Betting</button>
+                        <button onclick="setServiceCategory('marketplace')" class="cat-btn flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold text-brand-lightText bg-white border border-brand-border hover:border-brand-blue transition-all">Marketplace</button>
+                    </div>
 
                     <div id="serviceGrid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-8 gap-2"></div>
                 </section>
 
-               <section id="countrySection" class="step-hidden space-y-3">
-    <div class="px-1 border-t border-brand-border pt-6">
-        <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-tight">Step 2: Select Country</h4>
-        <p class="text-[9px] text-brand-lightText mb-4">Region availability for <span id="targetServiceLabel" class="font-bold text-brand-blue">...</span></p>
-    </div>
+                <section id="countrySection" class="step-hidden space-y-3">
+                    <div class="px-1 border-t border-brand-border pt-6">
+                        <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-tight">Step 2: Select Country</h4>
+                        <p class="text-[9px] text-brand-lightText mb-4">Region availability for <span id="targetServiceLabel" class="font-bold text-brand-blue">...</span></p>
+                    </div>
 
-    <div class="relative w-full md:w-80 px-1">
-        <button id="countryDropdownBtn" onclick="toggleCountryDropdown()" class="w-full bg-white border border-brand-border rounded-xl px-4 py-3 flex items-center justify-between hover:border-brand-blue transition-all focus:ring-2 focus:ring-brand-blue/20 outline-none">
-            <div id="selectedCountryDisplay" class="flex items-center gap-3">
-                <span class="text-gray-400 text-xs">Select a country...</span>
-            </div>
-            <svg class="w-4 h-4 text-brand-lightText transition-transform" id="dropdownArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-        </button>
+                    <div class="relative w-full md:w-80 px-1">
+                        <button id="countryDropdownBtn" onclick="toggleCountryDropdown()" class="w-full bg-white border border-brand-border rounded-xl px-4 py-3 flex items-center justify-between hover:border-brand-blue transition-all focus:ring-2 focus:ring-brand-blue/20 outline-none">
+                            <div id="selectedCountryDisplay" class="flex items-center gap-3">
+                                <span class="text-gray-400 text-xs">Select a country...</span>
+                            </div>
+                            <svg class="w-4 h-4 text-brand-lightText transition-transform" id="dropdownArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
 
-        <div id="countryDropdownList" class="absolute left-0 right-0 mt-2 bg-white border border-brand-border rounded-xl shadow-xl z-50 hidden overflow-hidden">
-            <div class="p-2 border-b border-brand-border">
-                <input type="text" id="countrySearch" onkeyup="filterCountries()" placeholder="Search country..." class="w-full px-3 py-2 text-xs bg-brand-background rounded-lg outline-none focus:ring-1 focus:ring-brand-blue">
-            </div>
-            <div id="countryOptions" class="max-height-[300px] overflow-y-auto no-scrollbar max-h-64">
-                </div>
-        </div>
-    </div>
-</section>
+                        <div id="countryDropdownList" class="absolute left-0 right-0 mt-2 bg-white border border-brand-border rounded-xl shadow-xl z-50 hidden overflow-hidden">
+                            <div class="p-2 border-b border-brand-border">
+                                <input type="text" id="countrySearch" onkeyup="filterCountries()" placeholder="Search country..." class="w-full px-3 py-2 text-xs bg-brand-background rounded-lg outline-none focus:ring-1 focus:ring-brand-blue">
+                            </div>
+                            <div id="countryOptions" class="max-h-80 overflow-y-auto no-scrollbar">
+                                </div>
+                        </div>
+                    </div>
+                </section>
 
                 <section id="numbersSection" class="step-hidden space-y-4">
                     <div class="px-1 border-t border-brand-border pt-6 flex justify-between items-center">
@@ -160,7 +160,7 @@
                             <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-tight">Step 3: Select Available Number</h4>
                             <p class="text-[10px] text-brand-lightText">Pick your preferred number from the list.</p>
                         </div>
-                        <button onclick="refreshNumbers()" class="text-[10px] font-bold text-brand-blue flex items-center gap-1">
+                        <button onclick="fetchNumbers()" class="text-[10px] font-bold text-brand-blue flex items-center gap-1">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-width="2" stroke-linecap="round"/></svg>
                             Shuffle List
                         </button>
@@ -191,79 +191,58 @@
     </div>
 
     <script>
-        const API_BASE_URL = '/api';
-        
-         const countries = [
-    // POPULAR / HIGH DEMAND
-    { id: 'US', name: 'USA', flag: '🇺🇸', rate: 1500 },
-    { id: 'UK', name: 'UK', flag: '🇬🇧', rate: 1200 },
-    { id: 'NG', name: 'Nigeria', flag: '🇳🇬', rate: 850 },
-    { id: 'RU', name: 'Russia', flag: '🇷🇺', rate: 700 },
-    { id: 'UA', name: 'Ukraine', flag: '🇺🇦', rate: 750 },
-    { id: 'DE', name: 'Germany', flag: '🇩🇪', rate: 2100 },
-    { id: 'FR', name: 'France', flag: '🇫🇷', rate: 1900 },
-    { id: 'IN', name: 'India', flag: '🇮🇳', rate: 600 },
-    { id: 'ID', name: 'Indonesia', flag: '🇮🇩', rate: 550 },
-    { id: 'BR', name: 'Brazil', flag: '🇧🇷', rate: 900 },
-    { id: 'ZA', name: 'South Africa', flag: '🇿🇦', rate: 1100 },
-    { id: 'GH', name: 'Ghana', flag: '🇬🇭', rate: 800 },
-    { id: 'KE', name: 'Kenya', flag: '🇰🇪', rate: 850 },
-    { id: 'CI', name: 'Ivory Coast', flag: '🇨🇮', rate: 950 },
-    { id: 'MA', name: 'Morocco', flag: '🇲🇦', rate: 1000 },
-    { id: 'EG', name: 'Egypt', flag: '🇪🇬', rate: 750 },
-    { id: 'CN', name: 'China', flag: '🇨🇳', rate: 1800 },
-    { id: 'PH', name: 'Philippines', flag: '🇵🇭', rate: 650 },
-    { id: 'VN', name: 'Vietnam', flag: '🇻🇳', rate: 600 },
-    { id: 'TH', name: 'Thailand', flag: '🇹🇭', rate: 700 },
-    { id: 'MY', name: 'Malaysia', flag: '🇲🇾', rate: 850 },
-    { id: 'NL', name: 'Netherlands', flag: '🇳🇱', rate: 2200 },
-    { id: 'ES', name: 'Spain', flag: '🇪🇸', rate: 1850 },
-    { id: 'IT', name: 'Italy', flag: '🇮🇹', rate: 1950 },
-    { id: 'PL', name: 'Poland', flag: '🇵🇱', rate: 1100 },
-    { id: 'CA', name: 'Canada', flag: '🇨🇦', rate: 1600 },
-    { id: 'MX', name: 'Mexico', flag: '🇲🇽', rate: 950 },
-    { id: 'CO', name: 'Colombia', flag: '🇨🇴', rate: 800 },
-    { id: 'AR', name: 'Argentina', flag: '🇦🇷', rate: 850 },
-    { id: 'TR', name: 'Turkey', flag: '🇹🇷', rate: 900 }
-];
+        const countries = [
+            { id: 'US', name: 'USA', flag: '🇺🇸', rate: 1500 },
+            { id: 'UK', name: 'UK', flag: '🇬🇧', rate: 1200 },
+            { id: 'NG', name: 'Nigeria', flag: '🇳🇬', rate: 850 },
+            { id: 'RU', name: 'Russia', flag: '🇷🇺', rate: 700 },
+            { id: 'UA', name: 'Ukraine', flag: '🇺🇦', rate: 750 },
+            { id: 'DE', name: 'Germany', flag: '🇩🇪', rate: 2100 },
+            { id: 'FR', name: 'France', flag: '🇫🇷', rate: 1900 },
+            { id: 'IN', name: 'India', flag: '🇮🇳', rate: 600 },
+            { id: 'ID', name: 'Indonesia', flag: '🇮🇩', rate: 550 },
+            { id: 'BR', name: 'Brazil', flag: '🇧🇷', rate: 900 },
+            { id: 'ZA', name: 'South Africa', flag: '🇿🇦', rate: 1100 },
+            { id: 'GH', name: 'Ghana', flag: '🇬🇭', rate: 800 },
+            { id: 'KE', name: 'Kenya', flag: '🇰🇪', rate: 850 },
+            { id: 'CI', name: 'Ivory Coast', flag: '🇨🇮', rate: 950 },
+            { id: 'MA', name: 'Morocco', flag: '🇲🇦', rate: 1000 },
+            { id: 'EG', name: 'Egypt', flag: '🇪🇬', rate: 750 },
+            { id: 'CN', name: 'China', flag: '🇨🇳', rate: 1800 },
+            { id: 'PH', name: 'Philippines', flag: '🇵🇭', rate: 650 },
+            { id: 'VN', name: 'Vietnam', flag: '🇻🇳', rate: 600 },
+            { id: 'TH', name: 'Thailand', flag: '🇹🇭', rate: 700 },
+            { id: 'MY', name: 'Malaysia', flag: '🇲🇾', rate: 850 },
+            { id: 'NL', name: 'Netherlands', flag: '🇳🇱', rate: 2200 },
+            { id: 'ES', name: 'Spain', flag: '🇪🇸', rate: 1850 },
+            { id: 'IT', name: 'Italy', flag: '🇮🇹', rate: 1950 },
+            { id: 'PL', name: 'Poland', flag: '🇵🇱', rate: 1100 },
+            { id: 'CA', name: 'Canada', flag: '🇨🇦', rate: 1600 },
+            { id: 'MX', name: 'Mexico', flag: '🇲🇽', rate: 950 },
+            { id: 'CO', name: 'Colombia', flag: '🇨🇴', rate: 800 },
+            { id: 'AR', name: 'Argentina', flag: '🇦🇷', rate: 850 },
+            { id: 'TR', name: 'Turkey', flag: '🇹🇷', rate: 900 }
+        ];
 
-      const services = [
-    // POPULAR
-    { id: 'wa', name: 'WhatsApp', category: 'popular', icon: 'https://cdn-icons-png.flaticon.com/512/733/733585.png' },
-    { id: 'tg', name: 'Telegram', category: 'popular', icon: 'https://cdn-icons-png.flaticon.com/512/2111/2111646.png' },
-    { id: 'go', name: 'Google/YT', category: 'ecosystem', icon: 'https://cdn-icons-png.flaticon.com/512/300/300221.png' },
-    
-    // SOCIAL NETWORK
-    { id: 'fb', name: 'Facebook', category: 'social', icon: 'https://cdn-icons-png.flaticon.com/512/733/733547.png' },
-    { id: 'ig', name: 'Instagram', category: 'social', icon: 'https://cdn-icons-png.flaticon.com/512/174/174855.png' },
-    { id: 'tk', name: 'TikTok', category: 'social', icon: 'https://cdn-icons-png.flaticon.com/512/3046/3046121.png' },
-    { id: 'tw', name: 'X / Twitter', category: 'social', icon: 'https://cdn-icons-png.flaticon.com/512/5968/5968958.png' },
-
-    // DATING SITE
-    { id: 'td', name: 'Tinder', category: 'dating', icon: 'https://cdn-icons-png.flaticon.com/512/733/733635.png' },
-    { id: 'bm', name: 'Bumble', category: 'dating', icon: 'https://img.icons8.com/color/48/bumble.png' },
-
-    // MARKETPLACE
-    { id: 'am', name: 'Amazon', category: 'marketplace', icon: 'https://cdn-icons-png.flaticon.com/512/732/732190.png' },
-    { id: 'eb', name: 'eBay', category: 'marketplace', icon: 'https://cdn-icons-png.flaticon.com/512/5968/5968854.png' },
-
-    // BETTING
-    { id: 'b3', name: 'Bet365', category: 'betting', icon: 'https://img.icons8.com/color/48/bet365.png' },
-    { id: '1x', name: '1xBet', category: 'betting', icon: 'https://img.icons8.com/color/48/1xbet.png' },
-
-    // GAMING
-    { id: 'st', name: 'Steam', category: 'gaming', icon: 'https://cdn-icons-png.flaticon.com/512/733/733646.png' },
-    { id: 'ps', name: 'PSN', category: 'gaming', icon: 'https://cdn-icons-png.flaticon.com/512/5968/5968332.png' },
-
-    // MESSENGERS (Non-popular)
-    { id: 'sc', name: 'Snapchat', category: 'messengers', icon: 'https://cdn-icons-png.flaticon.com/512/196/196577.png' },
-    { id: 'vi', name: 'Viber', category: 'messengers', icon: 'https://cdn-icons-png.flaticon.com/512/733/733632.png' }
-];
-
-const categories = [
-    'popular', 'social', 'ecosystem', 'dating', 'marketplace', 
-    'scooters', 'gaming', 'car rent', 'betting', 'messengers', 'others'
-];
+        const services = [
+            { id: 'wa', name: 'WhatsApp', category: 'popular', icon: 'https://cdn-icons-png.flaticon.com/512/733/733585.png' },
+            { id: 'tg', name: 'Telegram', category: 'popular', icon: 'https://cdn-icons-png.flaticon.com/512/2111/2111646.png' },
+            { id: 'go', name: 'Google/YT', category: 'popular', icon: 'https://cdn-icons-png.flaticon.com/512/300/300221.png' },
+            { id: 'fb', name: 'Facebook', category: 'social', icon: 'https://cdn-icons-png.flaticon.com/512/733/733547.png' },
+            { id: 'ig', name: 'Instagram', category: 'social', icon: 'https://cdn-icons-png.flaticon.com/512/174/174855.png' },
+            { id: 'tk', name: 'TikTok', category: 'social', icon: 'https://cdn-icons-png.flaticon.com/512/3046/3046121.png' },
+            { id: 'tw', name: 'X / Twitter', category: 'social', icon: 'https://cdn-icons-png.flaticon.com/512/5968/5968958.png' },
+            { id: 'td', name: 'Tinder', category: 'dating', icon: 'https://cdn-icons-png.flaticon.com/512/733/733635.png' },
+            { id: 'bm', name: 'Bumble', category: 'dating', icon: 'https://img.icons8.com/color/48/bumble.png' },
+            { id: 'am', name: 'Amazon', category: 'marketplace', icon: 'https://cdn-icons-png.flaticon.com/512/732/732190.png' },
+            { id: 'eb', name: 'eBay', category: 'marketplace', icon: 'https://cdn-icons-png.flaticon.com/512/5968/5968854.png' },
+            { id: 'b3', name: 'Bet365', category: 'betting', icon: 'https://img.icons8.com/color/48/bet365.png' },
+            { id: '1x', name: '1xBet', category: 'betting', icon: 'https://img.icons8.com/color/48/1xbet.png' },
+            { id: 'st', name: 'Steam', category: 'popular', icon: 'https://cdn-icons-png.flaticon.com/512/733/733646.png' },
+            { id: 'ps', name: 'PSN', category: 'popular', icon: 'https://cdn-icons-png.flaticon.com/512/5968/5968332.png' },
+            { id: 'sc', name: 'Snapchat', category: 'social', icon: 'https://cdn-icons-png.flaticon.com/512/196/196577.png' },
+            { id: 'vi', name: 'Viber', category: 'social', icon: 'https://cdn-icons-png.flaticon.com/512/733/733632.png' }
+        ];
 
         let activeCategory = 'popular';
         let selectedCountry = null;
@@ -301,80 +280,85 @@ const categories = [
             const serviceData = services.find(s => s.id === id);
             document.getElementById('targetServiceLabel').innerText = serviceData.name;
             
-            // SHOW COUNTRY SECTION
             const cSection = document.getElementById('countrySection');
             cSection.classList.remove('step-hidden');
             cSection.classList.add('step-visible');
             
-            renderCountryGrid();
+            renderCountryOptions(); 
             updateSummary();
             
-            // Auto-scroll to countries
             setTimeout(() => {
                 cSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);
         }
 
-       function renderCountryOptions() {
-    const container = document.getElementById('countryOptions');
-    container.innerHTML = countries.map(c => `
-        <div onclick="selectCountry('${c.id}')" class="country-option flex items-center justify-between px-4 py-3 hover:bg-brand-background cursor-pointer transition-colors border-b border-gray-50 last:border-0">
-            <div class="flex items-center gap-3">
-                <span class="text-xl">${c.flag}</span>
-                <span class="text-xs font-bold text-brand-darkText">${c.name}</span>
-            </div>
-            <span class="text-[10px] font-extrabold text-brand-blue">₦${c.rate.toLocaleString()}</span>
-        </div>
-    `).join('');
-}
+        function renderCountryOptions() {
+            const container = document.getElementById('countryOptions');
+            container.innerHTML = countries.map(c => `
+                <div onclick="selectCountry('${c.id}')" class="country-option flex items-center justify-between px-4 py-3 hover:bg-brand-background cursor-pointer transition-colors border-b border-gray-50 last:border-0">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xl">${c.flag}</span>
+                        <div class="flex flex-col items-start">
+                             <span class="text-xs font-bold text-brand-darkText">${c.name}</span>
+                             <span class="text-[8px] text-brand-lightText uppercase">${c.id}</span>
+                        </div>
+                    </div>
+                    <span class="text-[10px] font-extrabold text-brand-blue">₦${c.rate.toLocaleString()}</span>
+                </div>
+            `).join('');
+        }
 
-        async function selectCountry(id, element) {
-            document.querySelectorAll('.country-card').forEach(card => card.classList.remove('active'));
-            element.classList.add('active');
-            selectedCountry = countries.find(c => c.id === id);
-            
-            // SHOW NUMBERS SECTION
+        function toggleCountryDropdown() {
+            const list = document.getElementById('countryDropdownList');
+            const arrow = document.getElementById('dropdownArrow');
+            list.classList.toggle('hidden');
+            arrow.classList.toggle('rotate-180');
+        }
+
+        async function selectCountry(id) {
+            const country = countries.find(c => c.id === id);
+            selectedCountry = country;
+
+            document.getElementById('selectedCountryDisplay').innerHTML = `
+                <span class="text-xl">${country.flag}</span>
+                <div class="flex flex-col items-start">
+                    <span class="text-xs font-bold text-brand-darkText">${country.name}</span>
+                    <span class="text-[9px] text-brand-blue font-bold">₦${country.rate.toLocaleString()}</span>
+                </div>
+            `;
+
+            toggleCountryDropdown();
+
             const nSection = document.getElementById('numbersSection');
             nSection.classList.remove('step-hidden');
             nSection.classList.add('step-visible');
-            
+
             updateSummary();
             await fetchNumbers();
-            
+
             setTimeout(() => {
                 nSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);
+        }
+
+        function filterCountries() {
+            const term = document.getElementById('countrySearch').value.toLowerCase();
+            const options = document.querySelectorAll('.country-option');
+            
+            options.forEach(opt => {
+                const name = opt.innerText.toLowerCase();
+                opt.style.display = name.includes(term) ? 'flex' : 'none';
+            });
         }
 
         async function fetchNumbers() {
             const numGrid = document.getElementById('numberGrid');
             numGrid.innerHTML = `<div class="col-span-full py-6 text-center loading-skeleton text-[10px] font-bold text-brand-blue">Fetching ${selectedCountry.name} numbers...</div>`;
             
-            try {
-                const res = await fetch(`/api/get-numbers?country=${selectedCountry.id}&service=${selectedService}`);
-                const data = await res.json();
-                
-                if(data.success && data.numbers.length > 0) {
-                    numGrid.innerHTML = data.numbers.map(num => `
-                        <div onclick="pickNumber('${num}', this)" class="number-card cursor-pointer bg-white border border-brand-border p-3 rounded-xl flex items-center justify-between hover:border-brand-blue transition-all">
-                            <span class="text-xs font-mono font-bold text-brand-darkText">${num}</span>
-                            <span class="text-[8px] bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-bold">READY</span>
-                        </div>
-                    `).join('');
-                } else {
-                    // Fallback for demo if API fails
-                    numGrid.innerHTML = `<div class="col-span-full py-6 text-center text-[10px] text-red-400">No live numbers currently available for ${selectedCountry.name}.</div>`;
-                }
-            } catch (err) {
-                numGrid.innerHTML = `<div class="col-span-full py-6 text-center text-[10px] text-red-500 font-bold">Provider connection failed.</div>`;
-            }
-        }
-
-        function pickNumber(num, element) {
-            document.querySelectorAll('.number-card').forEach(card => card.classList.remove('active'));
-            element.classList.add('active');
-            selectedNumber = num;
-            updateSummary();
+            // Simulating API Call
+            setTimeout(() => {
+                numGrid.innerHTML = `<div class="col-span-full py-6 text-center text-[10px] text-red-400">No live numbers currently available for ${selectedCountry.name}.</div>`;
+            }, 1000);
         }
 
         function updateSummary() {
@@ -406,85 +390,14 @@ const categories = [
             }
         }
 
-        function toggleCountryDropdown() {
-    const list = document.getElementById('countryDropdownList');
-    const arrow = document.getElementById('dropdownArrow');
-    list.classList.toggle('hidden');
-    arrow.classList.toggle('rotate-180');
-}
-
-async function selectCountry(id) {
-    const country = countries.find(c => c.id === id);
-    selectedCountry = country;
-
-    // Update Button Display
-    document.getElementById('selectedCountryDisplay').innerHTML = `
-        <span class="text-xl">${country.flag}</span>
-        <div class="flex flex-col items-start">
-            <span class="text-xs font-bold text-brand-darkText">${country.name}</span>
-            <span class="text-[9px] text-brand-blue font-bold">₦${country.rate.toLocaleString()}</span>
-        </div>
-    `;
-
-    // Close Dropdown
-    toggleCountryDropdown();
-
-    // Show Numbers Section
-    const nSection = document.getElementById('numbersSection');
-    nSection.classList.remove('step-hidden');
-    nSection.classList.add('step-visible');
-
-    updateSummary();
-    await fetchNumbers();
-
-    setTimeout(() => {
-        nSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
-}
-
-// Search/Filter Countries inside Dropdown
-function filterCountries() {
-    const term = document.getElementById('countrySearch').value.toLowerCase();
-    const options = document.querySelectorAll('.country-option');
-    
-    options.forEach(opt => {
-        const name = opt.innerText.toLowerCase();
-        opt.style.display = name.includes(term) ? 'flex' : 'none';
-    });
-}
-
-// Update your selectService function to call renderCountryOptions
-function selectService(id, element) {
-    document.querySelectorAll('.service-card').forEach(card => card.classList.remove('active'));
-    element.classList.add('active');
-    selectedService = id;
-    
-    const serviceData = services.find(s => s.id === id);
-    document.getElementById('targetServiceLabel').innerText = serviceData.name;
-    
-    const cSection = document.getElementById('countrySection');
-    cSection.classList.remove('step-hidden');
-    cSection.classList.add('step-visible');
-    
-    renderCountryOptions(); // Initialize the dropdown options
-    updateSummary();
-}
-
-// Close dropdown if user clicks outside
-window.addEventListener('click', function(e) {
-    const dropdown = document.getElementById('countryDropdownList');
-    const btn = document.getElementById('countryDropdownBtn');
-    if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
-        dropdown.classList.add('hidden');
-        document.getElementById('dropdownArrow').classList.remove('rotate-180');
-    }
-});
-        async function initDashboard() {
-            renderServiceGrid();
-            const token = localStorage.getItem('userToken');
-            if (!token) { /* Optional: Redirect to login */ }
-            // Fetch profile data logic here...
-        }
+        window.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('countryDropdownList');
+            const btn = document.getElementById('countryDropdownBtn');
+            if (dropdown && btn && !btn.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.add('hidden');
+                document.getElementById('dropdownArrow').classList.remove('rotate-180');
+            }
+        });
 
         function filterServices() {
             const input = document.getElementById('serviceSearch').value.toLowerCase();
@@ -494,7 +407,7 @@ window.addEventListener('click', function(e) {
             });
         }
 
-        function logout() { localStorage.removeItem('userToken'); window.location.href = 'user_login.html'; }
+        function logout() { window.location.href = 'user_login.html'; }
 
         // Sidebar logic
         const toggle = () => {
@@ -505,7 +418,7 @@ window.addEventListener('click', function(e) {
         document.getElementById('closeSidebar').addEventListener('click', toggle);
         document.getElementById('sidebarOverlay').addEventListener('click', toggle);
 
-        window.onload = initDashboard;
+        window.onload = renderServiceGrid;
     </script>
 </body>
 </html>

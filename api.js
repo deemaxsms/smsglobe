@@ -314,9 +314,9 @@ const verifyToken = (req, res, next) => {
     }
 };
 
-app.all('/api/:*', async (req, res) => {
+app.all('/api/:action', async (req, res) => {
     await connectDB();
-    const fullPath = (req.params[0] || '').toLowerCase().trim();
+    const action = (req.params.action || '').toLowerCase().trim();
     console.log("Incoming Action:", action, "Method:", req.method);
 
     switch (action) {
@@ -376,7 +376,7 @@ app.all('/api/:*', async (req, res) => {
      case 'rdp-request-complete': // This matches the fetch URL in your HTML file
     if (req.method === 'POST') return handleCompleteRDPOrder(req, res);
     break;
-   case 'countries/stats': 
+    case 'countries/stats': 
         case 'inventory/sync': 
             return handleGetStock(req, res);
 
@@ -387,7 +387,6 @@ app.all('/api/:*', async (req, res) => {
         case 'rentals/activate':
         case 'purchase/process':
             return handleActivatePurchase(req, res);
-            
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
             

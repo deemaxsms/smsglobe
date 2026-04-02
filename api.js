@@ -314,13 +314,10 @@ const verifyToken = (req, res, next) => {
     }
 };
 
-app.all('/api/*', async (req, res) => {
+app.all('/api/*path', async (req, res) => {
     await connectDB();
-
-    // req.params[0] captures the full string after /api/ (e.g., "countries/stats")
-    const fullPath = (req.params[0] || '').toLowerCase().trim();
-    
-    console.log("Incoming Path:", fullPath, "Method:", req.method);
+    const fullPath = (req.params.path || '').toLowerCase().trim();
+    console.log("Incoming Path:", fullPath, "| Method:", req.method);
 
     switch (fullPath) {
         // --- AUTH & USER MANAGEMENT ---

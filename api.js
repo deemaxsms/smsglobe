@@ -349,11 +349,9 @@ app.all('/api/:action', async (req, res) => {
      case 'rdp-request-complete': // This matches the fetch URL in your HTML file
     if (req.method === 'POST') return handleCompleteRDPOrder(req, res);
     break;
-    case 'countries/stats':
-    return handleGetCountryStats(req, res);
-
-    case 'tellabot/numbers':
-    return handleGetTellabotNumbers(req, res);
+   case 'countries/stats': return handleGetTellabotStock(req, res);
+    case 'tellabot/numbers':return handleGetTellabotNumbers(req, res);
+    case 'rentals/activate': return handleActivateRental(req, res);
 
     case 'get-numbers': 
     return handleGetTellabotNumbers(req, res);
@@ -2060,16 +2058,47 @@ async function handleGetTellabotStock(req, res) {
     const username = process.env.VITE_TELL_A_BOT_USERNAME;
     const apiKey = process.env.VITE_TELL_A_BOT_API_KEY;
     
-    // Tellabot command to get overall stock/inventory
+    // Using action=get_stock as per Tellabot docs
     const stockUrl = `https://www.tellabot.com/sims/api_command.php?username=${username}&api_key=${apiKey}&action=get_stock`;
 
     try {
         const response = await fetch(stockUrl);
         const data = await response.json();
-        // Return this so the frontend can display "50 Available" next to the flag
-        res.json({ success: true, stock: data });
+        
+        // Ensure we send back a success flag so the frontend doesn't hang
+        return res.json({ 
+            success: true, 
+            stock: data || {} // The frontend will map country IDs to these values
+        });
     } catch (err) {
-        res.json({ success: false, stock: {} });
+        console.error("Stock Fetch Error:", err);
+        return res.json({ success: false, stock: {}, message: "Could not sync stock" });
+    }
+}
+
+async function handleActivateRental(req, res) {
+    const { service, number, countryCode, price } = req.body;
+
+    // 1. Validate
+    if (!number || !service) {
+        return res.status(400).json({ success: false, message: "Missing rental details." });
+    }
+
+    try {
+        // 2. Logic: Here you would typically tell Tellabot to "order" the number
+        // and deduct money from your local database user balance.
+        
+        // For now, we simulate a successful order
+        const rentalId = `SMSG-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+        // Return success to redirect the user to the status page
+        return res.json({
+            success: true,
+            rentalId: rentalId,
+            message: "Activation started!"
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, message: "Server error during activation." });
     }
 }
 

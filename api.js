@@ -145,17 +145,38 @@ const RDP = mongoose.models.RDP || mongoose.model('RDP', rdpSchema);
 const rentedNumberSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     phoneNumber: { type: String, required: true },
-    service: { type: String, required: true, enum: ['wa', 'tg', 'fb', 'tk', 'go'] },
-    country: { name: String, code: String },
+    service: { 
+        type: String, 
+        required: true, 
+        enum: ['wa', 'tg', 'go', 'fb', 'ig', 'tk', 'tw', 'dc'] 
+    },
+    serviceName: { type: String }, // e.g., "WhatsApp" for easy display
+    country: { 
+        name: String, 
+        code: String, // e.g., "US"
+        prefix: String // e.g., "+1"
+    },
     price: { type: Number, required: true },
-    status: { type: String, enum: ['pending', 'active', 'expired', 'canceled'], default: 'active' },
-    otpReceived: [{ code: String, sender: String, timestamp: { type: Date, default: Date.now } }],
+    status: { 
+        type: String, 
+        enum: ['pending', 'active', 'expired', 'canceled'], 
+        default: 'active' 
+    },
+    otpReceived: [{ 
+        code: String, 
+        sender: String, 
+        fullText: String, // Useful for debugging if the regex fails
+        timestamp: { type: Date, default: Date.now } 
+    }],
     expiresAt: { 
         type: Date, 
         required: true, 
-        default: () => new Date(Date.now() + 20 * 60000) 
+        default: () => new Date(Date.now() + 20 * 60000),
+        index: { expires: 0 } // Optional: MongoDB will auto-delete expired docs
     }
 }, { timestamps: true });
+
+rentedNumberSchema.index({ user: 1, createdAt: -1 });
 
 module.exports = mongoose.models.RentedNumber || mongoose.model('RentedNumber', rentedNumberSchema);
 
@@ -1955,7 +1976,6 @@ async function handleGetRdpRequests(req, res) {
         return res.status(500).json({ success: false, message: "Failed to fetch RDP requests" });
     }
 }
-
 async function handleGetTellabotNumbers(req, res) {
     const { country, service } = req.query;
 
@@ -1965,66 +1985,68 @@ async function handleGetTellabotNumbers(req, res) {
 
     try {
         const apiKey = process.env.VITE_TELL_A_BOT_API_KEY;
-        // NOTE: If 'any' still says invalid, try 'get_numbers' or 'get_services' 
-        // depending on your specific Tellabot API version documentation.
-        const tellabotUrl = `${process.env.TELLABOT_API_URL}?api_key=${apiKey}&action=any&country=${country}&service=${service}`;
+        const apiUrl = process.env.TELLABOT_API_URL;
+        
+        // 1. TRY COMMON ACTIONS: 'get_numbers' is the industry standard for these APIs
+        // If this still fails, check if the documentation requires 'getNumber' or 'any'
+        const action = "get_numbers"; 
+        const tellabotUrl = `${apiUrl}?api_key=${apiKey}&action=${action}&country=${country}&service=${service}`;
 
         const response = await fetch(tellabotUrl);
         const data = await response.json();
 
-        // 1. LOG FOR DEBUGGING - This is vital to see why it says 'Invalid'
-        console.log(`--- Tellabot Request: Country=${country}, Service=${service} ---`);
-        console.log("Raw Response from Tellabot:", data);
+        console.log(`--- Requesting ${service} for ${country} ---`);
+        console.log("Raw Response:", data);
 
-        // 2. CATCH ERROR STRINGS (Like "Invalid command")
-        if (typeof data === 'string' && (data.toLowerCase().includes('invalid') || data.toLowerCase().includes('error'))) {
+        // 2. ERROR CHECKING
+        if (data.error || data.status === "error" || (typeof data === 'string' && data.toLowerCase().includes('invalid'))) {
             return res.json({ 
                 success: false, 
-                numbers: [], 
-                message: `Provider Error: ${data}` 
+                message: data.message || data.error || "Invalid API Command" 
             });
         }
 
-        let numberList = [];
+        let rawNumbers = [];
 
-        // 3. EXTRACT NUMBERS SAFELY
+        // 3. ADAPTIVE EXTRACTION
+        // Some APIs return [{phone: "123"}, {phone: "456"}] 
+        // Others return ["123", "456"]
         if (Array.isArray(data)) {
-            numberList = data;
+            rawNumbers = data;
         } else if (data.numbers && Array.isArray(data.numbers)) {
-            numberList = data.numbers;
-        } else if (data.data && Array.isArray(data.data)) {
-            numberList = data.data;
-        } else if (typeof data === 'object') {
-            numberList = Object.values(data);
+            rawNumbers = data.numbers;
+        } else if (data.data) {
+            rawNumbers = Array.isArray(data.data) ? data.data : [data.data];
         }
 
-        // 4. STRICT FILTER: Only keep strings that are purely numeric (Phone Numbers)
-        // This removes "Invalid command" or other text from your list
-        const validatedNumbers = numberList.filter(val => {
-            if (typeof val !== 'string') return false;
-            const cleanNum = val.replace(/[\s\-\+\(\)]/g, ''); // Remove spaces, dashes, plus
-            return cleanNum.length > 5 && /^\d+$/.test(cleanNum); // Must be digits only
+        // 4. TRANSFORM & VALIDATE
+        const validatedNumbers = rawNumbers.map(item => {
+            // If item is an object like {phone: "..."} or {number: "..."}
+            if (typeof item === 'object') return item.phone || item.number || item.number_id;
+            return item;
+        }).filter(val => {
+            if (!val || typeof val !== 'string') return false;
+            const cleanNum = val.toString().replace(/[^0-9]/g, ''); // Keep only digits
+            return cleanNum.length > 7; // Ensure it's a realistic phone number length
         });
 
         if (validatedNumbers.length === 0) {
             return res.json({ 
                 success: true, 
                 numbers: [], 
-                message: "No stock found or invalid API parameters." 
+                message: "No stock currently available for this service." 
             });
         }
 
-        // 5. RANDOMIZE
-        const shuffledNumbers = validatedNumbers.sort(() => Math.random() - 0.5);
-
+        // 5. RETURN CLEAN LIST
         return res.json({ 
             success: true, 
-            numbers: shuffledNumbers 
+            numbers: validatedNumbers.sort(() => Math.random() - 0.5).slice(0, 5) // Return top 5 random
         });
 
     } catch (err) {
-        console.error("Tellabot Fetch Error:", err);
-        return res.status(500).json({ success: false, message: "Internal server error connecting to provider." });
+        console.error("Critical Tellabot Error:", err);
+        return res.status(500).json({ success: false, message: "Connection to provider failed." });
     }
 }
 // --- 8. STARTUP ---

@@ -179,6 +179,7 @@
         let selectedCountry = null;
         let selectedService = null;
         let selectedNumber = null;
+        let selectedTargetId = null;
         let finalPrice = 0;
 
         function setMode(mode) {
@@ -290,33 +291,49 @@
             document.getElementById('displayPrice').innerText = `₦${finalPrice.toLocaleString()}`;
         }
 
-        async function fetchRealInventory() {
-            const grid = document.getElementById('numberGrid');
-            grid.innerHTML = `<div class="col-span-full flex flex-col items-center py-8 space-y-2"><div class="w-5 h-5 border-2 border-brand-blue border-t-transparent rounded-full animate-spin"></div><p class="text-[10px] font-bold text-brand-lightText uppercase">Checking Stock...</p></div>`;
-            try {
-                const response = await fetch(`/api/numbers/inventory?country=${selectedCountry.id}&service=${selectedService}&mode=${currentMode}`);
-                const data = await response.json();
-                if (data.success && data.numbers?.length > 0) renderNumbers(data.numbers);
-                else grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold uppercase">No Stock available for ${currentMode}.</p>`;
-            } catch (err) { grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-red-500 font-bold uppercase">Connection Timeout</p>`; }
-        }
+      async function fetchRealInventory() {
+    const grid = document.getElementById('numberGrid');
+    grid.innerHTML = `<div class="col-span-full flex flex-col items-center py-8 space-y-2">
+                        <div class="w-5 h-5 border-2 border-brand-blue border-t-transparent rounded-full animate-spin"></div>
+                        <p class="text-[10px] font-bold text-brand-lightText uppercase">Checking Textverified API...</p>
+                      </div>`;
+    try {
+        // We now pass the service name and country code
+        const response = await fetch(`/api/tellabot/numbers?country=${selectedCountry.id}&service=${selectedService}`);
+        const data = await response.json();
 
-        function renderNumbers(list) {
-            const grid = document.getElementById('numberGrid');
-            grid.innerHTML = list.map(num => `
-                <div onclick="selectNumber('${num}', this)" class="number-card cursor-pointer bg-white border border-brand-border p-4 rounded-xl flex items-center justify-between group transition-all">
-                    <div class="flex flex-col"><span class="text-[8px] text-brand-lightText uppercase font-bold">Mobile Line</span><span class="text-sm font-black text-brand-darkText">${num}</span></div>
-                    <div class="w-4 h-4 rounded-full border-2 border-brand-border group-[.active]:border-brand-blue group-[.active]:bg-brand-blue"></div>
-                </div>
-            `).join('');
+        if (data.success) {
+            // Textverified usually gives one "Ready" state or the target details
+            renderNumbers(data.numbers, data.targetId); 
+        } else {
+            grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold uppercase">${data.message}</p>`;
         }
+    } catch (err) { 
+        grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-red-500 font-bold uppercase">Connection Timeout</p>`; 
+    }
+}
 
-        function selectNumber(num, element) {
-            document.querySelectorAll('.number-card').forEach(c => c.classList.remove('active'));
-            element.classList.add('active');
-            selectedNumber = num;
-            updateButtonState();
-        }
+       function renderNumbers(list, targetId) {
+    const grid = document.getElementById('numberGrid');
+    selectedTargetId = targetId; // Store the ID for the purchase payload
+
+    grid.innerHTML = `
+        <div onclick="selectNumber('READY', this)" class="number-card cursor-pointer bg-white border border-brand-border p-4 rounded-xl flex items-center justify-between group transition-all">
+            <div class="flex flex-col">
+                <span class="text-[8px] text-brand-lightText uppercase font-bold">Status: Online</span>
+                <span class="text-sm font-black text-brand-darkText">Get Instant Number</span>
+            </div>
+            <div class="w-4 h-4 rounded-full border-2 border-brand-border group-[.active]:border-brand-blue group-[.active]:bg-brand-blue"></div>
+        </div>
+    `;
+}
+
+function selectNumber(num, element) {
+    document.querySelectorAll('.number-card').forEach(c => c.classList.remove('active'));
+    element.classList.add('active');
+    selectedNumber = num; // Set to "READY" or a placeholder
+    updateButtonState();
+}
 
         function updateButtonState() {
             const btn = document.getElementById('purchaseBtn');
@@ -335,31 +352,39 @@
             }
         }
 
-        async function processPurchase() {
-            const btn = document.getElementById('purchaseBtn');
-            btn.disabled = true;
-            btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>`;
-            
-            const payload = {
-                service: selectedService,
-                number: selectedNumber,
-                countryCode: selectedCountry.id,
-                price: finalPrice,
-                type: currentMode,
-                duration: currentMode === 'rent' ? document.getElementById('rentalPeriod').value : null
-            };
+       async function processPurchase() {
+    const btn = document.getElementById('purchaseBtn');
+    btn.disabled = true;
+    btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>`;
+    
+    const payload = {
+        targetId: selectedTargetId, // Sent to Textverified
+        service: selectedService,
+        countryCode: selectedCountry.id,
+        price: finalPrice,
+        type: currentMode, // 'activation' or 'rent'
+    };
 
-            try {
-                const response = await fetch('/api/purchase/process', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const res = await response.json();
-                if (res.success) window.location.href = `/order-status/${res.id}`;
-                else { alert(res.message); updateButtonState(); }
-            } catch (err) { alert("Network error."); updateButtonState(); }
+    try {
+        const response = await fetch('/api/rentals/activate', { // Match your router case
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const res = await response.json();
+        
+        if (res.success) {
+            // Redirect to the status page using the NEW rentalId from Textverified
+            window.location.href = `/order-status/${res.rentalId}`;
+        } else { 
+            alert(res.message); 
+            updateButtonState(); 
         }
+    } catch (err) { 
+        alert("Network error."); 
+        updateButtonState(); 
+    }
+}
 
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('-translate-x-full');

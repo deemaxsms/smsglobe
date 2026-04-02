@@ -7,6 +7,7 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 const { OAuth2Client } = require('google-auth-library');
 const nodemailer = require('nodemailer');
+const axios = require('axios');
 
 
 dotenv.config();
@@ -142,41 +143,69 @@ const rdpSchema = new mongoose.Schema({
 
 const RDP = mongoose.models.RDP || mongoose.model('RDP', rdpSchema);
 
+const mongoose = require('mongoose');
+
 const rentedNumberSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    
+    // --- Identification ---
+    externalId: { type: String, required: true, unique: true }, // Textverified's Verification ID or Rental ID
     phoneNumber: { type: String, required: true },
+    
+    // --- Mode ---
+    activationType: { 
+        type: String, 
+        enum: ['activation', 'rent'], 
+        required: true 
+    },
+
+    // --- Service Details ---
     service: { 
         type: String, 
         required: true, 
-        enum: ['wa', 'tg', 'go', 'fb', 'ig', 'tk', 'tw', 'dc'] 
+        // Removed enum to allow dynamic Textverified target names
     },
-    serviceName: { type: String }, // e.g., "WhatsApp" for easy display
+    serviceName: { type: String }, 
+    targetId: { type: String }, // Store Textverified's internal Target ID
+
+    // --- Location ---
     country: { 
         name: String, 
-        code: String, // e.g., "US"
-        prefix: String // e.g., "+1"
+        code: String, 
+        prefix: String 
     },
+
+    // --- Financials ---
     price: { type: Number, required: true },
+    currency: { type: String, default: 'NGN' },
+
+    // --- Status ---
     status: { 
         type: String, 
-        enum: ['pending', 'active', 'expired', 'canceled'], 
-        default: 'active' 
+        enum: ['pending', 'active', 'completed', 'expired', 'canceled'], 
+        default: 'pending' 
     },
+
+    // --- SMS Data ---
     otpReceived: [{ 
         code: String, 
         sender: String, 
-        fullText: String, // Useful for debugging if the regex fails
+        fullText: String, 
         timestamp: { type: Date, default: Date.now } 
     }],
+
+    // --- Timing ---
     expiresAt: { 
         type: Date, 
         required: true, 
-        default: () => new Date(Date.now() + 20 * 60000),
-        index: { expires: 0 } // Optional: MongoDB will auto-delete expired docs
+        // Default to 15 mins for activations, can be overridden for rentals
+        default: () => new Date(Date.now() + 15 * 60000) 
     }
 }, { timestamps: true });
 
+// Index for performance and auto-expiry cleanup
 rentedNumberSchema.index({ user: 1, createdAt: -1 });
+rentedNumberSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); 
 
 module.exports = mongoose.models.RentedNumber || mongoose.model('RentedNumber', rentedNumberSchema);
 
@@ -349,12 +378,19 @@ app.all('/api/:action', async (req, res) => {
      case 'rdp-request-complete': // This matches the fetch URL in your HTML file
     if (req.method === 'POST') return handleCompleteRDPOrder(req, res);
     break;
-   case 'countries/stats': return handleGetTellabotStock(req, res);
-    case 'tellabot/numbers':return handleGetTellabotNumbers(req, res);
-    case 'rentals/activate': return handleActivateRental(req, res);
+  case 'countries/stats': 
+    case 'inventory/sync': 
+        return handleGetStock(req, res);
 
+    // 2. Fetch Service availability (Replaces tellabot/numbers)
+    case 'tellabot/numbers':
     case 'get-numbers': 
-    return handleGetTellabotNumbers(req, res);
+        return handleGetNumbers(req, res); 
+
+    // 3. Process the actual Purchase (Replaces rentals/activate)
+    case 'rentals/activate':
+    case 'purchase/process':
+        return handleActivatePurchase(req, res);
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
             
@@ -1982,123 +2018,109 @@ async function handleGetRdpRequests(req, res) {
     }
 }
 
-async function handleGetTellabotNumbers(req, res) {
-    const { country, service } = req.query;
-
-    // 1. Validate Input
-    if (!country || !service) {
-        return res.status(400).json({ success: false, message: "Country and Service are required." });
-    }
-
+async function getTextverifiedToken() {
     try {
-        // 2. Configuration from your Environment Variables
-        const username = process.env.VITE_TELL_A_BOT_USERNAME || 'wesz';
-        const apiKey = process.env.VITE_TELL_A_BOT_API_KEY || 'zV17cs7yofh6GXW9g6Ec9hC9cQwqhjZX';
-        const apiUrl = process.env.TELLABOT_API_URL || 'https://www.tellabot.com/sims/api_command.php';
-        
-        // 3. Construct Tellabot Request
-        // Note: Using 'get_numbers' as the action to fetch the inventory list
-        const tellabotUrl = `${apiUrl}?username=${username}&api_key=${apiKey}&action=get_numbers&country=${country}&service=${service}`;
-
-        console.log(`--- Fetching Inventory: ${service} in ${country} ---`);
-        
-        const response = await fetch(tellabotUrl);
-        const data = await response.json();
-
-        // 4. Handle API Errors (Invalid keys, maintenance, etc.)
-        if (data.status === "error" || data.error) {
-            return res.json({ 
-                success: false, 
-                message: data.message || data.error || "Tellabot API Error" 
-            });
-        }
-
-        // 5. Extract Numbers (Adaptive Logic)
-        let rawNumbers = [];
-        if (Array.isArray(data)) {
-            rawNumbers = data;
-        } else if (data.numbers && Array.isArray(data.numbers)) {
-            rawNumbers = data.numbers;
-        } else if (data.data) {
-            rawNumbers = Array.isArray(data.data) ? data.data : [data.data];
-        }
-
-        // 6. Clean and Format for Frontend
-        const validatedNumbers = rawNumbers.map(item => {
-            // Extract just the string if it's an object {phone: '...'}
-            let val = typeof item === 'object' ? (item.phone || item.number || item.number_id) : item;
-            return val ? val.toString() : null;
-        }).filter(val => {
-            if (!val) return false;
-            const digitsOnly = val.replace(/[^0-9]/g, '');
-            return digitsOnly.length > 7; // Ensure it looks like a real phone number
-        });
-
-        // 7. Success Response
-        if (validatedNumbers.length === 0) {
-            return res.json({ 
-                success: true, 
-                numbers: [], 
-                message: "No stock currently available for this service." 
-            });
-        }
-
-        return res.json({ 
-            success: true, 
-            numbers: validatedNumbers.sort(() => Math.random() - 0.5).slice(0, 12) // Return a fresh batch of 12
-        });
-
+        const response = await axios.post(
+            'https://www.textverified.com/api/SimpleAuthentication', 
+            {}, 
+            { headers: { 'X-Simple-API-Key': process.env.TEXTVERIFIED_V2_KEY } }
+        );
+        return response.data.bearer_token;
     } catch (err) {
-        console.error("Critical Tellabot Connection Error:", err);
-        return res.status(500).json({ success: false, message: "Failed to connect to Tellabot service." });
+        console.error("Textverified Auth Failed:", err.response?.data || err.message);
+        return null;
     }
 }
 
-async function handleGetTellabotStock(req, res) {
-    const username = process.env.VITE_TELL_A_BOT_USERNAME;
-    const apiKey = process.env.VITE_TELL_A_BOT_API_KEY;
-    
-    // Using action=get_stock as per Tellabot docs
-    const stockUrl = `https://www.tellabot.com/sims/api_command.php?username=${username}&api_key=${apiKey}&action=get_stock`;
+// --- Updated: Fetch Numbers (Inventory) ---
+async function handleGetNumbers(req, res) {
+    const { country, service } = req.query; // country (e.g., 'US'), service (e.g., 'WhatsApp')
+
+    if (!service) return res.status(400).json({ success: false, message: "Service is required." });
 
     try {
-        const response = await fetch(stockUrl);
-        const data = await response.json();
-        
-        // Ensure we send back a success flag so the frontend doesn't hang
+        const token = await getTextverifiedToken();
+        if (!token) throw new Error("Could not authenticate with Textverified");
+
+        // 1. Find the Target ID for the service
+        const targetsRes = await axios.get('https://www.textverified.com/api/Targets', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        // Search for the service name in the targets list
+        const target = targetsRes.data.find(t => 
+            t.name.toLowerCase().includes(service.toLowerCase())
+        );
+
+        if (!target) {
+            return res.json({ success: false, message: `Service '${service}' not found on Textverified.` });
+        }
+
+        // 2. Fetch costs/availability for this target
+        // Note: Textverified API works per-request. We simulate a batch of 1 for the UI.
         return res.json({ 
             success: true, 
-            stock: data || {} // The frontend will map country IDs to these values
+            numbers: [`Ready to Activate ${target.name}`], // Placeholder to trigger selection in your UI
+            targetId: target.id,
+            cost: target.cost
         });
+
     } catch (err) {
-        console.error("Stock Fetch Error:", err);
-        return res.json({ success: false, stock: {}, message: "Could not sync stock" });
+        console.error("Textverified Inventory Error:", err);
+        return res.status(500).json({ success: false, message: "Failed to sync with Textverified." });
     }
 }
 
-async function handleActivateRental(req, res) {
-    const { service, number, countryCode, price } = req.body;
+// --- Updated: Get Stock (Syncing Prices) ---
+async function handleGetStock(req, res) {
+    try {
+        const token = await getTextverifiedToken();
+        const response = await axios.get('https://www.textverified.com/api/Targets', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
 
-    // 1. Validate
-    if (!number || !service) {
-        return res.status(400).json({ success: false, message: "Missing rental details." });
+        // Map targets to a stock object your frontend understands
+        const stockData = {};
+        response.data.slice(0, 50).forEach(t => {
+            stockData[t.id] = t.cost; // Store cost instead of count if preferred
+        });
+
+        return res.json({ success: true, stock: stockData });
+    } catch (err) {
+        return res.json({ success: false, stock: {}, message: "Stock sync failed" });
     }
+}
+
+// --- Updated: Activate/Purchase Number ---
+async function handleActivatePurchase(req, res) {
+    const { targetId, price, type } = req.body; 
 
     try {
-        // 2. Logic: Here you would typically tell Tellabot to "order" the number
-        // and deduct money from your local database user balance.
+        const token = await getTextverifiedToken();
         
-        // For now, we simulate a successful order
-        const rentalId = `SMSG-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+        // 1. Create the verification (This actually buys the number)
+        const response = await axios.post(
+            'https://www.textverified.com/api/Verifications',
+            { targetId: targetId },
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
 
-        // Return success to redirect the user to the status page
+        const verification = response.data; // Contains { id, number, status, etc }
+
+        // 2. Log this in your local database here (RentalId = verification.id)
+        
         return res.json({
             success: true,
-            rentalId: rentalId,
-            message: "Activation started!"
+            rentalId: verification.id,
+            number: verification.number,
+            message: "Number Reserved!"
         });
     } catch (err) {
-        return res.status(500).json({ success: false, message: "Server error during activation." });
+        console.error("Purchase Error:", err.response?.data);
+        return res.status(500).json({ 
+            success: false, 
+            message: err.response?.data?.message || "Purchase failed." 
+        });
     }
 }
 

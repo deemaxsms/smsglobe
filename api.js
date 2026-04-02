@@ -317,6 +317,7 @@ const verifyToken = (req, res, next) => {
 app.all('/api/:action', async (req, res) => {
     await connectDB();
     const action = (req.params.action || '').toLowerCase().trim();
+    const fullPath = req.params[0].toLowerCase().trim();
     console.log("Incoming Action:", action, "Method:", req.method);
 
     switch (action) {
@@ -376,19 +377,17 @@ app.all('/api/:action', async (req, res) => {
      case 'rdp-request-complete': // This matches the fetch URL in your HTML file
     if (req.method === 'POST') return handleCompleteRDPOrder(req, res);
     break;
-  case 'countries/stats': 
-    case 'inventory/sync': 
-        return handleGetStock(req, res);
+    case 'countries/stats': 
+        case 'inventory/sync': 
+            return handleGetStock(req, res);
 
-    // 2. Fetch Service availability (Replaces tellabot/numbers)
-    case 'tellabot/numbers':
-    case 'get-numbers': 
-        return handleGetNumbers(req, res); 
+        case 'tellabot/numbers':
+        case 'get-numbers': 
+            return handleGetNumbers(req, res); 
 
-    // 3. Process the actual Purchase (Replaces rentals/activate)
-    case 'rentals/activate':
-    case 'purchase/process':
-        return handleActivatePurchase(req, res);
+        case 'rentals/activate':
+        case 'purchase/process':
+            return handleActivatePurchase(req, res);
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
             

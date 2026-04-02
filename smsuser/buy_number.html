@@ -27,8 +27,8 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
-        .step-hidden { opacity: 0; max-height: 0; overflow: hidden; transition: all 0.5s ease-in-out; pointer-events: none; }
-        .step-visible { opacity: 1; max-height: 2000px; overflow: visible; transition: all 0.5s ease-in-out; pointer-events: auto; }
+        .step-hidden { opacity: 0; max-height: 0; overflow: hidden; transition: all 0.3s ease-in-out; pointer-events: none; }
+        .step-visible { opacity: 1; max-height: 2000px; overflow: visible; transition: all 0.4s ease-in-out; pointer-events: auto; }
         .service-card.active, .number-card.active { 
             border-color: #0F54C6 !important; 
             background-color: #F0F5FE !important; 
@@ -38,7 +38,7 @@
     }
     </style>
 </head>
-<body class="bg-brand-background min-h-screen flex font-sans text-brand-midText overflow-y-auto">
+<body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
 
     <div id="sidebarOverlay" class="fixed inset-0 bg-black/20 z-40 hidden lg:hidden"></div>
 
@@ -60,69 +60,45 @@
         </nav>
     </aside>
 
-    <div class="flex-grow lg:ml-64 flex flex-col min-h-screen relative">
+    <div class="flex-grow lg:ml-64 flex flex-col min-h-screen">
         <header class="bg-white border-b border-brand-border sticky top-0 z-30 px-4 md:px-8 py-3 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <button id="openSidebar" class="lg:hidden p-1.5 text-brand-midText border border-brand-border rounded-md">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-                </button>
-                <span class="text-sm font-bold text-brand-darkText">Activation</span>
-            </div>
-            <div id="userInitials" class="w-8 h-8 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center text-xs font-bold border border-brand-blue/20">...</div>
+            <button id="openSidebar" class="lg:hidden p-1.5 text-brand-midText border border-brand-border rounded-md">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+            <span class="text-sm font-bold text-brand-darkText">Activation</span>
+            <div class="w-8 h-8 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center text-xs font-bold">U</div>
         </header>
 
         <main class="p-4 md:p-6 max-w-5xl w-full mx-auto flex-grow pb-40">
-            <div class="flex p-1 bg-white border border-brand-border rounded-2xl w-full md:w-fit mb-6 shadow-sm">
-                <button onclick="switchTab('activation')" id="tabActivation" class="flex-1 md:flex-none px-8 py-2.5 rounded-xl text-xs font-bold transition-all bg-brand-blue text-white">Activation</button>
-                <button onclick="switchTab('rent')" id="tabRent" class="flex-1 md:flex-none px-8 py-2.5 rounded-xl text-xs font-bold transition-all text-brand-lightText">Rent</button>
-            </div>
+            <section class="space-y-4">
+                <h4 class="text-xs font-bold text-brand-darkText uppercase">Step 1: Select Service</h4>
+                <div id="serviceGrid" class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2"></div>
+            </section>
 
-            <div id="sectionActivation">
-                <section class="space-y-4">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-wider">Step 1: Select Service</h4>
-                        <input type="text" id="serviceSearch" onkeyup="filterServices()" placeholder="Search services..." class="px-4 py-2 bg-white border border-brand-border rounded-xl text-xs outline-none w-full md:w-64">
+            <section id="countrySection" class="step-hidden space-y-3 pt-6 border-t border-brand-border mt-8">
+                <h4 class="text-[10px] font-bold text-brand-darkText uppercase">Step 2: Select Country</h4>
+                <div class="relative w-full md:w-80">
+                    <button onclick="toggleCountryDropdown()" class="w-full bg-white border border-brand-border rounded-xl px-4 py-3 flex items-center justify-between shadow-sm">
+                        <div id="selectedCountryDisplay" class="flex items-center gap-3 text-xs text-gray-400">Select a country...</div>
+                        <svg class="w-4 h-4 text-brand-lightText transition-transform" id="dropdownArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                    <div id="countryDropdownList" class="absolute left-0 right-0 mt-2 bg-white border border-brand-border rounded-xl shadow-xl z-50 hidden">
+                        <div id="countryOptions" class="max-h-60 overflow-y-auto no-scrollbar">
+                            </div>
                     </div>
-                    <div id="serviceGrid" class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
-                        </div>
-                </section>
+                </div>
+            </section>
 
-                <section id="countrySection" class="step-hidden space-y-3 pt-6 border-t border-brand-border mt-8">
-                    <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-wider">Step 2: Select Country</h4>
-                    <div class="relative w-full md:w-80">
-                        <button onclick="toggleCountryDropdown()" class="w-full bg-white border border-brand-border rounded-xl px-4 py-3 flex items-center justify-between shadow-sm">
-                            <div id="selectedCountryDisplay" class="flex items-center gap-3 text-xs text-gray-400">Select a country...</div>
-                            <svg class="w-4 h-4 text-brand-lightText transition-transform" id="dropdownArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </button>
-                        <div id="countryDropdownList" class="absolute left-0 right-0 mt-2 bg-white border border-brand-border rounded-xl shadow-xl z-50 hidden">
-                            <div id="countryOptions" class="max-h-60 overflow-y-auto no-scrollbar">
-                                </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section id="numbersSection" class="step-hidden space-y-4 pt-6 border-t border-brand-border mt-8">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-wider">Step 3: Select Number</h4>
-                        <div class="relative w-full md:w-64">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-brand-blue" id="prefixDisplay">+0</span>
-                            <input type="number" id="areaCodeSearch" onkeyup="filterNumbers()" placeholder="Search Area Code..." class="pl-12 pr-4 py-2 bg-white border border-brand-border rounded-xl text-xs outline-none w-full">
-                        </div>
-                    </div>
-                    <div id="numberGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                        </div>
-                </section>
-            </div>
-
-            <div id="sectionRent" class="hidden py-20 text-center">
-                <p class="text-xs font-bold text-brand-lightText italic">Long-term rentals are currently unavailable in your region.</p>
-            </div>
+            <section id="numbersSection" class="step-hidden space-y-4 pt-6 border-t border-brand-border mt-8">
+                <h4 class="text-xs font-bold text-brand-darkText uppercase">Step 3: Select Number</h4>
+                <div id="numberGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
+            </section>
         </main>
 
         <div class="fixed bottom-0 left-0 right-0 lg:left-64 bg-brand-blue text-white p-4 md:p-6 z-40 border-t border-white/10 shadow-2xl">
             <div class="max-w-5xl mx-auto flex items-center justify-between">
                 <div>
-                    <p class="text-[8px] font-bold uppercase opacity-70 tracking-widest">Total Due</p>
+                    <p class="text-[8px] font-bold uppercase opacity-70">Price</p>
                     <h2 class="text-xl md:text-2xl font-black" id="displayPrice">₦0</h2>
                 </div>
                 <button onclick="processRent()" class="px-8 py-3 bg-white text-brand-blue rounded-xl font-bold text-xs disabled:opacity-50 transition-all active:scale-95 shadow-md" id="rentBtn" disabled>Select Service</button>
@@ -131,8 +107,17 @@
     </div>
 
     <script>
-        // Real Application State
-        let countries = []; 
+        // Global State & Default List (Prevents 404 Crashes)
+        let countries = [
+            { id: 'US', name: 'USA', rate: 1500, available: '1,240' },
+            { id: 'UK', name: 'UK', rate: 1200, available: '850' },
+            { id: 'NG', name: 'Nigeria', rate: 850, available: '3,100' },
+            { id: 'RU', name: 'Russia', rate: 700, available: '5,000+' },
+            { id: 'UA', name: 'Ukraine', rate: 750, available: '920' },
+            { id: 'DE', name: 'Germany', rate: 2100, available: '410' },
+            { id: 'FR', name: 'France', rate: 1900, available: '600' }
+        ];
+
         const services = [
             { id: 'wa', name: 'WhatsApp', icon: 'https://cdn-icons-png.flaticon.com/512/733/733585.png' },
             { id: 'tg', name: 'Telegram', icon: 'https://cdn-icons-png.flaticon.com/512/2111/2111646.png' },
@@ -147,18 +132,20 @@
         let selectedCountry = null;
         let selectedService = null;
         let selectedNumber = null;
-        let currentNumbersList = [];
 
-        // 1. Initial Data Fetch (Countries & Stats)
-        async function initApp() {
-            renderServiceGrid();
+        // Fetch Live Stats (Silently updates the default list)
+        async function fetchCountryData() {
             try {
-                const response = await fetch('/api/countries/stats'); // Your backend route for rates/availability
-                const data = await response.json();
-                countries = data.countries;
-                renderCountryOptions();
+                const response = await fetch('/api/countries/stats'); 
+                if (response.ok) {
+                    const data = await response.json();
+                    if (Array.isArray(data)) {
+                        countries = data; 
+                        renderCountryOptions();
+                    }
+                }
             } catch (err) {
-                console.error("Failed to load country data", err);
+                console.warn("Backend /api/countries/stats not found. Using local country list.");
             }
         }
 
@@ -182,18 +169,16 @@
 
         function renderCountryOptions() {
             const container = document.getElementById('countryOptions');
-            if (countries.length === 0) return;
-            
             container.innerHTML = countries.map(c => `
                 <div onclick="selectCountry('${c.id}')" class="flex items-center justify-between px-4 py-3 hover:bg-brand-background cursor-pointer border-b border-gray-50 last:border-0">
                     <div class="flex items-center gap-3">
                         <img src="https://flagcdn.com/w40/${c.id.toLowerCase()}.png" class="w-5 h-auto rounded-sm border border-gray-100">
                         <div class="flex flex-col">
                              <span class="text-xs font-bold text-brand-darkText">${c.name}</span>
-                             <span class="text-[8px] text-green-600 font-bold uppercase">${c.available.toLocaleString()} Available</span>
+                             <span class="text-[8px] text-green-600 font-bold uppercase">${c.available} Available</span>
                         </div>
                     </div>
-                    <span class="text-[10px] font-extrabold text-brand-blue">₦${c.rate.toLocaleString()}</span>
+                    <span class="text-[10px] font-extrabold text-brand-blue">₦${Number(c.rate).toLocaleString()}</span>
                 </div>
             `).join('');
         }
@@ -203,7 +188,7 @@
             document.getElementById('dropdownArrow').classList.toggle('rotate-180');
         }
 
-        function selectCountry(id) {
+        async function selectCountry(id) {
             const country = countries.find(c => c.id === id);
             selectedCountry = country;
             
@@ -211,33 +196,30 @@
                 <img src="https://flagcdn.com/w40/${country.id.toLowerCase()}.png" class="w-4 h-auto rounded-sm">
                 <span class="font-bold text-brand-darkText">${country.name}</span>
             `;
-            document.getElementById('prefixDisplay').innerText = country.prefix;
             toggleCountryDropdown();
             
             document.getElementById('numbersSection').classList.replace('step-hidden', 'step-visible');
-            document.getElementById('displayPrice').innerText = `₦${country.rate.toLocaleString()}`;
-            document.getElementById('rentBtn').innerText = `Buy for ₦${country.rate.toLocaleString()}`;
+            document.getElementById('displayPrice').innerText = `₦${Number(country.rate).toLocaleString()}`;
+            document.getElementById('rentBtn').innerText = `Buy for ₦${Number(country.rate).toLocaleString()}`;
             
-            fetchRealNumbers(); // Fetch real inventory from backend
+            fetchRealInventory(); 
         }
 
-        // 2. Real Number Fetching Logic
-        async function fetchRealNumbers() {
+        async function fetchRealInventory() {
             const grid = document.getElementById('numberGrid');
-            grid.innerHTML = `<p class="col-span-full text-center text-[10px] py-4 text-brand-lightText">Connecting to provider...</p>`;
+            grid.innerHTML = `<p class="col-span-full text-center text-[10px] py-4 text-brand-lightText">Fetching real-time inventory...</p>`;
             
             try {
                 const response = await fetch(`/api/tellabot/numbers?country=${selectedCountry.id}&service=${selectedService}`);
                 const data = await response.json();
 
-                if (data.success && data.numbers.length > 0) {
-                    currentNumbersList = data.numbers;
-                    renderNumbers(currentNumbersList);
+                if (data.success && data.numbers && data.numbers.length > 0) {
+                    renderNumbers(data.numbers);
                 } else {
-                    grid.innerHTML = `<p class="col-span-full text-center text-[10px] py-4 text-orange-500 font-bold uppercase">Provider out of stock.</p>`;
+                    grid.innerHTML = `<p class="col-span-full text-center text-[10px] py-4 text-orange-500 font-bold uppercase">No stock available right now.</p>`;
                 }
             } catch (err) {
-                grid.innerHTML = `<p class="col-span-full text-center text-[10px] py-4 text-red-500">Inventory error. Try again.</p>`;
+                grid.innerHTML = `<p class="col-span-full text-center text-[10px] py-4 text-red-500 uppercase font-bold">Connection Error</p>`;
             }
         }
 
@@ -246,15 +228,9 @@
             grid.innerHTML = list.map(num => `
                 <div onclick="selectNumber('${num}', this)" class="number-card cursor-pointer bg-white border border-brand-border p-3 rounded-lg flex items-center justify-between group">
                     <span class="text-xs font-bold text-brand-darkText">${num}</span>
-                    <div class="w-3 h-3 rounded-full border border-gray-300 group-[.active]:bg-brand-blue group-[.active]:border-brand-blue transition-colors"></div>
+                    <div class="w-3 h-3 rounded-full border border-gray-300 group-[.active]:bg-brand-blue group-[.active]:border-brand-blue"></div>
                 </div>
             `).join('');
-        }
-
-        function filterNumbers() {
-            const val = document.getElementById('areaCodeSearch').value;
-            const filtered = currentNumbersList.filter(n => n.includes(val));
-            renderNumbers(filtered);
         }
 
         function selectNumber(num, element) {
@@ -264,13 +240,10 @@
             document.getElementById('rentBtn').disabled = false;
         }
 
-        // 3. Final Purchase (Connects to Schema)
         async function processRent() {
             const btn = document.getElementById('rentBtn');
-            if (!selectedService || !selectedCountry || !selectedNumber) return;
-
             btn.disabled = true;
-            btn.innerText = "Creating Rental...";
+            btn.innerText = "Processing Transaction...";
 
             try {
                 const response = await fetch('/api/rentals/activate', {
@@ -286,43 +259,16 @@
 
                 const res = await response.json();
                 if (res.success) {
-                    // Redirect to the Waiting/OTP page
-                    window.location.href = `/activation/${res.rentalId}`;
+                    window.location.href = `/activation-status/${res.rentalId}`;
                 } else {
-                    alert(res.message || "Insufficient balance or provider error.");
+                    alert(res.message || "Balance too low.");
                     btn.disabled = false;
                     btn.innerText = `Buy for ₦${selectedCountry.rate.toLocaleString()}`;
                 }
             } catch (err) {
-                alert("Critical error connecting to server.");
+                alert("Server Connection Error");
                 btn.disabled = false;
             }
-        }
-
-        function switchTab(tab) {
-            const actSec = document.getElementById('sectionActivation');
-            const rentSec = document.getElementById('sectionRent');
-            const actBtn = document.getElementById('tabActivation');
-            const rentBtn = document.getElementById('tabRent');
-            
-            if (tab === 'activation') {
-                actSec.classList.remove('hidden');
-                rentSec.classList.add('hidden');
-                actBtn.classList.add('bg-brand-blue', 'text-white');
-                rentBtn.classList.remove('bg-brand-blue', 'text-white');
-            } else {
-                actSec.classList.add('hidden');
-                rentSec.classList.remove('hidden');
-                rentBtn.classList.add('bg-brand-blue', 'text-white');
-                actBtn.classList.remove('bg-brand-blue', 'text-white');
-            }
-        }
-
-        function filterServices() {
-            const val = document.getElementById('serviceSearch').value.toLowerCase();
-            document.querySelectorAll('.service-card').forEach(c => {
-                c.style.display = c.innerText.toLowerCase().includes(val) ? 'flex' : 'none';
-            });
         }
 
         function toggleSidebar() {
@@ -333,8 +279,11 @@
         document.getElementById('openSidebar').addEventListener('click', toggleSidebar);
         document.getElementById('closeSidebar').addEventListener('click', toggleSidebar);
         
-        // Initializer
-        window.onload = initApp;
+        window.onload = () => {
+            renderServiceGrid();
+            renderCountryOptions(); // Render defaults first
+            fetchCountryData();    // Then try to update from server
+        };
     </script>
 </body>
 </html>

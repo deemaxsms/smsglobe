@@ -299,7 +299,7 @@
                       </div>`;
     try {
         // We now pass the service name and country code
-        const response = await fetch(`/api/tellabot/numbers?country=${selectedCountry.id}&service=${selectedService}`);
+        const response = await fetch(`/api/get-numbers/numbers?country=${selectedCountry.id}&service=${selectedService}`);
         const data = await response.json();
 
         if (data.success) {

@@ -314,70 +314,74 @@ const verifyToken = (req, res, next) => {
     }
 };
 
-app.all('/api/:action', async (req, res) => {
+app.all('/api/*', async (req, res) => {
     await connectDB();
-    const action = (req.params.action || '').toLowerCase().trim();
-    const fullPath = req.params[0].toLowerCase().trim();
-    console.log("Incoming Action:", action, "Method:", req.method);
 
-    switch (action) {
+    // Use req.params[0] to capture the full path after /api/ (e.g., "countries/stats")
+    const fullPath = (req.params[0] || '').toLowerCase().trim();
+    
+    console.log("Incoming Path:", fullPath, "Method:", req.method);
+
+    switch (fullPath) {
+        // --- AUTH & USER MANAGEMENT ---
         case 'login': return handleLogin(req, res);
         case 'register': return handleRegister(req, res);
         case 'google-login': return handleGoogleLogin(req, res);
         case 'dashboard-stats': return handleDashboardStats(req, res);
         case 'get-users': return handleGetUsers(req, res);
         case 'manage-user': return handleManageUser(req, res);
+        case 'user-register': return handleUserRegister(req, res);
+        case 'user-login': return handleUserLogin(req, res);
+        case 'user-profile': return handleGetUserProfile(req, res);
+        case 'user-messages': return handleGetUserMessages(req, res);
+
+        // --- PRODUCTS (VPN & PROXY) ---
         case 'products': 
             if (req.method === 'GET') return handleGetVPNs(req, res);
             if (req.method === 'POST') return handleAddVPN(req, res);
             if (req.method === 'PATCH') return handleUpdateVPN(req, res);
             if (req.method === 'DELETE') return handleDeleteVPN(req, res);
             break;
-        case 'user-register': return handleUserRegister(req, res);
-        case 'user-login': return handleUserLogin(req, res);
-        case 'user-profile': return handleGetUserProfile(req, res);
-        case 'user-messages': return handleGetUserMessages(req, res);
-        case 'purchase-vpn': return handlePurchaseVPN(req, res);
-        case 'initiate-payment': return handleInitiatePayment(req, res);
-        case 'verify-payment': return handleVerifyPayment(req, res);
         case 'proxies': 
             if (req.method === 'GET') return handleGetProxies(req, res);
             if (req.method === 'POST') return handleAddProxy(req, res);
             if (req.method === 'PATCH') return handleUpdateProxy(req, res);
             if (req.method === 'DELETE') return handleDeleteProxy(req, res);
             break;
+
+        // --- PAYMENTS & TRANSACTIONS ---
+        case 'purchase-vpn': return handlePurchaseVPN(req, res);
+        case 'initiate-payment': return handleInitiatePayment(req, res);
+        case 'verify-payment': return handleVerifyPayment(req, res);
         case 'transactions': return handleAllTransactions(req, res);
-        case 'esim-refill': 
-            if (req.method === 'POST') return handleEsimRefill(req, res);
-            break;
+
+        // --- eSIM SERVICES ---
+        case 'esim-refill': return handleEsimRefill(req, res);
         case 'create-esim-order': return handleCreateEsimOrder(req, res);
         case 'esim-refills': return getEsimRefills(req, res);
-        case 'update-esim-status':
-            return handleAdminEsimUpdate(req, res);
+        case 'update-esim-status': return handleAdminEsimUpdate(req, res);
         case 'create-esim-order-activation': return handleCreateEsimActivation(req, res);
-      case 'esim-activation': 
+        case 'esim-activation': 
         case 'esim-activations': 
-        if (req.method === 'GET') return handleGetEsimActivations(req, res); 
-        break;
-    case 'esim-activation-complete': 
-    case 'update-esim-activation': 
-    if (req.method === 'POST' || req.method === 'PATCH') {
-        return handleAdminEsimActivationUpdate(req, res);
-    }
-    break;
-    case 'rdps': 
-    if (req.method === 'GET') return handleGetRDPs(req, res); // You'll need to create this
-    if (req.method === 'POST') return handleAddRDP(req, res); // You'll need to create this
-    if (req.method === 'PATCH') return handleCompleteRDPOrder(req, res);
-    if (req.method === 'DELETE') return handleDeleteRDP(req, res);
-    break;
-    case 'rdp-requests': // This matches the fetch URL in your HTML file
-    if (req.method === 'GET') return handleGetRdpRequests(req, res);
-    break;
-     case 'rdp-request-complete': // This matches the fetch URL in your HTML file
-    if (req.method === 'POST') return handleCompleteRDPOrder(req, res);
-    break;
-    case 'countries/stats': 
+            if (req.method === 'GET') return handleGetEsimActivations(req, res); 
+            break;
+        case 'esim-activation-complete': 
+        case 'update-esim-activation': 
+            if (req.method === 'POST' || req.method === 'PATCH') return handleAdminEsimActivationUpdate(req, res);
+            break;
+
+        // --- RDP SERVICES ---
+        case 'rdps': 
+            if (req.method === 'GET') return handleGetRDPs(req, res);
+            if (req.method === 'POST') return handleAddRDP(req, res);
+            if (req.method === 'PATCH') return handleCompleteRDPOrder(req, res);
+            if (req.method === 'DELETE') return handleDeleteRDP(req, res);
+            break;
+        case 'rdp-requests': return handleGetRdpRequests(req, res);
+        case 'rdp-request-complete': return handleCompleteRDPOrder(req, res);
+
+        // --- SMS / TEXTVERIFIED (Previously failing with 404) ---
+        case 'countries/stats': 
         case 'inventory/sync': 
             return handleGetStock(req, res);
 
@@ -388,13 +392,14 @@ app.all('/api/:action', async (req, res) => {
         case 'rentals/activate':
         case 'purchase/process':
             return handleActivatePurchase(req, res);
+
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
             
         default:
             return res.status(404).json({ 
                 success: false, 
-                error: `Action '${action}' not found on this server.` 
+                error: `Path '/api/${fullPath}' not found on this server.` 
             });
     }
 });
@@ -2020,51 +2025,46 @@ async function getTextverifiedToken() {
         const response = await axios.post(
             'https://www.textverified.com/api/SimpleAuthentication', 
             {}, 
-            { headers: { 'X-Simple-API-Key': process.env.TEXTVERIFIED_V2_KEY } }
+            { 
+                headers: { 
+                    'X-API-KEY': process.env.TEXTVERIFIED_V2_KEY, // Matches V2 Dashboard
+                    'Accept': 'application/json'
+                } 
+            }
         );
         return response.data.bearer_token;
     } catch (err) {
-        console.error("Textverified Auth Failed:", err.response?.data || err.message);
+        console.error("Textverified Auth Failed. Check Vercel Environment Variables.");
         return null;
     }
 }
 
-// --- Updated: Fetch Numbers (Inventory) ---
 async function handleGetNumbers(req, res) {
-    const { country, service } = req.query; // country (e.g., 'US'), service (e.g., 'WhatsApp')
-
-    if (!service) return res.status(400).json({ success: false, message: "Service is required." });
+    const { service } = req.query; 
+    if (!service) return res.status(400).json({ success: false, message: "Service required." });
 
     try {
         const token = await getTextverifiedToken();
-        if (!token) throw new Error("Could not authenticate with Textverified");
+        if (!token) return res.status(401).json({ success: false, message: "Provider authentication failed." });
 
-        // 1. Find the Target ID for the service
         const targetsRes = await axios.get('https://www.textverified.com/api/Targets', {
             headers: { Authorization: `Bearer ${token}` }
         });
 
-        // Search for the service name in the targets list
         const target = targetsRes.data.find(t => 
             t.name.toLowerCase().includes(service.toLowerCase())
         );
 
-        if (!target) {
-            return res.json({ success: false, message: `Service '${service}' not found on Textverified.` });
-        }
+        if (!target) return res.json({ success: false, message: `Service '${service}' unavailable.` });
 
-        // 2. Fetch costs/availability for this target
-        // Note: Textverified API works per-request. We simulate a batch of 1 for the UI.
         return res.json({ 
             success: true, 
-            numbers: [`Ready to Activate ${target.name}`], // Placeholder to trigger selection in your UI
+            numbers: [`Ready to Activate ${target.name}`], 
             targetId: target.id,
             cost: target.cost
         });
-
     } catch (err) {
-        console.error("Textverified Inventory Error:", err);
-        return res.status(500).json({ success: false, message: "Failed to sync with Textverified." });
+        return res.status(500).json({ success: false, message: "Sync failed." });
     }
 }
 

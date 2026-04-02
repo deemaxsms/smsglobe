@@ -231,7 +231,7 @@
         function selectService(id, name, element) {
             document.querySelectorAll('.service-card').forEach(c => c.classList.remove('active'));
             element.classList.add('active');
-            selectedService = id;
+            selectedService = name;
             document.getElementById('summaryService').innerText = name;
             document.getElementById('countrySection').classList.replace('step-hidden', 'step-visible');
             updateButtonState();
@@ -313,19 +313,23 @@
     }
 }
 
-       function renderNumbers(list, targetId) {
+     function renderNumbers(list, targetId) {
     const grid = document.getElementById('numberGrid');
-    selectedTargetId = targetId; // Store the ID for the purchase payload
+    selectedTargetId = targetId; 
 
     grid.innerHTML = `
         <div onclick="selectNumber('READY', this)" class="number-card cursor-pointer bg-white border border-brand-border p-4 rounded-xl flex items-center justify-between group transition-all">
             <div class="flex flex-col">
-                <span class="text-[8px] text-brand-lightText uppercase font-bold">Status: Online</span>
-                <span class="text-sm font-black text-brand-darkText">Get Instant Number</span>
+                <span class="text-[8px] text-green-500 uppercase font-bold">Line Available</span>
+                <span class="text-sm font-black text-brand-darkText">Secure Instant Number</span>
             </div>
             <div class="w-4 h-4 rounded-full border-2 border-brand-border group-[.active]:border-brand-blue group-[.active]:bg-brand-blue"></div>
         </div>
     `;
+    
+    // Auto-select it for the user since there is only one option
+    const card = grid.querySelector('.number-card');
+    selectNumber('READY', card);
 }
 
 function selectNumber(num, element) {

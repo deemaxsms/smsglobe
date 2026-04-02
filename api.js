@@ -143,8 +143,6 @@ const rdpSchema = new mongoose.Schema({
 
 const RDP = mongoose.models.RDP || mongoose.model('RDP', rdpSchema);
 
-const mongoose = require('mongoose');
-
 const rentedNumberSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     
@@ -207,7 +205,7 @@ const rentedNumberSchema = new mongoose.Schema({
 rentedNumberSchema.index({ user: 1, createdAt: -1 });
 rentedNumberSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); 
 
-module.exports = mongoose.models.RentedNumber || mongoose.model('RentedNumber', rentedNumberSchema);
+const RentedNumber = mongoose.models.RentedNumber || mongoose.model('RentedNumber', rentedNumberSchema);
 
 const orderSchema = new mongoose.Schema({
     userEmail: { type: String, required: true, index: true },
@@ -2075,6 +2073,7 @@ async function handleGetNumbers(req, res) {
 async function handleGetStock(req, res) {
     try {
         const token = await getTextverifiedToken();
+        if (!token) return res.json({ success: false, message: "Auth failed" }); // Add this
         const response = await axios.get('https://www.textverified.com/api/Targets', {
             headers: { Authorization: `Bearer ${token}` }
         });

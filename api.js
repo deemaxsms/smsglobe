@@ -349,7 +349,14 @@ app.all('/api/:action', async (req, res) => {
      case 'rdp-request-complete': // This matches the fetch URL in your HTML file
     if (req.method === 'POST') return handleCompleteRDPOrder(req, res);
     break;
-    case 'get-numbers': return handleGetTellabotNumbers(req, res);
+    case 'countries/stats':
+    return handleGetCountryStats(req, res);
+
+    case 'tellabot/numbers':
+    return handleGetTellabotNumbers(req, res);
+
+    case 'get-numbers': 
+    return handleGetTellabotNumbers(req, res);
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
             
@@ -1976,41 +1983,40 @@ async function handleGetRdpRequests(req, res) {
         return res.status(500).json({ success: false, message: "Failed to fetch RDP requests" });
     }
 }
+
 async function handleGetTellabotNumbers(req, res) {
     const { country, service } = req.query;
 
+    // 1. Validate Input
     if (!country || !service) {
-        return res.status(400).json({ success: false, message: "Selection missing." });
+        return res.status(400).json({ success: false, message: "Country and Service are required." });
     }
 
     try {
-        const apiKey = process.env.VITE_TELL_A_BOT_API_KEY;
-        const apiUrl = process.env.TELLABOT_API_URL;
+        // 2. Configuration from your Environment Variables
+        const username = process.env.VITE_TELL_A_BOT_USERNAME || 'wesz';
+        const apiKey = process.env.VITE_TELL_A_BOT_API_KEY || 'zV17cs7yofh6GXW9g6Ec9hC9cQwqhjZX';
+        const apiUrl = process.env.TELLABOT_API_URL || 'https://www.tellabot.com/sims/api_command.php';
         
-        // 1. TRY COMMON ACTIONS: 'get_numbers' is the industry standard for these APIs
-        // If this still fails, check if the documentation requires 'getNumber' or 'any'
-        const action = "get_numbers"; 
-        const tellabotUrl = `${apiUrl}?api_key=${apiKey}&action=${action}&country=${country}&service=${service}`;
+        // 3. Construct Tellabot Request
+        // Note: Using 'get_numbers' as the action to fetch the inventory list
+        const tellabotUrl = `${apiUrl}?username=${username}&api_key=${apiKey}&action=get_numbers&country=${country}&service=${service}`;
 
+        console.log(`--- Fetching Inventory: ${service} in ${country} ---`);
+        
         const response = await fetch(tellabotUrl);
         const data = await response.json();
 
-        console.log(`--- Requesting ${service} for ${country} ---`);
-        console.log("Raw Response:", data);
-
-        // 2. ERROR CHECKING
-        if (data.error || data.status === "error" || (typeof data === 'string' && data.toLowerCase().includes('invalid'))) {
+        // 4. Handle API Errors (Invalid keys, maintenance, etc.)
+        if (data.status === "error" || data.error) {
             return res.json({ 
                 success: false, 
-                message: data.message || data.error || "Invalid API Command" 
+                message: data.message || data.error || "Tellabot API Error" 
             });
         }
 
+        // 5. Extract Numbers (Adaptive Logic)
         let rawNumbers = [];
-
-        // 3. ADAPTIVE EXTRACTION
-        // Some APIs return [{phone: "123"}, {phone: "456"}] 
-        // Others return ["123", "456"]
         if (Array.isArray(data)) {
             rawNumbers = data;
         } else if (data.numbers && Array.isArray(data.numbers)) {
@@ -2019,17 +2025,18 @@ async function handleGetTellabotNumbers(req, res) {
             rawNumbers = Array.isArray(data.data) ? data.data : [data.data];
         }
 
-        // 4. TRANSFORM & VALIDATE
+        // 6. Clean and Format for Frontend
         const validatedNumbers = rawNumbers.map(item => {
-            // If item is an object like {phone: "..."} or {number: "..."}
-            if (typeof item === 'object') return item.phone || item.number || item.number_id;
-            return item;
+            // Extract just the string if it's an object {phone: '...'}
+            let val = typeof item === 'object' ? (item.phone || item.number || item.number_id) : item;
+            return val ? val.toString() : null;
         }).filter(val => {
-            if (!val || typeof val !== 'string') return false;
-            const cleanNum = val.toString().replace(/[^0-9]/g, ''); // Keep only digits
-            return cleanNum.length > 7; // Ensure it's a realistic phone number length
+            if (!val) return false;
+            const digitsOnly = val.replace(/[^0-9]/g, '');
+            return digitsOnly.length > 7; // Ensure it looks like a real phone number
         });
 
+        // 7. Success Response
         if (validatedNumbers.length === 0) {
             return res.json({ 
                 success: true, 
@@ -2038,17 +2045,34 @@ async function handleGetTellabotNumbers(req, res) {
             });
         }
 
-        // 5. RETURN CLEAN LIST
         return res.json({ 
             success: true, 
-            numbers: validatedNumbers.sort(() => Math.random() - 0.5).slice(0, 5) // Return top 5 random
+            numbers: validatedNumbers.sort(() => Math.random() - 0.5).slice(0, 12) // Return a fresh batch of 12
         });
 
     } catch (err) {
-        console.error("Critical Tellabot Error:", err);
-        return res.status(500).json({ success: false, message: "Connection to provider failed." });
+        console.error("Critical Tellabot Connection Error:", err);
+        return res.status(500).json({ success: false, message: "Failed to connect to Tellabot service." });
     }
 }
+
+async function handleGetTellabotStock(req, res) {
+    const username = process.env.VITE_TELL_A_BOT_USERNAME;
+    const apiKey = process.env.VITE_TELL_A_BOT_API_KEY;
+    
+    // Tellabot command to get overall stock/inventory
+    const stockUrl = `https://www.tellabot.com/sims/api_command.php?username=${username}&api_key=${apiKey}&action=get_stock`;
+
+    try {
+        const response = await fetch(stockUrl);
+        const data = await response.json();
+        // Return this so the frontend can display "50 Available" next to the flag
+        res.json({ success: true, stock: data });
+    } catch (err) {
+        res.json({ success: false, stock: {} });
+    }
+}
+
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

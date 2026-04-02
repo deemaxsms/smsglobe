@@ -204,26 +204,7 @@
             updateButtonState();
         }
 
-       async function fetchCountryData() {
-    try {
-        // This triggers the handleGetStock function on the backend
-        const response = await fetch('/api/countries/stats'); 
-        const res = await response.json();
-
-        if (res.success && res.stock) {
-            // Update your local country list with 'cost' or 'availability' from the backend
-            countries = countries.map(c => ({
-                ...c,
-                // If the backend sent cost, 'available' now stores the price
-                available: res.stock[c.id] || 0 
-            }));
-        }
-        renderCountryOptions();
-    } catch (err) { 
-        console.error("Could not sync country stats:", err);
-        renderCountryOptions(); 
-    }
-}
+    
         function renderServiceGrid() {
             const grid = document.getElementById('serviceGrid');
             grid.innerHTML = services.map(s => `

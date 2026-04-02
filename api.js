@@ -314,75 +314,69 @@ const verifyToken = (req, res, next) => {
     }
 };
 
-app.all('/api/*path', async (req, res) => {
+app.all('/api/:action', async (req, res) => {
     await connectDB();
-    const fullPath = (req.params.path || '').toLowerCase().trim();
-    console.log("Incoming Path:", fullPath, "| Method:", req.method);
+    const action = (req.params.action || '').toLowerCase().trim();
+    console.log("Incoming Action:", action, "Method:", req.method);
 
-    switch (fullPath) {
-        // --- AUTH & USER MANAGEMENT ---
+    switch (action) {
         case 'login': return handleLogin(req, res);
         case 'register': return handleRegister(req, res);
         case 'google-login': return handleGoogleLogin(req, res);
         case 'dashboard-stats': return handleDashboardStats(req, res);
         case 'get-users': return handleGetUsers(req, res);
         case 'manage-user': return handleManageUser(req, res);
-        case 'user-register': return handleUserRegister(req, res);
-        case 'user-login': return handleUserLogin(req, res);
-        case 'user-profile': return handleGetUserProfile(req, res);
-        case 'user-messages': return handleGetUserMessages(req, res);
-
-        // --- PRODUCTS (VPN) ---
         case 'products': 
             if (req.method === 'GET') return handleGetVPNs(req, res);
             if (req.method === 'POST') return handleAddVPN(req, res);
             if (req.method === 'PATCH') return handleUpdateVPN(req, res);
             if (req.method === 'DELETE') return handleDeleteVPN(req, res);
             break;
-
-        // --- PAYMENTS & TRANSACTIONS ---
+        case 'user-register': return handleUserRegister(req, res);
+        case 'user-login': return handleUserLogin(req, res);
+        case 'user-profile': return handleGetUserProfile(req, res);
+        case 'user-messages': return handleGetUserMessages(req, res);
         case 'purchase-vpn': return handlePurchaseVPN(req, res);
         case 'initiate-payment': return handleInitiatePayment(req, res);
         case 'verify-payment': return handleVerifyPayment(req, res);
-        case 'transactions': return handleAllTransactions(req, res);
-
-        // --- PROXIES ---
         case 'proxies': 
             if (req.method === 'GET') return handleGetProxies(req, res);
             if (req.method === 'POST') return handleAddProxy(req, res);
             if (req.method === 'PATCH') return handleUpdateProxy(req, res);
             if (req.method === 'DELETE') return handleDeleteProxy(req, res);
             break;
-
-        // --- eSIM SERVICES ---
+        case 'transactions': return handleAllTransactions(req, res);
         case 'esim-refill': 
             if (req.method === 'POST') return handleEsimRefill(req, res);
             break;
         case 'create-esim-order': return handleCreateEsimOrder(req, res);
         case 'esim-refills': return getEsimRefills(req, res);
-        case 'update-esim-status': return handleAdminEsimUpdate(req, res);
+        case 'update-esim-status':
+            return handleAdminEsimUpdate(req, res);
         case 'create-esim-order-activation': return handleCreateEsimActivation(req, res);
-        case 'esim-activation': 
+      case 'esim-activation': 
         case 'esim-activations': 
-            if (req.method === 'GET') return handleGetEsimActivations(req, res); 
-            break;
-        case 'esim-activation-complete': 
-        case 'update-esim-activation': 
-            if (req.method === 'POST' || req.method === 'PATCH') return handleAdminEsimActivationUpdate(req, res);
-            break;
-
-        // --- RDP SERVICES ---
-        case 'rdps': 
-            if (req.method === 'GET') return handleGetRDPs(req, res);
-            if (req.method === 'POST') return handleAddRDP(req, res);
-            if (req.method === 'PATCH') return handleCompleteRDPOrder(req, res);
-            if (req.method === 'DELETE') return handleDeleteRDP(req, res);
-            break;
-        case 'rdp-requests': return handleGetRdpRequests(req, res);
-        case 'rdp-request-complete': return handleCompleteRDPOrder(req, res);
-
-        // --- SMS / TEXTVERIFIED (Previously failing with 404) ---
-        case 'countries/stats': 
+        if (req.method === 'GET') return handleGetEsimActivations(req, res); 
+        break;
+    case 'esim-activation-complete': 
+    case 'update-esim-activation': 
+    if (req.method === 'POST' || req.method === 'PATCH') {
+        return handleAdminEsimActivationUpdate(req, res);
+    }
+    break;
+    case 'rdps': 
+    if (req.method === 'GET') return handleGetRDPs(req, res); // You'll need to create this
+    if (req.method === 'POST') return handleAddRDP(req, res); // You'll need to create this
+    if (req.method === 'PATCH') return handleCompleteRDPOrder(req, res);
+    if (req.method === 'DELETE') return handleDeleteRDP(req, res);
+    break;
+    case 'rdp-requests': // This matches the fetch URL in your HTML file
+    if (req.method === 'GET') return handleGetRdpRequests(req, res);
+    break;
+     case 'rdp-request-complete': // This matches the fetch URL in your HTML file
+    if (req.method === 'POST') return handleCompleteRDPOrder(req, res);
+    break;
+    case 'countries/stats': 
         case 'inventory/sync': 
             return handleGetStock(req, res);
 
@@ -393,17 +387,17 @@ app.all('/api/*path', async (req, res) => {
         case 'rentals/activate':
         case 'purchase/process':
             return handleActivatePurchase(req, res);
-
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
             
         default:
             return res.status(404).json({ 
                 success: false, 
-                error: `Action '${fullPath}' not found on this server.` 
+                error: `Action '${action}' not found on this server.` 
             });
     }
 });
+
 // --- 7. LOGIC HANDLERS ---
 
 async function handleLogin(req, res) {

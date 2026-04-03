@@ -323,6 +323,7 @@ app.all('/api/:action', async (req, res) => {
         case 'login': return handleLogin(req, res);
         case 'register': return handleRegister(req, res);
         case 'google-login': return handleGoogleLogin(req, res);
+        case 'user-orders': return handleGetUserOrders(req, res);
         case 'dashboard-stats': return handleDashboardStats(req, res);
         case 'get-users': return handleGetUsers(req, res);
         case 'manage-user': return handleManageUser(req, res);
@@ -2125,6 +2126,50 @@ async function handleActivatePurchase(req, res) {
         return res.status(500).json({ 
             success: false, 
             message: err.response?.data?.message || "Purchase failed." 
+        });
+    }
+}
+
+// --- NEW: Fetch User Order History ---
+async function handleGetUserOrders(req, res) {
+    try {
+        // 1. Get the token from headers
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ success: false, message: "Unauthorized" });
+        }
+
+        const token = authHeader.split(' ')[1];
+        
+        // 2. Verify token and get user email 
+        // (Adjust 'process.env.JWT_SECRET' to match your config)
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_secret_key');
+        const userEmail = decoded.email;
+
+        if (!userEmail) {
+            return res.status(400).json({ success: false, message: "Invalid token data" });
+        }
+
+        // 3. Fetch orders from Database
+        // We use the email to find all orders linked to this account
+        const orders = await Order.find({ userEmail: userEmail })
+            .sort({ createdAt: -1 }) // Newest first
+            .lean(); // Faster performance for read-only
+
+        // 4. Return the orders
+        return res.json(orders);
+
+    } catch (err) {
+        console.error("Error fetching user orders:", err);
+        
+        if (err.name === 'JsonWebTokenError') {
+            return res.status(401).json({ success: false, message: "Invalid Session" });
+        }
+
+        return res.status(500).json({ 
+            success: false, 
+            message: "Failed to retrieve order history" 
         });
     }
 }

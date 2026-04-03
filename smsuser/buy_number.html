@@ -312,7 +312,7 @@
     const grid = document.getElementById('numberGrid');
     grid.innerHTML = `<div class="col-span-full flex flex-col items-center py-8 space-y-2">
                         <div class="w-5 h-5 border-2 border-brand-blue border-t-transparent rounded-full animate-spin"></div>
-                        <p class="text-[10px] font-bold text-brand-lightText uppercase">Checking Textverified API...</p>
+                        <p class="text-[10px] font-bold text-brand-lightText uppercase">Checking API...</p>
                       </div>`;
     try {
        const response = await fetch(`/api/get-numbers?country=${selectedCountry.id}&service=${selectedService}`);

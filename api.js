@@ -2156,122 +2156,133 @@ async function getTextverifiedToken() {
 
 // --- Updated: Fetch Numbers (Inventory) ---
 async function handleGetNumbers(req, res) {
-    const { country, service } = req.query; // country (e.g., 'US'), service (e.g., 'wa')
+    const { country, service } = req.query; 
 
     if (!service) return res.status(400).json({ success: false, message: "Service is required." });
 
     try {
-        const token = await getTextverifiedToken();
-        if (!token) {
-            return res.status(500).json({ success: false, message: "Authentication with provider failed." });
+        const apiKey = process.env.TELLABOT_API_KEY;
+        if (!apiKey) {
+            return res.status(500).json({ success: false, message: "Server configuration missing (API Key)." });
         }
 
-        // 1. Fetch Targets from Textverified
-        const targetsRes = await axios.get('https://www.textverified.com/api/Targets', {
-            headers: { Authorization: `Bearer ${token}` }
+        // 1. Fetch inventory from Tell A Bot
+        // Note: Tell A Bot usually uses action=get_services or action=services
+        const response = await axios.get('https://www.tellabot.com/api_command.php', {
+            params: {
+                api_key: apiKey,
+                action: 'get_services', // Verify if your API uses 'services' or 'get_services'
+                country: country || 'US' // Default to US if not provided
+            }
         });
 
-        // Ensure targetsRes.data is actually an array before searching
-        const allTargets = Array.isArray(targetsRes.data) ? targetsRes.data : [];
-
-        if (allTargets.length === 0) {
-            throw new Error("Target list from Textverified is empty or invalid.");
+        // Tell A Bot response structure check
+        const services = response.data.services || response.data; 
+        if (!Array.isArray(services)) {
+            throw new Error("Invalid response format from Tell A Bot.");
         }
 
-        // 2. Search for the specific service AND country
-        // Note: Textverified service names often look like "WhatsApp" or "WhatsApp (US)"
-        const target = allTargets.find(t => {
-            const nameMatch = t.name.toLowerCase().includes(service.toLowerCase());
-            // If a country was provided (e.g., 'US'), ensure the target matches that country too
-            const countryMatch = country ? t.name.toUpperCase().includes(country.toUpperCase()) : true;
-            return nameMatch && countryMatch;
-        });
+        // 2. Find the specific service (e.g., 'WhatsApp')
+        const target = services.find(s => 
+            s.name.toLowerCase().includes(service.toLowerCase())
+        );
 
         if (!target) {
-            console.warn(`Target not found for Service: ${service}, Country: ${country}`);
             return res.json({ 
                 success: false, 
-                message: `No stock available for ${service} in ${country || 'this region'}.` 
+                message: `Service '${service}' currently out of stock on Tell A Bot.` 
             });
         }
 
-        // 3. Return the data to the frontend
+        // 3. Return matching data to your frontend
         return res.json({ 
             success: true, 
-            // We pass an array so your frontend .map() or .render() still works
-            numbers: [`Secure ${target.name} Line`], 
-            targetId: target.id,
-            cost: target.cost,
+            numbers: [`Ready: ${target.name}`], 
+            targetId: target.service_id || target.id, // Tell A Bot uses service_id
+            cost: target.price || target.cost,
             name: target.name
         });
 
     } catch (err) {
-        // Log the detailed error to your Vercel console for debugging
-        console.error("Textverified API Error Detail:", err.response?.data || err.message);
-        
+        console.error("Tell A Bot Sync Error:", err.message);
         return res.status(500).json({ 
             success: false, 
-            message: "Service synchronization failed. Please try again later." 
+            message: "Failed to connect to Tell A Bot." 
         });
     }
 }
-
-// --- Backend: handleGetStock ---
 async function handleGetStock(req, res) {
     try {
-        const token = await getTextverifiedToken();
-        if (!token) return res.json({ success: false, message: "Auth failed" });
+        const apiKey = process.env.TELLABOT_API_KEY;
+        if (!apiKey) return res.json({ success: false, message: "Server API Key missing" });
 
-        // Fetch all targets (services/countries) from Textverified
-        const response = await axios.get('https://www.textverified.com/api/Targets', {
-            headers: { Authorization: `Bearer ${token}` }
+        // Tell A Bot usually uses 'get_services' to list all prices/availability
+        const response = await axios.get('https://www.tellabot.com/api_command.php', {
+            params: {
+                api_key: apiKey,
+                action: 'get_services'
+            }
         });
 
         const stockData = {};
-        // We map the target ID to the cost so your frontend can show prices
-        response.data.forEach(t => {
-            stockData[t.id] = t.cost; 
-        });
+        // Depending on Tell A Bot version, data might be directly in response.data or response.data.services
+        const services = Array.isArray(response.data) ? response.data : response.data.services;
+
+        if (services && Array.isArray(services)) {
+            services.forEach(s => {
+                // Map the Service ID to its Price
+                stockData[s.service_id || s.id] = s.price || s.cost; 
+            });
+        }
 
         return res.json({ 
             success: true, 
-            stock: stockData // This matches your frontend 'res.stock'
+            stock: stockData 
         });
     } catch (err) {
-        console.error("Stock Sync Error:", err.message);
+        console.error("Tell A Bot Stock Sync Error:", err.message);
         return res.json({ success: false, stock: {}, message: "Stock sync failed" });
     }
 }
 
-// --- Updated: Activate/Purchase Number ---
 async function handleActivatePurchase(req, res) {
-    const { targetId, price, type } = req.body; 
+    const { targetId } = req.body; // targetId is the service_id from Tell A Bot
 
     try {
-        const token = await getTextverifiedToken();
-        
-        // 1. Create the verification (This actually buys the number)
-        const response = await axios.post(
-            'https://www.textverified.com/api/Verifications',
-            { targetId: targetId },
-            { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const apiKey = process.env.TELLABOT_API_KEY;
+        if (!apiKey) throw new Error("API Key configuration missing");
 
-        const verification = response.data; // Contains { id, number, status, etc }
-
-        // 2. Log this in your local database here (RentalId = verification.id)
-        
-        return res.json({
-            success: true,
-            rentalId: verification.id,
-            number: verification.number,
-            message: "Number Reserved!"
+        // Tell A Bot: Action 'get_number' starts the purchase/activation
+        const response = await axios.get('https://www.tellabot.com/api_command.php', {
+            params: {
+                api_key: apiKey,
+                action: 'get_number',
+                service_id: targetId
+            }
         });
+
+        const result = response.data;
+
+        // Tell A Bot usually returns 'number' and 'order_id' on success
+        if (result && result.number) {
+            return res.json({
+                success: true,
+                rentalId: result.order_id || result.id, // ID used to track the SMS later
+                number: result.number,
+                message: "Number Reserved!"
+            });
+        } else {
+            // Handle specific errors like 'insufficient_balance' or 'out_of_stock'
+            return res.status(400).json({ 
+                success: false, 
+                message: result.error || "No numbers available for this service." 
+            });
+        }
     } catch (err) {
-        console.error("Purchase Error:", err.response?.data);
+        console.error("Tell A Bot Purchase Error:", err.message);
         return res.status(500).json({ 
             success: false, 
-            message: err.response?.data?.message || "Purchase failed." 
+            message: "Purchase failed. Check balance or try again." 
         });
     }
 }

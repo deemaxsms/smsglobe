@@ -2153,79 +2153,76 @@ async function getTextverifiedToken() {
         return null;
     }
 }
-
 // --- Updated: Fetch Numbers (Inventory) ---
 async function handleGetNumbers(req, res) {
     const { service } = req.query; 
 
     try {
         const apiKey = process.env.TELLABOT_API_KEY;
-        const apiUser = process.env.TELLABOT_USER; // You need to add this to Vercel
+        const apiUser = process.env.TELLABOT_USER;
 
         if (!apiKey || !apiUser) {
             return res.status(500).json({ success: false, message: "Server config missing (API Key or User)." });
         }
 
-        // 1. Fetch inventory using the correct 'cmd' and 'user' params
+        // According to your screenshot, cmd is 'list_services'
         const response = await axios.get('https://www.tellabot.com/api_command.php', {
             params: {
-                cmd: 'list_services', // The screenshot mentions this command
+                cmd: 'list_services',
                 user: apiUser,
                 api_key: apiKey
             }
         });
 
-        // Tell A Bot usually returns data separated by newlines or a specific JSON array
-        const services = response.data.services || response.data; 
+        // Tell A Bot format: { status: "ok", message: [ {service: "Amazon", price: "0.50"}, ... ] }
+        if (response.data.status === 'ok' && Array.isArray(response.data.message)) {
+            const services = response.data.message;
+            
+            // Search by 'service' field from the API response
+            const target = services.find(s => 
+                s.service && s.service.toLowerCase().includes(service.toLowerCase())
+            );
 
-        if (!Array.isArray(services)) {
-            console.log("Raw TellABot Response:", response.data);
-            throw new Error("Invalid response format from Tell A Bot.");
+            if (target) {
+                return res.json({ 
+                    success: true, 
+                    numbers: [`Secure ${target.service} Line`], 
+                    targetId: target.service, // Tell A Bot 'request' uses the name string
+                    cost: target.price,
+                    name: target.service
+                });
+            }
         }
 
-        // 2. Find the service
-        const target = services.find(s => 
-            s.name.toLowerCase().includes(service.toLowerCase())
-        );
-
-        if (!target) {
-            return res.json({ success: false, message: `Service '${service}' not found.` });
-        }
-
-        return res.json({ 
-            success: true, 
-            numbers: [`Ready: ${target.name}`], 
-            targetId: target.name, // NOTE: For 'request' cmd, Tell A Bot uses the name string!
-            cost: target.price || target.cost,
-            name: target.name
-        });
+        return res.json({ success: false, message: `Service '${service}' not found or out of stock.` });
 
     } catch (err) {
-        console.error("Tell A Bot Error:", err.message);
+        console.error("Tell A Bot Sync Error:", err.message);
         return res.status(500).json({ success: false, message: "Sync Failed: " + err.message });
     }
 }
+
+// --- Updated: Handle Stock Mapping ---
 async function handleGetStock(req, res) {
     try {
         const apiKey = process.env.TELLABOT_API_KEY;
-        if (!apiKey) return res.json({ success: false, message: "Server API Key missing" });
+        const apiUser = process.env.TELLABOT_USER;
 
-        // Tell A Bot usually uses 'get_services' to list all prices/availability
+        if (!apiKey || !apiUser) return res.json({ success: false, message: "Server config missing" });
+
         const response = await axios.get('https://www.tellabot.com/api_command.php', {
             params: {
-                api_key: apiKey,
-                action: 'get_services'
+                cmd: 'list_services',
+                user: apiUser,
+                api_key: apiKey
             }
         });
 
         const stockData = {};
-        // Depending on Tell A Bot version, data might be directly in response.data or response.data.services
-        const services = Array.isArray(response.data) ? response.data : response.data.services;
-
-        if (services && Array.isArray(services)) {
-            services.forEach(s => {
-                // Map the Service ID to its Price
-                stockData[s.service_id || s.id] = s.price || s.cost; 
+        if (response.data.status === 'ok' && Array.isArray(response.data.message)) {
+            response.data.message.forEach(s => {
+                // Map the Service Name (used as ID) to its Price
+                stockData[s.service] = s.price; 
             });
         }
 
@@ -2239,35 +2236,43 @@ async function handleGetStock(req, res) {
     }
 }
 
+// --- Updated: Activate/Purchase Number ---
 async function handleActivatePurchase(req, res) {
     const { targetId } = req.body; // This is the service name (e.g., 'WhatsApp')
 
     try {
+        const apiKey = process.env.TELLABOT_API_KEY;
+        const apiUser = process.env.TELLABOT_USER;
+
         const response = await axios.get('https://www.tellabot.com/api_command.php', {
             params: {
-                cmd: 'request', // From your screenshot
-                user: process.env.TELLABOT_USER,
-                api_key: process.env.TELLABOT_API_KEY,
-                service: targetId // "Service name as returned by list_services"
+                cmd: 'request', 
+                user: apiUser,
+                api_key: apiKey,
+                service: targetId
             }
         });
 
-        // Tell A Bot 'request' returns the number directly
-        if (response.data && response.data.mdn) {
+        // According to your screenshot:
+        // Success returns { "status": "ok", "message": [ { "mdn": "15302286946", "id": "10000001", ... } ] }
+        if (response.data.status === 'ok' && response.data.message && response.data.message.length > 0) {
+            const order = response.data.message[0];
             return res.json({
                 success: true,
-                rentalId: response.data.id || response.data.order_id,
-                number: response.data.mdn, // Tell A Bot calls the number 'mdn'
+                rentalId: order.id,
+                number: order.mdn, // MDN is the phone number field
                 message: "Number Reserved!"
             });
         }
 
+        // Error returns { "status": "error", "message": "Reason here" }
         return res.status(400).json({ 
             success: false, 
-            message: response.data.error || "Failed to get number from Tell A Bot." 
+            message: response.data.message || "No numbers available or insufficient balance." 
         });
 
     } catch (err) {
+        console.error("Tell A Bot Purchase Error:", err.message);
         return res.status(500).json({ success: false, message: "Purchase failed." });
     }
 }

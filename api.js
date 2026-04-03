@@ -412,7 +412,7 @@ app.all('/api/:action', async (req, res) => {
 case 'purchase/process':
 case 'activate-number': // If your frontend uses this
     return handleActivatePurchase(req, res);
-    
+
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
             
@@ -2133,55 +2133,86 @@ async function getTextverifiedToken() {
             {}, 
             { 
                 headers: { 
-                    // Use the correct header for Textverified V2
                     'X-API-KEY': process.env.TEXTVERIFIED_V2_KEY,
                     'Accept': 'application/json'
                 } 
             }
         );
-        return response.data.bearer_token;
+        
+        // V2 returns "token", V1 returned "bearer_token". We check both to be safe.
+        const token = response.data.token || response.data.bearer_token;
+        
+        if (!token) {
+            console.error("Auth response received but no token found:", response.data);
+        }
+        
+        return token;
     } catch (err) {
-        console.error("Textverified Auth Failed. Check your Vercel Environment Variables.");
+        // This will show you the REAL reason in Vercel Logs (Unauthorized, Invalid Key, etc.)
+        console.error("Textverified Auth Failed:", err.response?.data || err.message);
         return null;
     }
 }
 
 // --- Updated: Fetch Numbers (Inventory) ---
 async function handleGetNumbers(req, res) {
-    const { country, service } = req.query; // country (e.g., 'US'), service (e.g., 'WhatsApp')
+    const { country, service } = req.query; // country (e.g., 'US'), service (e.g., 'wa')
 
     if (!service) return res.status(400).json({ success: false, message: "Service is required." });
 
     try {
         const token = await getTextverifiedToken();
-        if (!token) throw new Error("Could not authenticate with Textverified");
+        if (!token) {
+            return res.status(500).json({ success: false, message: "Authentication with provider failed." });
+        }
 
-        // 1. Find the Target ID for the service
+        // 1. Fetch Targets from Textverified
         const targetsRes = await axios.get('https://www.textverified.com/api/Targets', {
             headers: { Authorization: `Bearer ${token}` }
         });
 
-        // Search for the service name in the targets list
-        const target = targetsRes.data.find(t => 
-            t.name.toLowerCase().includes(service.toLowerCase())
-        );
+        // Ensure targetsRes.data is actually an array before searching
+        const allTargets = Array.isArray(targetsRes.data) ? targetsRes.data : [];
 
-        if (!target) {
-            return res.json({ success: false, message: `Service '${service}' not found on Textverified.` });
+        if (allTargets.length === 0) {
+            throw new Error("Target list from Textverified is empty or invalid.");
         }
 
-        // 2. Fetch costs/availability for this target
-        // Note: Textverified API works per-request. We simulate a batch of 1 for the UI.
+        // 2. Search for the specific service AND country
+        // Note: Textverified service names often look like "WhatsApp" or "WhatsApp (US)"
+        const target = allTargets.find(t => {
+            const nameMatch = t.name.toLowerCase().includes(service.toLowerCase());
+            // If a country was provided (e.g., 'US'), ensure the target matches that country too
+            const countryMatch = country ? t.name.toUpperCase().includes(country.toUpperCase()) : true;
+            return nameMatch && countryMatch;
+        });
+
+        if (!target) {
+            console.warn(`Target not found for Service: ${service}, Country: ${country}`);
+            return res.json({ 
+                success: false, 
+                message: `No stock available for ${service} in ${country || 'this region'}.` 
+            });
+        }
+
+        // 3. Return the data to the frontend
         return res.json({ 
             success: true, 
-            numbers: [`Ready to Activate ${target.name}`], // Placeholder to trigger selection in your UI
+            // We pass an array so your frontend .map() or .render() still works
+            numbers: [`Secure ${target.name} Line`], 
             targetId: target.id,
-            cost: target.cost
+            cost: target.cost,
+            name: target.name
         });
 
     } catch (err) {
-        console.error("Textverified Inventory Error:", err);
-        return res.status(500).json({ success: false, message: "Failed to sync with Textverified." });
+        // Log the detailed error to your Vercel console for debugging
+        console.error("Textverified API Error Detail:", err.response?.data || err.message);
+        
+        return res.status(500).json({ 
+            success: false, 
+            message: "Service synchronization failed. Please try again later." 
+        });
     }
 }
 

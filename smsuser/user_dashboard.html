@@ -169,11 +169,11 @@
         { id: '1year', name: '1 Year eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term' }
     ];
 
-    const rdpPlans = {
-    tier1: { id: "tier1", name: "USA Tier 1", price: "₦45,000", hardware: "4GB RAM | 2 CPU", storage: "60GB SSD" },
-    tier2: { id: "tier2", name: "USA Tier 2", price: "₦55,000", hardware: "6GB RAM | 3 CPU", storage: "100GB SSD" },
-    tier3: { id: "tier3", name: "USA Tier 3", price: "₦65,000", hardware: "8GB RAM | 4 CPU", storage: "140GB SSD" }
-};
+       const plans = {
+        tier1: { id: "tier1", name: "USA Tier 1", price: 45000, hardware: "4GB RAM | 2 CPU Cores", storage: "60GB SSD", net: "100Mbps" },
+        tier2: { id: "tier2", name: "USA Tier 2", price: 55000, hardware: "6GB RAM | 3 CPU Cores", storage: "100GB SSD", net: "100Mbps" },
+        tier3: { id: "tier3", name: "USA Tier 3", price: 65000, hardware: "8GB RAM | 4 CPU Cores", storage: "140GB SSD", net: "200Mbps" }
+        };
 
 function loadRDP() {
     const grid = document.getElementById('rdpGrid');

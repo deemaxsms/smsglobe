@@ -1219,6 +1219,7 @@ async function handleVerifyPayment(req, res) {
             const userEmail = actualUser.email; 
             const amountPaid = data.data.amount;
             const currency = data.data.currency;
+            const formattedAmount = `${currency} ${amountPaid}`;
 
             let credentials = {};
             let productDetails = { name: "", plan: "" };
@@ -1239,6 +1240,7 @@ async function handleVerifyPayment(req, res) {
                     type: "VPN",
                     username: item.username,
                     password: item.password,
+                    amount: formattedAmount,
                     instructions: item.instructions || "Check dashboard."
                 };
 
@@ -1255,6 +1257,7 @@ async function handleVerifyPayment(req, res) {
                 credentials = {
                     type: "Proxy",
                     activationCode: item.activationCode,
+                    amount: formattedAmount,
                     instructions: item.instructions || "Check dashboard."
                 };
 
@@ -1283,6 +1286,7 @@ async function handleVerifyPayment(req, res) {
                     type: "RDP",
                     os: osChoice || "Windows Server",
                     specs: `${item.ram} RAM, ${cpuDisplay}, ${storageDisplay}`,
+                    amount: formattedAmount,
                     instructions: "Your custom RDP is being provisioned. Credentials will be sent to your email within 1-6 hours."
                 };
                 
@@ -1292,6 +1296,7 @@ async function handleVerifyPayment(req, res) {
                 targetNum = mobileNumber;
                 credentials = {
                     type: productType,
+                    amount: formattedAmount,
                     instructions: "Request received. Processing usually takes 5-30 minutes."
                 };
             }

@@ -622,20 +622,66 @@ async function handleGetUsers(req, res) {
 }
 async function handleManageUser(req, res) {
     const { action, userId } = req.body;
-    try {
-        const User = mongoose.models.User || mongoose.model('User');
 
+    // 1. Basic Validation
+    if (!userId || !action) {
+        return res.status(400).json({ success: false, message: "Missing User ID or Action." });
+    }
+
+    try {
+        // 2. Robust Model Access (Prevents "MissingSchemaError")
+        const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({}, { strict: false }), 'users');
+        
+        let successMessage = "";
+
+        // 3. Handle Deletion separately to avoid unnecessary updates
         if (action === 'delete') {
-            await User.findByIdAndDelete(userId);
-            return res.json({ success: true, message: "User deleted successfully." });
+            const deleted = await User.findByIdAndDelete(userId);
+            if (!deleted) {
+                return res.status(404).json({ success: false, message: "User not found." });
+            }
+            return res.json({ success: true, message: "User account deleted permanently." });
         }
 
-        const newStatus = action === 'suspend' ? 'suspended' : 'active';
-        await User.findByIdAndUpdate(userId, { status: newStatus });
-        
-        return res.json({ success: true, message: `User is now ${newStatus}.` });
+        // 4. Determine Status based on Action
+        let newStatus = '';
+        if (action === 'suspend') {
+            newStatus = 'suspended';
+            successMessage = "User account has been restricted.";
+        } else if (action === 'activate') {
+            newStatus = 'active';
+            successMessage = "User account has been fully restored.";
+        } else {
+            return res.status(400).json({ success: false, message: "Invalid action type." });
+        }
+
+        // 5. Update the User
+        const updatedUser = await User.findByIdAndUpdate(
+            userId, 
+            { $set: { status: newStatus } }, // Use $set for safer updates
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedUser) {
+            return res.status(404).json({ success: false, message: "User does not exist in the database." });
+        }
+
+        return res.json({ 
+            success: true, 
+            message: successMessage,
+            status: updatedUser.status 
+        });
+
     } catch (err) {
-        return res.status(500).json({ success: false, message: "Action failed." });
+        // Log error for debugging but return a clean message to the frontend
+        console.error("Manage User Error:", err.message);
+        
+        // Handle Invalid MongoDB ID format specifically
+        if (err.name === 'CastError') {
+            return res.status(400).json({ success: false, message: "Invalid User ID format." });
+        }
+
+        return res.status(500).json({ success: false, message: "Internal server error. Check logs." });
     }
 }
 async function handleGetVPNs(req, res) {
@@ -2239,6 +2285,7 @@ async function handleChangePassword(req, res) {
         });
     }
 }
+
 
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));

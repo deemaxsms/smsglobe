@@ -404,13 +404,15 @@ app.all('/api/:action', async (req, res) => {
      case 'rdp-request-complete': // This matches the fetch URL in your HTML file
     if (req.method === 'POST') return handleCompleteRDPOrder(req, res);
     break;
-        case 'tellabot/numbers':
-        case 'get-numbers': 
-            return handleGetNumbers(req, res); 
+        case 'get-numbers/numbers': 
+    case 'get-numbers': 
+    return handleGetNumbers(req, res);
 
-        case 'rentals/activate':
-        case 'purchase/process':
-            return handleActivatePurchase(req, res);
+       case 'rentals/activate':
+case 'purchase/process':
+case 'activate-number': // If your frontend uses this
+    return handleActivatePurchase(req, res);
+    
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
             

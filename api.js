@@ -622,68 +622,61 @@ async function handleGetUsers(req, res) {
 }
 async function handleManageUser(req, res) {
     const { action, userId } = req.body;
+    console.log("API RECEIVED:", req.body);
 
-    // 1. Basic Validation
     if (!userId || !action) {
         return res.status(400).json({ success: false, message: "Missing User ID or Action." });
     }
 
     try {
-        // 2. Robust Model Access (Prevents "MissingSchemaError")
-        const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({}, { strict: false }), 'users');
-        
-        let successMessage = "";
-
-        // 3. Handle Deletion separately to avoid unnecessary updates
-        if (action === 'delete') {
-            const deleted = await User.findByIdAndDelete(userId);
-            if (!deleted) {
-                return res.status(404).json({ success: false, message: "User not found." });
-            }
-            return res.json({ success: true, message: "User account deleted permanently." });
+        // Ensure Database Connection is active (Critical for serverless)
+        if (mongoose.connection.readyState !== 1) {
+            return res.status(500).json({ success: false, message: "Database connection lost." });
         }
 
-        // 4. Determine Status based on Action
-        let newStatus = '';
-        if (action === 'suspend') {
-            newStatus = 'suspended';
-            successMessage = "User account has been restricted.";
-        } else if (action === 'activate') {
-            newStatus = 'active';
-            successMessage = "User account has been fully restored.";
-        } else {
+        const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({}, { strict: false }), 'users');
+        
+        // 1. Handle Deletion
+        if (action === 'delete') {
+            const deleted = await User.findByIdAndDelete(userId);
+            if (!deleted) return res.status(404).json({ success: false, message: "User not found." });
+            return res.json({ success: true, message: "User deleted." });
+        }
+
+        // 2. Map actions to statuses
+        const statusMap = {
+            'suspend': 'suspended',
+            'activate': 'active'
+        };
+
+        const newStatus = statusMap[action];
+        if (!newStatus) {
             return res.status(400).json({ success: false, message: "Invalid action type." });
         }
 
-        // 5. Update the User
+        // 3. Update and Return
         const updatedUser = await User.findByIdAndUpdate(
             userId, 
-            { $set: { status: newStatus } }, // Use $set for safer updates
-            { new: true, runValidators: true }
+            { $set: { status: newStatus } }, 
+            { new: true }
         );
 
         if (!updatedUser) {
-            return res.status(404).json({ success: false, message: "User does not exist in the database." });
+            return res.status(404).json({ success: false, message: "User not found." });
         }
 
         return res.json({ 
             success: true, 
-            message: successMessage,
+            message: `User is now ${newStatus}.`,
             status: updatedUser.status 
         });
 
     } catch (err) {
-        // Log error for debugging but return a clean message to the frontend
-        console.error("Manage User Error:", err.message);
-        
-        // Handle Invalid MongoDB ID format specifically
-        if (err.name === 'CastError') {
-            return res.status(400).json({ success: false, message: "Invalid User ID format." });
-        }
-
-        return res.status(500).json({ success: false, message: "Internal server error. Check logs." });
+        console.error("Manage User Error:", err);
+        return res.status(500).json({ success: false, message: err.message });
     }
 }
+
 async function handleGetVPNs(req, res) {
     try {
         // Fetch all VPNs, including the hidden password field for the admin to see/edit

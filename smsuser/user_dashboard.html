@@ -251,6 +251,7 @@
             document.getElementById('userEmail').innerText = userData.email;
             document.getElementById('userInitials').innerText = (userData.full_name || "U").charAt(0).toUpperCase();
             await Promise.all([fetchFeaturedProxies(), fetchFeaturedVPNs()]);
+            loadActivations();
             loadFeaturedCarriers();
         } catch (err) { logout(); }
     }

@@ -160,20 +160,31 @@
         { id: '1year', name: '1 Year eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term' }
     ];
 
-    function loadActivations() {
-        const grid = document.getElementById('activationGrid');
-        grid.innerHTML = carriers.map(c => `
-            <div onclick="window.location.href='esim_activation.html?id=${c.id}'" 
-                 class="bg-white border border-brand-border p-2 rounded-xl cursor-pointer hover:border-brand-blue transition-all active-scale text-center relative overflow-hidden flex flex-col items-center shadow-sm">
-                <span class="absolute top-1 right-1 bg-brand-blue text-white text-[6px] font-bold px-1.5 py-0.5 rounded-full uppercase z-10">${c.type}</span>
-                <div class="h-8 w-full mb-1 flex items-center justify-center">
-                    <img src="${c.image}" class="max-h-full max-w-[70%] object-contain">
-                </div>
-                <h3 class="text-[8px] font-bold text-brand-darkText uppercase leading-tight truncate w-full px-1">${c.name}</h3>
-                <span class="text-[7px] text-brand-blue font-bold mt-1">ACTIVATE &rarr;</span>
+  function loadActivations() {
+    const grid = document.getElementById('activationGrid');
+    if (!grid) return;
+
+    // Use .slice(0, 4) to ensure only 4 items display, matching the Refill section
+    grid.innerHTML = carriers.slice(0, 4).map(c => `
+        <div onclick="window.location.href='esim_activation.html?id=${c.id}'" 
+             class="bg-white border border-brand-border p-2 rounded-xl cursor-pointer hover:border-brand-blue transition-all active-scale text-center relative overflow-hidden flex flex-col items-center shadow-sm">
+            
+            <span class="absolute top-1 right-1 bg-brand-blue text-white text-[5px] font-bold px-1 py-0.5 rounded-full uppercase z-10">
+                ${c.type}
+            </span>
+
+            <div class="h-5 w-full mb-1 flex items-center justify-center">
+                <img src="${c.image}" class="max-h-full max-w-[90%] object-contain">
             </div>
-        `).join('');
-    }
+
+            <h3 class="text-[9px] font-bold text-brand-darkText uppercase truncate w-full px-1 leading-tight">
+                ${c.name}
+            </h3>
+            
+            <span class="text-[7px] text-brand-blue font-bold mt-0.5 uppercase">Activate &rarr;</span>
+        </div>
+    `).join('');
+}
 
     // Updated Card Templates for smaller sizes
     async function fetchFeaturedProxies() {

@@ -110,6 +110,15 @@
 
             <section class="space-y-2">
                 <div class="flex items-center justify-between px-1">
+                    <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-tight">eSIM Activation</h4>
+                    <a href="esim_activation.html" class="text-[9px] font-bold text-brand-blue underline">View Plans</a>
+                </div>
+                <div id="activationGrid" class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                    </div>
+            </section>
+
+            <section class="space-y-2">
+                <div class="flex items-center justify-between px-1">
                     <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-tight">Proxies</h4>
                     <a href="user_proxy.html" class="text-[9px] font-bold text-brand-blue underline">View All</a>
                 </div>
@@ -142,6 +151,29 @@
 <script>
     const API_BASE_URL = '/api';
     const PROXY_ICON = 'https://i.imgur.com/n5ZZeLf.png';
+
+    const carriers = [
+        { id: 'tmobile', name: 'T-Mobile (Prepaid)', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Carrier' },
+        { id: 'att', name: 'AT&T (Prepaid)', image: 'https://i.imgur.com/WDCo1gM.png', type: 'Carrier' },
+        { id: '1month', name: '1 Month eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term' },
+        { id: '3months', name: '3 Months eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term' },
+        { id: '1year', name: '1 Year eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term' }
+    ];
+
+    function loadActivations() {
+        const grid = document.getElementById('activationGrid');
+        grid.innerHTML = carriers.map(c => `
+            <div onclick="window.location.href='esim_activation.html?id=${c.id}'" 
+                 class="bg-white border border-brand-border p-2 rounded-xl cursor-pointer hover:border-brand-blue transition-all active-scale text-center relative overflow-hidden flex flex-col items-center shadow-sm">
+                <span class="absolute top-1 right-1 bg-brand-blue text-white text-[6px] font-bold px-1.5 py-0.5 rounded-full uppercase z-10">${c.type}</span>
+                <div class="h-8 w-full mb-1 flex items-center justify-center">
+                    <img src="${c.image}" class="max-h-full max-w-[70%] object-contain">
+                </div>
+                <h3 class="text-[8px] font-bold text-brand-darkText uppercase leading-tight truncate w-full px-1">${c.name}</h3>
+                <span class="text-[7px] text-brand-blue font-bold mt-1">ACTIVATE &rarr;</span>
+            </div>
+        `).join('');
+    }
 
     // Updated Card Templates for smaller sizes
     async function fetchFeaturedProxies() {

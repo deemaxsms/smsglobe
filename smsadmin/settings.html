@@ -8,7 +8,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // Check for admin token
         if (!localStorage.getItem('smsglobe_admin_token')) {
             window.location.href = 'sms_login.html';
         }
@@ -62,7 +61,7 @@
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                             Settings
                         </a>
-                         <a href="sms_users.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
+                        <a href="sms_users.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                             Users
                         </a>
@@ -70,19 +69,19 @@
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                             VPN
                         </a>
-                         <a href="sms_proxy.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
+                        <a href="sms_proxy.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                           Proxy Nodes
+                            Proxy Nodes
                         </a>
-                         <a href="esims_refill.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
+                        <a href="esims_refill.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
                             eSim Refill
                         </a>
-                         <a href="esims_activation.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
+                        <a href="esims_activation.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                             eSim Activation
                         </a>
-                         <a href="rdp_request.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
+                        <a href="rdp_request.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                             RDP Confirmation
                         </a>
@@ -108,8 +107,8 @@
                         <div class="flex justify-between items-center mb-6">
                             <h3 class="font-bold text-lg">Visitor Flow</h3>
                             <select id="chartPeriod" class="text-xs font-bold border rounded-lg px-2 py-1 outline-none text-brand-blue">
-                                <option>Last 7 Days</option>
-                                <option>Last 30 Days</option>
+                                <option value="7">Last 7 Days</option>
+                                <option value="30">Last 30 Days</option>
                             </select>
                         </div>
                         <div class="h-[300px] w-full">
@@ -155,41 +154,60 @@
     </div>
 
     <script>
+        let visitorChart = null;
+
         function togglePass(id) {
             const input = document.getElementById(id);
             input.type = input.type === 'password' ? 'text' : 'password';
         }
 
-        // Initialize Visitor Chart
-        const ctx = document.getElementById('visitorChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                datasets: [{
-                    label: 'Unique Visitors',
-                    data: [1200, 1900, 1500, 2100, 1800, 2400, 2900],
-                    borderColor: '#0F54C6',
-                    backgroundColor: 'rgba(15, 84, 198, 0.1)',
-                    fill: true,
-                    tension: 0.4,
-                    borderWidth: 3,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#0F54C6'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { beginAtZero: true, grid: { color: '#F2F4F7' } },
-                    x: { grid: { display: false } }
-                }
-            }
-        });
+        async function initRealChart() {
+            const period = document.getElementById('chartPeriod').value;
+            try {
+                const response = await fetch(`/api/dashboard-stats?days=${period}`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('smsglobe_admin_token')}` }
+                });
+                const result = await response.json();
 
-        // UPDATED: Handle Password Update via your API Action "change-password"
+                if (result.success && result.chart) {
+                    const ctx = document.getElementById('visitorChart').getContext('2d');
+                    
+                    if (visitorChart) visitorChart.destroy();
+
+                    visitorChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: result.chart.labels,
+                            datasets: [{
+                                label: 'Successful Orders',
+                                data: result.chart.data,
+                                borderColor: '#0F54C6',
+                                backgroundColor: 'rgba(15, 84, 198, 0.1)',
+                                fill: true,
+                                tension: 0.4,
+                                borderWidth: 3,
+                                pointRadius: 4,
+                                pointBackgroundColor: '#0F54C6'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { beginAtZero: true, grid: { color: '#F2F4F7' }, ticks: { stepSize: 1 } },
+                                x: { grid: { display: false } }
+                            }
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error("Chart load error:", err);
+            }
+        }
+
+        document.getElementById('chartPeriod').addEventListener('change', initRealChart);
+
         document.getElementById('passwordForm').onsubmit = async (e) => {
             e.preventDefault();
             const oldPassword = document.getElementById('oldPassword').value;
@@ -201,14 +219,12 @@
             msgBox.classList.remove('hidden');
 
             try {
-                // Your server handles the action via /api/change-password
-                const response = await fetch('/api/change-passwords', {
+                const response = await fetch('/api/change-password', {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${localStorage.getItem('smsglobe_admin_token')}`
                     },
-                    // Matching payload keys for common change-password logic
                     body: JSON.stringify({ oldPassword, newPassword })
                 });
 
@@ -230,6 +246,8 @@
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('-translate-x-full');
         }
+
+        window.onload = initRealChart;
     </script>
 </body>
 </html>

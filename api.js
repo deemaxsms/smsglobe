@@ -590,12 +590,32 @@ async function handleDashboardStats(req, res) {
             };
         });
 
+        const chartLabels = [];
+const chartData = [];
+for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+    chartLabels.push(dayName);
+
+    const start = new Date(d); start.setHours(0,0,0,0);
+    const end = new Date(d); end.setHours(23,59,59,999);
+
+    // Count successful orders for that specific day
+    const dayCount = orders.filter(o => {
+        const orderDate = new Date(o.createdAt);
+        return orderDate >= start && orderDate <= end;
+    }).length;
+    
+    chartData.push(dayCount);
+}
         return res.json({ 
             success: true, 
             totalUsers,
             usd: usdStats,
             ngn: ngnStats,
-            recentOrders 
+            recentOrders,
+            chart: { labels: chartLabels, data: chartData } 
         });
     } catch (err) {
         console.error("Stats Error:", err);

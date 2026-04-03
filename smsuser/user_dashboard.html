@@ -410,11 +410,10 @@
             });
             const userData = await profileRes.json();
 
-            // Check if account is suspended
-            if (userData.status === 'suspended') {
-                showSuspendedNotice();
-                return; // Stop loading everything else
-            }
+          if (profileRes.status === 403 || userData.status === 'suspended' || userData.isSuspended) {
+    showSuspendedNotice();
+    return; // Kill the execution here
+}
 
             document.getElementById('userName').innerText = userData.full_name || "User";
             document.getElementById('userEmail').innerText = userData.email;

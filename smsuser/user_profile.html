@@ -266,6 +266,37 @@
     <script>
         const API_BASE_URL = '/api';
 
+        function showSuspendedNotice() {
+            document.body.innerHTML = `
+                <div class="min-h-screen flex items-center justify-center bg-brand-background p-6 font-sans">
+                    <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8 border border-red-100 text-center">
+                        <div class="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <svg class="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                        </div>
+                        <h2 class="text-2xl font-bold text-brand-darkText mb-2">Account Suspended</h2>
+                        <p class="text-brand-lightText mb-8 text-sm leading-relaxed">
+                            Your account has been suspended for violating <b>SMSGlobe</b> rules. Please contact management to appeal this decision.
+                        </p>
+                        
+                        <div class="space-y-3">
+                            <a href="https://wa.me/7059450227" target="_blank" class="flex items-center justify-center gap-2 w-full py-3 bg-[#25D366] text-white rounded-xl font-bold text-xs hover:opacity-90 transition-all">
+                                Contact Support (WhatsApp)
+                            </a>
+                            <a href="mailto:support@smsglobe.com" class="flex items-center justify-center gap-2 w-full py-3 bg-brand-blue text-white rounded-xl font-bold text-xs hover:opacity-90 transition-all">
+                                Email Management
+                            </a>
+                        </div>
+                        
+                        <button onclick="logout()" class="mt-8 text-[10px] text-brand-lightText hover:text-brand-darkText underline uppercase font-bold tracking-tighter">
+                            Log out of this account
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
        async function initProfile() {
     const token = localStorage.getItem('userToken');
     if (!token) { window.location.href = 'user_login.html'; return; }
@@ -277,7 +308,13 @@
         });
         const userData = await profileRes.json();
 
-        // Populate Profile UI
+        // Check for suspension (Status code 403 or specific status field)
+        if (profileRes.status === 403 || userData.status === 'suspended') {
+            showSuspendedNotice();
+            return;
+        }
+
+        // Populate Profile UI (Using proper field names from your DB)
         const name = userData.fullName || "User";
         const email = userData.email || "";
         document.getElementById('displayFullName').innerText = name;
@@ -297,6 +334,7 @@
 
     } catch (err) {
         console.error("Profile load error:", err);
+        // If it's a network error or crash, we still check if they were unauthorized
         document.getElementById('transactionsBody').innerHTML = `
             <tr><td colspan="4" class="px-5 py-6 text-center text-red-500 text-[10px]">Failed to load transactions.</td></tr>
         `;
@@ -316,7 +354,6 @@ function renderOrders(orders) {
     container.innerHTML = ''; 
 
     orders.forEach(order => {
-        // --- UPDATED DATE & TIME FORMATTING ---
         const dateObj = new Date(order.createdAt);
         const dateStr = dateObj.toLocaleDateString('en-GB', {
             day: 'numeric', month: 'short', year: 'numeric'
@@ -325,7 +362,6 @@ function renderOrders(orders) {
             hour: '2-digit', minute: '2-digit', hour12: true
         }).toUpperCase();
 
-        // Status Badge Logic
         const statusColors = {
             successful: 'bg-green-50 text-green-600 border-green-100',
             completed: 'bg-green-50 text-green-600 border-green-100',
@@ -367,7 +403,7 @@ const passModal = document.getElementById('passwordModal');
 
 function openPasswordModal() {
     passModal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden'; // Prevent background scroll
+    document.body.style.overflow = 'hidden';
 }
 
 function closePasswordModal() {
@@ -376,13 +412,11 @@ function closePasswordModal() {
     document.getElementById('passwordForm').reset();
 }
 
-// --- PASSWORD VISIBILITY TOGGLE ---
 function togglePass(id) {
     const input = document.getElementById(id);
     input.type = input.type === 'password' ? 'text' : 'password';
 }
 
-// --- FORM SUBMISSION ---
 document.getElementById('passwordForm').onsubmit = async (e) => {
     e.preventDefault();
     
@@ -423,7 +457,6 @@ document.getElementById('passwordForm').onsubmit = async (e) => {
             window.location.href = 'user_login.html';
         }
 
-        // Sidebar Toggles
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebarOverlay');
         const toggleSidebar = () => { sidebar.classList.toggle('-translate-x-full'); overlay.classList.toggle('hidden'); };

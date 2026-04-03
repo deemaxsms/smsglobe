@@ -306,17 +306,37 @@ async function verifyRecaptcha(token) {
     }
 }
 
-// --- 5. MIDDLEWARE ---
-const verifyToken = (req, res, next) => {
+const verifyToken = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.status(403).json({ success: false, error: "No token provided" });
+
+    if (!token) {
+        return res.status(403).json({ success: false, error: "No token provided" });
+    }
+
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         req.user = decoded;
+
+        const User = mongoose.models.User || mongoose.model('User');
+        const userRecord = await User.findById(decoded.id).select('status');
+
+        if (!userRecord) {
+            return res.status(404).json({ success: false, error: "User no longer exists" });
+        }
+
+        if (userRecord.status === 'suspended') {
+            return res.status(403).json({ 
+                success: false, 
+                error: "Session terminated. Your account is suspended.",
+                isSuspended: true 
+            });
+        }
+
         next();
     } catch (err) {
-        return res.status(401).json({ success: false, error: "Unauthorized" });
+        console.error("Token Verification Error:", err.message);
+        return res.status(401).json({ success: false, error: "Unauthorized or expired session" });
     }
 };
 
@@ -781,16 +801,26 @@ async function handleUserLogin(req, res) {
 
     const isHuman = await verifyRecaptcha(captchaToken);
     if (!isHuman) {
-        return res.status(400).json({ success: false, message: "Security verification failed. Please try again." });
+        return res.status(400).json({ success: false, message: "Security verification failed." });
     }
 
     try {
         const user = await User.findOne({ email: email.toLowerCase().trim() });
         
+        // 1. Standard Credential Check
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ success: false, message: "Invalid email or password." });
         }
 
+        // 2. STATUS CHECK (The Missing Piece)
+        if (user.status === 'suspended') {
+            return res.status(403).json({ 
+                success: false, 
+                message: "Your account has been suspended for violating SMSGlobe rules. Contact support." 
+            });
+        }
+
+        // 3. Generate Token if everything is okay
         const token = jwt.sign(
             { id: user._id, email: user.email, type: 'user' }, 
             JWT_SECRET, 
@@ -804,7 +834,7 @@ async function handleUserLogin(req, res) {
         });
     } catch (err) {
         console.error("Login Error:", err);
-        return res.status(500).json({ success: false, message: "An internal server error occurred." });
+        return res.status(500).json({ success: false, message: "Internal server error." });
     }
 }
 
@@ -852,24 +882,42 @@ async function handleUserRegister(req, res) {
 
 // Fetch profile for the logged-in user
 async function handleGetUserProfile(req, res) {
-    // 1. Manually verify token since this is inside the general API router
+    // 1. Manually verify token
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     
+    if (!token) return res.status(401).json({ success: false, message: "No token provided" });
+
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         const user = await User.findById(decoded.id).select('-password');
         
-        if (!user) return res.status(404).json({ success: false, message: "User not found" });
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        // 2. Check for suspension
+        // If the user is suspended, we return a 403 Forbidden status
+        if (user.status === 'suspended') {
+            return res.status(403).json({ 
+                success: false, 
+                message: "Account suspended",
+                status: 'suspended' 
+            });
+        }
         
+        // 3. Return user data including status and ID
         return res.json({ 
             success: true, 
-            full_name: user.fullName, 
+            _id: user._id,
+            fullName: user.fullName, // Matched to frontend userData.fullName
             email: user.email, 
-            balance: user.balance 
+            status: user.status || 'active'
         });
+
     } catch (err) {
-        return res.status(401).json({ success: false, message: "Unauthorized" });
+        console.error("JWT Verification Error:", err.message);
+        return res.status(401).json({ success: false, message: "Unauthorized or expired token" });
     }
 }
 

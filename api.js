@@ -323,7 +323,6 @@ app.all('/api/:action', async (req, res) => {
         case 'login': return handleLogin(req, res);
         case 'register': return handleRegister(req, res);
         case 'google-login': return handleGoogleLogin(req, res);
-        case 'user-orders': return handleGetUserOrders(req, res);
         case 'dashboard-stats': return handleDashboardStats(req, res);
         case 'get-users': return handleGetUsers(req, res);
         case 'manage-user': return handleManageUser(req, res);
@@ -337,6 +336,8 @@ app.all('/api/:action', async (req, res) => {
         case 'user-login': return handleUserLogin(req, res);
         case 'user-profile': return handleGetUserProfile(req, res);
         case 'user-messages': return handleGetUserMessages(req, res);
+        case 'user-orders': return handleGetUserOrders(req, res);
+        case 'change-password': return handleChangePassword(req, res);
         case 'purchase-vpn': return handlePurchaseVPN(req, res);
         case 'initiate-payment': return handleInitiatePayment(req, res);
         case 'verify-payment': return handleVerifyPayment(req, res);
@@ -2130,7 +2131,6 @@ async function handleActivatePurchase(req, res) {
     }
 }
 
-// --- NEW: Fetch User Order History ---
 async function handleGetUserOrders(req, res) {
     try {
         // 1. Get the token from headers
@@ -2170,6 +2170,53 @@ async function handleGetUserOrders(req, res) {
         return res.status(500).json({ 
             success: false, 
             message: "Failed to retrieve order history" 
+        });
+    }
+}
+
+async function handleChangePassword(req, res) {
+    try {
+        const { oldPass, newPass } = req.body;
+        const authHeader = req.headers.authorization;
+
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ success: false, message: "Unauthorized" });
+        }
+
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_secret_key');
+        
+        // 1. Find User in DB
+        const user = await User.findOne({ email: decoded.email });
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        // 2. Verify Old Password
+        // Note: Replace 'user.password' with whatever field name you use in your Schema
+        const isMatch = await bcrypt.compare(oldPass, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ success: false, message: "Current password is incorrect" });
+        }
+
+        // 3. Hash New Password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPass, salt);
+
+        // 4. Update Database
+        user.password = hashedPassword;
+        await user.save();
+
+        return res.json({ 
+            success: true, 
+            message: "Password updated successfully!" 
+        });
+
+    } catch (err) {
+        console.error("Password Update Error:", err);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Internal server error" 
         });
     }
 }

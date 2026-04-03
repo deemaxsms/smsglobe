@@ -116,16 +116,16 @@
                         </div>
                     </section>
 
-                    <section class="bg-white rounded-2xl border border-brand-border overflow-hidden shadow-sm">
-                        <div class="p-4 border-b border-brand-border bg-gray-50/50">
-                            <h3 class="text-[10px] font-bold text-brand-darkText uppercase tracking-wider">Account Actions</h3>
-                        </div>
-                        <div class="p-5 flex gap-3">
-                            <button class="bg-brand-blue text-white text-[10px] font-bold px-4 py-2 rounded-lg active-scale transition-all shadow-md">Update Profile</button>
-                            <button onclick="logout()" class="bg-red-50 text-red-600 border border-red-100 text-[10px] font-bold px-4 py-2 rounded-lg active-scale transition-all">Sign Out Everywhere</button>
-                        </div>
-                    </section>
-                </div>
+                  <section class="bg-white rounded-2xl border border-brand-border overflow-hidden shadow-sm">
+    <div class="p-4 border-b border-brand-border bg-gray-50/50">
+        <h3 class="text-[10px] font-bold text-brand-darkText uppercase tracking-wider">Account Actions</h3>
+    </div>
+    <div class="p-5 flex gap-3">
+        <button onclick="openPasswordModal()" class="bg-brand-blue text-white text-[10px] font-bold px-4 py-2 rounded-lg active-scale transition-all shadow-md">Update Password</button>
+        <button onclick="logout()" class="bg-red-50 text-red-600 border border-red-100 text-[10px] font-bold px-4 py-2 rounded-lg active-scale transition-all">Sign Out Everywhere</button>
+    </div>
+</section>
+        </div>
 
                 <div class="space-y-4">
                     <div class="bg-brand-blue rounded-2xl p-5 text-white shadow-lg relative overflow-hidden group">
@@ -174,8 +174,8 @@
                     <th class="px-5 py-3 text-[9px] font-bold text-brand-lightText uppercase">Product</th>
                     <th class="px-5 py-3 text-[9px] font-bold text-brand-lightText uppercase">Amount</th>
                     <th class="px-5 py-3 text-[9px] font-bold text-brand-lightText uppercase">Status</th>
-                    <th class="px-5 py-3 text-[9px] font-bold text-brand-lightText uppercase">Date</th>
-                </tr>
+                    <th class="px-5 py-3 text-[9px] font-bold text-brand-lightText uppercase">Date & Time</th>         
+       </tr>
             </thead>
             <tbody id="transactionsBody" class="divide-y divide-brand-border">
                 <tr>
@@ -188,7 +188,53 @@
 
         </main>
     </div>
+<div id="passwordModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center px-4">
+    <div class="fixed inset-0 bg-brand-darkText/40 backdrop-blur-sm" onclick="closePasswordModal()"></div>
+    
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-brand-border relative z-10 overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div class="p-4 border-b border-brand-border flex justify-between items-center bg-gray-50/50">
+            <h3 class="text-[11px] font-black text-brand-darkText uppercase tracking-widest">Update Password</h3>
+            <button onclick="closePasswordModal()" class="text-brand-lightText hover:text-brand-darkText text-xl">&times;</button>
+        </div>
+        
+        <form id="passwordForm" class="p-6 space-y-4">
+            <div class="space-y-1 relative">
+                <label class="text-[9px] font-bold text-brand-lightText uppercase">Old Password</label>
+                <div class="relative">
+                    <input type="password" id="oldPassword" required class="w-full border border-brand-border rounded-lg px-3 py-2.5 text-[11px] focus:ring-2 focus:ring-brand-blue/20 outline-none pr-10">
+                    <button type="button" onclick="togglePass('oldPassword')" class="absolute right-3 top-1/2 -translate-y-1/2 text-brand-lightText hover:text-brand-blue">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    </button>
+                </div>
+            </div>
 
+            <div class="space-y-1">
+                <label class="text-[9px] font-bold text-brand-lightText uppercase">New Password</label>
+                <div class="relative">
+                    <input type="password" id="newPassword" required class="w-full border border-brand-border rounded-lg px-3 py-2.5 text-[11px] focus:ring-2 focus:ring-brand-blue/20 outline-none pr-10">
+                    <button type="button" onclick="togglePass('newPassword')" class="absolute right-3 top-1/2 -translate-y-1/2 text-brand-lightText">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-[9px] font-bold text-brand-lightText uppercase">Confirm New Password</label>
+                <div class="relative">
+                    <input type="password" id="confirmPassword" required class="w-full border border-brand-border rounded-lg px-3 py-2.5 text-[11px] focus:ring-2 focus:ring-brand-blue/20 outline-none pr-10">
+                    <button type="button" onclick="togglePass('confirmPassword')" class="absolute right-3 top-1/2 -translate-y-1/2 text-brand-lightText">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="pt-2 flex gap-3">
+                <button type="button" onclick="closePasswordModal()" class="flex-1 bg-gray-100 text-brand-midText text-[10px] font-bold py-2.5 rounded-xl border border-brand-border active-scale">Cancel</button>
+                <button type="submit" class="flex-1 bg-brand-blue text-white text-[10px] font-bold py-2.5 rounded-xl shadow-lg active-scale">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
     <script>
         const API_BASE_URL = '/api';
 
@@ -239,12 +285,17 @@ function renderOrders(orders) {
     }
 
     countLabel.innerText = `${orders.length} Orders`;
-    container.innerHTML = ''; // Clear loader
+    container.innerHTML = ''; 
 
     orders.forEach(order => {
-        const date = new Date(order.createdAt).toLocaleDateString('en-GB', {
+        // --- UPDATED DATE & TIME FORMATTING ---
+        const dateObj = new Date(order.createdAt);
+        const dateStr = dateObj.toLocaleDateString('en-GB', {
             day: 'numeric', month: 'short', year: 'numeric'
         });
+        const timeStr = dateObj.toLocaleTimeString('en-GB', {
+            hour: '2-digit', minute: '2-digit', hour12: true
+        }).toUpperCase();
 
         // Status Badge Logic
         const statusColors = {
@@ -271,14 +322,73 @@ function renderOrders(orders) {
                         ${order.status}
                     </span>
                 </td>
-                <td class="px-5 py-3 text-[10px] text-brand-lightText font-medium">
-                    ${date}
+                <td class="px-5 py-3">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-brand-darkText font-semibold">${dateStr}</span>
+                        <span class="text-[8px] text-brand-lightText font-medium uppercase">${timeStr}</span>
+                    </div>
                 </td>
             </tr>
         `;
         container.innerHTML += row;
     });
 }
+
+// --- MODAL CONTROLS ---
+const passModal = document.getElementById('passwordModal');
+
+function openPasswordModal() {
+    passModal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden'; // Prevent background scroll
+}
+
+function closePasswordModal() {
+    passModal.classList.add('hidden');
+    document.body.style.overflow = 'auto';
+    document.getElementById('passwordForm').reset();
+}
+
+// --- PASSWORD VISIBILITY TOGGLE ---
+function togglePass(id) {
+    const input = document.getElementById(id);
+    input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+// --- FORM SUBMISSION ---
+document.getElementById('passwordForm').onsubmit = async (e) => {
+    e.preventDefault();
+    
+    const oldPass = document.getElementById('oldPassword').value;
+    const newPass = document.getElementById('newPassword').value;
+    const confirmPass = document.getElementById('confirmPassword').value;
+    const token = localStorage.getItem('userToken');
+
+    if (newPass !== confirmPass) {
+        alert("New passwords do not match!");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/change-password`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ oldPass, newPass })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            alert("Password updated successfully!");
+            closePasswordModal();
+        } else {
+            alert(data.message || "Failed to update password.");
+        }
+    } catch (err) {
+        alert("Server error. Please try again.");
+    }
+};
 
         function logout() {
             localStorage.removeItem('userToken');

@@ -105,7 +105,7 @@
             <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
                 <div class="bg-white p-2.5 rounded-xl border border-brand-border shadow-sm">
                     <p class="text-[8px] font-bold text-brand-lightText uppercase tracking-wider">Services</p>
-                    <h3 id="activeNumbersCount" class="text-sm font-extrabold text-brand-darkText">0</h3>
+                    <h3 id="activeNumbersCount" class="text-sm font-extrabold text-brand-darkText">7</h3>
                 </div>
                 <div class="bg-white p-2.5 rounded-xl border border-brand-border shadow-sm">
                     <p class="text-[8px] font-bold text-brand-lightText uppercase tracking-wider">Success</p>
@@ -164,16 +164,42 @@
         </div>
 </section>
 
-            <div class="bg-white rounded-xl border border-brand-border p-3 shadow-sm flex flex-col items-center text-center gap-2">
-                <div>
-                    <h3 class="text-[10px] font-bold text-brand-darkText">Need instant assistance?</h3>
-                    <p class="text-[9px] text-brand-lightText">Chat with us on WhatsApp</p>
-                </div>
-                <button onclick="window.open('https://wa.me/7059450227', '_blank')" class="w-full max-w-[200px] flex items-center justify-center space-x-2 py-1.5 bg-[#25D366] text-white rounded-lg font-bold text-[10px] transition-all active-scale">
-                    <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" class="w-3 h-3 invert">
-                    <span>WhatsApp Support</span>
-                </button>
-            </div>
+<section class="space-y-2">
+    <div class="flex items-center justify-between px-1">
+        <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-tight">Send a Gift</h4>
+        <a href="send_gifts.html" class="text-[9px] font-bold text-brand-blue underline">View Catalog</a>
+    </div>
+    <div id="giftGrid" class="grid grid-cols-3 md:grid-cols-6 gap-2">
+        </div>
+</section>
+
+           <div class="grid grid-cols-2 gap-2">
+    <div class="bg-white rounded-xl border border-brand-border p-2 shadow-sm flex flex-col items-center text-center justify-between min-h-[80px]">
+        <div>
+            <h3 class="text-[9px] font-bold text-brand-darkText">WhatsApp</h3>
+            <p class="text-[8px] text-brand-lightText">Instant Chat</p>
+        </div>
+        <button onclick="window.open('https://wa.me/7059450227', '_blank')" 
+                class="w-full flex items-center justify-center space-x-1 py-1 bg-[#25D366] text-white rounded-lg font-bold text-[9px] transition-all active-scale">
+            <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" class="w-2.5 h-2.5 invert">
+            <span>Chat</span>
+        </button>
+    </div>
+
+    <div class="bg-white rounded-xl border border-brand-border p-2 shadow-sm flex flex-col items-center text-center justify-between min-h-[80px]">
+        <div>
+            <h3 class="text-[9px] font-bold text-brand-darkText">Email Help</h3>
+            <p class="text-[8px] text-brand-lightText">24h Response</p>
+        </div>
+        <button onclick="window.location.href='mailto:support@smsglobe.com'" 
+                class="w-full flex items-center justify-center space-x-1 py-1 bg-brand-blue text-white rounded-lg font-bold text-[9px] transition-all active-scale">
+            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+            </svg>
+            <span>Email</span>
+        </button>
+    </div>
+</div>
         </main>
     </div>
 
@@ -194,6 +220,38 @@
         tier2: { id: "tier2", name: "USA Tier 2", price: "₦55,000", hardware: "6GB RAM | 3 CPU", storage: "100GB SSD" },
         tier3: { id: "tier3", name: "USA Tier 3", price: "₦65,000", hardware: "8GB RAM | 4 CPU", storage: "140GB SSD" }
     };
+
+    function loadGifts() {
+    const container = document.getElementById('giftGrid');
+    if (!container) return;
+
+    const gifts = [
+        { name: 'Flowers', img: 'https://images.unsplash.com/photo-1526047932273-341f2a7631f9?w=150&h=150&fit=crop', link: 'flowers' },
+        { name: 'Jewelry', img: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=150&h=150&fit=crop', link: 'rings' },
+        { name: 'Cakes', img: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=150&h=150&fit=crop', link: 'cakes' },
+        { name: 'Frames', img: 'https://media.istockphoto.com/id/483627083/photo/blank-photo.jpg?s=612x612&w=0&k=20&c=pY5mI7YJvMv6n6zR7z0vO0G5E6WzX8yP9rY0u9jY9aY=', link: 'frames' },
+        { name: 'Pizza', img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=150&h=150&fit=crop', link: 'pizza' },
+        { name: 'Wine', img: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=150&h=150&fit=crop', link: 'wine' }
+    ];
+
+    container.innerHTML = gifts.map(g => `
+        <div onclick="window.location.href='send_gifts.html?cat=${g.link}'" 
+             class="bg-white border border-brand-border p-1.5 rounded-xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer active-scale group">
+            
+            <div class="aspect-square w-full rounded-lg overflow-hidden mb-1 bg-gray-50">
+                <img src="${g.img}" alt="${g.name}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+            </div>
+
+            <p class="text-[8px] font-bold text-brand-darkText uppercase truncate w-full leading-tight">
+                ${g.name}
+            </p>
+            
+            <span class="text-[6px] font-extrabold text-brand-blue mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                SEND NOW
+            </span>
+        </div>
+    `).join('');
+}
 
     function loadRDP() {
         const grid = document.getElementById('rdpGrid');
@@ -318,6 +376,7 @@
             loadActivations();
             loadFeaturedCarriers();
             loadRDP();
+            loadGifts();
         } catch (err) { logout(); }
     }
 

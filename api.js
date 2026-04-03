@@ -47,7 +47,6 @@ const userSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    // ADD THIS LINE BELOW
     status: { 
         type: String, 
         enum: ['active', 'suspended'], 
@@ -412,9 +411,12 @@ app.all('/api/:action', async (req, res) => {
 case 'purchase/process':
 case 'activate-number': // If your frontend uses this
     return handleActivatePurchase(req, res);
-
+case 'change-password': 
+        if (req.method === 'POST') return handleChangePassword(req, res);
+        break;
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
+            
             
         default:
             return res.status(404).json({ 
@@ -2372,6 +2374,32 @@ async function handleChangePassword(req, res) {
     }
 }
 
+async function handleChangePassword(req, res) {
+    try {
+        const { oldPassword, newPassword } = req.body;        
+        const userId = req.user?.id || req.body.userId; 
+        if (!oldPassword || !newPassword) {
+            return res.status(400).json({ success: false, message: "Both password fields are required." });
+        }
+        const user = await User.findById(userId); // Adjust "User" to your Admin model name
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found." });
+        }
+        const isMatch = await bcrypt.compare(oldPassword, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ success: false, message: "Current password is incorrect." });
+        }
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(newPassword, salt);
+        await user.save();
+
+        return res.json({ success: true, message: "Password updated successfully!" });
+
+    } catch (error) {
+        console.error("Change Password Error:", error);
+        return res.status(500).json({ success: false, message: "Internal server error." });
+    }
+}
 
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));

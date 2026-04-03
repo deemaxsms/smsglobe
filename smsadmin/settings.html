@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMSGlobe Admin - Settings</title>
+    <link rel="icon" type="image/png" href="https://i.imgur.com/syKFaNI.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Check for admin token
+        if (!localStorage.getItem('smsglobe_admin_token')) {
+            window.location.href = 'sms_login.html';
+        }
+
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            blue: '#0F54C6',
+                            orange: '#F9861E',
+                            darkText: '#101828',
+                            midText: '#344054',
+                            lightText: '#667085',
+                            background: '#F0F5FE',
+                            border: '#EAECF0',
+                        }
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                },
+            },
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #F0F5FE; font-size: 14px; }
+        .sidebar-transition { transition: transform 0.3s ease-in-out; }
+        .input-field { @apply w-full px-4 py-2.5 rounded-xl border border-brand-border focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue outline-none transition-all; }
+    </style>
+</head>
+<body class="min-h-screen font-sans text-brand-darkText">
+
+    <div class="lg:hidden flex items-center justify-between bg-white px-4 py-3 border-b border-brand-border sticky top-0 z-[60]">
+        <img src="https://imgur.com/8YeZgfx.png" alt="Logo" class="h-6">
+        <button onclick="toggleSidebar()" class="p-2 text-brand-midText hover:bg-brand-background rounded-lg">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
+        </button>
+    </div>
+
+    <div class="flex">
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-[80] w-64 bg-white border-r border-brand-border transform -translate-x-full lg:translate-x-0 sidebar-transition lg:static lg:block min-h-screen">
+            <div class="flex flex-col h-full">
+                <div class="p-5 flex-1 overflow-y-auto pt-20 lg:pt-5">
+                    <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-9 mb-8 hidden lg:block">
+                    <nav class="space-y-1">
+                        <a href="sms_dashboard.html" class="flex items-center gap-3 px-3 py-2.5 text-brand-lightText hover:bg-brand-background hover:text-brand-blue rounded-xl font-medium transition-all">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                            Dashboard
+                        </a>
+                        <a href="settings.html" class="flex items-center gap-3 px-3 py-2.5 bg-brand-background text-brand-blue rounded-xl font-bold shadow-sm">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            Settings
+                        </a>
+                    </nav>
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full">
+            <header class="mb-8">
+                <h2 class="text-2xl font-bold tracking-tight">Account Settings</h2>
+                <p class="text-brand-lightText text-sm">Manage your security and monitor traffic</p>
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-white p-6 rounded-2xl border border-brand-border shadow-sm">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="font-bold text-lg">Visitor Flow</h3>
+                            <select id="chartPeriod" class="text-xs font-bold border rounded-lg px-2 py-1 outline-none text-brand-blue">
+                                <option>Last 7 Days</option>
+                                <option>Last 30 Days</option>
+                            </select>
+                        </div>
+                        <div class="h-[300px] w-full">
+                            <canvas id="visitorChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-1">
+                    <div class="bg-white p-6 rounded-2xl border border-brand-border shadow-sm sticky top-10">
+                        <h3 class="font-bold text-lg mb-4">Security</h3>
+                        <form id="passwordForm" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-brand-midText uppercase mb-1.5">Current Password</label>
+                                <div class="relative">
+                                    <input type="password" id="oldPassword" class="input-field pr-10" placeholder="••••••••" required>
+                                    <button type="button" onclick="togglePass('oldPassword')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-blue">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-brand-midText uppercase mb-1.5">New Password</label>
+                                <div class="relative">
+                                    <input type="password" id="newPassword" class="input-field pr-10" placeholder="••••••••" required>
+                                    <button type="button" onclick="togglePass('newPassword')" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-blue">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="w-full bg-brand-blue text-white py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-all active:scale-95 mt-2">
+                                Update Password
+                            </button>
+                        </form>
+                        <div id="msgBox" class="mt-4 text-center text-xs font-medium hidden"></div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function togglePass(id) {
+            const input = document.getElementById(id);
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        // Initialize Visitor Chart
+        const ctx = document.getElementById('visitorChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Unique Visitors',
+                    data: [1200, 1900, 1500, 2100, 1800, 2400, 2900],
+                    borderColor: '#0F54C6',
+                    backgroundColor: 'rgba(15, 84, 198, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#0F54C6'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#F2F4F7' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // UPDATED: Handle Password Update via your API Action "change-password"
+        document.getElementById('passwordForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const oldPassword = document.getElementById('oldPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const msgBox = document.getElementById('msgBox');
+
+            msgBox.className = "mt-4 text-center text-xs font-medium text-brand-blue";
+            msgBox.innerText = "Processing request...";
+            msgBox.classList.remove('hidden');
+
+            try {
+                // Your server handles the action via /api/change-password
+                const response = await fetch('/api/change-password', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('smsglobe_admin_token')}`
+                    },
+                    // Matching payload keys for common change-password logic
+                    body: JSON.stringify({ oldPassword, newPassword })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok || result.success) {
+                    msgBox.className = "mt-4 text-center text-xs font-medium text-green-500";
+                    msgBox.innerText = result.message || "Password updated successfully!";
+                    e.target.reset();
+                } else {
+                    throw new Error(result.error || result.message || "Update failed");
+                }
+            } catch (err) {
+                msgBox.className = "mt-4 text-center text-xs font-medium text-red-500";
+                msgBox.innerText = err.message;
+            }
+        };
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('-translate-x-full');
+        }
+    </script>
+</body>
+</html>

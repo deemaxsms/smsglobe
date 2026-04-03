@@ -213,7 +213,7 @@ const orderSchema = new mongoose.Schema({
     fullName: { type: String },         
     productType: { 
         type: String, 
-        enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill', 'eSIM_Activation', 'RDP'], 
+        enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill', 'eSIM_Activation', 'RDP', 'RentedNumber'], 
         required: true 
     },
     planName: { type: String }, 
@@ -496,8 +496,11 @@ async function handleDashboardStats(req, res) {
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const startOfYear = new Date(now.getFullYear(), 0, 1);
 
+        // Include 'completed' and 'paid' to capture all product types (VPN, eSIM, etc.)
+        const validStatuses = ['successful', 'completed', 'paid'];
+
         const orders = await Order.find({ 
-            status: { $in: ['successful', 'completed'] } 
+            status: { $in: validStatuses } 
         });
 
         // Initialize separate counters
@@ -511,13 +514,13 @@ async function handleDashboardStats(req, res) {
             let valUSD = 0;
             let valNGN = 0;
 
-            // Check the actual currency saved in the database
+            // Normalize currency for stats calculations
             if (order.currency === 'NGN') {
                 valNGN = rawAmount;
-                valUSD = rawAmount / RATE; // Convert NGN back to USD for stats
+                valUSD = rawAmount / RATE;
             } else {
                 valUSD = rawAmount;
-                valNGN = rawAmount * RATE; // Convert USD to NGN for stats
+                valNGN = rawAmount * RATE;
             }
 
             // Update USD Stats
@@ -535,24 +538,40 @@ async function handleDashboardStats(req, res) {
             if (date >= startOfYear) ngnStats.yearly += valNGN;
         });
 
-        // Fetch 5 most recent orders for the "Recent Activity" table
-        const recentOrders = await Order.find({ status: 'successful' })
-            .sort({ createdAt: -1 })
-            .limit(5);
+        // MODIFIED: Fetch recent orders including ALL relevant product statuses
+        const rawRecentOrders = await Order.find({ 
+            status: { $in: validStatuses } 
+        })
+        .sort({ createdAt: -1 })
+        .limit(10); // Increased limit for better visibility
+
+        // MODIFIED: Map results to ensure the UI receives a pre-converted NGN amount
+        const recentOrders = rawRecentOrders.map(order => {
+            const amount = parseFloat(order.amount || 0);
+            // Convert to NGN if the original order was in USD
+            const finalAmountNGN = order.currency === 'NGN' ? amount : amount * RATE;
+            
+            return {
+                userEmail: order.userEmail,
+                productType: order.productType || order.planName,
+                status: order.status,
+                amountNGN: finalAmountNGN, // Explicitly provide Naira value for the table
+                createdAt: order.createdAt
+            };
+        });
 
         return res.json({ 
             success: true, 
             totalUsers,
             usd: usdStats,
             ngn: ngnStats,
-            recentOrders // Send this so the table updates too
+            recentOrders 
         });
     } catch (err) {
         console.error("Stats Error:", err);
         return res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 }
-
 // GET /api/admin/transactions
 async function handleAllTransactions(req, res) {
     try {

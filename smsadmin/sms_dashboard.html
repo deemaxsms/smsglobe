@@ -184,7 +184,7 @@
         if (el) el.innerText = value;
     }
 
-    async function fetchDashboardData() {
+  async function fetchDashboardData() {
         const token = localStorage.getItem('smsglobe_admin_token');
         const container = document.getElementById('sales-container');
         
@@ -219,10 +219,9 @@
                 updateUIElement('rev-yearly-usd', fmtUSD(data.usd.yearly));
                 updateUIElement('rev-yearly-ngn', fmtNGN(data.ngn.yearly));
 
-                // 4. Render Recent Activity Table (VPN & Proxies)
+                // 4. Render Recent Activity Table (All Products in Naira)
                 if (container) {
                     if (data.recentOrders && data.recentOrders.length > 0) {
-                        // Remove the "Connecting" padding/styles
                         container.className = "overflow-x-auto"; 
                         
                         container.innerHTML = `
@@ -232,7 +231,7 @@
                                         <th class="px-6 py-3 font-bold">Customer</th>
                                         <th class="px-6 py-3 font-bold">Product Type</th>
                                         <th class="px-6 py-3 font-bold">Status</th>
-                                        <th class="px-6 py-3 font-bold text-right">Amount</th>
+                                        <th class="px-6 py-3 font-bold text-right">Amount (NGN)</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100">
@@ -243,17 +242,17 @@
                                             </td>
                                             <td class="px-6 py-4">
                                                 <span class="px-2 py-1 rounded-md bg-brand-background text-brand-blue font-bold text-[10px] uppercase">
-                                                    ${order.productType || 'Service'}
+                                                    ${(order.productType || 'Service').replace('_', ' ')}
                                                 </span>
                                             </td>
                                             <td class="px-6 py-4">
-                                                <span class="flex items-center gap-1.5 text-green-600 font-bold">
+                                                <span class="flex items-center gap-1.5 text-green-600 font-bold capitalize">
                                                     <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>
-                                                    Paid
+                                                    ${order.status || 'Paid'}
                                                 </span>
                                             </td>
-                                            <td class="px-6 py-4 text-right font-bold text-brand-darkText">
-                                                $${parseFloat(order.amount).toFixed(2)}
+                                            <td class="px-6 py-4 text-right font-bold text-brand-blue">
+                                                ${fmtNGN(order.amountNGN)}
                                             </td>
                                         </tr>
                                     `).join('')}

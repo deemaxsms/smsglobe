@@ -172,20 +172,15 @@
         'activate': "Restore this user's account access?"
     };
 
-    // 1. Confirmation Guard
     if (!confirm(messages[action] || `Are you sure you want to ${action} this user?`)) return;
 
-    // 2. Identify the button to show loading state
-    // We use the unique userId to find the specific button in the row
+    // 1. Visual Feedback: Find the button and show loading
     const btn = document.querySelector(`button[onclick*="'${userId}'"][onclick*="'${action}'"]`);
     const originalContent = btn ? btn.innerHTML : null;
 
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = `<span class="flex items-center gap-1">
-            <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-            Hold...</span>`;
-        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        btn.innerHTML = `<span class="flex items-center gap-1"><svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Updating...</span>`;
     }
 
     const token = localStorage.getItem('smsglobe_admin_token');
@@ -203,29 +198,27 @@
         const data = await response.json();
 
         if (data.success) {
-            // Refresh the table to show updated status
+            // 2. SUCCESS: Show the message from the API
+            alert(data.message); // This displays "User is now suspended"
+            
+            // 3. RE-FETCH: This triggers renderUsers and flips the button to "Activate"
             await fetchUsers(); 
         } else {
-            alert("Server Error: " + data.message);
-            // Revert button if server rejected the request
+            alert("Error: " + data.message);
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = originalContent;
-                btn.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
     } catch (err) {
-        console.error("Manage User Error:", err);
-        alert("Network error. Check your connection or API status.");
-        
-        // Revert button on network failure
+        alert("Network error. Please try again.");
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = originalContent;
-            btn.classList.remove('opacity-50', 'cursor-not-allowed');
         }
     }
 }
+
     // Function to calculate a "Usage Rate" based on account age and simulated frequency
     function calculateUsage(createdAt) {
         const joinDate = new Date(createdAt);

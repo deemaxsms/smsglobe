@@ -47,6 +47,12 @@ const userSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
+    // ADD THIS LINE BELOW
+    status: { 
+        type: String, 
+        enum: ['active', 'suspended'], 
+        default: 'active' 
+    },
 }, { timestamps: true });
 
 const User = mongoose.models.User || mongoose.model('User', userSchema);

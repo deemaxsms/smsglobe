@@ -411,9 +411,9 @@ app.all('/api/:action', async (req, res) => {
 case 'purchase/process':
 case 'activate-number': // If your frontend uses this
     return handleActivatePurchase(req, res);
-case 'change-password': 
-        if (req.method === 'POST') return handleChangePassword(req, res);
-        break;
+case 'change-passwords': 
+    if (req.method === 'POST') return handleAdminChangePassword(req, res);
+    break;
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
             
@@ -2374,32 +2374,51 @@ async function handleChangePassword(req, res) {
     }
 }
 
-async function handleChangePassword(req, res) {
+async function handleAdminChangePassword(req, res) {
     try {
-        const { oldPassword, newPassword } = req.body;        
-        const userId = req.user?.id || req.body.userId; 
-        if (!oldPassword || !newPassword) {
-            return res.status(400).json({ success: false, message: "Both password fields are required." });
-        }
-        const user = await User.findById(userId); // Adjust "User" to your Admin model name
-        if (!user) {
-            return res.status(404).json({ success: false, message: "User not found." });
-        }
-        const isMatch = await bcrypt.compare(oldPassword, user.password);
-        if (!isMatch) {
-            return res.status(401).json({ success: false, message: "Current password is incorrect." });
-        }
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(newPassword, salt);
-        await user.save();
+        const { oldPassword, newPassword } = req.body;
+        const authHeader = req.headers.authorization;
 
-        return res.json({ success: true, message: "Password updated successfully!" });
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ success: false, message: "Unauthorized" });
+        }
+
+        const token = authHeader.split(' ')[1];
+        let decoded;
+        
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_secret_key');
+        } catch (jwtErr) {
+            return res.status(401).json({ success: false, message: "Session expired" });
+        }
+
+        if (!oldPassword || !newPassword) {
+            return res.status(400).json({ success: false, message: "Missing required fields" });
+        }
+
+        const admin = await Admin.findOne({ email: decoded.email }) || await Admin.findById(decoded.id);
+
+        if (!admin) {
+            return res.status(404).json({ success: false, message: "Admin account not found" });
+        }
+
+        const isMatch = await bcrypt.compare(oldPassword, admin.password);
+        if (!isMatch) {
+            return res.status(401).json({ success: false, message: "Current password incorrect" });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        admin.password = await bcrypt.hash(newPassword, salt);
+        await admin.save();
+
+        return res.json({ success: true, message: "Admin password updated successfully!" });
 
     } catch (error) {
-        console.error("Change Password Error:", error);
-        return res.status(500).json({ success: false, message: "Internal server error." });
+        console.error("Admin Password Error:", error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
     }
 }
+
 
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));

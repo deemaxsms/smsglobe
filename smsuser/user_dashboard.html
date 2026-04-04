@@ -103,7 +103,7 @@
             <p id="userEmail" class="text-[9px] text-brand-lightText">...</p>
         </div>
         <div class="w-7 h-7 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center text-[10px] font-bold border border-brand-blue/20 group-hover:border-brand-blue group-hover:bg-brand-blue/20 transition-all">
-            <span id="userInitials">U</span>
+            <span id="userInitials"></span>
         </div>
     </a>
 </header>
@@ -447,36 +447,72 @@
         `;
     }
 
-    async function initDashboard() {
-        const token = localStorage.getItem('userToken');
-        if (!token) { window.location.href = 'user_login.html'; return; }
+   async function initDashboard() {
+    // 1. GLOBAL CHECK: Maintenance always takes priority
+    await checkMaintenance(); 
+
+    // 2. AUTH CHECK: Ensure token exists
+    const token = localStorage.getItem('userToken');
+    if (!token) { 
+        window.location.href = 'user_login.html'; 
+        return; 
+    }
+    
+    try {
+        // 3. FETCH PROFILE: Using your verified API endpoint
+        const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const userData = await profileRes.json();
+
+        // 4. SECURITY GATE: Handle 403 or Suspended status from API
+        if (profileRes.status === 403 || userData.status === 'suspended' || userData.isSuspended) {
+            showSuspendedNotice();
+            return; // Stop execution for suspended users
+        }
+
+        // 5. DATA MAPPING: Match backend 'fullName' key
+        const displayName = userData.fullName || "User";
+        const displayEmail = userData.email || "No email";
+
+        // Update Text Elements
+        document.getElementById('userName').innerText = displayName;
+        document.getElementById('userEmail').innerText = displayEmail;
+
+        // 6. INITIALS LOGIC: Extract letters from the name (e.g., "John Doe" -> "JD")
+        const nameParts = displayName.trim().split(/\s+/);
+        let initials = "";
         
-        try {
-            const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const userData = await profileRes.json();
+        if (nameParts.length >= 2 && nameParts[1][0]) {
+            initials = (nameParts[0][0] + nameParts[1][0]).toUpperCase();
+        } else if (nameParts[0][0]) {
+            initials = nameParts[0][0].toUpperCase();
+        } else {
+            initials = "U";
+        }
+        
+        document.getElementById('userInitials').innerText = initials;
+        
+        // 7. PARALLEL LOADING: Fetch dashboard content efficiently
+        await Promise.all([
+            fetchFeaturedProxies(), 
+            fetchFeaturedVPNs()
+        ]);
 
-          if (profileRes.status === 403 || userData.status === 'suspended' || userData.isSuspended) {
-    showSuspendedNotice();
-  checkMaintenance();
-    return; // Kill the execution here
-}
+        // Secondary loaders
+        loadActivations();
+        loadFeaturedCarriers();
+        loadRDP();
+        loadGifts();
 
-            document.getElementById('userName').innerText = userData.full_name;
-            document.getElementById('userEmail').innerText = userData.email;
-            document.getElementById('userInitials').innerText = (userData.full_name || "U").charAt(0).toUpperCase();
-            
-            await Promise.all([fetchFeaturedProxies(), fetchFeaturedVPNs()]);
-            loadActivations();
-            loadFeaturedCarriers();
-            loadRDP();
-            loadGifts();
-        } catch (err) { 
-            console.error("Dashboard init error:", err);
+    } catch (err) { 
+        console.error("Dashboard init error:", err);
+        // Only logout if the error is specifically related to an expired session (401)
+        if (err.message.includes('401')) {
             logout(); 
         }
     }
+}
 
     function logout() { 
         localStorage.removeItem('userToken'); 

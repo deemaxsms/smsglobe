@@ -102,6 +102,29 @@
     </main>
 
     <script>
+
+        // Add this at the very top of your script tag
+window.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const res = await fetch('/api/system-status');
+        const status = await res.json();
+        
+        if (status.maintenanceMode) {
+            // Hide the login form and show a maintenance message instead
+            document.getElementById('loginForm').innerHTML = `
+                <div class="text-center p-6 bg-orange-50 rounded-xl border border-orange-200">
+                    <p class="font-bold text-orange-700">Maintenance Active</p>
+                    <p class="text-sm text-orange-600">${status.noticeBar || "We are currently updating our systems. Please check back soon."}</p>
+                </div>
+            `;
+            // Optional: Hide the Google Login button too
+            const googleBtn = document.getElementById('g_id_signin');
+            if(googleBtn) googleBtn.style.display = 'none';
+        }
+    } catch (err) {
+        console.error("Status check failed");
+    }
+});
         // --- Google Login Handler ---
         async function handleCredentialResponse(response) {
             try {

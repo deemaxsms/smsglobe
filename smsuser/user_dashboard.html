@@ -263,6 +263,20 @@
 
     };
 
+    async function checkMaintenance() {
+    try {
+        const response = await fetch('/api/system-status');
+        const status = await response.json();
+
+        // If maintenance is ON, redirect to a maintenance page
+        if (status.maintenanceMode === true) {
+            window.location.href = 'maintenance.html';
+        }
+    } catch (err) {
+        console.error("Status check failed", err);
+    }
+}
+
     function loadGifts() {
     const container = document.getElementById('giftGrid');
     if (!container) return;
@@ -445,6 +459,7 @@
 
           if (profileRes.status === 403 || userData.status === 'suspended' || userData.isSuspended) {
     showSuspendedNotice();
+  checkMaintenance();
     return; // Kill the execution here
 }
 

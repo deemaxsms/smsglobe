@@ -149,6 +149,41 @@
                     </div>
                 </div>
 
+                <div class="bg-white p-6 rounded-2xl border border-brand-border shadow-sm mt-6">
+    <div class="flex items-center gap-2 mb-6">
+        <div class="p-2 bg-orange-100 rounded-lg">
+            <svg class="w-5 h-5 text-brand-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+        </div>
+        <h3 class="font-bold text-lg text-brand-darkText">System Controls</h3>
+    </div>
+
+    <div class="space-y-4">
+        <div class="flex items-center justify-between p-4 bg-brand-background rounded-xl border border-blue-100">
+            <div>
+                <p class="font-bold text-brand-darkText">Global Maintenance</p>
+                <p class="text-xs text-brand-lightText">Instantly redirect all users to maintenance page</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="maintenanceToggle" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-brand-orange after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+            </label>
+        </div>
+
+        <div class="flex items-center justify-between p-4 bg-brand-background rounded-xl border border-blue-100">
+            <div>
+                <p class="font-bold text-brand-darkText">User Signups</p>
+                <p class="text-xs text-brand-lightText">Enable or disable new account creations</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="signupToggle" checked class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-brand-blue after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+            </label>
+        </div>
+    </div>
+</div>
+
             </div>
         </main>
     </div>
@@ -242,6 +277,44 @@
                 msgBox.innerText = err.message;
             }
         };
+
+        // Function to update any global setting (Maintenance, Signups, etc.)
+async function updateGlobalSetting(key, value) {
+    const msgBox = document.getElementById('msgBox');
+    msgBox.classList.remove('hidden');
+    msgBox.innerText = "Updating system...";
+
+    try {
+        const response = await fetch('/api/update-system-settings', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('smsglobe_admin_token')}`
+            },
+            body: JSON.stringify({ [key]: value })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            msgBox.className = "mt-4 text-center text-xs font-medium text-green-500";
+            msgBox.innerText = "System settings updated!";
+            // Hide message after 2 seconds
+            setTimeout(() => msgBox.classList.add('hidden'), 2000);
+        }
+    } catch (err) {
+        msgBox.className = "mt-4 text-center text-xs font-medium text-red-500";
+        msgBox.innerText = "Error: " + err.message;
+    }
+}
+
+// Event Listeners for your Toggles
+document.getElementById('maintenanceToggle').addEventListener('change', (e) => {
+    updateGlobalSetting('maintenanceMode', e.target.checked);
+});
+
+document.getElementById('signupToggle').addEventListener('change', (e) => {
+    updateGlobalSetting('allowSignups', e.target.checked);
+});
 
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('-translate-x-full');

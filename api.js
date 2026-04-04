@@ -56,6 +56,20 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 
+const systemSettingsSchema = new mongoose.Schema({
+    maintenanceMode: { type: Boolean, default: false },
+    
+    allowSignups: { type: Boolean, default: true },    
+    globalMarkup: { type: Number, default: 0 }, // e.g., 10 for 10%
+    exchangeRate: { type: Number, default: 1650 }, // NGN per USD
+    
+    // Dynamic Content
+    noticeBarText: { type: String, default: "Welcome to SMSGlobe!" },
+    supportWhatsapp: { type: String, default: "" }
+}, { timestamps: true });
+
+const SystemSettings = mongoose.models.SystemSettings || mongoose.model('SystemSettings', systemSettingsSchema, 'system_settings');
+
 const vpnSchema = new mongoose.Schema({
     name: { type: String, required: true },
     provider: String,
@@ -414,6 +428,12 @@ case 'activate-number': // If your frontend uses this
 case 'change-passwords': 
     if (req.method === 'POST') return handleAdminChangePassword(req, res);
     break;
+    case 'system-settings': 
+    if (req.method === 'POST') return handleUpdateSystemSettings(req, res);
+    if (req.method === 'GET') return handleGetSystemSettings(req, res);
+    break;
+case 'system-status': // Public route for the frontend to check
+    return handleGetSystemStatus(req, res);
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
             
@@ -670,6 +690,7 @@ async function handleGetUsers(req, res) {
         return res.status(500).json({ success: false, message: "Database Error" });
     }
 }
+
 async function handleManageUser(req, res) {
     const { action, userId } = req.body;
     console.log("API RECEIVED:", req.body);
@@ -829,14 +850,24 @@ async function handleUserLogin(req, res) {
     }
 
     try {
+        // --- 1. GLOBAL MAINTENANCE CHECK ---
+        // Fetch settings from the SystemSettings collection
+        const settings = await SystemSettings.findOne(); 
+        if (settings && settings.maintenanceMode === true) {
+            return res.status(503).json({ 
+                success: false, 
+                message: "SMSGlobe is currently under maintenance. Please try again later." 
+            });
+        }
+
         const user = await User.findOne({ email: email.toLowerCase().trim() });
         
-        // 1. Standard Credential Check
+        // 2. Standard Credential Check
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ success: false, message: "Invalid email or password." });
         }
 
-        // 2. STATUS CHECK (The Missing Piece)
+        // 3. STATUS CHECK
         if (user.status === 'suspended') {
             return res.status(403).json({ 
                 success: false, 
@@ -844,7 +875,7 @@ async function handleUserLogin(req, res) {
             });
         }
 
-        // 3. Generate Token if everything is okay
+        // 4. Generate Token if everything is okay
         const token = jwt.sign(
             { id: user._id, email: user.email, type: 'user' }, 
             JWT_SECRET, 
@@ -861,7 +892,6 @@ async function handleUserLogin(req, res) {
         return res.status(500).json({ success: false, message: "Internal server error." });
     }
 }
-
 // --- 2. User Registration Handler ---
 async function handleUserRegister(req, res) {
     const { fullName, email, password, captchaToken } = req.body;
@@ -2439,7 +2469,60 @@ async function handleAdminChangePassword(req, res) {
     }
 }
 
+// 1. GET settings (For Admin Page)
+async function handleGetSystemSettings(req, res) {
+    try {
+        // Use SystemSettings to match your schema variable
+        let settings = await SystemSettings.findOne();
+        if (!settings) {
+            // Create default document if the collection is empty
+            settings = await SystemSettings.create({}); 
+        }
+        res.json({ success: true, settings });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+}
 
+// 2. UPDATE settings (From Admin Page)
+async function handleUpdateSystemSettings(req, res) {
+    try {
+        const updateData = req.body;
+
+        // "upsert: true" is perfect here—it creates the doc if it doesn't exist
+        const updated = await SystemSettings.findOneAndUpdate(
+            {}, 
+            { $set: updateData }, 
+            { upsert: true, new: true }
+        );
+
+        return res.json({ 
+            success: true, 
+            message: "System configuration updated.", 
+            settings: updated 
+        });
+    } catch (err) {
+        console.error("Settings Update Error:", err);
+        return res.status(500).json({ success: false, message: "Server error updating settings." });
+    }
+}
+
+// 3. PUBLIC status check (For User Frontend / Login Page)
+async function handleGetSystemStatus(req, res) {
+    try {
+        // Added .lean() for faster performance on public pings
+        const settings = await SystemSettings.findOne().select('maintenanceMode noticeBar').lean();
+        
+        res.json({ 
+    success: true, 
+    maintenanceMode: settings?.maintenanceMode || false,
+    noticeBar: settings?.noticeBarText || "" // Ensure this key matches your frontend 'status.noticeBar'
+});
+    } catch (err) {
+        // If the DB fails, we default to false so we don't lock everyone out by accident
+        res.json({ success: false, maintenanceMode: false }); 
+    }
+}
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

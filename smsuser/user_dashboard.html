@@ -21,6 +21,17 @@
             },
         }
     </script>
+    <style>
+        .glass-card {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(234, 236, 240, 1);
+    /* Ensure the card doesn't get too wide */
+    width: 100%;
+    max-width: 140px; 
+    margin: 0 auto;
+}
+    </style>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
@@ -312,15 +323,15 @@
             const data = await res.json();
             if (data.success && data.products) {
                 const featured = data.products.slice(0, 4);
-                container.innerHTML = featured.map(vpn => `
-                    <div class="glass-card p-2 rounded-xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer active-scale" onclick="window.location.href='user_vpn.html'">
-                        <div class="w-4 h-4 rounded flex items-center justify-center p-0.5 mb-1">
-                            <img src="${vpn.image || 'https://via.placeholder.com/50'}" class="max-h-full max-w-full object-contain">
-                        </div>
-                        <p class="text-[9px] font-bold text-brand-darkText truncate w-full">${vpn.name}</p>
-                        <p class="text-[9px] font-bold text-brand-blue mt-0.5">$${vpn.plans?.[0]?.price || '0.0'}</p>
-                    </div>
-                `).join('');
+              container.innerHTML = featured.map(vpn => `
+    <div class="glass-card p-2 rounded-xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer active-scale max-w-[120px] mx-auto w-full" onclick="window.location.href='user_vpn.html'">
+        <div class="w-8 h-8 rounded flex items-center justify-center p-0.5 mb-1 bg-gray-50">
+            <img src="${vpn.image || 'https://via.placeholder.com/50'}" class="max-h-full max-w-full object-contain">
+        </div>
+        <p class="text-[9px] font-bold text-brand-darkText truncate w-full">${vpn.name}</p>
+        <p class="text-[10px] font-extrabold text-brand-blue mt-0.5">$${vpn.plans?.[0]?.price || '0.0'}</p>
+    </div>
+`).join('');
             }
         } catch (e) { container.innerHTML = '<p class="text-[9px] col-span-full text-center">Data unavailable.</p>'; }
     }

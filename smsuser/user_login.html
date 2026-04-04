@@ -103,26 +103,48 @@
 
     <script>
 
-        // Add this at the very top of your script tag
 window.addEventListener('DOMContentLoaded', async () => {
     try {
         const res = await fetch('/api/system-status');
         const status = await res.json();
         
         if (status.maintenanceMode) {
-            // Hide the login form and show a maintenance message instead
-            document.getElementById('loginForm').innerHTML = `
-                <div class="text-center p-6 bg-orange-50 rounded-xl border border-orange-200">
-                    <p class="font-bold text-orange-700">Maintenance Active</p>
-                    <p class="text-sm text-orange-600">${status.noticeBar || "We are currently updating our systems. Please check back soon."}</p>
-                </div>
-            `;
-            // Optional: Hide the Google Login button too
+            // 1. Select the main login container
+            const loginForm = document.getElementById('loginForm');
+            
+            if (loginForm) {
+                loginForm.innerHTML = `
+                    <div class="text-center p-8 bg-orange-50 rounded-2xl border border-orange-200 shadow-sm animate-in fade-in zoom-in duration-300">
+                        <div class="mb-4 inline-flex p-3 bg-orange-100 rounded-full">
+                            <svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                        </div>
+                        <h2 class="font-bold text-xl text-orange-800 mb-2">Maintenance Active</h2>
+                        <p class="text-sm text-orange-700 leading-relaxed mb-6">
+                            ${status.noticeBar || "We are currently performing scheduled updates to improve SMSGlobe. Please check back shortly."}
+                        </p>
+                        <button onclick="window.location.reload()" class="w-full bg-white border border-orange-200 text-orange-700 py-2.5 rounded-xl font-semibold hover:bg-orange-100 transition-colors active:scale-95">
+                            Refresh Page
+                        </button>
+                    </div>
+                `;
+            }
+
+            // 2. Strictly hide social login and separators
             const googleBtn = document.getElementById('g_id_signin');
-            if(googleBtn) googleBtn.style.display = 'none';
+            const divider = document.querySelector('.relative.my-6'); // Adjust this selector to match your "OR USE EMAIL" divider
+            const signupLink = document.querySelector('p.text-center.mt-8'); // Adjust to your "Don't have an account?" text
+
+            if (googleBtn) googleBtn.style.display = 'none';
+            if (divider) divider.style.display = 'none';
+            if (signupLink) signupLink.style.display = 'none';
+            
+            // 3. Update the page title so the user sees it in the browser tab
+            document.title = "Maintenance | SMSGlobe";
         }
     } catch (err) {
-        console.error("Status check failed");
+        console.error("Critical: Could not verify system status.", err);
     }
 });
         // --- Google Login Handler ---

@@ -428,16 +428,18 @@ case 'activate-number': // If your frontend uses this
 case 'change-passwords': 
     if (req.method === 'POST') return handleAdminChangePassword(req, res);
     break;
-    case 'system-settings': 
+  // Change this in your router file
+case 'update-system-settings': 
     if (req.method === 'POST') return handleUpdateSystemSettings(req, res);
+    break;
+
+case 'system-settings': 
     if (req.method === 'GET') return handleGetSystemSettings(req, res);
     break;
 case 'system-status': // Public route for the frontend to check
     return handleGetSystemStatus(req, res);
         case 'status':
             return res.json({ message: "Smsglobe API Active", db: isConnected });
-            
-            
         default:
             return res.status(404).json({ 
                 success: false, 

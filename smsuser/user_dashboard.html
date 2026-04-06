@@ -97,15 +97,20 @@
         <span class="text-xs font-bold text-brand-darkText">Overview</span>
     </div>
 
-    <a href="user_profile.html" class="flex items-center space-x-3 group cursor-pointer transition-all active-scale">
-        <div class="hidden sm:block text-right">
-            <p id="userName" class="text-[10px] font-bold text-brand-darkText group-hover:text-brand-blue transition-colors"> </p>
-            <p id="userEmail" class="text-[9px] text-brand-lightText">...</p>
-        </div>
-        <div class="w-7 h-7 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center text-[10px] font-bold border border-brand-blue/20 group-hover:border-brand-blue group-hover:bg-brand-blue/20 transition-all">
-            <span id="userInitials"></span>
-        </div>
-    </a>
+   <a href="user_profile.html" class="flex items-center space-x-3 group cursor-pointer transition-all active:scale-95">
+    <div class="hidden sm:block text-right">
+        <p id="userName" class="text-[10px] font-bold text-brand-darkText group-hover:text-brand-blue transition-colors leading-tight">
+            Loading...
+        </p>
+        <p id="userEmail" class="text-[9px] text-brand-lightText leading-tight">
+            Please wait
+        </p>
+    </div>
+
+    <div class="w-8 h-8 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center text-[11px] font-bold border border-brand-blue/20 group-hover:border-brand-blue group-hover:bg-brand-blue/20 transition-all shadow-sm">
+        <span id="userInitials">U</span>
+    </div>
+</a>
 </header>
 
         <main class="p-3 md:p-6 max-w-6xl w-full mx-auto space-y-4">
@@ -468,7 +473,7 @@
         `;
     }
 
-   async function initDashboard() {
+  async function initDashboard() {
     // 1. GLOBAL CHECK: Maintenance always takes priority
     await checkMaintenance(); 
 
@@ -496,44 +501,49 @@
         const displayName = userData.fullName || "User";
         const displayEmail = userData.email || "No email";
 
-        // Update Text Elements
-        document.getElementById('userName').innerText = displayName;
-        document.getElementById('userEmail').innerText = displayEmail;
+        // --- FIXED: Use variables to check if elements exist before setting innerText ---
+        const nameEl = document.getElementById('userName');
+        const emailEl = document.getElementById('userEmail');
+        const initialsEl = document.getElementById('userInitials');
+
+        if (nameEl) nameEl.innerText = displayName;
+        if (emailEl) emailEl.innerText = displayEmail;
 
         // 6. INITIALS LOGIC: Extract letters from the name (e.g., "John Doe" -> "JD")
         const nameParts = displayName.trim().split(/\s+/);
-        let initials = "";
+        let initials = "U"; // Default fallback
         
-        if (nameParts.length >= 2 && nameParts[1][0]) {
+        if (nameParts.length >= 2 && nameParts[0][0] && nameParts[1][0]) {
             initials = (nameParts[0][0] + nameParts[1][0]).toUpperCase();
-        } else if (nameParts[0][0]) {
+        } else if (nameParts[0] && nameParts[0][0]) {
             initials = nameParts[0][0].toUpperCase();
-        } else {
-            initials = "U";
         }
         
-        document.getElementById('userInitials').innerText = initials;
+        // --- FIXED: Safe update for initials ---
+        if (initialsEl) initialsEl.innerText = initials;
         
         // 7. PARALLEL LOADING: Fetch dashboard content efficiently
+        // Note: These functions must be defined elsewhere in your script
         await Promise.all([
-            fetchFeaturedProxies(), 
-            fetchFeaturedVPNs()
+            typeof fetchFeaturedProxies === 'function' ? fetchFeaturedProxies() : Promise.resolve(), 
+            typeof fetchFeaturedVPNs === 'function' ? fetchFeaturedVPNs() : Promise.resolve()
         ]);
 
-        // Secondary loaders
-        loadActivations();
-        loadFeaturedCarriers();
-        loadRDP();
-        loadGifts();
+        // Secondary loaders - Added basic safety checks to prevent crashes
+        if (typeof loadActivations === 'function') loadActivations();
+        if (typeof loadFeaturedCarriers === 'function') loadFeaturedCarriers();
+        if (typeof loadRDP === 'function') loadRDP();
+        if (typeof loadGifts === 'function') loadGifts();
 
     } catch (err) { 
         console.error("Dashboard init error:", err);
         // Only logout if the error is specifically related to an expired session (401)
-        if (err.message.includes('401')) {
+        if (err.message && err.message.includes('401')) {
             logout(); 
         }
     }
 }
+
 
     function logout() { 
         localStorage.removeItem('userToken'); 

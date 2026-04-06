@@ -61,7 +61,7 @@ const systemSettingsSchema = new mongoose.Schema({
     
     allowSignups: { type: Boolean, default: true },    
     globalMarkup: { type: Number, default: 0 }, // e.g., 10 for 10%
-    exchangeRate: { type: Number, default: 1650 }, // NGN per USD
+    exchangeRate: { type: Number, default: 1380 }, // NGN per USD
     
     // Dynamic Content
     noticeBarText: { type: String, default: "Welcome to SMSGlobe!" },
@@ -164,19 +164,13 @@ const RDP = mongoose.models.RDP || mongoose.model('RDP', rdpSchema);
 
 const rentedNumberSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    
-    // --- Identification ---
     externalId: { type: String, required: true, unique: true }, // Textverified's Verification ID or Rental ID
-    phoneNumber: { type: String, required: true },
-    
-    // --- Mode ---
+    phoneNumber: { type: String, required: true },    
     activationType: { 
         type: String, 
         enum: ['activation', 'rent'], 
         required: true 
     },
-
-    // --- Service Details ---
     service: { 
         type: String, 
         required: true, 
@@ -184,15 +178,11 @@ const rentedNumberSchema = new mongoose.Schema({
     },
     serviceName: { type: String }, 
     targetId: { type: String }, // Store Textverified's internal Target ID
-
-    // --- Location ---
     country: { 
         name: String, 
         code: String, 
         prefix: String 
     },
-
-    // --- Financials ---
     price: { type: Number, required: true },
     currency: { type: String, default: 'NGN' },
 
@@ -538,9 +528,14 @@ async function handleDashboardStats(req, res) {
     try {
         const User = mongoose.models.User || mongoose.model('User');
         const Order = mongoose.models.Order || mongoose.model('Order');
+        // Import your SystemSettings model at the top of the file
 
         const totalUsers = await User.countDocuments();
-        const RATE = parseFloat(process.env.USD_TO_NGN_RATE) || 1650; 
+
+        // --- NEW: FETCH DYNAMIC RATE FROM DB ---
+        const settings = await SystemSettings.findOne();
+        const RATE = settings?.exchangeRate || 1380; // Use DB rate, fallback to 1380
+        // ---------------------------------------
 
         const now = new Date();
         const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
@@ -548,14 +543,12 @@ async function handleDashboardStats(req, res) {
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-        // Include 'completed' and 'paid' to capture all product types (VPN, eSIM, etc.)
         const validStatuses = ['successful', 'completed', 'paid'];
 
         const orders = await Order.find({ 
             status: { $in: validStatuses } 
         });
 
-        // Initialize separate counters
         let usdStats = { totalRevenue: 0, daily: 0, weekly: 0, monthly: 0, yearly: 0 };
         let ngnStats = { totalRevenue: 0, daily: 0, weekly: 0, monthly: 0, yearly: 0 };
 
@@ -566,7 +559,7 @@ async function handleDashboardStats(req, res) {
             let valUSD = 0;
             let valNGN = 0;
 
-            // Normalize currency for stats calculations
+            // Normalize currency using the LIVE RATE from DB
             if (order.currency === 'NGN') {
                 valNGN = rawAmount;
                 valUSD = rawAmount / RATE;
@@ -590,47 +583,46 @@ async function handleDashboardStats(req, res) {
             if (date >= startOfYear) ngnStats.yearly += valNGN;
         });
 
-        // MODIFIED: Fetch recent orders including ALL relevant product statuses
         const rawRecentOrders = await Order.find({ 
             status: { $in: validStatuses } 
         })
         .sort({ createdAt: -1 })
-        .limit(10); // Increased limit for better visibility
+        .limit(10);
 
-        // MODIFIED: Map results to ensure the UI receives a pre-converted NGN amount
         const recentOrders = rawRecentOrders.map(order => {
             const amount = parseFloat(order.amount || 0);
-            // Convert to NGN if the original order was in USD
+            // Use the LIVE RATE here as well for the table display
             const finalAmountNGN = order.currency === 'NGN' ? amount : amount * RATE;
             
             return {
                 userEmail: order.userEmail,
                 productType: order.productType || order.planName,
                 status: order.status,
-                amountNGN: finalAmountNGN, // Explicitly provide Naira value for the table
+                amountNGN: finalAmountNGN, 
                 createdAt: order.createdAt
             };
         });
 
+        // Chart logic remains the same as it counts order frequency, not currency
         const chartLabels = [];
-const chartData = [];
-for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
-    chartLabels.push(dayName);
+        const chartData = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+            chartLabels.push(dayName);
 
-    const start = new Date(d); start.setHours(0,0,0,0);
-    const end = new Date(d); end.setHours(23,59,59,999);
+            const start = new Date(d); start.setHours(0,0,0,0);
+            const end = new Date(d); end.setHours(23,59,59,999);
 
-    // Count successful orders for that specific day
-    const dayCount = orders.filter(o => {
-        const orderDate = new Date(o.createdAt);
-        return orderDate >= start && orderDate <= end;
-    }).length;
-    
-    chartData.push(dayCount);
-}
+            const dayCount = orders.filter(o => {
+                const orderDate = new Date(o.createdAt);
+                return orderDate >= start && orderDate <= end;
+            }).length;
+            
+            chartData.push(dayCount);
+        }
+
         return res.json({ 
             success: true, 
             totalUsers,
@@ -644,6 +636,7 @@ for (let i = 6; i >= 0; i--) {
         return res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 }
+
 // GET /api/admin/transactions
 async function handleAllTransactions(req, res) {
     try {
@@ -1074,13 +1067,17 @@ async function handleInitiatePayment(req, res) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
-    const USD_TO_NGN_RATE = 1650; 
-
     try {
+        // --- NEW: FETCH DYNAMIC SETTINGS FROM DB ---
+        const settings = await SystemSettings.findOne();
+        const LIVE_RATE = settings?.exchangeRate || 1380; // Fallback to 1380 if DB is empty
+        const MARKUP = settings?.globalMarkup || 0;      // Fallback to 0% markup
+        // --------------------------------------------
+
         const decoded = jwt.verify(token, JWT_SECRET);
         const user = await User.findById(decoded.id);
-        if (!user) return res.status(404).json({ success: false, message: "User not found" });
-        
+        if (!user) return res.status(404).json({ success: false, message: "User find failed" });
+
         let item;
         let itemType;
         let title;
@@ -1094,7 +1091,12 @@ async function handleInitiatePayment(req, res) {
             itemType = "VPN";
             title = "SMSGlobe VPN";
             amountInUSD = item.plans[planIndex].price;
-            finalAmountNGN = Math.round(amountInUSD * USD_TO_NGN_RATE);
+            
+            // --- APPLY DYNAMIC RATE + MARKUP ---
+            const basePriceNGN = amountInUSD * LIVE_RATE;
+            const markupAmount = basePriceNGN * (MARKUP / 100);
+            finalAmountNGN = Math.round(basePriceNGN + markupAmount);
+            
             redirectUrl = "https://smsglobe.vercel.app/smsuser/user_vpn.html";
         } 
         else if (proxyId) {
@@ -1103,18 +1105,28 @@ async function handleInitiatePayment(req, res) {
             itemType = "Proxy";
             title = "SMSGlobe Proxy";
             amountInUSD = item.plans[planIndex].price;
-            finalAmountNGN = Math.round(amountInUSD * USD_TO_NGN_RATE);
+            
+            // --- APPLY DYNAMIC RATE + MARKUP ---
+            const basePriceNGN = amountInUSD * LIVE_RATE;
+            const markupAmount = basePriceNGN * (MARKUP / 100);
+            finalAmountNGN = Math.round(basePriceNGN + markupAmount);
+            
             redirectUrl = "https://smsglobe.vercel.app/smsuser/user_proxy.html";
         } 
         else if (carrierName) {
             itemType = metadata ? "eSIM_Activation" : "eSIM";
             title = metadata ? `eSIM Activation: ${carrierName}` : `eSIM Refill: ${carrierName}`;
             amountInUSD = parseFloat(planAmount.replace(/[$,]/g, ''));
-            finalAmountNGN = Math.round(amountInUSD * USD_TO_NGN_RATE);
+            
+            // --- APPLY DYNAMIC RATE + MARKUP ---
+            const basePriceNGN = amountInUSD * LIVE_RATE;
+            const markupAmount = basePriceNGN * (MARKUP / 100);
+            finalAmountNGN = Math.round(basePriceNGN + markupAmount);
+
             redirectUrl = metadata 
                 ? "https://smsglobe.vercel.app/smsuser/esim_activation.html" 
                 : "https://smsglobe.vercel.app/smsuser/esim_refill.html";
-        } 
+        }
         else if (rdpId) {
             itemType = "RDP";
             redirectUrl = "https://smsglobe.vercel.app/smsuser/user_rdp.html";
@@ -1747,7 +1759,6 @@ async function handleAllTransactions(req, res) {
 
 async function handleCreateEsimOrder(req, res) {
     const { email, carrierName, mobileNumber, planAmount, refId, productImage } = req.body;
-    const USD_TO_NGN_RATE = 1650;
 
     // Validation
     if (!email || !carrierName || !mobileNumber || !planAmount) {
@@ -1755,11 +1766,19 @@ async function handleCreateEsimOrder(req, res) {
     }
 
     try {
+        // --- NEW: FETCH DYNAMIC SETTINGS FROM DB ---
+        const settings = await SystemSettings.findOne();
+        const LIVE_RATE = settings?.exchangeRate || 1380; 
+        const MARKUP = settings?.globalMarkup || 0; 
+        // --------------------------------------------
+
         // 1. Clean the USD amount (e.g., "$15.00" -> 15)
         const amountUSD = parseFloat(planAmount.replace(/[$,]/g, ''));
         
-        // 2. Calculate the Naira equivalent for your records
-        const amountNGN = Math.round(amountUSD * USD_TO_NGN_RATE);
+        // 2. Calculate the Naira equivalent + Markup
+        const basePriceNGN = amountUSD * LIVE_RATE;
+        const markupAmount = basePriceNGN * (MARKUP / 100);
+        const finalAmountNGN = Math.round(basePriceNGN + markupAmount);
 
         // 3. Create the order using your existing Order model
         const newOrder = await Order.create({
@@ -1769,7 +1788,7 @@ async function handleCreateEsimOrder(req, res) {
             planName: planAmount,       // Mapping Plan to planName
             targetNumber: mobileNumber, // The eSIM phone number
             productImage: productImage, // Carrier logo URL
-            amount: amountNGN,          // Saving the calculated Naira amount
+            amount: finalAmountNGN,     // Saving the DYNAMICALLY calculated Naira amount
             currency: 'NGN',
             paymentReference: refId || `REF-${Date.now()}`,
             status: 'pending'           // Stays pending for admin refill
@@ -1786,7 +1805,6 @@ async function handleCreateEsimOrder(req, res) {
         return res.status(500).json({ success: false, message: "Server database error" });
     }
 }
-
 async function handleConfirmEsimRefill(req, res) {
     const { tid } = req.query; 
     
@@ -1835,7 +1853,7 @@ async function getEsimRefills(req, res) {
 
         const formattedRefills = refills.map(refill => {
             // Convert NGN back to USD
-            const amountInUSD = refill.amount / 1650;
+            const amountInUSD = refill.amount / 1380;
 
             return {
                 paymentReference: refill.paymentReference,
@@ -2006,7 +2024,7 @@ async function handleGetEsimActivations(req, res) {
         .limit(100);
 
         const formattedActivations = activations.map(activation => {
-            const amountInUSD = activation.amount / 1650;
+            const amountInUSD = activation.amount / 1380;
             
             // Check both activationDetails (new schema) and metadata (old schema)
             const details = activation.activationDetails || activation.metadata || {};

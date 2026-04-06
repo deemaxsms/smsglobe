@@ -184,6 +184,32 @@
     </div>
 </div>
 
+<div class="bg-white p-6 rounded-2xl border border-brand-border shadow-sm mt-6">
+    <div class="flex items-center gap-2 mb-6">
+        <div class="p-2 bg-green-100 rounded-lg">
+            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+        </div>
+        <h3 class="font-bold text-lg text-brand-darkText">Financial Controls</h3>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+            <label class="block text-xs font-bold text-brand-midText uppercase mb-1.5">Exchange Rate (NGN per 1 USD)</label>
+            <input type="number" id="exchangeRateInput" class="input-field" placeholder="1650">
+        </div>
+        <div>
+            <label class="block text-xs font-bold text-brand-midText uppercase mb-1.5">Global Markup (%)</label>
+            <input type="number" id="markupInput" class="input-field" placeholder="10">
+        </div>
+    </div>
+    
+    <button onclick="saveFinancials()" class="w-full mt-4 bg-brand-blue text-white py-2.5 rounded-xl font-bold hover:bg-blue-700 transition-all">
+        Save Financial Settings
+    </button>
+</div>
+
             </div>
         </main>
     </div>
@@ -320,7 +346,68 @@ document.getElementById('signupToggle').addEventListener('change', (e) => {
             document.getElementById('sidebar').classList.toggle('-translate-x-full');
         }
 
-        window.onload = initRealChart;
+        // 1. Fetch current settings when page loads
+async function loadCurrentSettings() {
+    try {
+        const response = await fetch('/api/get-system-settings', {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('smsglobe_admin_token')}` }
+        });
+        const result = await response.json();
+        
+        if (result.success && result.settings) {
+            // Set Toggles
+            document.getElementById('maintenanceToggle').checked = result.settings.maintenanceMode;
+            document.getElementById('signupToggle').checked = result.settings.allowSignups;
+            
+            // Set Financials
+            document.getElementById('exchangeRateInput').value = result.settings.exchangeRate || 1650;
+            document.getElementById('markupInput').value = result.settings.globalMarkup || 0;
+        }
+    } catch (err) {
+        console.error("Failed to load settings:", err);
+    }
+}
+
+// 2. Save Rate and Markup specifically
+async function saveFinancials() {
+    const exchangeRate = document.getElementById('exchangeRateInput').value;
+    const globalMarkup = document.getElementById('markupInput').value;
+
+    // Reuse your existing updateGlobalSetting logic but for multiple fields
+    const msgBox = document.getElementById('msgBox');
+    msgBox.classList.remove('hidden');
+    msgBox.innerText = "Saving rates...";
+
+    try {
+        const response = await fetch('/api/update-system-settings', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('smsglobe_admin_token')}`
+            },
+            body: JSON.stringify({ 
+                exchangeRate: Number(exchangeRate), 
+                globalMarkup: Number(globalMarkup) 
+            })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            msgBox.className = "mt-4 text-center text-xs font-medium text-green-500";
+            msgBox.innerText = "Financials updated successfully!";
+            setTimeout(() => msgBox.classList.add('hidden'), 2000);
+        }
+    } catch (err) {
+        msgBox.className = "mt-4 text-center text-xs font-medium text-red-500";
+        msgBox.innerText = "Error: " + err.message;
+    }
+}
+
+// Update your window.onload to include loadCurrentSettings
+window.onload = () => {
+    initRealChart();
+    loadCurrentSettings();
+};
     </script>
 </body>
 </html>

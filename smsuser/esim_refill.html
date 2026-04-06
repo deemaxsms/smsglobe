@@ -203,7 +203,13 @@
 
     <script>
         const API_BASE_URL = '/api';
-        const NAIRA_RATE = 1650;
+        // New Dynamic way
+const LIVE_RATE = await getLiveExchangeRate();
+const amountNGN = Math.round(amountUSD * LIVE_RATE);
+
+console.log(`Processing payment at the rate of ₦${LIVE_RATE}/$1`);
+
+
         const carriers = [
             { id: '1', name: 'T-Mobile USA', image: 'https://i.imgur.com/pyDMW1t.png' },
             { id: '2', name: 'AT&T', image: 'https://i.imgur.com/WDCo1gM.png' },
@@ -215,6 +221,20 @@
 
         const refillAmounts = [];
         for (let i = 15; i <= 100; i += 5) { refillAmounts.push(`$${i}.00`); }
+
+        async function getLiveExchangeRate() {
+    try {
+        const response = await fetch('/api/system-settings');
+        const data = await response.json();
+        if (data.success) {
+            return data.settings.exchangeRate; // Returns the rate from DB
+        }
+        return 1650; // Fallback if DB fails
+    } catch (err) {
+        console.error("Error fetching rate:", err);
+        return 1650; 
+    }
+}
 
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('-translate-x-full');

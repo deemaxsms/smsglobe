@@ -340,7 +340,6 @@
         `;
     }
 }
-
 function renderOrders(orders) {
     const container = document.getElementById('transactionsBody');
     const countLabel = document.getElementById('orderCount');
@@ -354,8 +353,15 @@ function renderOrders(orders) {
     container.innerHTML = ''; 
 
     orders.forEach(order => {
-        // FIX: Use order.date (from your backend map) or fallback to order.createdAt
-        const rawDate = order.date || order.createdAt;
+        // --- IMPROVED DATE DETECTION ---
+        // 1. Check createdAt, 2. Check date, 3. Try to extract from _id (Timestamp is encoded in MongoDB IDs)
+        let rawDate = order.createdAt || order.date;
+        
+        if (!rawDate && order._id) {
+            // Extract date from MongoDB ObjectId if timestamps are missing
+            rawDate = new Date(parseInt(order._id.substring(0, 8), 16) * 1000);
+        }
+
         let dateStr = "N/A";
         let timeStr = "---";
 
@@ -371,7 +377,6 @@ function renderOrders(orders) {
             }
         }
 
-        // Define status colors
         const statusColors = {
             successful: 'bg-green-50 text-green-600 border-green-100',
             completed: 'bg-green-50 text-green-600 border-green-100',
@@ -379,13 +384,12 @@ function renderOrders(orders) {
             failed: 'bg-red-50 text-red-600 border-red-100'
         };
         
-        // Ensure status exists or default to pending/gray
         const currentStatus = (order.status || 'pending').toLowerCase();
         const colorClass = statusColors[currentStatus] || 'bg-gray-50 text-gray-600 border-gray-100';
 
-        // Use backend mapped fields: 'product' and 'details' or fallbacks
-        const displayProduct = order.product || order.productType || 'Service';
-        const displayDetails = order.details || order.planName || 'Standard Plan';
+        // Match your Backend schema fields
+        const displayProduct = order.productType || order.product || 'Service';
+        const displayDetails = order.nodeName ? `${order.nodeName} - ${order.planName}` : (order.planName || 'Standard Plan');
         const displayCurrency = order.currency === 'USD' ? '$' : '₦';
 
         const row = `

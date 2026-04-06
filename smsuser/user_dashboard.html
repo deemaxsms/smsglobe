@@ -339,7 +339,7 @@
                     ${plan.price}
                 </span>
                 <div class="bg-brand-blue/10 px-2 py-1 rounded-md">
-                    <span class="text-[12px] md:text-[11px] font-black text-brand-blue uppercase tracking-tighter">
+                    <span class="text-[10px] md:text-[9px] font-black text-brand-blue uppercase tracking-tighter">
                         BUY NOW
                     </span>
                 </div>
@@ -357,7 +357,7 @@
         <div onclick="window.location.href='esim_activation.html?id=${c.id}'" 
              class="bg-white border border-brand-border p-2 rounded-xl cursor-pointer hover:border-brand-blue transition-all active-scale text-center relative overflow-hidden flex flex-col items-center shadow-sm">
             
-            <span class="absolute top-1 right-1 bg-brand-blue text-white text-[5px] font-bold px-1 py-0.5 rounded-full uppercase z-10">
+            <span class="absolute top-1 right-1 bg-brand-blue text-white text-[6px] font-bold px-1 py-0.5 rounded-full uppercase z-10">
                 ${c.type}
             </span>
 
@@ -365,11 +365,11 @@
                 <img src="${c.image}" class="max-h-full max-w-[90%] object-contain">
             </div>
 
-            <h3 class="text-[9px] font-bold text-brand-darkText uppercase truncate w-full px-1 leading-tight">
+            <h3 class="text-[12px] font-bold text-brand-darkText uppercase truncate w-full px-1 leading-tight">
                 ${c.name}
             </h3>
             
-            <span class="text-[7px] text-brand-blue font-bold mt-0.5 uppercase">Activate &rarr;</span>
+            <span class="text-[10px] text-brand-blue font-bold mt-0.5 uppercase">Activate &rarr;</span>
         </div>
     `).join('');
 }
@@ -390,7 +390,7 @@
                                 <img src="${PROXY_ICON}" class="w-full h-full object-contain">
                             </div>
                             <h3 class="text-[12px] font-bold text-brand-darkText uppercase truncate w-full">${cat}</h3>
-                            <p class="text-[10px] text-brand-lightText mt-0.5">${count} Available</p>
+                            <p class="text-[12px] text-brand-lightText mt-0.5">${count} Available</p>
                         </div>
                     `;
                 }).join('');
@@ -410,12 +410,12 @@
                         <div class="w-5 h-5 bg-gray-50 rounded-md flex items-center justify-center p-0.5 mb-1">
                             <img src="${vpn.image || 'https://via.placeholder.com/50'}" class="max-h-full max-w-full object-contain">
                         </div>
-                        <p class="text-[9px] font-bold text-brand-darkText truncate w-full">${vpn.name}</p>
-                        <p class="text-[9px] font-bold text-brand-blue mt-0.5">$${vpn.plans?.[0]?.price || '0.00'}</p>
+                        <p class="text-[12px] font-bold text-brand-darkText truncate w-full">${vpn.name}</p>
+                        <p class="text-[10px] font-bold text-brand-blue mt-0.5">$${vpn.plans?.[0]?.price || '0.00'}</p>
                     </div>
                 `).join('');
             }
-        } catch (e) { container.innerHTML = '<p class="text-[9px] col-span-full text-center">Data unavailable.</p>'; }
+        } catch (e) { container.innerHTML = '<p class="text-[12px] col-span-full text-center">Data unavailable.</p>'; }
     }
 
     function loadFeaturedCarriers() {
@@ -431,8 +431,8 @@
                 <div class="h-5 w-full flex items-center justify-center mb-1">
                     <img src="${carrier.image}" alt="${carrier.name}" class="max-h-full max-w-full object-contain">
                 </div>
-                <p class="text-[9px] font-bold text-brand-darkText uppercase truncate w-full">${carrier.name}</p>
-                <span class="text-[8px] font-bold text-brand-blue bg-blue-50 px-1.5 rounded">Refill</span>
+                <p class="text-[12px] font-bold text-brand-darkText uppercase truncate w-full">${carrier.name}</p>
+                <span class="text-[10px] font-bold text-brand-blue bg-blue-50 px-1.5 rounded">Refill</span>
             </div>
         `).join('');
     }

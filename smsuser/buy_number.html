@@ -41,6 +41,11 @@
             box-shadow: 0 4px 12px rgba(15, 84, 198, 0.2);
         }
     }
+    /* Add this inside your @layer utilities or <style> tag */
+.coming-soon-overlay {
+    backdrop-filter: blur(8px);
+    background-color: rgba(255, 255, 255, 0.8);
+}
     </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
@@ -94,6 +99,22 @@
             </a>
         </nav>
     </aside>
+
+
+    <div id="comingSoonGate" class="fixed inset-0 z-[100] flex items-center justify-center hidden coming-soon-overlay">
+    <div class="bg-white p-8 rounded-3xl shadow-2xl border border-brand-border max-w-sm text-center mx-4">
+        <div class="w-16 h-16 bg-brand-background rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+        </div>
+        <h2 class="text-xl font-black text-brand-darkText mb-2">Coming Soon!</h2>
+        <p class="text-xs text-brand-lightText mb-6">The Number Marketplace is currently undergoing maintenance. We'll be live shortly!</p>
+        <button onclick="window.location.href='user_dashboard.html'" class="w-full py-3 bg-brand-blue text-white rounded-xl font-bold text-xs hover:bg-blue-700 transition-colors">
+            Back to Dashboard
+        </button>
+    </div>
+</div>
 
     <div class="flex-grow lg:ml-64 flex flex-col min-h-screen">
         <header class="bg-white border-b border-brand-border sticky top-0 z-30 px-4 md:px-8 py-3 flex items-center justify-between">
@@ -406,6 +427,18 @@ function selectNumber(num, element) {
     }
 }
 
+function lockPage() {
+    const gate = document.getElementById('comingSoonGate');
+    gate.classList.remove('hidden');
+    
+    // Optional: Auto-redirect after 5 seconds if they don't click the button
+    setTimeout(() => {
+        if (!gate.classList.contains('hidden')) {
+            window.location.href = 'user_dashboard.html';
+        }
+    }, 5000);
+}
+
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('-translate-x-full');
             document.getElementById('sidebarOverlay').classList.toggle('hidden');
@@ -413,7 +446,7 @@ function selectNumber(num, element) {
 
         document.getElementById('openSidebar').addEventListener('click', toggleSidebar);
         document.getElementById('closeSidebar').addEventListener('click', toggleSidebar);
-        window.onload = () => { renderServiceGrid(); renderCountryOptions(); };
+        window.onload = () => { renderServiceGrid(); renderCountryOptions(); lockPage(); };
     </script>
 </body>
 </html>

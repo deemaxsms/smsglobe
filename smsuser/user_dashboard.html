@@ -309,23 +309,44 @@
     `).join('');
 }
 
-    function loadRDP() {
-        const grid = document.getElementById('rdpGrid');
-        if (!grid) return;
-        grid.innerHTML = Object.values(rdpPlans).map(plan => `
-            <div onclick="window.location.href='user_rdp.html?plan=${plan.id}'" class="bg-white border border-brand-border p-2 rounded-xl active-scale shadow-sm flex flex-col justify-between">
-                <div class="flex items-center justify-between mb-1">
-                    <h3 class="text-[8px] font-extrabold text-brand-darkText uppercase truncate">${plan.name}</h3>
-                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+  function loadRDP() {
+    const grid = document.getElementById('rdpGrid');
+    if (!grid) return;
+    
+    grid.innerHTML = Object.values(rdpPlans).map(plan => `
+        <div onclick="window.location.href='user_rdp.html?plan=${plan.id}'" 
+             class="bg-white border border-brand-border p-4 md:p-3 rounded-2xl active-scale shadow-sm flex flex-col justify-between min-h-[110px] md:min-h-[90px] transition-all hover:border-brand-blue">
+            
+            <div class="flex items-start justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <img src="https://flagcdn.com/w40/us.png" class="w-4 h-auto rounded-[2px] shadow-sm border border-gray-100" alt="USA">
+                    <h3 class="text-[10px] md:text-[8px] font-extrabold text-brand-darkText uppercase truncate leading-none">
+                        ${plan.name}
+                    </h3>
                 </div>
-                <p class="text-[7px] text-brand-lightText truncate mb-1">${plan.hardware}</p>
-                <div class="flex items-center justify-between border-t border-brand-border pt-1">
-                    <span class="text-[8px] font-black text-brand-darkText">${plan.price}</span>
-                    <span class="text-[7px] font-bold text-brand-blue uppercase">BUY NOW</span>
+                <span class="flex items-center gap-1">
+                    <span class="text-[7px] font-bold text-green-500 uppercase">Live</span>
+                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                </span>
+            </div>
+            
+            <p class="text-[9px] md:text-[7px] text-brand-lightText font-medium mb-3">
+                ${plan.hardware}
+            </p>
+            
+            <div class="flex items-center justify-between border-t border-brand-border pt-2 mt-auto">
+                <span class="text-[10px] md:text-[8px] font-black text-brand-darkText">
+                    ${plan.price}
+                </span>
+                <div class="bg-brand-blue/10 px-2 py-1 rounded-md">
+                    <span class="text-[8px] md:text-[7px] font-black text-brand-blue uppercase tracking-tighter">
+                        BUY NOW
+                    </span>
                 </div>
             </div>
-        `).join('');
-    }
+        </div>
+    `).join('');
+}
 
   function loadActivations() {
     const grid = document.getElementById('activationGrid');

@@ -268,251 +268,245 @@
     </div>
 
     <script>
-        const API_BASE_URL = '/api';
-      // New Dynamic way
-const LIVE_RATE = await getLiveExchangeRate();
-const amountNGN = Math.round(amountUSD * LIVE_RATE);
+    const API_BASE_URL = '/api';
+    
+    // Global variable to hold the live rate
+    let NAIRA_RATE = 1380; 
+    
+    const carriers = [
+        { id: 'tmobile', name: 'T-Mobile (Prepaid)', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Carrier' },
+        { id: 'att', name: 'AT&T (Prepaid)', image: 'https://i.imgur.com/WDCo1gM.png', type: 'Carrier' },
+        { id: '1month', name: 'One Month Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan' },
+        { id: '3months', name: '3 Months Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan' },
+        { id: '1year', name: 'One Year Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan' }
+    ];
 
-console.log(`Processing payment at the rate of ₦${LIVE_RATE}/$1`);
-        
-        const carriers = [
-            { id: 'tmobile', name: 'T-Mobile (Prepaid)', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Carrier' },
-            { id: 'att', name: 'AT&T (Prepaid)', image: 'https://i.imgur.com/WDCo1gM.png', type: 'Carrier' },
-            { id: '1month', name: 'One Month Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan' },
-            { id: '3months', name: '3 Months Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan' },
-            { id: '1year', name: 'One Year Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan' }
-        ];
+    const activationPlans = [];
+    for (let i = 20; i <= 150; i += 10) { activationPlans.push(`$${i}.00 Activation`); }
 
-        const activationPlans = [];
-        for (let i = 20; i <= 150; i += 10) { activationPlans.push(`$${i}.00 Activation`); }
-
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('-translate-x-full');
-            document.getElementById('sidebarOverlay').classList.toggle('hidden');
-        }
-
-        async function getLiveExchangeRate() {
-    try {
-        const response = await fetch('/api/system-settings');
-        const data = await response.json();
-        if (data.success) {
-            return data.settings.exchangeRate; // Returns the rate from DB
-        }
-        return 1650; // Fallback if DB fails
-    } catch (err) {
-        console.error("Error fetching rate:", err);
-        return 1650; 
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('-translate-x-full');
+        document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
-}
 
-        function initPage() {
-            const grid = document.getElementById('carrierGrid');
-            grid.innerHTML = carriers.map(c => `
-                <div onclick="selectCarrier('${c.id}')" class="bg-white border border-brand-border p-4 md:p-6 rounded-2xl md:rounded-3xl cursor-pointer hover:shadow-xl transition-all group text-center relative overflow-hidden">
-                    <span class="absolute top-2 right-2 bg-brand-blue text-white text-[7px] font-bold px-2 py-0.5 rounded-full uppercase">${c.type}</span>
-                    <div class="h-12 md:h-16 mb-3 flex items-center justify-center transition-all">
-                        <img src="${c.image}" class="max-h-full object-contain">
-                    </div>
-                    <h3 class="text-[9px] md:text-[10px] font-bold text-brand-darkText uppercase group-hover:text-brand-blue leading-tight">${c.name}</h3>
-                </div>
-            `).join('');
-            
-            const selector = document.getElementById('planSelector');
-            selector.innerHTML = activationPlans.map(amt => `<option value="${amt}">${amt}</option>`).join('');
-        }
-
-        async function handleZipLookup(zip) {
-            const addressInput = document.getElementById('fullAddress');
-            const status = document.getElementById('zipStatus');
-            
-            if (zip.length >= 5) {
-                addressInput.classList.add('loading-address');
-                status.innerText = "Searching...";
-                status.classList.replace('text-brand-lightText', 'text-brand-blue');
-
-                try {
-                    const response = await fetch(`https://api.zippopotam.us/us/${zip}`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        const place = data.places[0];
-                        addressInput.value = `${place['place name']}, ${place['state']}, USA`;
-                        status.innerText = "Address Verified ✅";
-                        status.classList.replace('text-brand-blue', 'text-green-600');
-                    } else {
-                        addressInput.value = "";
-                        status.innerText = "Invalid Zip Code";
-                        status.classList.replace('text-brand-blue', 'text-red-500');
-                    }
-                } catch (error) {
-                    status.innerText = "Lookup Offline";
-                } finally {
-                    addressInput.classList.remove('loading-address');
-                }
-            } else {
-                addressInput.value = "";
-                status.innerText = "Awaiting Zip...";
-                status.classList.remove('text-green-600', 'text-red-500');
-                status.classList.add('text-brand-lightText');
+    async function getLiveExchangeRate() {
+        try {
+            const response = await fetch('/api/system-settings');
+            const data = await response.json();
+            if (data.success) {
+                return data.settings.exchangeRate; // Returns the rate from DB
             }
+            return 1650; // Fallback if DB fails
+        } catch (err) {
+            console.error("Error fetching rate:", err);
+            return 1650; 
         }
-
-        function selectCarrier(id) {
-            const carrier = carriers.find(c => c.id === id);
-            window.currentSelectedCarrier = carrier; 
-            document.getElementById('selectionView').classList.add('hidden');
-            document.getElementById('formView').classList.remove('hidden');
-            document.getElementById('formCarrierName').innerText = carrier.name;
-            document.getElementById('formCarrierLogo').src = carrier.image;
-            updateButtonPrice();
-        }
-
-        function updateButtonPrice() {
-            const plan = document.getElementById('planSelector').value;
-            document.getElementById('payBtn').innerText = `Pay ${getNairaPrice(plan)} (Activate)`;
-        }
-
-        function getNairaPrice(usdString) {
-            const usd = parseFloat(usdString.replace(/[$,a-zA-Z ]/g, ''));
-            return `₦${(usd * NAIRA_RATE).toLocaleString()}`;
-        }
-
-        document.getElementById('planSelector').addEventListener('change', updateButtonPrice);
-
-        function goBackToGrid() {
-            document.getElementById('selectionView').classList.remove('hidden');
-            document.getElementById('formView').classList.add('hidden');
-        }
-
-        function escapeHTML(str) {
-            return str ? str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])) : '--';
-        }
-
-async function initiatePayment() {
-    // 1. Get Input Values
-    const firstName = document.getElementById('firstName').value.trim();
-    const lastName = document.getElementById('lastName').value.trim();
-    const email = document.getElementById('emailAddress').value.trim();
-    const address = document.getElementById('fullAddress').value.trim();
-    const zip = document.getElementById('zipCode').value.trim();
-    const activationType = document.getElementById('prepaidType').value.trim();
-    const deviceName = document.getElementById('targetNumber').value.trim(); 
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    // 2. Validation
-    if(!firstName || !lastName || !email || !address || !zip || !activationType || !deviceName) {
-        alert("Please ensure all fields, including the Device Name, are filled.");
-        return;
     }
 
-    if(!emailRegex.test(email)) {
-        alert("Please enter a valid activation email address.");
-        return;
-    }
-
-    // 3. Prepare Data
-    const plan = document.getElementById('planSelector').value; 
-    const carrier = window.currentSelectedCarrier;
-    const token = localStorage.getItem('userToken');
-
-    if (!token) {
-        alert("Session expired. Please log in again.");
-        window.location.href = "/login.html";
-        return;
-    }
-
-    const btn = document.getElementById('payBtn');
-    btn.disabled = true;
-    btn.innerText = "Securing Payment Link...";
-
-    try {
-        const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${token}` 
-            },
-            body: JSON.stringify({
-                carrierName: carrier.name,
-                planAmount: plan,
-                productType: 'eSIM_Activation',
-                // Flattening these out so the Backend verify API can find them easily
-                mobileNumber: deviceName, 
-                activationEmail: email,   
-                firstName: firstName,
-                lastName: lastName,
-                address: address,
-                zip: zip
-            })
-        });
-
-        const data = await res.json();
+    function initPage() {
+        const grid = document.getElementById('carrierGrid');
+        grid.innerHTML = carriers.map(c => `
+            <div onclick="selectCarrier('${c.id}')" class="bg-white border border-brand-border p-4 md:p-6 rounded-2xl md:rounded-3xl cursor-pointer hover:shadow-xl transition-all group text-center relative overflow-hidden">
+                <span class="absolute top-2 right-2 bg-brand-blue text-white text-[7px] font-bold px-2 py-0.5 rounded-full uppercase">${c.type}</span>
+                <div class="h-12 md:h-16 mb-3 flex items-center justify-center transition-all">
+                    <img src="${c.image}" class="max-h-full object-contain">
+                </div>
+                <h3 class="text-[9px] md:text-[10px] font-bold text-brand-darkText uppercase group-hover:text-brand-blue leading-tight">${c.name}</h3>
+            </div>
+        `).join('');
         
-        if(data.success && data.link) {
-            window.location.href = data.link; 
+        const selector = document.getElementById('planSelector');
+        selector.innerHTML = activationPlans.map(amt => `<option value="${amt}">${amt}</option>`).join('');
+    }
+
+    async function handleZipLookup(zip) {
+        const addressInput = document.getElementById('fullAddress');
+        const status = document.getElementById('zipStatus');
+        
+        if (zip.length >= 5) {
+            addressInput.classList.add('loading-address');
+            status.innerText = "Searching...";
+            status.classList.replace('text-brand-lightText', 'text-brand-blue');
+
+            try {
+                const response = await fetch(`https://api.zippopotam.us/us/${zip}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const place = data.places[0];
+                    addressInput.value = `${place['place name']}, ${place['state']}, USA`;
+                    status.innerText = "Address Verified ✅";
+                    status.classList.replace('text-brand-blue', 'text-green-600');
+                } else {
+                    addressInput.value = "";
+                    status.innerText = "Invalid Zip Code";
+                    status.classList.replace('text-brand-blue', 'text-red-500');
+                }
+            } catch (error) {
+                status.innerText = "Lookup Offline";
+            } finally {
+                addressInput.classList.remove('loading-address');
+            }
         } else {
-            alert(data.message || "Failed to start activation.");
+            addressInput.value = "";
+            status.innerText = "Awaiting Zip...";
+            status.classList.remove('text-green-600', 'text-red-500');
+            status.classList.add('text-brand-lightText');
+        }
+    }
+
+    function selectCarrier(id) {
+        const carrier = carriers.find(c => c.id === id);
+        window.currentSelectedCarrier = carrier; 
+        document.getElementById('selectionView').classList.add('hidden');
+        document.getElementById('formView').classList.remove('hidden');
+        document.getElementById('formCarrierName').innerText = carrier.name;
+        document.getElementById('formCarrierLogo').src = carrier.image;
+        updateButtonPrice();
+    }
+
+    function updateButtonPrice() {
+        const plan = document.getElementById('planSelector').value;
+        document.getElementById('payBtn').innerText = `Pay ${getNairaPrice(plan)} (Activate)`;
+    }
+
+    function getNairaPrice(usdString) {
+        const usd = parseFloat(usdString.replace(/[$,a-zA-Z ]/g, ''));
+        // Uses the dynamic NAIRA_RATE fetched in window.onload
+        return `₦${(usd * NAIRA_RATE).toLocaleString()}`;
+    }
+
+    document.getElementById('planSelector').addEventListener('change', updateButtonPrice);
+
+    function goBackToGrid() {
+        document.getElementById('selectionView').classList.remove('hidden');
+        document.getElementById('formView').classList.add('hidden');
+    }
+
+    function escapeHTML(str) {
+        return str ? str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])) : '--';
+    }
+
+    async function initiatePayment() {
+        const firstName = document.getElementById('firstName').value.trim();
+        const lastName = document.getElementById('lastName').value.trim();
+        const email = document.getElementById('emailAddress').value.trim();
+        const address = document.getElementById('fullAddress').value.trim();
+        const zip = document.getElementById('zipCode').value.trim();
+        const activationType = document.getElementById('prepaidType').value.trim();
+        const deviceName = document.getElementById('targetNumber').value.trim(); 
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if(!firstName || !lastName || !email || !address || !zip || !activationType || !deviceName) {
+            alert("Please ensure all fields, including the Device Name, are filled.");
+            return;
+        }
+
+        if(!emailRegex.test(email)) {
+            alert("Please enter a valid activation email address.");
+            return;
+        }
+
+        const plan = document.getElementById('planSelector').value; 
+        const carrier = window.currentSelectedCarrier;
+        const token = localStorage.getItem('userToken');
+
+        if (!token) {
+            alert("Session expired. Please log in again.");
+            window.location.href = "/login.html";
+            return;
+        }
+
+        const btn = document.getElementById('payBtn');
+        btn.disabled = true;
+        btn.innerText = "Securing Payment Link...";
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: JSON.stringify({
+                    carrierName: carrier.name,
+                    planAmount: plan,
+                    productType: 'eSIM_Activation',
+                    mobileNumber: deviceName, 
+                    activationEmail: email,   
+                    firstName: firstName,
+                    lastName: lastName,
+                    address: address,
+                    zip: zip
+                })
+            });
+
+            const data = await res.json();
+            
+            if(data.success && data.link) {
+                window.location.href = data.link; 
+            } else {
+                alert(data.message || "Failed to start activation.");
+                btn.disabled = false;
+                updateButtonPrice();
+            }
+        } catch (err) {
+            console.error("Payment Initiation Error:", err);
+            alert("Connection error. Please check your internet.");
             btn.disabled = false;
             updateButtonPrice();
         }
-    } catch (err) {
-        console.error("Payment Initiation Error:", err);
-        alert("Connection error. Please check your internet.");
-        btn.disabled = false;
-        updateButtonPrice();
     }
-}
 
-        window.onload = () => {
-            initPage(); 
-            const urlParams = new URLSearchParams(window.location.search);
-            const transactionId = urlParams.get('transaction_id');
-            if (transactionId) verifyEsimPayment(transactionId, urlParams.get('tx_ref'));
-        };
+    async function verifyEsimPayment(tid, txRef) {
+        try {
+            const res = await fetch(`${API_BASE_URL}/verify-payment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('userToken')}` },
+                body: JSON.stringify({ transactionId: tid, txRef: txRef })
+            });
+            
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('selectionView').classList.add('hidden');
+                document.getElementById('formView').classList.add('hidden');
+                document.getElementById('receiptView').classList.remove('hidden');
 
-        async function verifyEsimPayment(tid, txRef) {
-            try {
-                const res = await fetch(`${API_BASE_URL}/verify-payment`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('userToken')}` },
-                    body: JSON.stringify({ transactionId: tid, txRef: txRef })
-                });
+                const order = data.order || {};
+                document.getElementById('rCarrier').innerText = escapeHTML(order.nodeName);
+                document.getElementById('rName').innerText = escapeHTML(`${order.metadata?.firstName || ''} ${order.metadata?.lastName || ''}`);
+                document.getElementById('rPlan').innerText = escapeHTML(order.planName);
+                document.getElementById('rID').innerText = escapeHTML(order.paymentReference || tid);
                 
-                const data = await res.json();
-                if (data.success) {
-                    document.getElementById('selectionView').classList.add('hidden');
-                    document.getElementById('formView').classList.add('hidden');
-                    document.getElementById('receiptView').classList.remove('hidden');
+                window.history.replaceState({}, '', window.location.pathname);
+            }
+        } catch (e) { console.error(e); }
+    }
 
-                    const order = data.order || {};
-                    document.getElementById('rCarrier').innerText = escapeHTML(order.nodeName);
-                    document.getElementById('rName').innerText = escapeHTML(`${order.metadata?.firstName || ''} ${order.metadata?.lastName || ''}`);
-                    document.getElementById('rPlan').innerText = escapeHTML(order.planName);
-                    document.getElementById('rID').innerText = escapeHTML(order.paymentReference || tid);
-                }
-            } catch (e) { console.error(e); }
-        }
+    function contactManagement() {
+        const customerName = document.getElementById('rName')?.innerText || "Valued Customer";
+        const carrier = document.getElementById('rCarrier').innerText;
+        const plan = document.getElementById('rPlan')?.innerText || "Standard Plan";
+        const tid = document.getElementById('rID').innerText;
+        const amount = document.getElementById('rAmount')?.innerText || "N/A";
 
-        function contactManagement() {
-            const customerName = document.getElementById('rName')?.innerText || "Valued Customer";
-            const carrier = document.getElementById('rCarrier').innerText;
-            const plan = document.getElementById('rPlan')?.innerText || "Standard Plan";
-            const tid = document.getElementById('rID').innerText;
-            const amount = document.getElementById('rAmount')?.innerText || "N/A";
+        const msg = `🚀 *NEW eSIM ACTIVATION ORDER*\n----------------------------\n👤 *Customer:* ${customerName}\n📶 *Carrier:* ${carrier}\n📦 *Plan:* ${plan}\n💰 *Paid:* ${amount}\n🆔 *REF ID:* ${tid}\n----------------------------\n✅ *Action:* Please generate and send the QR Code.`;
 
+        window.open(`https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`, '_blank');
+    }
 
-            const msg = `🚀 *NEW eSIM ACTIVATION ORDER*
-----------------------------
-👤 *Customer:* ${customerName}
-📶 *Carrier:* ${carrier}
-📦 *Plan:* ${plan}
-💰 *Paid:* ${amount}
-🆔 *REF ID:* ${tid}
-----------------------------
-✅ *Action:* Please generate and send the QR Code.`;
+    window.onload = async () => {
+        // 1. Fetch live rate inside the async onload
+        NAIRA_RATE = await getLiveExchangeRate();
+        console.log(`Processing payment at the rate of ₦${NAIRA_RATE}/$1`);
 
-            window.open(`https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`, '_blank');
-        }
-    </script>
+        // 2. Initialize Page
+        initPage(); 
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const transactionId = urlParams.get('transaction_id');
+        if (transactionId) verifyEsimPayment(transactionId, urlParams.get('tx_ref'));
+    };
+</script>
 </body>
 </html>

@@ -350,40 +350,58 @@ function renderOrders(orders) {
         return;
     }
 
-    countLabel.innerText = `${orders.length} Orders`;
+    if (countLabel) countLabel.innerText = `${orders.length} Orders`;
     container.innerHTML = ''; 
 
     orders.forEach(order => {
-        const dateObj = new Date(order.createdAt);
-        const dateStr = dateObj.toLocaleDateString('en-GB', {
-            day: 'numeric', month: 'short', year: 'numeric'
-        });
-        const timeStr = dateObj.toLocaleTimeString('en-GB', {
-            hour: '2-digit', minute: '2-digit', hour12: true
-        }).toUpperCase();
+        // FIX: Use order.date (from your backend map) or fallback to order.createdAt
+        const rawDate = order.date || order.createdAt;
+        let dateStr = "N/A";
+        let timeStr = "---";
 
+        if (rawDate) {
+            const dateObj = new Date(rawDate);
+            if (!isNaN(dateObj.getTime())) {
+                dateStr = dateObj.toLocaleDateString('en-GB', {
+                    day: 'numeric', month: 'short', year: 'numeric'
+                });
+                timeStr = dateObj.toLocaleTimeString('en-GB', {
+                    hour: '2-digit', minute: '2-digit', hour12: true
+                }).toUpperCase();
+            }
+        }
+
+        // Define status colors
         const statusColors = {
             successful: 'bg-green-50 text-green-600 border-green-100',
             completed: 'bg-green-50 text-green-600 border-green-100',
             pending: 'bg-orange-50 text-orange-600 border-orange-100',
             failed: 'bg-red-50 text-red-600 border-red-100'
         };
-        const colorClass = statusColors[order.status] || 'bg-gray-50 text-gray-600';
+        
+        // Ensure status exists or default to pending/gray
+        const currentStatus = (order.status || 'pending').toLowerCase();
+        const colorClass = statusColors[currentStatus] || 'bg-gray-50 text-gray-600 border-gray-100';
+
+        // Use backend mapped fields: 'product' and 'details' or fallbacks
+        const displayProduct = order.product || order.productType || 'Service';
+        const displayDetails = order.details || order.planName || 'Standard Plan';
+        const displayCurrency = order.currency === 'USD' ? '$' : '₦';
 
         const row = `
-            <tr class="hover:bg-gray-50/50 transition-colors">
+            <tr class="hover:bg-gray-50/50 transition-colors border-b border-gray-50 last:border-0">
                 <td class="px-5 py-3">
                     <div class="flex flex-col">
-                        <span class="text-[11px] font-bold text-brand-darkText">${order.productType}</span>
-                        <span class="text-[9px] text-brand-lightText">${order.planName || 'Standard Plan'}</span>
+                        <span class="text-[11px] font-bold text-brand-darkText uppercase">${displayProduct}</span>
+                        <span class="text-[9px] text-brand-lightText">${displayDetails}</span>
                     </div>
                 </td>
                 <td class="px-5 py-3 text-[11px] font-bold text-brand-darkText">
-                    ${order.currency === 'USD' ? '$' : ''}${order.amount.toLocaleString()}
+                    ${displayCurrency}${order.amount ? order.amount.toLocaleString() : '0'}
                 </td>
                 <td class="px-5 py-3">
                     <span class="px-2 py-0.5 rounded-full text-[9px] font-bold border ${colorClass} uppercase">
-                        ${order.status}
+                        ${currentStatus}
                     </span>
                 </td>
                 <td class="px-5 py-3">
@@ -394,7 +412,7 @@ function renderOrders(orders) {
                 </td>
             </tr>
         `;
-        container.innerHTML += row;
+        container.insertAdjacentHTML('beforeend', row);
     });
 }
 

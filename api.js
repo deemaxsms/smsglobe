@@ -422,7 +422,7 @@ case 'change-passwords':
 case 'update-system-settings': 
     if (req.method === 'POST') return handleUpdateSystemSettings(req, res);
     break;
-
+case 'get-system-settings':
 case 'system-settings': 
     if (req.method === 'GET') return handleGetSystemSettings(req, res);
     break;

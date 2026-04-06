@@ -28,7 +28,23 @@
         .active-scale:active { transform: scale(0.96); }
         /* Optimized card snapping for mobile */
         .snap-x { scroll-snap-type: x mandatory; scroll-behavior: smooth; }
-    </style>
+/* CSS Animation for smooth scrolling */
+@keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+    display: flex;
+    width: max-content;
+    animation: marquee 15s linear infinite;
+}
+
+/* Optional: Pause on hover so users can read it easily */
+.animate-marquee:hover {
+    animation-play-state: paused;
+}
+</style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
 
@@ -218,12 +234,7 @@
         </div>
 </section>
 
-          This is a sleek way to handle support—switching to a floating action button (FAB) keeps the UI clean while putting help just one tap away.
 
-I've designed this to be a floating trigger that expands into a support menu when clicked.
-
-The Updated Support Component
-HTML
 <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end space-y-4">
     
     <div id="supportMenu" class="hidden flex flex-col space-y-3 mb-2 transition-all duration-300 transform translate-y-10 opacity-0 scale-95">
@@ -239,7 +250,7 @@ HTML
             </div>
         </button>
 
-        <button onclick="window.open('https://t.me/smsglobe_support', '_blank')" 
+        <button onclick="window.open('https://t.me/2347059450227', '_blank')" 
                 class="flex items-center space-x-3 bg-white border border-brand-border px-4 py-2.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all active:scale-95 group">
             <div class="w-8 h-8 bg-[#0088cc] rounded-full flex items-center justify-center">
                 <img src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png" class="w-4 h-4 invert">
@@ -264,15 +275,46 @@ HTML
         </button>
     </div>
 
-    <button onclick="toggleSupportMenu()" 
-            id="supportTrigger"
-            class="w-14 h-14 bg-brand-blue rounded-full shadow-2xl flex flex-col items-center justify-center text-white border-2 border-white transition-all hover:scale-105 active:scale-90">
-        <span class="text-[8px] font-black uppercase tracking-tighter">SMSG</span>
-        <span class="text-[6px] font-bold uppercase leading-none opacity-80">Support</span>
-    </button>
+  <button onclick="toggleSupportMenu()" 
+        id="supportTrigger"
+        class="w-14 h-14 bg-white rounded-full shadow-2xl flex flex-col items-center justify-center border-2 border-brand-blue transition-all hover:scale-105 active:scale-90 overflow-hidden">
+    
+    <img src="https://i.imgur.com/syKFaNI.png" 
+         alt="SMSG Logo" 
+         class="w-7 h-7 object-contain mb-0.5">
+    
+    <span class="text-[7px] font-black uppercase leading-none text-brand-blue tracking-tighter">Support</span>
+</button>
 </div>
+<div class="fixed bottom-0 left-0 w-full bg-white border-t border-brand-border h-10 flex items-center overflow-hidden z-40">
+    <div class="flex whitespace-nowrap animate-marquee items-center">
+        <div class="flex items-center px-4 space-x-2">
+            <img src="https://i.imgur.com/syKFaNI.png" class="h-5 w-5 object-contain">
+            <span class="text-[10px] font-black text-brand-blue uppercase tracking-widest">SMSGlobe</span>
+        </div>
+        <div class="flex items-center px-4 space-x-2">
+            <img src="https://i.imgur.com/syKFaNI.png" class="h-5 w-5 object-contain">
+            <span class="text-[10px] font-black text-brand-blue uppercase tracking-widest">SMSGlobe</span>
+        </div>
+        <div class="flex items-center px-4 space-x-2">
+            <img src="https://i.imgur.com/syKFaNI.png" class="h-5 w-5 object-contain">
+            <span class="text-[10px] font-black text-brand-blue uppercase tracking-widest">SMSGlobe</span>
+        </div>
+        <div class="flex items-center px-4 space-x-2">
+            <img src="https://i.imgur.com/syKFaNI.png" class="h-5 w-5 object-contain">
+            <span class="text-[10px] font-black text-brand-blue uppercase tracking-widest">SMSGlobe</span>
+        </div>
+        <div class="flex items-center px-4 space-x-2">
+            <img src="https://i.imgur.com/syKFaNI.png" class="h-5 w-5 object-contain">
+            <span class="text-[10px] font-black text-brand-blue uppercase tracking-widest">SMSGlobe</span>
+        </div>
+    </div>
+</div>
+
+
         </main>
     </div>
+
 
 <script>
     const API_BASE_URL = '/api';
@@ -571,22 +613,22 @@ HTML
 }
 
 function toggleSupportMenu() {
-    const menu = document.getElementById('supportMenu');
-    const isHidden = menu.classList.contains('hidden');
-    
-    if (isHidden) {
-        menu.classList.remove('hidden');
-        // Small timeout to allow transition to trigger
-        setTimeout(() => {
-            menu.classList.remove('translate-y-10', 'opacity-0', 'scale-95');
-        }, 10);
-    } else {
-        menu.classList.add('translate-y-10', 'opacity-0', 'scale-95');
-        setTimeout(() => {
-            menu.classList.add('hidden');
-        }, 300);
+        const menu = document.getElementById('supportMenu');
+        const isHidden = menu.classList.contains('hidden');
+        
+        if (isHidden) {
+            menu.classList.remove('hidden');
+            // Small timeout to allow transition to trigger
+            setTimeout(() => {
+                menu.classList.remove('translate-y-10', 'opacity-0', 'scale-95');
+            }, 10);
+        } else {
+            menu.classList.add('translate-y-10', 'opacity-0', 'scale-95');
+            setTimeout(() => {
+                menu.classList.add('hidden');
+            }, 300);
+        }
     }
-}
 
     function logout() { 
         localStorage.removeItem('userToken'); 

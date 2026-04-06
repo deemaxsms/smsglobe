@@ -266,7 +266,56 @@
             </div>
         </main>
     </div>
+<div class="fixed bottom-6 right-6 z-50 flex flex-col items-end space-y-4">
+    
+    <div id="supportMenu" class="hidden flex flex-col space-y-3 mb-2 transition-all duration-300 transform translate-y-10 opacity-0 scale-95">
+        
+        <button onclick="window.open('https://wa.me/2347059450227', '_blank')" 
+                class="flex items-center space-x-3 bg-white border border-brand-border px-4 py-2.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all active:scale-95 group">
+            <div class="w-8 h-8 bg-[#25D366] rounded-full flex items-center justify-center">
+                <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" class="w-4 h-4 invert">
+            </div>
+            <div class="text-left">
+                <p class="text-[10px] font-bold text-brand-darkText leading-none">WhatsApp</p>
+                <p class="text-[8px] text-brand-lightText">Instant Chat</p>
+            </div>
+        </button>
 
+        <button onclick="window.open('https://t.me/2347059450227', '_blank')" 
+                class="flex items-center space-x-3 bg-white border border-brand-border px-4 py-2.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all active:scale-95 group">
+            <div class="w-8 h-8 bg-[#0088cc] rounded-full flex items-center justify-center">
+                <img src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png" class="w-4 h-4 invert">
+            </div>
+            <div class="text-left">
+                <p class="text-[10px] font-bold text-brand-darkText leading-none">Telegram</p>
+                <p class="text-[8px] text-brand-lightText">Secure Channel</p>
+            </div>
+        </button>
+
+        <button onclick="window.location.href='mailto:support@smsglobe.com'" 
+                class="flex items-center space-x-3 bg-white border border-brand-border px-4 py-2.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all active:scale-95 group">
+            <div class="w-8 h-8 bg-brand-blue rounded-full flex items-center justify-center">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+            <div class="text-left">
+                <p class="text-[10px] font-bold text-brand-darkText leading-none">Email Help</p>
+                <p class="text-[8px] text-brand-lightText">24h Response</p>
+            </div>
+        </button>
+    </div>
+
+  <button onclick="toggleSupportMenu()" 
+        id="supportTrigger"
+        class="w-14 h-14 bg-white rounded-full shadow-2xl flex flex-col items-center justify-center border-2 border-brand-blue transition-all hover:scale-105 active:scale-90 overflow-hidden">
+    
+    <img src="https://i.imgur.com/syKFaNI.png" 
+         alt="SMSG Logo" 
+         class="w-7 h-7 object-contain mb-0.5">
+    
+    <span class="text-[7px] font-black uppercase leading-none text-brand-blue tracking-tighter">Support</span>
+</button>
     <script>
     const API_BASE_URL = '/api';
     
@@ -495,6 +544,24 @@
         window.open(`https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
+    function toggleSupportMenu() {
+        const menu = document.getElementById('supportMenu');
+        const isHidden = menu.classList.contains('hidden');
+        
+        if (isHidden) {
+            menu.classList.remove('hidden');
+            // Small timeout to allow transition to trigger
+            setTimeout(() => {
+                menu.classList.remove('translate-y-10', 'opacity-0', 'scale-95');
+            }, 10);
+        } else {
+            menu.classList.add('translate-y-10', 'opacity-0', 'scale-95');
+            setTimeout(() => {
+                menu.classList.add('hidden');
+            }, 300);
+        }
+    }
+    
     window.onload = async () => {
         // 1. Fetch live rate inside the async onload
         NAIRA_RATE = await getLiveExchangeRate();

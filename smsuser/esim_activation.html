@@ -561,19 +561,18 @@
             }, 300);
         }
     }
+window.onload = async () => {
+    // Show a loading state on buttons if needed
+    NAIRA_RATE = await getLiveExchangeRate();
+    
+    initPage(); // Now it has the correct rate
+    updateButtonPrice(); // Set initial button text correctly
 
-    window.onload = async () => {
-        // 1. Fetch live rate inside the async onload
-        NAIRA_RATE = await getLiveExchangeRate();
-        console.log(`Processing payment at the rate of ₦${NAIRA_RATE}/$1`);
-
-        // 2. Initialize Page
-        initPage(); 
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        const transactionId = urlParams.get('transaction_id');
-        if (transactionId) verifyEsimPayment(transactionId, urlParams.get('tx_ref'));
-    };
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('transaction_id')) {
+        verifyEsimPayment(urlParams.get('transaction_id'), urlParams.get('tx_ref'));
+    }
+};
 </script>
 </body>
 </html>

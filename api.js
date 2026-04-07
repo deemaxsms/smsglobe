@@ -1188,6 +1188,10 @@ async function handleInitiatePayment(req, res) {
                     extraCPU: metadata?.extraCPU || 0,
                     extraStorage: metadata?.extraStorage || 0,
                     osChoice: metadata?.osChoice || null,
+                    firstName: metadata?.firstName || null,
+                    lastName: metadata?.lastName || null,
+                    address: metadata?.address || null,
+                    zip: metadata?.zip || null,
                     mobileNumber: mobileNumber || null
                 },
                 customizations: {

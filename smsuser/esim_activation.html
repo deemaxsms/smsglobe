@@ -331,7 +331,7 @@
     ];
 
     const activationPlans = [];
-    for (let i = 20; i <= 150; i += 10) { activationPlans.push(`$${i}.00 Activation`); }
+    for (let i = 1; i <= 150; i += 10) { activationPlans.push(`$${i}.00 Activation`); }
 
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('-translate-x-full');
@@ -345,10 +345,10 @@
             if (data.success) {
                 return data.settings.exchangeRate; // Returns the rate from DB
             }
-            return 1650; // Fallback if DB fails
+            return 1380; // Fallback if DB fails
         } catch (err) {
             console.error("Error fetching rate:", err);
-            return 1650; 
+            return 1380; 
         }
     }
 

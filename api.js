@@ -1063,38 +1063,20 @@ async function handlePurchaseVPN(req, res) {
 }
 
 async function handleInitiatePayment(req, res) {
-    const { 
-        vpnId, proxyId, rdpId, carrierName, mobileNumber, 
-        planAmount, planIndex, metadata, planName 
-    } = req.body;
-    
+    const { vpnId, proxyId, rdpId, carrierName, mobileNumber, planAmount, planIndex, metadata, planName } = req.body;
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
-    if (!token) {
-        return res.status(401).json({ success: false, message: "No authorization token provided" });
-    }
-
     try {
-        // 1. FETCH DYNAMIC SETTINGS SAFELY
-        let LIVE_RATE = 1380;
-        let MARKUP = 0;
-        try {
-            const settings = await SystemSettings.findOne();
-            if (settings) {
-                LIVE_RATE = settings.exchangeRate || 1380;
-                MARKUP = settings.globalMarkup || 0;
-            }
-        } catch (dbErr) {
-            console.error("SystemSettings fetch failed, using fallbacks:", dbErr.message);
-        }
+        // --- NEW: FETCH DYNAMIC SETTINGS FROM DB ---
+        const settings = await SystemSettings.findOne();
+        const LIVE_RATE = settings?.exchangeRate || 1380; // Fallback to 1380 if DB is empty
+        const MARKUP = settings?.globalMarkup || 0;      // Fallback to 0% markup
+        // --------------------------------------------
 
-        // 2. VERIFY USER
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_secret_key');
+        const decoded = jwt.verify(token, JWT_SECRET);
         const user = await User.findById(decoded.id);
-        if (!user) {
-            return res.status(404).json({ success: false, message: "User account not found" });
-        }
+        if (!user) return res.status(404).json({ success: false, message: "User find failed" });
 
         let item;
         let itemType;
@@ -1103,34 +1085,43 @@ async function handleInitiatePayment(req, res) {
         let finalAmountNGN = 0;
         let redirectUrl = "https://smsglobe.vercel.app/smsuser/user_dashboard.html";
 
-        // 3. PRODUCT LOGIC BRANCHING
         if (vpnId) {
             item = await VPN.findById(vpnId);
-            if (!item || !item.plans[planIndex]) {
-                return res.status(404).json({ success: false, message: "VPN Plan not found" });
-            }
+            if (!item || !item.plans[planIndex]) return res.status(404).json({ success: false, message: "VPN Plan not found" });
             itemType = "VPN";
             title = "SMSGlobe VPN";
             amountInUSD = item.plans[planIndex].price;
+            
+            // --- APPLY DYNAMIC RATE + MARKUP ---
+            const basePriceNGN = amountInUSD * LIVE_RATE;
+            const markupAmount = basePriceNGN * (MARKUP / 100);
+            finalAmountNGN = Math.round(basePriceNGN + markupAmount);
+            
             redirectUrl = "https://smsglobe.vercel.app/smsuser/user_vpn.html";
         } 
         else if (proxyId) {
             item = await Proxy.findById(proxyId);
-            if (!item || !item.plans[planIndex]) {
-                return res.status(404).json({ success: false, message: "Proxy Plan not found" });
-            }
+            if (!item || !item.plans[planIndex]) return res.status(404).json({ success: false, message: "Proxy Plan not found" });
             itemType = "Proxy";
             title = "SMSGlobe Proxy";
             amountInUSD = item.plans[planIndex].price;
+            
+            // --- APPLY DYNAMIC RATE + MARKUP ---
+            const basePriceNGN = amountInUSD * LIVE_RATE;
+            const markupAmount = basePriceNGN * (MARKUP / 100);
+            finalAmountNGN = Math.round(basePriceNGN + markupAmount);
+            
             redirectUrl = "https://smsglobe.vercel.app/smsuser/user_proxy.html";
         } 
         else if (carrierName) {
             itemType = metadata ? "eSIM_Activation" : "eSIM";
             title = metadata ? `eSIM Activation: ${carrierName}` : `eSIM Refill: ${carrierName}`;
+            amountInUSD = parseFloat(planAmount.replace(/[$,]/g, ''));
             
-            // FIX: Safely parse planAmount to prevent .replace() errors if it's already a number or null
-            const safeAmountStr = String(planAmount || "0");
-            amountInUSD = parseFloat(safeAmountStr.replace(/[$,]/g, '')) || 0;
+            // --- APPLY DYNAMIC RATE + MARKUP ---
+            const basePriceNGN = amountInUSD * LIVE_RATE;
+            const markupAmount = basePriceNGN * (MARKUP / 100);
+            finalAmountNGN = Math.round(basePriceNGN + markupAmount);
 
             redirectUrl = metadata 
                 ? "https://smsglobe.vercel.app/smsuser/esim_activation.html" 
@@ -1140,8 +1131,8 @@ async function handleInitiatePayment(req, res) {
             itemType = "RDP";
             redirectUrl = "https://smsglobe.vercel.app/smsuser/user_rdp.html";
 
-            const extraCPU = Number(metadata?.extraCPU || 0);
-            const extraStorage = Number(metadata?.extraStorage || 0);
+            const extraCPU = metadata?.extraCPU || 0;
+            const extraStorage = metadata?.extraStorage || 0;
             const addonTotal = (extraCPU * 5000) + (extraStorage * 200);
 
             if (typeof rdpId === 'string' && rdpId.startsWith('tier')) {
@@ -1149,32 +1140,31 @@ async function handleInitiatePayment(req, res) {
                     tier1: 45000, tier2: 55000, tier3: 65000,
                     tier4: 80000, tier5: 90000, tier6: 130000
                 };
+
                 const basePriceNGN = tierPrices[rdpId] || 45000;
                 title = `SMSGlobe RDP: ${planName || rdpId.toUpperCase()}`;
                 finalAmountNGN = basePriceNGN + addonTotal;
             } 
             else {
-                item = await RDP.findById(rdpId);
-                if (!item) return res.status(404).json({ success: false, message: "RDP Plan not found" });
-                title = `SMSGlobe RDP: ${item.name}`;
-                finalAmountNGN = item.price + addonTotal;
+                try {
+                    item = await RDP.findById(rdpId);
+                    if (!item) return res.status(404).json({ success: false, message: "RDP Plan not found" });
+                    
+                    title = `SMSGlobe RDP: ${item.name}`;
+                    finalAmountNGN = item.price + addonTotal;
+                } catch (err) {
+                    return res.status(400).json({ success: false, message: "Invalid RDP ID provided" });
+                }
             }
         } 
         else {
             return res.status(400).json({ success: false, message: "No product specified" });
         }
 
-        // 4. CALCULATE NGN PRICE IF NOT ALREADY SET (FOR USD PRODUCTS)
-        if (finalAmountNGN === 0 && amountInUSD > 0) {
-            const basePriceNGN = amountInUSD * LIVE_RATE;
-            const markupAmount = basePriceNGN * (MARKUP / 100);
-            finalAmountNGN = Math.round(basePriceNGN + markupAmount);
-        }
-
-        // 5. INITIATE FLUTTERWAVE PAYMENT
         const tx_ref = `SMS-${itemType}-${Date.now()}-${decoded.id.slice(-4)}`;
-        
-        const flwResponse = await fetch("https://api.flutterwave.com/v3/payments", {
+        const activationEmail = metadata?.email || null;
+
+        const response = await fetch("https://api.flutterwave.com/v3/payments", {
             method: "POST",
             headers: {
                 Authorization: `Bearer ${process.env.FLW_SECRET_KEY}`,
@@ -1191,44 +1181,40 @@ async function handleInitiatePayment(req, res) {
                 },
                 meta: {
                     userId: decoded.id,
-                    email: metadata?.email || user.email,
+                    email: activationEmail,
                     productType: itemType,
                     productId: rdpId || vpnId || proxyId || carrierName, 
                     planIndex: planIndex,
+                    extraCPU: metadata?.extraCPU || 0,
+                    extraStorage: metadata?.extraStorage || 0,
+                    osChoice: metadata?.osChoice || null,
                     mobileNumber: mobileNumber || null
                 },
                 customizations: {
                     title: title,
-                    description: `Payment for ${title}`,
-                    logo: "https://i.imgur.com/syKFaNI.png" // Updated to your new logo
+                    description: itemType === "RDP" 
+                        ? `${planName || title} (${metadata?.osChoice || 'Windows'})` 
+                        : itemType.includes("eSIM")
+                        ? `Refill/Activation for ${mobileNumber || carrierName}`
+                        : `${item?.name || title} ($${amountInUSD} USD)`,
+                    logo: "https://imgur.com/8YeZgfx.png"
                 },
             }),
         });
 
-        const data = await flwResponse.json();
-
+        const data = await response.json();
         if (data.status === "success") {
             return res.json({ success: true, link: data.data.link });
         } else {
-            console.error("Flutterwave API Error Response:", data);
-            return res.status(400).json({ 
-                success: false, 
-                message: data.message || "Flutterwave could not process the payment link." 
-            });
+            console.error("Flutterwave API Error:", data);
+            return res.status(500).json({ success: false, message: "Flutterwave Error" });
         }
-
     } catch (err) {
-        console.error("CRITICAL PAYMENT ERROR:", err);
-        
-        // Handle JWT specific errors
-        if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
-            return res.status(401).json({ success: false, message: "Session expired. Please login again." });
-        }
-
-        return res.status(500).json({ 
+        console.error("Initiate Payment Error:", err);
+        const statusCode = err.name === 'JsonWebTokenError' ? 401 : 500;
+        return res.status(statusCode).json({ 
             success: false, 
-            message: "Internal Server Error",
-            error: err.message 
+            message: err.name === 'JsonWebTokenError' ? "Session Expired" : "Internal Server Error" 
         });
     }
 }

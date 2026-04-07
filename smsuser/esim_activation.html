@@ -435,102 +435,118 @@
         return str ? str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])) : '--';
     }
 
-    async function initiatePayment() {
-        const firstName = document.getElementById('firstName').value.trim();
-        const lastName = document.getElementById('lastName').value.trim();
-        const email = document.getElementById('emailAddress').value.trim();
-        const address = document.getElementById('fullAddress').value.trim();
-        const zip = document.getElementById('zipCode').value.trim();
-        const activationType = document.getElementById('prepaidType').value.trim();
-        const deviceName = document.getElementById('targetNumber').value.trim(); 
+   async function initiatePayment() {
+    // 1. Get Form Values
+    const firstName = document.getElementById('firstName').value.trim();
+    const lastName = document.getElementById('lastName').value.trim();
+    const email = document.getElementById('emailAddress').value.trim();
+    const address = document.getElementById('fullAddress').value.trim();
+    const zip = document.getElementById('zipCode').value.trim();
+    const activationType = document.getElementById('prepaidType').value.trim();
+    const deviceName = document.getElementById('targetNumber').value.trim(); 
 
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-        if(!firstName || !lastName || !email || !address || !zip || !activationType || !deviceName) {
-            alert("Please ensure all fields, including the Device Name, are filled.");
-            return;
-        }
+    // 2. Validation
+    if(!firstName || !lastName || !email || !address || !zip || !activationType || !deviceName) {
+        alert("Please ensure all fields, including the Device Name, are filled.");
+        return;
+    }
 
-        if(!emailRegex.test(email)) {
-            alert("Please enter a valid activation email address.");
-            return;
-        }
+    if(!emailRegex.test(email)) {
+        alert("Please enter a valid activation email address.");
+        return;
+    }
 
-        const plan = document.getElementById('planSelector').value; 
-        const carrier = window.currentSelectedCarrier;
-        const token = localStorage.getItem('userToken');
+    // 3. Prepare Data
+    const rawPlan = document.getElementById('planSelector').value; 
+    // CRITICAL: Convert "$0.5.00 Activation" -> "0.50" to prevent Backend 500 Error
+    const cleanPlanAmount = rawPlan.replace(/[^\d.]/g, ''); 
+    
+    const carrier = window.currentSelectedCarrier;
+    const token = localStorage.getItem('userToken');
 
-        if (!token) {
-            alert("Session expired. Please log in again.");
-            window.location.href = "/login.html";
-            return;
-        }
+    if (!token) {
+        alert("Session expired. Please log in again.");
+        window.location.href = "/login.html";
+        return;
+    }
 
-        const btn = document.getElementById('payBtn');
-        btn.disabled = true;
-        btn.innerText = "Securing Payment Link...";
+    // 4. UI Feedback
+    const btn = document.getElementById('payBtn');
+    btn.disabled = true;
+    btn.innerText = "Securing Payment Link...";
 
-        try {
-            const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${token}` 
-                },
-                body: JSON.stringify({
-                    carrierName: carrier.name,
-                    planAmount: plan,
-                    productType: 'eSIM_Activation',
-                    mobileNumber: deviceName, 
-                    activationEmail: email,   
+    try {
+        const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({
+                carrierName: carrier.name,
+                planAmount: cleanPlanAmount,
+                productType: 'eSIM_Activation',
+                mobileNumber: deviceName, 
+                // Metadata wrapper for backend consumption
+                metadata: { 
                     firstName: firstName,
                     lastName: lastName,
                     address: address,
-                    zip: zip
-                })
-            });
+                    zip: zip,
+                    email: email 
+                }
+            })
+        });
 
-            const data = await res.json();
-            
-            if(data.success && data.link) {
-                window.location.href = data.link; 
-            } else {
-                alert(data.message || "Failed to start activation.");
-                btn.disabled = false;
-                updateButtonPrice();
-            }
-        } catch (err) {
-            console.error("Payment Initiation Error:", err);
-            alert("Connection error. Please check your internet.");
+        const data = await res.json();
+        
+        if(data.success && data.link) {
+            window.location.href = data.link; 
+        } else {
+            alert(data.message || "Failed to start activation.");
             btn.disabled = false;
-            updateButtonPrice();
+            btn.innerText = `Pay ${getNairaPrice(rawPlan)} (Activate)`;
         }
+    } catch (err) {
+        console.error("Payment Initiation Error:", err);
+        alert("Connection error. Please check your internet.");
+        btn.disabled = false;
+        btn.innerText = `Pay ${getNairaPrice(rawPlan)} (Activate)`;
     }
+}
 
-    async function verifyEsimPayment(tid, txRef) {
-        try {
-            const res = await fetch(`${API_BASE_URL}/verify-payment`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('userToken')}` },
-                body: JSON.stringify({ transactionId: tid, txRef: txRef })
-            });
+async function verifyEsimPayment(tid, txRef) {
+    try {
+        const res = await fetch(`${API_BASE_URL}/verify-payment`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
+            },
+            body: JSON.stringify({ transactionId: tid, txRef: txRef })
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('selectionView').classList.add('hidden');
+            document.getElementById('formView').classList.add('hidden');
+            document.getElementById('receiptView').classList.remove('hidden');
+
+            const order = data.order || {};
+            document.getElementById('rCarrier').innerText = escapeHTML(order.nodeName || order.productId);
+            document.getElementById('rName').innerText = escapeHTML(`${order.metadata?.firstName || ''} ${order.metadata?.lastName || ''}`);
+            document.getElementById('rPlan').innerText = escapeHTML(order.planName || order.planAmount);
+            document.getElementById('rID').innerText = escapeHTML(order.paymentReference || tid);
             
-            const data = await res.json();
-            if (data.success) {
-                document.getElementById('selectionView').classList.add('hidden');
-                document.getElementById('formView').classList.add('hidden');
-                document.getElementById('receiptView').classList.remove('hidden');
-
-                const order = data.order || {};
-                document.getElementById('rCarrier').innerText = escapeHTML(order.nodeName);
-                document.getElementById('rName').innerText = escapeHTML(`${order.metadata?.firstName || ''} ${order.metadata?.lastName || ''}`);
-                document.getElementById('rPlan').innerText = escapeHTML(order.planName);
-                document.getElementById('rID').innerText = escapeHTML(order.paymentReference || tid);
-                
-                window.history.replaceState({}, '', window.location.pathname);
-            }
-        } catch (e) { console.error(e); }
+            // Clean URL
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+    } catch (e) { 
+        console.error("Verification Error:", e); 
     }
+}
 
     function contactManagement() {
         const customerName = document.getElementById('rName')?.innerText || "Valued Customer";

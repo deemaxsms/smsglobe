@@ -1161,6 +1161,15 @@ async function handleInitiatePayment(req, res) {
             return res.status(400).json({ success: false, message: "No product specified" });
         }
 
+        amountInUSD = parseFloat(String(planAmount).replace(/[^0-9.]/g, ''));
+
+if (isNaN(amountInUSD) || amountInUSD <= 0) {
+    return res.status(400).json({ 
+        success: false, 
+        message: "Invalid plan amount received." 
+    });
+}
+
         const tx_ref = `SMS-${itemType}-${Date.now()}-${decoded.id.slice(-4)}`;
         const activationEmail = metadata?.email || null;
 

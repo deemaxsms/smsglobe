@@ -459,9 +459,9 @@
     }
 
     // 3. Prepare Data
-    const rawPlan = document.getElementById('planSelector').value; 
-    // CRITICAL: Convert "$0.5.00 Activation" -> "0.50" to prevent Backend 500 Error
-    const cleanPlanAmount = rawPlan.replace(/[^\d.]/g, ''); 
+    const rawPlan = document.getElementById('planSelector').value;
+   const match = rawPlan.match(/(\d+\.?\d*)/);
+const cleanPlanAmount = match ? match[0] : "0.00";
     
     const carrier = window.currentSelectedCarrier;
     const token = localStorage.getItem('userToken');

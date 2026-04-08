@@ -386,6 +386,8 @@ app.all('/api/:action', async (req, res) => {
         case 'esim-refills': return getEsimRefills(req, res);
         case 'update-esim-status':
             return handleAdminEsimUpdate(req, res);
+            case 'update-esim-status':
+    return handleConfirmEsimRefill(req, res);
         case 'create-esim-order-activation': return handleCreateEsimActivation(req, res);
       case 'esim-activation': 
         case 'esim-activations': 
@@ -1547,27 +1549,27 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
             </td>
         </tr>`;
     } else if (isESIM_Refill) {
-        dataTableHtml = `
-            <tr>
-                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
-                    <strong style="font-size: 13px; color: #0F54C6;">${credentials.carrierName}</strong>
-                </td>
-                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Number</span><br>
-                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.mobileNumber}</strong>
-                </td>
-            </tr>
-            <tr>
-                <td class="mobile-full" width="50%" valign="top">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Plan Amount</span><br>
-                    <strong style="font-size: 13px; color: #101828;">${credentials.amount || credentials.planAmount}</strong>
-                </td>
-                <td class="mobile-full" width="50%" valign="top" style="text-align: right;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Confirmation #</span><br>
-                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #F9861E;">${credentials.confirmationNumber || 'PROCESSING'}</strong>
-                </td>
-            </tr>`;
+    dataTableHtml = `
+        <tr>
+            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
+                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || credentials.carrierName}</strong>
+            </td>
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Number</span><br>
+                <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.targetNumber || credentials.mobileNumber}</strong>
+            </td>
+        </tr>
+        <tr>
+            <td class="mobile-full" width="50%" valign="top">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Refill Plan</span><br>
+                <strong style="font-size: 13px; color: #101828;">${credentials.planName || credentials.amount}</strong>
+            </td>
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Confirmation #</span><br>
+                <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #F9861E;">${credentials.confirmationNumber || 'PROCESSING'}</strong>
+            </td>
+        </tr>`;
     } else {
         dataTableHtml = `
             <tr>
@@ -1807,10 +1809,11 @@ async function handleCreateEsimOrder(req, res) {
         return res.status(500).json({ success: false, message: "Server database error" });
     }
 }
+
 async function handleConfirmEsimRefill(req, res) {
     const { tid } = req.query; 
     
-    if (!tid) return res.status(400).send("<h1>❌ Missing Transaction ID</h1>");
+    if (!tid) return res.status(400).json({ success: false, message: "Missing Transaction ID" });
 
     try {
         const updatedOrder = await Order.findOneAndUpdate(
@@ -1820,27 +1823,65 @@ async function handleConfirmEsimRefill(req, res) {
         );
 
         if (updatedOrder) {
-            // Trigger the email notification automatically
             try {
                 await sendDeliveryEmail(updatedOrder.userEmail, {
-                    type: "eSIM",
-                    carrierName: updatedOrder.nodeName || "eSIM Carrier",
-                    mobileNumber: updatedOrder.targetNumber,
+                    type: "eSIM_Refill", // Changed to match your Refill block naming
+                    nodeName: updatedOrder.nodeName || "eSIM Carrier",
+                    targetNumber: updatedOrder.targetNumber,
+                    amount: `${updatedOrder.currency} ${updatedOrder.amount}`,
                     instructions: "Your refill has been processed successfully. Please check your device balance."
                 });
-            } catch (err) { console.error("Email error:", err); }
+            } catch (err) { 
+                console.error("Email error:", err); 
+            }
 
-            return res.send(`
-                <div style="font-family: sans-serif; text-align: center; padding: 50px;">
-                    <h1 style="color: #0F54C6;">✅ eSIM Refill Confirmed!</h1>
-                    <p>The status is now Completed and the user has been notified via email.</p>
-                </div>
-            `);
+            // RETURN JSON INSTEAD OF HTML STRINGS
+            return res.json({ 
+                success: true, 
+                message: "eSIM Refill Confirmed", 
+                order: updatedOrder 
+            });
         } else {
-            return res.send("<h1>ℹ️ Order already processed or not found.</h1>");
+            return res.status(404).json({ success: false, message: "Order not found" });
         }
     } catch (error) {
-        return res.status(500).send("<h1>❌ Server Error</h1>");
+        console.error("Refill Error:", error);
+        return res.status(500).json({ success: false, message: "Internal Server Error" });
+    }
+}
+
+async function processRefill(tid) {
+    const token = localStorage.getItem('smsglobe_admin_token');
+    const confirmationNumber = document.getElementById(`conf-${tid}`).value;
+
+    try {
+        const response = await fetch(`/api/update-esim-status?tid=${tid}`, {
+            method: 'POST', // or PATCH depending on your route
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({ confirmationNumber })
+        });
+
+        // SAFETY CHECK: If response is not JSON, don't try to parse it
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            const text = await response.text();
+            console.error("Server returned non-JSON:", text);
+            throw new Error("Server Error: Check backend logs.");
+        }
+
+        const data = await response.json();
+        if (data.success) {
+            alert("Refill Completed!");
+            fetchRefills(); // Refresh the table
+        } else {
+            alert("Error: " + data.message);
+        }
+    } catch (err) {
+        console.error("Fetch Error:", err);
+        alert("Failed to process refill. Check console.");
     }
 }
 

@@ -548,18 +548,31 @@ async function verifyEsimPayment(tid, txRef) {
     }
 }
 
-    function contactManagement() {
-        const customerName = document.getElementById('rName')?.innerText || "Valued Customer";
-        const carrier = document.getElementById('rCarrier').innerText;
-        const plan = document.getElementById('rPlan')?.innerText || "Standard Plan";
-        const tid = document.getElementById('rID').innerText;
-        const amount = document.getElementById('rAmount')?.innerText || "N/A";
+   function contactManagement() {
+    // 1. Get elements and their inner text safely
+    const customerName = document.getElementById('rName')?.innerText?.trim() || "Valued Customer";
+    const carrier = document.getElementById('rCarrier')?.innerText?.trim() || "N/A";
+    const plan = document.getElementById('rPlan')?.innerText?.trim() || "Standard Plan";
+    const tid = document.getElementById('rID')?.innerText?.trim() || "N/A";
+    
+    // 2. AMOUNT FIX: Specifically targeting the amount field
+    const amountElement = document.getElementById('rAmount');
+    const amount = amountElement ? amountElement.innerText.trim() : "N/A";
 
-        const msg = `🚀 *NEW eSIM ACTIVATION ORDER*\n----------------------------\n👤 *Customer:* ${customerName}\n📶 *Carrier:* ${carrier}\n📦 *Plan:* ${plan}\n💰 *Paid:* ${amount}\n🆔 *REF ID:* ${tid}\n----------------------------\n✅ *Action:* Please generate and send the QR Code.`;
+    // 3. Construct the Message
+    const msg = `🚀 *NEW eSIM ACTIVATION ORDER*
+----------------------------
+👤 *Customer:* ${customerName}
+📶 *Carrier:* ${carrier}
+📦 *Plan:* ${plan}
+💰 *Paid:* ${amount}
+🆔 *REF ID:* ${tid}
+----------------------------
+✅ *Action:* Please generate and send the QR Code.`;
 
-        window.open(`https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`, '_blank');
-    }
-
+    // 4. Open WhatsApp
+    window.open(`https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`, '_blank');
+}
     function toggleSupportMenu() {
         const menu = document.getElementById('supportMenu');
         const isHidden = menu.classList.contains('hidden');

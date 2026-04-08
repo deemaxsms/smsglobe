@@ -131,6 +131,9 @@ const esimActivationSchema = new mongoose.Schema({
     planName: { type: String, required: true }, // e.g., "10GB - 30 Days"
     confirmationNumber: { type: String },       // Added for tracking activation status
     amount: { type: Number, required: true },
+    address: { type: String }, // Add this
+    zip: { type: String },     // Add this
+    deviceModel: { type: String },
     paymentReference: { type: String, unique: true },
     status: { 
         type: String, 
@@ -1336,16 +1339,25 @@ async function handleVerifyPayment(req, res) {
                     instructions: "Your custom RDP is being provisioned. Credentials will be sent to your email within 1-6 hours."
                 };
                 
-            } else if (productType === "eSIM" || productType === "eSIM_Activation") {
-                productDetails.name = productId || "eSIM Service"; 
-                productDetails.plan = planAmount || "Standard";
-                targetNum = mobileNumber;
-                credentials = {
-                    type: productType,
-                    amount: formattedAmount,
-                    instructions: "Request received. Processing usually takes 5-30 minutes."
-                };
-            }
+           } else if (productType === "eSIM" || productType === "eSIM_Activation") {
+    productDetails.name = productId || "eSIM Service"; // This is the Carrier Name
+    productDetails.plan = planAmount || "Standard Plan";
+    
+    // 2. Build the exact 'credentials' object the email function expects
+    credentials = {
+        type: productType,
+        nodeName: productId,           // Maps to 'Carrier' in email
+        planName: planAmount,          // Maps to 'Plan' in email
+        amount: formattedAmount,       // Maps to 'Amount Paid' in email
+        email: activationEmail,        // Target email for activation
+        address: address || "Digital", // Delivery Address
+        zip: zip || "N/A",             // Zip Code
+        mobileNumber: mobileNumber,    // This is the "Device Name" (e.g. iPhone 15)
+        instructions: "Request received. Processing usually takes 5-30 minutes."
+    };
+
+    targetNum = mobileNumber; // Ensure the DB record also has the device/number
+}
 
             // --- 5. ASSEMBLE ORDER OBJECT ---
             const orderData = {
@@ -1496,34 +1508,44 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
                     <strong style="font-size: 13px; color: #101828;">${credentials.deviceLimit || 1} Device(s)</strong>
                 </td>
             </tr>`;
-    } else if (isESIM_Activation) {
-        dataTableHtml = `
-            <tr>
-                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation Email</span><br>
-                    <strong style="font-size: 13px; color: #0F54C6;">${credentials.email || userEmail}</strong>
-                </td>
-                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
-                    <strong style="font-size: 13px; color: #101828;">${credentials.carrierName || 'Global eSIM'}</strong>
-                </td>
-            </tr>
-            <tr>
-                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Delivery Address</span><br>
-                    <strong style="font-size: 12px; color: #344054;">${credentials.address || 'N/A'}</strong>
-                </td>
-                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Zip Code</span><br>
-                    <strong style="font-size: 13px; color: #101828;">${credentials.zipCode || 'N/A'}</strong>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Next Steps</span><br>
-                    <p style="font-size: 12px; color: #344054; margin: 5px 0;">Our technical team is generating your unique QR code for <strong>${credentials.planName || 'your plan'}</strong>. This will be sent to <strong>${credentials.email || userEmail}</strong> within 30 minutes.</p>
-                </td>
-            </tr>`;
+   } else if (isESIM_Activation) {
+    dataTableHtml = `
+        <tr>
+            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation Target Email</span><br>
+                <strong style="font-size: 13px; color: #0F54C6;">${credentials.email || userEmail}</strong>
+            </td>
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier / Node</span><br>
+                <strong style="font-size: 13px; color: #101828;">${credentials.nodeName || credentials.carrierName || 'Global eSIM'}</strong>
+            </td>
+        </tr>
+        <tr>
+            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Device / Model</span><br>
+                <strong style="font-size: 12px; color: #344054;">${credentials.mobileNumber || credentials.deviceModel || 'eSIM Compatible Device'}</strong>
+            </td>
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
+                <strong style="font-size: 13px; color: #101828;">$${credentials.amount || '0.00'}</strong>
+            </td>
+        </tr>
+        <tr>
+            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Delivery Address</span><br>
+                <strong style="font-size: 12px; color: #344054;">${credentials.address || 'Digital Delivery'}</strong>
+            </td>
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Zip Code</span><br>
+                <strong style="font-size: 13px; color: #101828;">${credentials.zip || credentials.zipCode || 'N/A'}</strong>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Next Steps</span><br>
+                <p style="font-size: 12px; color: #344054; margin: 5px 0;">Our technical team is generating your unique QR code for <strong>${credentials.planName || 'your plan'}</strong>. This will be sent to <strong>${credentials.email || userEmail}</strong> within 30 minutes.</p>
+            </td>
+        </tr>`;
     } else if (isESIM_Refill) {
         dataTableHtml = `
             <tr>

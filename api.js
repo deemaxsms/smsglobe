@@ -1652,6 +1652,88 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
     });
 };
 
+const sendResetPasswordEmail = async (userEmail, resetLink) => {
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        }
+    });
+
+    const subject = "🔐 Reset Your SMSGlobe Password";
+    const headerTitle = "Password Reset Request";
+    const subHeader = "We received a request to reset your security credentials.";
+
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            @media screen and (max-width: 480px) {
+                .mobile-full { width: 100% !important; display: block !important; text-align: left !important; padding-bottom: 15px !important; }
+            }
+        </style>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f4f7ff;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+                <td align="center" style="padding: 20px 0;">
+                    <div style="font-family: 'Inter', Helvetica, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; background-color: #ffffff;">
+                        
+                        <div style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 1px solid #f0f0f0;">
+                            <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" style="height: 24px; width: auto; display: block; margin: 0 auto;">
+                        </div>
+
+                        <div style="background-color: #0F54C6; color: white; padding: 35px 24px; text-align: center;">
+                            <h2 style="margin: 0; font-size: 22px;">${headerTitle}</h2>
+                            <p style="opacity: 0.8; font-size: 13px; margin-top: 8px;">${subHeader}</p>
+                        </div>
+
+                        <div style="padding: 24px; color: #344054; text-align: left;">
+                            <p style="font-size: 14px; line-height: 1.5; margin-bottom: 24px;">
+                                Hello, you requested to reset your password. Click the button below to choose a new one. **This link is valid for 1 hour.**
+                            </p>
+                            
+                            <div style="background: #F0F5FE; padding: 20px; border-radius: 12px; border: 1px solid #D1E0FF; margin-bottom: 24px; text-align: center;">
+                                <p style="margin: 0 0 10px 0; font-size: 10px; color: #0F54C6; font-weight: 800; text-transform: uppercase;">Security Action Required</p>
+                                
+                                <div style="margin: 20px 0;">
+                                    <a href="${resetLink}" style="background-color: #0F54C6; color: #ffffff; padding: 14px 30px; text-decoration: none; font-size: 14px; font-weight: bold; border-radius: 8px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(15, 84, 198, 0.2);">
+                                        Reset My Password
+                                    </a>
+                                </div>
+
+                                <p style="font-size: 11px; color: #667085; margin: 0;">
+                                    If the button doesn't work, copy and paste this link into your browser:<br>
+                                    <span style="color: #0F54C6; word-break: break-all;">${resetLink}</span>
+                                </p>
+                            </div>
+
+                            <p style="font-size: 12px; color: #667085;">
+                                If you did not request this, please ignore this email. Your account remains secure.
+                            </p>
+                        </div>
+
+                        <div style="background: #F9FAFB; padding: 20px; text-align: center; border-top: 1px solid #EAECF0;">
+                            <p style="font-size: 11px; color: #667085; margin: 0;">&copy; 2026 <strong>SMSGlobe</strong>. Secure Digital Services.</p>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>`;
+
+    await transporter.sendMail({
+        from: `"SMSGlobe Security" <${process.env.EMAIL_USER}>`,
+        to: userEmail,
+        subject: subject,
+        html: htmlContent
+    });
+};
+
 // 2. GET ALL Proxies (Sorted by Newest)
 async function handleGetProxies(req, res) {
     try {
@@ -2600,6 +2682,7 @@ async function handleForgotPasswordRequest(req, res) {
         await user.save();
 
         const resetLink = `https://smsglobe.vercel.app/change-password.html?token=${token}`;
+        await sendResetPasswordEmail(user.email, resetLink);
 
         // TODO: Integrate Nodemailer/SendGrid here to send the actual email.
         console.log("Reset link for testing:", resetLink);

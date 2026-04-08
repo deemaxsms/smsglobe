@@ -386,8 +386,6 @@ app.all('/api/:action', async (req, res) => {
         case 'esim-refills': return getEsimRefills(req, res);
         case 'update-esim-status':
             return handleAdminEsimUpdate(req, res);
-            case 'update-esim-status':
-    return handleConfirmEsimRefill(req, res);
         case 'create-esim-order-activation': return handleCreateEsimActivation(req, res);
       case 'esim-activation': 
         case 'esim-activations': 
@@ -1850,7 +1848,7 @@ async function handleConfirmEsimRefill(req, res) {
     }
 }
 
-async function processRefill(tid) {
+async function handleAdminEsimUpdate(tid) {
     const token = localStorage.getItem('smsglobe_admin_token');
     const confirmationNumber = document.getElementById(`conf-${tid}`).value;
 

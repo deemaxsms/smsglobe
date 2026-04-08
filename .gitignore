@@ -1,5 +1,22 @@
-# Ignore the .env file which contains sensitive information
-#Environment variables should not be committed to version control
+# Sensitive Environment Variables
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-node_modules
+# Dependency Folders
+node_modules/
+jspm_packages/
+
+# Vercel Folder
+.vercel
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS Files
+.DS_Store
+Thumbs.db

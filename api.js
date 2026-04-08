@@ -1568,19 +1568,21 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
                 <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #F9861E;">${credentials.confirmationNumber || 'PROCESSING'}</strong>
             </td>
         </tr>`;
-    } else {
-        dataTableHtml = `
-            <tr>
-                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation Code</span><br>
-                    <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.activationCode || credentials.password}</strong>
-                </td>
-                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 10px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
-                    <strong style="font-size: 14px; color: #101828;">${credentials.amount}</strong>
-                </td>
-            </tr>`;
-    }
+   } else {
+    dataTableHtml = `
+        <tr>
+            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation Code / Refill ID</span><br>
+                <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #0F54C6;">
+                    ${credentials.activationCode || credentials.confirmationNumber || 'N/A'}
+                </strong>
+            </td>
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 10px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
+                <strong style="font-size: 14px; color: #101828;">${credentials.amount}</strong>
+            </td>
+        </tr>`;
+}
 
     const htmlContent = `
     <!DOCTYPE html>
@@ -1887,6 +1889,7 @@ async function handleAdminEsimUpdate(req, res) {
                 nodeName: updatedOrder.nodeName || "Carrier",
                 targetNumber: updatedOrder.targetNumber,
                 amount: `${updatedOrder.currency} ${updatedOrder.amount}`,
+                activationCode: confirmationNumber || updatedOrder.confirmationNumber,
                 confirmationNumber: confirmationNumber,
                 instructions: "Your refill is now active."
             });

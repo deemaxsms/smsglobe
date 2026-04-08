@@ -2599,8 +2599,6 @@ async function handleForgotPasswordRequest(req, res) {
         user.resetPasswordExpires = Date.now() + 3600000; 
         await user.save();
 
-        // 3. The Link
-        // For production, use your actual domain (e.g., https://smsglobe.com)
         const resetLink = `https://smsglobe.vercel.app/change-password.html?token=${token}`;
 
         // TODO: Integrate Nodemailer/SendGrid here to send the actual email.

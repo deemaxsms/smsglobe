@@ -1848,38 +1848,58 @@ async function handleConfirmEsimRefill(req, res) {
     }
 }
 
-async function handleAdminEsimUpdate(tid) {
-    const token = localStorage.getItem('smsglobe_admin_token');
-    const confirmationNumber = document.getElementById(`conf-${tid}`).value;
+// BACKEND: handleAdminEsimUpdate
+async function handleAdminEsimUpdate(req, res) {
+    // 1. Get Tid from query or body (consistency is key)
+    const tid = req.query.tid || req.body.tid;
+    const { confirmationNumber } = req.body;
+
+    if (!tid) return res.status(400).json({ success: false, message: "TID is required" });
 
     try {
-        const response = await fetch(`/api/update-esim-status?tid=${tid}`, {
-            method: 'POST', // or PATCH depending on your route
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}` 
+        // 2. IMPORTANT: Check your productType. Is it 'eSIM' or 'eSIM_Refill'?
+        // Using an array $in covers both possibilities.
+        const updatedOrder = await Order.findOneAndUpdate(
+            { 
+                paymentReference: tid, 
+                productType: { $in: ['eSIM', 'eSIM_Refill'] } 
             },
-            body: JSON.stringify({ confirmationNumber })
-        });
+            { 
+                $set: { 
+                    status: 'Completed', 
+                    confirmationNumber: confirmationNumber, 
+                    updatedAt: new Date() 
+                } 
+            },
+            { new: true }
+        );
 
-        // SAFETY CHECK: If response is not JSON, don't try to parse it
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-            const text = await response.text();
-            console.error("Server returned non-JSON:", text);
-            throw new Error("Server Error: Check backend logs.");
+        // 3. If no order found, return 404 JSON (NOT an HTML string)
+        if (!updatedOrder) {
+            console.error(`Order with TID ${tid} not found.`);
+            return res.status(404).json({ success: false, message: "Order record not found." });
         }
 
-        const data = await response.json();
-        if (data.success) {
-            alert("Refill Completed!");
-            fetchRefills(); // Refresh the table
-        } else {
-            alert("Error: " + data.message);
+        // 4. Trigger Email (Wrapped in try/catch so it doesn't crash the main process)
+        try {
+            await sendDeliveryEmail(updatedOrder.userEmail, {
+                type: "eSIM_Refill",
+                nodeName: updatedOrder.nodeName || "Carrier",
+                targetNumber: updatedOrder.targetNumber,
+                amount: `${updatedOrder.currency} ${updatedOrder.amount}`,
+                confirmationNumber: confirmationNumber,
+                instructions: "Your refill is now active."
+            });
+        } catch (emailErr) {
+            console.error("Email failed but order was saved:", emailErr.message);
         }
-    } catch (err) {
-        console.error("Fetch Error:", err);
-        alert("Failed to process refill. Check console.");
+
+        // 5. Always return JSON
+        return res.json({ success: true, message: "Refill marked as completed." });
+
+    } catch (error) {
+        console.error("CRITICAL BACKEND ERROR:", error);
+        return res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
     }
 }
 

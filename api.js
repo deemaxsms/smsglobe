@@ -262,9 +262,8 @@ const orderSchema = new mongoose.Schema({
 
 orderSchema.index({ createdAt: -1 });
 
-const Order = mongoose.models.Order || mongoose.model('Order', new mongoose.Schema({}, { strict: false }), 'orders');
+const Order = mongoose.models.Order || mongoose.model('Order', orderSchema);
 
-// --- 3. OPTIMIZED MONGOOSE CONNECTION ---
 let isConnected = false;
 const connectDB = async () => {
     if (isConnected) return;
@@ -1102,18 +1101,24 @@ async function handleInitiatePayment(req, res) {
             amountInUSD = item.plans[planIndex].price;
             redirectUrl = "https://smsglobe.vercel.app/smsuser/user_proxy.html";
         } 
-        else if (carrierName) {
-            itemType = metadata ? "eSIM_Activation" : "eSIM";
-            title = metadata ? `eSIM Activation: ${carrierName}` : `eSIM Refill: ${carrierName}`;
-            
-            // CLEAN PARSE: Handle strings like "$0.5.00 Activation" or "0.5.00"
-            const match = String(planAmount).match(/(\d+\.?\d*)/);
-            amountInUSD = match ? parseFloat(match[0]) : 0;
+       else if (carrierName) {
+    itemType = metadata ? "eSIM_Activation" : "eSIM";
+    title = metadata ? `eSIM Activation: ${carrierName}` : `eSIM Refill: ${carrierName}`;    
+    const priceMatch = String(planAmount || "").match(/(\d+\.?\d*)/);
+    amountInUSD = priceMatch ? parseFloat(priceMatch[0]) : 0;
+    if (amountInUSD <= 0) {
+        return res.status(400).json({ 
+            success: false, 
+            message: "Could not determine plan price. Please try again." 
+        });
+    }
+    redirectUrl = metadata 
+        ? "https://smsglobe.vercel.app/smsuser/esim_activation.html" 
+        : "https://smsglobe.vercel.app/smsuser/esim_refill.html";
 
-            redirectUrl = metadata 
-                ? "https://smsglobe.vercel.app/smsuser/esim_activation.html" 
-                : "https://smsglobe.vercel.app/smsuser/esim_refill.html";
-        }
+    // 5. Success Log (Optional, for your Vercel logs)
+    console.log(`Processing ${itemType} for ${carrierName}: $${amountInUSD} USD`);
+}
         else if (rdpId) {
             itemType = "RDP";
             redirectUrl = "https://smsglobe.vercel.app/smsuser/user_rdp.html";

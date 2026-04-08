@@ -544,35 +544,50 @@
         `;
     }
 
-  async function initDashboard() {
-    // 1. GLOBAL CHECK: Maintenance always takes priority
+ async function initDashboard() {
+    // 1. Maintenance Check
     await checkMaintenance(); 
 
-    // 2. AUTH CHECK: Ensure token exists
+    // 2. Auth Check: Initial local check
     const token = localStorage.getItem('userToken');
     if (!token) { 
+        console.warn("No token found, redirecting to login...");
         window.location.href = 'user_login.html'; 
         return; 
     }
     
     try {
-        // 3. FETCH PROFILE: Using your verified API endpoint
+        // 3. Fetch Profile
         const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            method: 'GET',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
         });
-        const userData = await profileRes.json();
 
-        // 4. SECURITY GATE: Handle 403 or Suspended status from API
-        if (profileRes.status === 403 || userData.status === 'suspended' || userData.isSuspended) {
-            showSuspendedNotice();
-            return; // Stop execution for suspended users
+        // --- NEW: Handle 401 Unauthorized explicitly ---
+        if (profileRes.status === 401) {
+            console.error("Session expired or invalid token.");
+            localStorage.removeItem('userToken'); // Clean up
+            window.location.href = 'user_login.html';
+            return;
         }
 
-        // 5. DATA MAPPING: Match backend 'fullName' key
+        const userData = await profileRes.json();
+
+        // 4. Security Gate: Handle 403 or Suspended status
+        if (profileRes.status === 403 || userData.status === 'suspended' || userData.isSuspended) {
+            if (typeof showSuspendedNotice === 'function') showSuspendedNotice();
+            return; 
+        }
+
+        if (!profileRes.ok) throw new Error(`HTTP error! status: ${profileRes.status}`);
+
+        // 5. Data Mapping
         const displayName = userData.fullName || "User";
         const displayEmail = userData.email || "No email";
 
-        // --- FIXED: Use variables to check if elements exist before setting innerText ---
         const nameEl = document.getElementById('userName');
         const emailEl = document.getElementById('userEmail');
         const initialsEl = document.getElementById('userInitials');
@@ -580,9 +595,9 @@
         if (nameEl) nameEl.innerText = displayName;
         if (emailEl) emailEl.innerText = displayEmail;
 
-        // 6. INITIALS LOGIC: Extract letters from the name (e.g., "John Doe" -> "JD")
+        // 6. Initials Logic
         const nameParts = displayName.trim().split(/\s+/);
-        let initials = "U"; // Default fallback
+        let initials = "U"; 
         
         if (nameParts.length >= 2 && nameParts[0][0] && nameParts[1][0]) {
             initials = (nameParts[0][0] + nameParts[1][0]).toUpperCase();
@@ -590,27 +605,29 @@
             initials = nameParts[0][0].toUpperCase();
         }
         
-        // --- FIXED: Safe update for initials ---
         if (initialsEl) initialsEl.innerText = initials;
         
-        // 7. PARALLEL LOADING: Fetch dashboard content efficiently
-        // Note: These functions must be defined elsewhere in your script
-        await Promise.all([
-            typeof fetchFeaturedProxies === 'function' ? fetchFeaturedProxies() : Promise.resolve(), 
-            typeof fetchFeaturedVPNs === 'function' ? fetchFeaturedVPNs() : Promise.resolve()
-        ]);
+        // 7. Parallel Loading
+        // We wrap these in try-catch so one failing component doesn't break the whole page
+        try {
+            await Promise.allSettled([
+                typeof fetchFeaturedProxies === 'function' ? fetchFeaturedProxies() : Promise.resolve(), 
+                typeof fetchFeaturedVPNs === 'function' ? fetchFeaturedVPNs() : Promise.resolve()
+            ]);
 
-        // Secondary loaders - Added basic safety checks to prevent crashes
-        if (typeof loadActivations === 'function') loadActivations();
-        if (typeof loadFeaturedCarriers === 'function') loadFeaturedCarriers();
-        if (typeof loadRDP === 'function') loadRDP();
-        if (typeof loadGifts === 'function') loadGifts();
+            if (typeof loadActivations === 'function') loadActivations();
+            if (typeof loadFeaturedCarriers === 'function') loadFeaturedCarriers();
+            if (typeof loadRDP === 'function') loadRDP();
+            if (typeof loadGifts === 'function') loadGifts();
+        } catch (loadErr) {
+            console.warn("Some dashboard components failed to load:", loadErr);
+        }
 
     } catch (err) { 
         console.error("Dashboard init error:", err);
-        // Only logout if the error is specifically related to an expired session (401)
-        if (err.message && err.message.includes('401')) {
-            logout(); 
+        // Generic error handling
+        if (document.getElementById('dashboardContent')) {
+            document.getElementById('dashboardContent').innerText = "Error loading dashboard. Please refresh.";
         }
     }
 }

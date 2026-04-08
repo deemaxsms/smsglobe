@@ -1068,15 +1068,15 @@ async function handleInitiatePayment(req, res) {
     const token = authHeader && authHeader.split(' ')[1];
 
     try {
-        // --- NEW: FETCH DYNAMIC SETTINGS FROM DB ---
+        // 1. Fetch Dynamic Settings
         const settings = await SystemSettings.findOne();
-        const LIVE_RATE = settings?.exchangeRate || 1380; // Fallback to 1380 if DB is empty
-        const MARKUP = settings?.globalMarkup || 0;      // Fallback to 0% markup
-        // --------------------------------------------
+        const LIVE_RATE = settings?.exchangeRate || 1380;
+        const MARKUP = settings?.globalMarkup || 0;
 
+        // 2. Auth Check
         const decoded = jwt.verify(token, JWT_SECRET);
         const user = await User.findById(decoded.id);
-        if (!user) return res.status(404).json({ success: false, message: "User find failed" });
+        if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
         let item;
         let itemType;
@@ -1085,18 +1085,13 @@ async function handleInitiatePayment(req, res) {
         let finalAmountNGN = 0;
         let redirectUrl = "https://smsglobe.vercel.app/smsuser/user_dashboard.html";
 
+        // 3. Determine Product and Base USD Price
         if (vpnId) {
             item = await VPN.findById(vpnId);
             if (!item || !item.plans[planIndex]) return res.status(404).json({ success: false, message: "VPN Plan not found" });
             itemType = "VPN";
             title = "SMSGlobe VPN";
             amountInUSD = item.plans[planIndex].price;
-            
-            // --- APPLY DYNAMIC RATE + MARKUP ---
-            const basePriceNGN = amountInUSD * LIVE_RATE;
-            const markupAmount = basePriceNGN * (MARKUP / 100);
-            finalAmountNGN = Math.round(basePriceNGN + markupAmount);
-            
             redirectUrl = "https://smsglobe.vercel.app/smsuser/user_vpn.html";
         } 
         else if (proxyId) {
@@ -1105,23 +1100,15 @@ async function handleInitiatePayment(req, res) {
             itemType = "Proxy";
             title = "SMSGlobe Proxy";
             amountInUSD = item.plans[planIndex].price;
-            
-            // --- APPLY DYNAMIC RATE + MARKUP ---
-            const basePriceNGN = amountInUSD * LIVE_RATE;
-            const markupAmount = basePriceNGN * (MARKUP / 100);
-            finalAmountNGN = Math.round(basePriceNGN + markupAmount);
-            
             redirectUrl = "https://smsglobe.vercel.app/smsuser/user_proxy.html";
         } 
         else if (carrierName) {
             itemType = metadata ? "eSIM_Activation" : "eSIM";
             title = metadata ? `eSIM Activation: ${carrierName}` : `eSIM Refill: ${carrierName}`;
-            amountInUSD = parseFloat(planAmount.replace(/[$,]/g, ''));
             
-            // --- APPLY DYNAMIC RATE + MARKUP ---
-            const basePriceNGN = amountInUSD * LIVE_RATE;
-            const markupAmount = basePriceNGN * (MARKUP / 100);
-            finalAmountNGN = Math.round(basePriceNGN + markupAmount);
+            // CLEAN PARSE: Handle strings like "$0.5.00 Activation" or "0.5.00"
+            const match = String(planAmount).match(/(\d+\.?\d*)/);
+            amountInUSD = match ? parseFloat(match[0]) : 0;
 
             redirectUrl = metadata 
                 ? "https://smsglobe.vercel.app/smsuser/esim_activation.html" 
@@ -1130,49 +1117,37 @@ async function handleInitiatePayment(req, res) {
         else if (rdpId) {
             itemType = "RDP";
             redirectUrl = "https://smsglobe.vercel.app/smsuser/user_rdp.html";
-
             const extraCPU = metadata?.extraCPU || 0;
             const extraStorage = metadata?.extraStorage || 0;
             const addonTotal = (extraCPU * 5000) + (extraStorage * 200);
 
             if (typeof rdpId === 'string' && rdpId.startsWith('tier')) {
-                const tierPrices = {
-                    tier1: 45000, tier2: 55000, tier3: 65000,
-                    tier4: 80000, tier5: 90000, tier6: 130000
-                };
-
+                const tierPrices = { tier1: 45000, tier2: 55000, tier3: 65000, tier4: 80000, tier5: 90000, tier6: 130000 };
                 const basePriceNGN = tierPrices[rdpId] || 45000;
                 title = `SMSGlobe RDP: ${planName || rdpId.toUpperCase()}`;
                 finalAmountNGN = basePriceNGN + addonTotal;
-            } 
-            else {
-                try {
-                    item = await RDP.findById(rdpId);
-                    if (!item) return res.status(404).json({ success: false, message: "RDP Plan not found" });
-                    
-                    title = `SMSGlobe RDP: ${item.name}`;
-                    finalAmountNGN = item.price + addonTotal;
-                } catch (err) {
-                    return res.status(400).json({ success: false, message: "Invalid RDP ID provided" });
-                }
+            } else {
+                item = await RDP.findById(rdpId);
+                if (!item) return res.status(404).json({ success: false, message: "RDP Plan not found" });
+                title = `SMSGlobe RDP: ${item.name}`;
+                finalAmountNGN = item.price + addonTotal;
             }
-        } 
-        else {
+        } else {
             return res.status(400).json({ success: false, message: "No product specified" });
         }
 
-        amountInUSD = parseFloat(String(planAmount).replace(/[^0-9.]/g, ''));
+        // 4. Final Price Calculation (Skip for RDP as it's already in NGN)
+        if (itemType !== "RDP") {
+            if (isNaN(amountInUSD) || amountInUSD <= 0) {
+                return res.status(400).json({ success: false, message: "Invalid amount calculated." });
+            }
+            const basePriceNGN = amountInUSD * LIVE_RATE;
+            const markupAmount = basePriceNGN * (MARKUP / 100);
+            finalAmountNGN = Math.round(basePriceNGN + markupAmount);
+        }
 
-if (isNaN(amountInUSD) || amountInUSD <= 0) {
-    return res.status(400).json({ 
-        success: false, 
-        message: "Invalid plan amount received." 
-    });
-}
-
+        // 5. Initiate Flutterwave
         const tx_ref = `SMS-${itemType}-${Date.now()}-${decoded.id.slice(-4)}`;
-        const activationEmail = metadata?.email || null;
-
         const response = await fetch("https://api.flutterwave.com/v3/payments", {
             method: "POST",
             headers: {
@@ -1180,23 +1155,16 @@ if (isNaN(amountInUSD) || amountInUSD <= 0) {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                tx_ref: tx_ref,
+                tx_ref,
                 amount: finalAmountNGN,
                 currency: "NGN",
                 redirect_url: redirectUrl,
-                customer: {
-                    email: user.email,
-                    name: user.fullName,
-                },
+                customer: { email: user.email, name: user.fullName },
                 meta: {
                     userId: decoded.id,
-                    email: activationEmail,
+                    email: metadata?.email || null,
                     productType: itemType,
-                    productId: rdpId || vpnId || proxyId || carrierName, 
-                    planIndex: planIndex,
-                    extraCPU: metadata?.extraCPU || 0,
-                    extraStorage: metadata?.extraStorage || 0,
-                    osChoice: metadata?.osChoice || null,
+                    productId: rdpId || vpnId || proxyId || carrierName,
                     firstName: metadata?.firstName || null,
                     lastName: metadata?.lastName || null,
                     address: metadata?.address || null,
@@ -1205,11 +1173,7 @@ if (isNaN(amountInUSD) || amountInUSD <= 0) {
                 },
                 customizations: {
                     title: title,
-                    description: itemType === "RDP" 
-                        ? `${planName || title} (${metadata?.osChoice || 'Windows'})` 
-                        : itemType.includes("eSIM")
-                        ? `Refill/Activation for ${mobileNumber || carrierName}`
-                        : `${item?.name || title} ($${amountInUSD} USD)`,
+                    description: `Payment for ${title}`,
                     logo: "https://imgur.com/8YeZgfx.png"
                 },
             }),
@@ -1219,16 +1183,14 @@ if (isNaN(amountInUSD) || amountInUSD <= 0) {
         if (data.status === "success") {
             return res.json({ success: true, link: data.data.link });
         } else {
-            console.error("Flutterwave API Error:", data);
-            return res.status(500).json({ success: false, message: "Flutterwave Error" });
+            console.error("Flutterwave Error:", data);
+            return res.status(500).json({ success: false, message: "Payment provider error" });
         }
+
     } catch (err) {
-        console.error("Initiate Payment Error:", err);
+        console.error("Critical Error:", err);
         const statusCode = err.name === 'JsonWebTokenError' ? 401 : 500;
-        return res.status(statusCode).json({ 
-            success: false, 
-            message: err.name === 'JsonWebTokenError' ? "Session Expired" : "Internal Server Error" 
-        });
+        return res.status(statusCode).json({ success: false, message: "Internal server error" });
     }
 }
 

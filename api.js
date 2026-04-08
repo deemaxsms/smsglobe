@@ -2683,7 +2683,7 @@ async function handleForgotPasswordRequest(req, res) {
         user.resetPasswordExpires = Date.now() + 3600000; 
         await user.save();
         const resetLink = `https://smsglobe.vercel.app/smsuser/change-password.html?token=${token}`;
-       await sendResetPasswordEmail(user.email, userResetLink); 
+    await sendResetPasswordEmail(user.email, resetLink);
         console.log("Reset link for testing:", resetLink);
         return res.json({ 
             success: true, 
@@ -2769,7 +2769,7 @@ async function handleAdminForgotPasswordRequest(req, res) {
         const resetLink = `https://smsglobe.vercel.app/smsadmin/sms_forgot.html?token=${token}`;
         
         // Use your email utility (ensure it's configured for Admin notifications)
-await sendResetPasswordEmail(admin.email, adminResetLink, true); 
+        await sendResetPasswordEmail(admin.email, resetLink, true);
         console.log("Admin Reset Link:", resetLink);
 
         return res.json({ 

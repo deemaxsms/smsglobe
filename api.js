@@ -1924,21 +1924,29 @@ async function handleAdminEsimActivationUpdate(req, res) {
         const isFinished = status.toLowerCase() === 'completed' || status.toLowerCase() === 'successful';
         
         // 3. Trigger Email for successful activations with Address and Zip included
+       // 3. Trigger Email for successful activations with CORRECT mapping
         if (isFinished) {
             try {
+                // We create the 'credentials' object using the EXACT keys 
+                // that your sendDeliveryEmail function expects.
                 await sendDeliveryEmail(updatedOrder.userEmail, {
-                    type: "eSIM Activation",
-                    amount: updatedOrder.planName, 
-                    confirmationNumber: confirmationNumber || "Activation Complete",
-                    carrierName: updatedOrder.nodeName || "Global eSIM",
+                    type: "eSIM_Activation", // Must match your template check
                     
-                    // --- PERSONAL DATA FROM METADATA ---
-                    customerName: `${updatedOrder.metadata?.firstName || ''} ${updatedOrder.metadata?.lastName || ''}`.trim(),
-                    shippingAddress: updatedOrder.metadata?.address || "N/A",
-                    zipCode: updatedOrder.metadata?.zip || "N/A",
-                    // ------------------------------------
-
-                    instructions: "Your eSIM activation is complete. Please use the Profile ID/Activation code provided to set up your device."
+                    // Display Fields
+                    nodeName: updatedOrder.nodeName || "Global eSIM",
+                    planName: updatedOrder.planName,
+                    amount: `${updatedOrder.currency} ${updatedOrder.amount}`, // Show real price
+                    
+                    // Metadata Fields (Must match credentials.address, credentials.zip)
+                    address: updatedOrder.metadata?.address || "Digital Delivery",
+                    zip: updatedOrder.metadata?.zip || "N/A",
+                    mobileNumber: updatedOrder.targetNumber || "eSIM Device", // Device Model
+                    email: updatedOrder.metadata?.email || updatedOrder.userEmail,
+                    
+                    // Activation Data
+                    activationCode: confirmationNumber || updatedOrder.confirmationNumber,
+                    
+                    instructions: "Your eSIM activation is complete. Please use the Activation code provided to set up your device."
                 });
             } catch (emailError) {
                 console.error("📧 Email Delivery Failed:", emailError);

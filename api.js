@@ -39,6 +39,10 @@ const adminSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true, index: true },
     password: { type: String, required: true },
+    
+    // Add these fields to handle the Admin forgot password flow
+    resetPasswordToken: { type: String },
+    resetPasswordExpires: { type: Date }
 }, { timestamps: true });
 
 const Admin = mongoose.models.Admin || mongoose.model('Admin', adminSchema);
@@ -424,6 +428,13 @@ case 'activate-number': // If your frontend uses this
     return handleActivatePurchase(req, res);
 case 'change-passwords': 
     if (req.method === 'POST') return handleAdminChangePassword(req, res);
+    break;
+    case 'admin-forgot-password':
+    if (req.method === 'POST') return handleAdminForgotPasswordRequest(req, res);
+    break;
+
+case 'admin-reset-password':
+    if (req.method === 'POST') return handleAdminResetPassword(req, res);
     break;
   // Change this in your router file
 case 'update-system-settings': 
@@ -1652,7 +1663,7 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
     });
 };
 
-const sendResetPasswordEmail = async (userEmail, resetLink) => {
+const sendResetPasswordEmail = async (userEmail, resetLink, isAdmin = false) => {
     const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
@@ -1661,9 +1672,11 @@ const sendResetPasswordEmail = async (userEmail, resetLink) => {
         }
     });
 
-    const subject = "🔐 Reset Your SMSGlobe Password";
-    const headerTitle = "Password Reset Request";
-    const subHeader = "We received a request to reset your security credentials.";
+    // Dynamic content based on account type
+    const accountType = isAdmin ? "Admin Control Panel" : "User Account";
+    const subject = isAdmin ? "🔐 Urgent: Admin Password Reset" : "🔐 Reset Your SMSGlobe Password";
+    const headerTitle = isAdmin ? "Admin Security Update" : "Password Reset Request";
+    const subHeader = `Security credentials for your ${accountType} are being updated.`;
 
     const htmlContent = `
     <!DOCTYPE html>
@@ -1686,29 +1699,28 @@ const sendResetPasswordEmail = async (userEmail, resetLink) => {
                             <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" style="height: 24px; width: auto; display: block; margin: 0 auto;">
                         </div>
 
-                        <div style="background-color: #0F54C6; color: white; padding: 35px 24px; text-align: center;">
+                        <div style="background-color: ${isAdmin ? '#101828' : '#0F54C6'}; color: white; padding: 35px 24px; text-align: center;">
                             <h2 style="margin: 0; font-size: 22px;">${headerTitle}</h2>
                             <p style="opacity: 0.8; font-size: 13px; margin-top: 8px;">${subHeader}</p>
                         </div>
 
                         <div style="padding: 24px; color: #344054; text-align: left;">
                             <p style="font-size: 14px; line-height: 1.5; margin-bottom: 24px;">
-                                Hello, you requested to reset your password. Click the button below to choose a new one. **This link is valid for 1 hour.**
+                                Hello, a request was made to reset the password for the <strong>${accountType}</strong> associated with this email. Click the button below to proceed. <strong>This link is valid for 1 hour.</strong>
                             </p>
                             
                             <div style="background: #F0F5FE; padding: 20px; border-radius: 12px; border: 1px solid #D1E0FF; margin-bottom: 24px; text-align: center;">
                                 <p style="margin: 0 0 10px 0; font-size: 10px; color: #0F54C6; font-weight: 800; text-transform: uppercase;">Security Action Required</p>
                                 
                                 <div style="margin: 20px 0;">
-                                    <a href="${resetLink}" style="background-color: #0F54C6; color: #ffffff; padding: 14px 30px; text-decoration: none; font-size: 14px; font-weight: bold; border-radius: 8px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(15, 84, 198, 0.2);">
-                                        Reset My Password
+                                    <a href="${resetLink}" style="background-color: #0F54C6; color: #ffffff; padding: 14px 30px; text-decoration: none; font-size: 14px; font-weight: bold; border-radius: 8px; display: inline-block; shadow: 0 4px 6px -1px rgba(15, 84, 198, 0.2);">
+                                        Reset ${isAdmin ? 'Admin' : 'My'} Password
                                     </a>
                                 </div>
-
                             </div>
 
                             <p style="font-size: 12px; color: #667085;">
-                                If you did not request this, please ignore this email. Your account remains secure.
+                                If you did not request this, please contact technical support immediately.
                             </p>
                         </div>
 
@@ -2663,26 +2675,16 @@ async function handleForgotPasswordRequest(req, res) {
         if (!email) return res.status(400).json({ success: false, message: "Email required" });
 
         const user = await User.findOne({ email: email.toLowerCase().trim() });
-
-        // Security best practice: don't reveal if the email doesn't exist.
         if (!user) {
             return res.json({ success: true, message: "If an account exists, a reset link has been sent." });
         }
-
-        // 1. Create a secure random token
         const token = crypto.randomBytes(32).toString('hex');
-
-        // 2. Set token and expiry (1 hour)
         user.resetPasswordToken = token;
         user.resetPasswordExpires = Date.now() + 3600000; 
         await user.save();
-
         const resetLink = `https://smsglobe.vercel.app/smsuser/change-password.html?token=${token}`;
-        await sendResetPasswordEmail(user.email, resetLink);
-
-        // TODO: Integrate Nodemailer/SendGrid here to send the actual email.
+       await sendResetPasswordEmail(user.email, userResetLink); 
         console.log("Reset link for testing:", resetLink);
-
         return res.json({ 
             success: true, 
             message: "A password reset link has been sent to your email." 
@@ -2735,6 +2737,87 @@ async function handleAdminChangePassword(req, res) {
 
     } catch (error) {
         console.error("Admin Password Error:", error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+}
+
+async function handleAdminForgotPasswordRequest(req, res) {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ success: false, message: "Email required" });
+
+        // Search the Admin collection specifically
+        const admin = await Admin.findOne({ email: email.toLowerCase().trim() });
+
+        // Security: Same response whether admin exists or not
+        if (!admin) {
+            return res.json({ 
+                success: true, 
+                message: "If an account exists, a reset link has been sent." 
+            });
+        }
+
+        // 1. Generate a secure token
+        const token = crypto.randomBytes(32).toString('hex');
+
+        // 2. Set token and expiry on the ADMIN record (1 hour)
+        admin.resetPasswordToken = token;
+        admin.resetPasswordExpires = Date.now() + 3600000; 
+        await admin.save();
+
+        // 3. Admin-specific reset link
+        const resetLink = `https://smsglobe.vercel.app/smsadmin/sms_forgot.html?token=${token}`;
+        
+        // Use your email utility (ensure it's configured for Admin notifications)
+await sendResetPasswordEmail(admin.email, adminResetLink, true); 
+        console.log("Admin Reset Link:", resetLink);
+
+        return res.json({ 
+            success: true, 
+            message: "A password reset link has been sent to your email." 
+        });
+
+    } catch (err) {
+        console.error("Admin Forgot Password Error:", err);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+}
+
+async function handleAdminResetPassword(req, res) {
+    try {
+        const { token, newPassword } = req.body;
+
+        if (!token || !newPassword) {
+            return res.status(400).json({ success: false, message: "Invalid request" });
+        }
+
+        // Find admin with valid token AND ensure it hasn't expired
+        const admin = await Admin.findOne({
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: Date.now() } // $gt means "greater than"
+        });
+
+        if (!admin) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Password reset link is invalid or has expired." 
+            });
+        }
+
+        // Hash the new password
+        const salt = await bcrypt.genSalt(10);
+        admin.password = await bcrypt.hash(newPassword, salt);
+
+        // Clear the reset fields so the token can't be used again
+        admin.resetPasswordToken = undefined;
+        admin.resetPasswordExpires = undefined;
+        
+        await admin.save();
+
+        return res.json({ success: true, message: "Admin password reset successfully!" });
+
+    } catch (error) {
+        console.error("Admin Reset Final Error:", error);
         return res.status(500).json({ success: false, message: "Internal server error" });
     }
 }

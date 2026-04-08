@@ -267,7 +267,7 @@
     ];
 
     const refillAmounts = [];
-    for (let i = 15; i <= 100; i += 5) { refillAmounts.push(`$${i}.00`); }
+    for (let i = 0.2; i <= 100; i += 5) { refillAmounts.push(`$${i}.00`); }
 
     async function getLiveExchangeRate() {
         try {
@@ -429,7 +429,6 @@
         
         if (isHidden) {
             menu.classList.remove('hidden');
-            // Small timeout to allow transition to trigger
             setTimeout(() => {
                 menu.classList.remove('translate-y-10', 'opacity-0', 'scale-95');
             }, 10);
@@ -441,7 +440,6 @@
         }
     }
     window.onload = async () => {
-        // 1. Fetch live rate first to update the global variable
         NAIRA_RATE = await getLiveExchangeRate();
         console.log(`Processing payment at the rate of ₦${NAIRA_RATE}/$1`);
 

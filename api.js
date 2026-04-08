@@ -1705,10 +1705,6 @@ const sendResetPasswordEmail = async (userEmail, resetLink) => {
                                     </a>
                                 </div>
 
-                                <p style="font-size: 11px; color: #667085; margin: 0;">
-                                    If the button doesn't work, copy and paste this link into your browser:<br>
-                                    <span style="color: #0F54C6; word-break: break-all;">${resetLink}</span>
-                                </p>
                             </div>
 
                             <p style="font-size: 12px; color: #667085;">
@@ -2681,7 +2677,7 @@ async function handleForgotPasswordRequest(req, res) {
         user.resetPasswordExpires = Date.now() + 3600000; 
         await user.save();
 
-        const resetLink = `https://smsglobe.vercel.app/change-password.html?token=${token}`;
+        const resetLink = `https://smsglobe.vercel.app/smsuser/change-password.html?token=${token}`;
         await sendResetPasswordEmail(user.email, resetLink);
 
         // TODO: Integrate Nodemailer/SendGrid here to send the actual email.

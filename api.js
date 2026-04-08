@@ -52,6 +52,9 @@ const userSchema = new mongoose.Schema({
         enum: ['active', 'suspended'], 
         default: 'active' 
     },
+    // Add these two fields for the Forgot Password flow
+    resetPasswordToken: { type: String },
+    resetPasswordExpires: { type: Date }
 }, { timestamps: true });
 
 const User = mongoose.models.User || mongoose.model('User', userSchema);
@@ -369,6 +372,8 @@ app.all('/api/:action', async (req, res) => {
         case 'user-messages': return handleGetUserMessages(req, res);
         case 'user-orders': return handleGetUserOrders(req, res);
         case 'change-password': return handleChangePassword(req, res);
+        case 'forgot-password': return handleForgotPasswordRequest(req, res);
+        case 'reset-password': return handleResetPassword(req, res);
         case 'purchase-vpn': return handlePurchaseVPN(req, res);
         case 'initiate-payment': return handleInitiatePayment(req, res);
         case 'verify-payment': return handleVerifyPayment(req, res);
@@ -2513,6 +2518,102 @@ async function handleChangePassword(req, res) {
             success: false, 
             message: "Internal server error" 
         });
+    }
+}
+
+async function handleResetPassword(req, res) {
+    try {
+        const { token, newPass } = req.body;
+
+        if (!token || !newPass) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Missing token or password" 
+            });
+        }
+
+        // 1. Find user by reset token and ensure it hasn't expired
+        // This assumes your User schema has: resetPasswordToken and resetPasswordExpires fields
+        const user = await User.findOne({
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: Date.now() } // Check if token is still valid
+        });
+
+        if (!user) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Invalid or expired reset token" 
+            });
+        }
+
+        // 2. Hash the New Password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPass, salt);
+
+        // 3. Update User and Clear the Reset Token fields
+        user.password = hashedPassword;
+        user.resetPasswordToken = undefined; // Clear token after use
+        user.resetPasswordExpires = undefined; // Clear expiry after use
+        await user.save();
+
+        // 4. Generate a fresh Session Token (JWT) 
+        // This ensures the user is logged in immediately after the reset
+        const sessionToken = jwt.sign(
+            { email: user.email, id: user._id }, 
+            process.env.JWT_SECRET || 'your_secret_key', 
+            { expiresIn: '1d' }
+        );
+
+        return res.json({ 
+            success: true, 
+            message: "Password reset successful!",
+            token: sessionToken // Frontend will save this to localStorage
+        });
+
+    } catch (err) {
+        console.error("Reset Password Error:", err);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Internal server error" 
+        });
+    }
+}
+
+async function handleForgotPasswordRequest(req, res) {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ success: false, message: "Email required" });
+
+        const user = await User.findOne({ email: email.toLowerCase().trim() });
+
+        // Security best practice: don't reveal if the email doesn't exist.
+        if (!user) {
+            return res.json({ success: true, message: "If an account exists, a reset link has been sent." });
+        }
+
+        // 1. Create a secure random token
+        const token = crypto.randomBytes(32).toString('hex');
+
+        // 2. Set token and expiry (1 hour)
+        user.resetPasswordToken = token;
+        user.resetPasswordExpires = Date.now() + 3600000; 
+        await user.save();
+
+        // 3. The Link
+        // For production, use your actual domain (e.g., https://smsglobe.com)
+        const resetLink = `https://smsglobe.vercel.app/change-password.html?token=${token}`;
+
+        // TODO: Integrate Nodemailer/SendGrid here to send the actual email.
+        console.log("Reset link for testing:", resetLink);
+
+        return res.json({ 
+            success: true, 
+            message: "A password reset link has been sent to your email." 
+        });
+
+    } catch (err) {
+        console.error("Forgot Password Error:", err);
+        return res.status(500).json({ success: false, message: "Internal server error" });
     }
 }
 

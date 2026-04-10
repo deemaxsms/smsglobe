@@ -206,7 +206,7 @@
 
             <div class="flex flex-col sm:flex-row">
                 <a href="user_vpn.html" class="w-full sm:w-auto bg-brand-blue text-white px-10 py-4 rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-[0.97] flex items-center justify-center">
-                    View All Nodes & Purchase
+                    View All VPN's & Purchase
                     <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
@@ -317,40 +317,280 @@
     </div>
 </section>
 
-            <section class="space-y-2">
-                <div class="flex items-center justify-between px-1">
-                    <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-tight">Proxies</h4>
-                    <a href="user_proxy.html" class="text-[9px] font-bold text-brand-blue underline">View All</a>
-                </div>
-                <div id="featuredProxies" class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    </div>
-            </section>
-
-            <section class="space-y-2">
-                <div class="flex items-center justify-between px-1">
-                    <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-tight">eSIM Refills</h4>
-                    <a href="esim_refill.html" class="text-[9px] font-bold text-brand-blue underline">View All</a>
-                </div>
-                <div id="featuredESIMs" class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    </div>
-            </section>
-
-            <section class="space-y-2">
-    <div class="flex items-center justify-between px-1">
-        <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-tight">Cloud RDP (USA)</h4>
-        <a href="user_rdp.html" class="text-[9px] font-bold text-brand-blue underline">Full Specs</a>
-    </div>
-    <div id="rdpGrid" class="grid grid-cols-2 md:grid-cols-3 gap-2">
+           <section class="mt-8 overflow-hidden bg-white border border-brand-border rounded-[20px] md:rounded-[24px] shadow-sm hover:shadow-md transition-shadow duration-300">
+    <div class="flex flex-col md:flex-row">
+        
+        <div class="hidden md:flex w-1/3 bg-indigo-50/30 items-center justify-center border-r border-brand-border p-8">
+            <div class="relative flex items-center justify-center">
+                <div class="absolute w-32 h-32 bg-indigo-500/10 blur-3xl rounded-full"></div>
+                
+                <svg class="relative w-24 h-24 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6m-16.5-3a3 3 0 013-3h13.5a3 3 0 013 3m-19.5 0a4.5 4.5 0 01.9-2.7L5.737 5.1a3.375 3.375 0 012.7-1.35h7.126a3.375 3.375 0 012.7 1.35l2.237 3.45a4.5 4.5 0 01.9 2.7m-16.5 0a3 3 0 003 3m13.5-3a3 3 0 01-3 3m-9.75-10.5h.008v.008H9.75V4.5zm0 3h.008v.008H9.75V7.5zm0 3h.008v.008H9.75v-.008z" />
+                </svg>
+            </div>
         </div>
+
+        <div class="flex-1 p-5 md:p-10">
+            <div class="flex items-center space-x-2 mb-4">
+                <span class="px-2.5 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase rounded-md tracking-wider border border-indigo-100">Residential & Datacenter</span>
+                <div class="flex items-center bg-green-50 px-2 py-1 rounded-md border border-green-100">
+                    <span class="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse mr-1.5"></span>
+                    <span class="text-[10px] font-bold text-green-700 uppercase tracking-tight">High Anonymity</span>
+                </div>
+            </div>
+
+            <h3 class="text-xl md:text-2xl font-extrabold text-brand-darkText leading-tight mb-3">
+                Premium <span class="text-indigo-600">Private Proxies</span> for Professionals
+            </h3>
+
+            <p class="text-[13px] md:text-sm text-brand-lightText leading-relaxed mb-6 max-w-2xl">
+                Access a pool of millions of rotating and static proxies. Built for web scraping, multi-accounting, and high-performance automation without IP bans or speed throttling.
+            </p>
+
+            <div class="grid grid-cols-1 xs:grid-cols-2 gap-y-3 gap-x-4 mb-8">
+                <div class="flex items-center text-[11px] md:text-xs font-semibold text-brand-midText">
+                    <div class="p-1 bg-green-50 rounded-full mr-2">
+                        <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    HTTP/S & SOCKS5 Support
+                </div>
+                <div class="flex items-center text-[11px] md:text-xs font-semibold text-brand-midText">
+                    <div class="p-1 bg-green-50 rounded-full mr-2">
+                        <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    Clean IP Pool
+                </div>
+                <div class="flex items-center text-[11px] md:text-xs font-semibold text-brand-midText">
+                    <div class="p-1 bg-green-50 rounded-full mr-2">
+                        <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    Instant IP Rotation
+                </div>
+                <div class="flex items-center text-[11px] md:text-xs font-semibold text-brand-midText">
+                    <div class="p-1 bg-green-50 rounded-full mr-2">
+                        <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    99.9% Uptime SLA
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row">
+                <a href="user_proxy.html" class="w-full sm:w-auto bg-indigo-600 text-white px-10 py-4 rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-[0.97] flex items-center justify-center">
+                    Browse Proxy Packages
+                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </div>
 </section>
 
-<section class="space-y-2">
-    <div class="flex items-center justify-between px-1">
-        <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-tight">Send a Gift</h4>
-        <a href="send_gifts.html" class="text-[9px] font-bold text-brand-blue underline">View Catalog</a>
-    </div>
-    <div id="giftGrid" class="grid grid-cols-3 md:grid-cols-6 gap-2">
+        <section class="mt-8 overflow-hidden bg-white border border-brand-border rounded-[20px] md:rounded-[24px] shadow-sm hover:shadow-md transition-shadow duration-300">
+    <div class="flex flex-col md:flex-row">
+        
+        <div class="hidden md:flex w-1/3 bg-emerald-50/40 items-center justify-center border-r border-brand-border p-8">
+            <div class="relative flex items-center justify-center">
+                <div class="absolute w-32 h-32 bg-emerald-500/10 blur-3xl rounded-full"></div>
+                
+                <svg class="relative w-24 h-24 text-emerald-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                </svg>
+            </div>
         </div>
+
+        <div class="flex-1 p-5 md:p-10">
+            <div class="flex items-center space-x-2 mb-4">
+                <span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase rounded-md tracking-wider border border-emerald-100">Quick Top-Up</span>
+                <div class="flex items-center bg-green-50 px-2 py-1 rounded-md border border-green-100">
+                    <span class="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse mr-1.5"></span>
+                    <span class="text-[10px] font-bold text-green-700 uppercase tracking-tight">Active Coverage</span>
+                </div>
+            </div>
+
+            <h3 class="text-xl md:text-2xl font-extrabold text-brand-darkText leading-tight mb-3">
+                Never Run Out of <span class="text-emerald-600">Global Data</span>
+            </h3>
+
+            <p class="text-[13px] md:text-sm text-brand-lightText leading-relaxed mb-6 max-w-2xl">
+                Easily refill your active eSIM profile with additional data packages. Whether you're traveling for business or leisure, our instant top-up service ensures you stay connected without needing a new eSIM.
+            </p>
+
+            <div class="grid grid-cols-1 xs:grid-cols-2 gap-y-3 gap-x-4 mb-8">
+                <div class="flex items-center text-[11px] md:text-xs font-semibold text-brand-midText">
+                    <div class="p-1 bg-green-50 rounded-full mr-2">
+                        <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    Instant Balance Credit
+                </div>
+                <div class="flex items-center text-[11px] md:text-xs font-semibold text-brand-midText">
+                    <div class="p-1 bg-green-50 rounded-full mr-2">
+                        <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    Keep Same eSIM Profile
+                </div>
+                <div class="flex items-center text-[11px] md:text-xs font-semibold text-brand-midText">
+                    <div class="p-1 bg-green-50 rounded-full mr-2">
+                        <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    Flexible Data Sizes
+                </div>
+                <div class="flex items-center text-[11px] md:text-xs font-semibold text-brand-midText">
+                    <div class="p-1 bg-green-50 rounded-full mr-2">
+                        <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    24/7 Global Access
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row">
+                <a href="esim_refill.html" class="w-full sm:w-auto bg-emerald-600 text-white px-10 py-4 rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 active:scale-[0.97] flex items-center justify-center">
+                    Browse Refill Options
+                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+    <section class="mt-8 overflow-hidden bg-white border border-brand-border rounded-[20px] md:rounded-[24px] shadow-sm hover:shadow-md transition-shadow duration-300">
+    <div class="flex flex-col md:flex-row">
+        
+        <div class="hidden md:flex w-1/3 bg-slate-50 items-center justify-center border-r border-brand-border p-8">
+            <div class="relative flex items-center justify-center">
+                <div class="absolute w-32 h-32 bg-slate-400/10 blur-3xl rounded-full"></div>
+                
+                <svg class="relative w-24 h-24 text-slate-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
+                </svg>
+            </div>
+        </div>
+
+        <div class="flex-1 p-5 md:p-10">
+            <div class="flex items-center space-x-2 mb-4">
+                <span class="px-2.5 py-1 bg-slate-100 text-slate-700 text-[10px] font-bold uppercase rounded-md tracking-wider border border-slate-200">High-Performance VDS</span>
+                <div class="flex items-center bg-green-50 px-2 py-1 rounded-md border border-green-100">
+                    <span class="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse mr-1.5"></span>
+                    <span class="text-[10px] font-bold text-green-700 uppercase tracking-tight">USA Dedicated</span>
+                </div>
+            </div>
+
+            <h3 class="text-xl md:text-2xl font-extrabold text-brand-darkText leading-tight mb-3">
+                Powerful <span class="text-slate-700">USA Cloud RDP</span> Workstations
+            </h3>
+
+            <p class="text-[13px] md:text-sm text-brand-lightText leading-relaxed mb-6 max-w-2xl">
+                Get instant access to dedicated Windows environments with ultra-low latency. Optimized for multi-tasking, automated software execution, and secure remote management with 24/7 uptime.
+            </p>
+
+            <div class="grid grid-cols-1 xs:grid-cols-2 gap-y-3 gap-x-4 mb-8">
+                <div class="flex items-center text-[11px] md:text-xs font-semibold text-brand-midText">
+                    <div class="p-1 bg-green-50 rounded-full mr-2">
+                        <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    NVMe SSD Storage
+                </div>
+                <div class="flex items-center text-[11px] md:text-xs font-semibold text-brand-midText">
+                    <div class="p-1 bg-green-50 rounded-full mr-2">
+                        <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    Dedicated Admin Access
+                </div>
+                <div class="flex items-center text-[11px] md:text-xs font-semibold text-brand-midText">
+                    <div class="p-1 bg-green-50 rounded-full mr-2">
+                        <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    1Gbps Network Speed
+                </div>
+                <div class="flex items-center text-[11px] md:text-xs font-semibold text-brand-midText">
+                    <div class="p-1 bg-green-50 rounded-full mr-2">
+                        <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    Windows Server 2022
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row">
+                <a href="user_rdp.html" class="w-full sm:w-auto bg-slate-800 text-white px-10 py-4 rounded-xl text-sm font-bold hover:bg-slate-900 transition-all shadow-lg shadow-slate-100 active:scale-[0.97] flex items-center justify-center">
+                    Select RDP Configuration
+                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mt-8 overflow-hidden bg-white border border-brand-border rounded-[20px] md:rounded-[24px] shadow-sm hover:shadow-md transition-shadow duration-300">
+    <div class="flex flex-col md:flex-row">
+        
+        <div class="hidden md:flex w-1/3 bg-rose-50/50 items-center justify-center border-r border-brand-border p-8">
+            <div class="relative flex items-center justify-center">
+                <div class="absolute w-32 h-32 bg-rose-400/10 blur-3xl rounded-full"></div>
+                
+                <svg class="relative w-24 h-24 text-rose-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H4.5a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                </svg>
+            </div>
+        </div>
+
+        <div class="flex-1 p-5 md:p-10">
+            <div class="flex items-center space-x-2 mb-4">
+                <span class="px-2.5 py-1 bg-rose-50 text-rose-600 text-[10px] font-bold uppercase rounded-md tracking-wider border border-rose-100">Global Gifting</span>
+                <div class="flex items-center bg-green-50 px-2 py-1 rounded-md border border-green-100">
+                    <span class="flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse mr-1.5"></span>
+                    <span class="text-[10px] font-bold text-green-700 uppercase tracking-tight">Instant Delivery</span>
+                </div>
+            </div>
+
+            <h3 class="text-xl md:text-2xl font-extrabold text-brand-darkText leading-tight mb-3">
+                Send <span class="text-rose-500">Digital Gifts</span> Anywhere in the World
+            </h3>
+
+            <p class="text-[13px] md:text-sm text-brand-lightText leading-relaxed mb-6 max-w-2xl">
+                Surprise friends, family, or colleagues with digital gift cards and premium vouchers. Access a massive catalog of international brands with instant code delivery directly to your dashboard or email.
+            </p>
+
+            <div class="grid grid-cols-1 xs:grid-cols-2 gap-y-3 gap-x-4 mb-8">
+                <div class="flex items-center text-[11px] md:text-xs font-semibold text-brand-midText">
+                    <div class="p-1 bg-green-50 rounded-full mr-2">
+                        <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    Top Global Brands
+                </div>
+                <div class="flex items-center text-[11px] md:text-xs font-semibold text-brand-midText">
+                    <div class="p-1 bg-green-50 rounded-full mr-2">
+                        <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    Zero Processing Fees
+                </div>
+                <div class="flex items-center text-[11px] md:text-xs font-semibold text-brand-midText">
+                    <div class="p-1 bg-green-50 rounded-full mr-2">
+                        <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    Instant Code Generation
+                </div>
+                <div class="flex items-center text-[11px] md:text-xs font-semibold text-brand-midText">
+                    <div class="p-1 bg-green-50 rounded-full mr-2">
+                        <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                    </div>
+                    Secure Payment Gateway
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row">
+                <a href="send_gifts.html" class="w-full sm:w-auto bg-rose-500 text-white px-10 py-4 rounded-xl text-sm font-bold hover:bg-rose-600 transition-all shadow-lg shadow-rose-100 active:scale-[0.97] flex items-center justify-center">
+                    Browse Gift Catalog
+                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </div>
 </section>
 
 
@@ -442,22 +682,7 @@
     const API_BASE_URL = '/api';
     const PROXY_ICON = 'https://i.imgur.com/n5ZZeLf.png';
 
-    const carriers = [
-        { id: 'tmobile', name: 'T-Mobile (Prepaid)', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Carrier' },
-        { id: 'att', name: 'AT&T (Prepaid)', image: 'https://i.imgur.com/WDCo1gM.png', type: 'Carrier' },
-        { id: '1month', name: '1 Month eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term' },
-        { id: '3months', name: '3 Months eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term' },
-        { id: '1year', name: '1 Year eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term' }
-    ];
-
-       const rdpPlans = {
-        tier1: { id: "tier1", name: "USA Tier 1", price: "₦45,000", hardware: "4GB RAM | 2 CPU", storage: "60GB SSD" },
-        tier2: { id: "tier2", name: "USA Tier 2", price: "₦55,000", hardware: "6GB RAM | 3 CPU", storage: "100GB SSD" },
-        tier3: { id: "tier3", name: "USA Tier 3", price: "₦65,000", hardware: "8GB RAM | 4 CPU", storage: "140GB SSD" },
-        tier4: { id: "tier4", name: "USA Tier 4", price: "80,000", hardware: "12GB RAM | 6 CPU Cores", storage: "180GB SSD"},
-
-    };
-
+    
     async function checkMaintenance() {
     try {
         const response = await fetch('/api/system-status');
@@ -471,123 +696,6 @@
         console.error("Status check failed", err);
     }
 }
-
-    function loadGifts() {
-    const container = document.getElementById('giftGrid');
-    if (!container) return;
-
-    const gifts = [
-        { name: 'Flowers', img: 'https://images.unsplash.com/photo-1526047932273-341f2a7631f9?w=150&h=150&fit=crop', link: 'flowers' },
-        { name: 'Jewelry', img: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=150&h=150&fit=crop', link: 'rings' },
-        { name: 'Cakes', img: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=150&h=150&fit=crop', link: 'cakes' },
-        { name: 'Frames', img: 'https://imgur.com/SkmdudQ', link: 'frames' },
-        { name: 'Pizza', img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=150&h=150&fit=crop', link: 'pizza' },
-        { name: 'Wine', img: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=150&h=150&fit=crop', link: 'wine' }
-    ];
-
-    container.innerHTML = gifts.map(g => `
-        <div onclick="window.location.href='send_gifts.html?cat=${g.link}'" 
-             class="bg-white border border-brand-border p-1.5 rounded-xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer active-scale group">
-            
-            <div class="aspect-square w-full rounded-lg overflow-hidden mb-1 bg-gray-50">
-                <img src="${g.img}" alt="${g.name}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-            </div>
-
-            <p class="text-[8px] font-bold text-brand-darkText uppercase truncate w-full leading-tight">
-                ${g.name}
-            </p>
-            
-            <span class="text-[6px] font-extrabold text-brand-blue mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                SEND NOW
-            </span>
-        </div>
-    `).join('');
-}
-
-  function loadRDP() {
-    const grid = document.getElementById('rdpGrid');
-    if (!grid) return;
-    
-    grid.innerHTML = Object.values(rdpPlans).map(plan => `
-        <div onclick="window.location.href='user_rdp.html?plan=${plan.id}'" 
-             class="bg-white border border-brand-border p-4 md:p-3 rounded-2xl active-scale shadow-sm flex flex-col justify-between min-h-[110px] md:min-h-[90px] transition-all hover:border-brand-blue">
-            
-            <div class="flex items-start justify-between mb-2">
-                <div class="flex items-center gap-2">
-                    <img src="https://flagcdn.com/w40/us.png" class="w-4 h-auto rounded-[2px] shadow-sm border border-gray-100" alt="USA">
-                    <h3 class="text-[15px] md:text-[8px] font-extrabold text-brand-darkText uppercase truncate leading-none">
-                        ${plan.name}
-                    </h3>
-                </div>
-                <span class="flex items-center gap-1">
-                    <span class="text-[7px] font-bold text-green-500 uppercase">Live</span>
-                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                </span>
-            </div>
-            
-            <p class="text-[12px] md:text-[10px] text-brand-lightText font-medium mb-3">
-                ${plan.hardware}
-            </p>
-            
-            <div class="flex items-center justify-between border-t border-brand-border pt-2 mt-auto">
-                <span class="text-[15px] md:text-[12px] font-black text-brand-darkText">
-                    ${plan.price}
-                </span>
-                <div class="bg-brand-blue/10 px-2 py-1 rounded-md">
-                    <span class="text-[10px] md:text-[9px] font-black text-brand-blue uppercase tracking-tighter">
-                        BUY NOW
-                    </span>
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
-
-
-    // Updated Card Templates for smaller sizes
-    async function fetchFeaturedProxies() {
-        const container = document.getElementById('featuredProxies');
-        try {
-            const res = await fetch(`${API_BASE_URL}/proxies`);
-            const data = await res.json();
-            if (data.success && data.proxies) {
-                const categories = [...new Set(data.proxies.map(p => p.category))].slice(0, 4);
-                container.innerHTML = categories.map(cat => {
-                    const count = data.proxies.filter(p => p.category === cat).length;
-                    return `
-                        <div onclick="window.location.href='user_proxy.html'" class="bg-white border border-brand-border p-2 rounded-xl flex flex-col items-center text-center shadow-sm active-scale cursor-pointer hover:border-brand-blue transition-all">
-                            <div class="w-5 h-5 bg-brand-background rounded-md flex items-center justify-center mb-1 p-1">
-                                <img src="${PROXY_ICON}" class="w-full h-full object-contain">
-                            </div>
-                            <h3 class="text-[12px] font-bold text-brand-darkText uppercase truncate w-full">${cat}</h3>
-                            <p class="text-[12px] text-brand-lightText mt-0.5">${count} Available</p>
-                        </div>
-                    `;
-                }).join('');
-            }
-        } catch (e) { container.innerHTML = '<p class="text-[9px] col-span-full text-center">Data unavailable.</p>'; }
-    }
-
-   
-
-    function loadFeaturedCarriers() {
-        const container = document.getElementById('featuredESIMs');
-        const featured = [
-            { name: 'T-Mobile', image: 'https://i.imgur.com/pyDMW1t.png' },
-            { name: 'AT&T', image: 'https://i.imgur.com/WDCo1gM.png' },
-            { name: '1 Month Esim', image: 'https://i.imgur.com/syKFaNI.png' },
-            { name: '3 Month Esim', image: 'hthttps://i.imgur.com/syKFaNI.png' }
-        ];
-        container.innerHTML = featured.map(carrier => `
-            <div onclick="window.location.href='esim_refill.html'" class="bg-white border border-brand-border p-2 rounded-xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer active-scale">
-                <div class="h-5 w-full flex items-center justify-center mb-1">
-                    <img src="${carrier.image}" alt="${carrier.name}" class="max-h-full max-w-full object-contain">
-                </div>
-                <p class="text-[12px] font-bold text-brand-darkText uppercase truncate w-full">${carrier.name}</p>
-                <span class="text-[10px] font-bold text-brand-blue bg-blue-50 px-1.5 rounded">Refill</span>
-            </div>
-        `).join('');
-    }
 
     function showSuspendedNotice() {
         document.body.innerHTML = `

@@ -25,61 +25,66 @@
         }
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
- <style>
-    /* 1. PREVENT GLOBAL HORIZONTAL SCROLL (The Zooming Fix) */
+<style>
+    /* 1. LOCK THE VIEWPORT (The "Anti-Zoom" Shield) */
     html, body {
         max-width: 100%;
         overflow-x: hidden;
         position: relative;
+        /* Prevents the 'rubber-band' effect on the whole page */
+        overscroll-behavior-y: none; 
     }
 
-    /* 2. ERGONOMIC TOUCH TARGETS (Prevents accidental zooming on inputs) */
-    @media screen and (max-width: 768px) {
-        input, select, textarea { font-size: 16px !important; }
-        
-        /* Forces the container to stay within screen bounds */
+    /* 2. ENHANCED SLIDER COMPATIBILITY */
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+        /* Ensures smooth momentum scrolling on mobile */
+        -webkit-overflow-scrolling: touch; 
+        /* Prevents horizontal sliding from moving the whole page */
+        overscroll-behavior-x: contain; 
+        display: flex;
+        align-items: center;
+    }
+    
+    .no-scrollbar::-webkit-scrollbar { 
+        display: none; 
+    }
+
+    /* 3. REFINED MASKING */
+    @media (max-width: 768px) {
         .mask-edge {
-            -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
-            mask-image: linear-gradient(to right, black 85%, transparent 100%);
-            /* Prevents the browser from 'bouncing' the whole page when sliding */
-            overscroll-behavior-x: contain; 
+            /* Black defines visibility, transparent defines the fade */
+            -webkit-mask-image: linear-gradient(to right, black 88%, transparent 100%);
+            mask-image: linear-gradient(to right, black 88%, transparent 100%);
         }
+        
+        /* Stop inputs from triggering automatic browser zoom */
+        input, select, textarea { font-size: 16px !important; }
     }
 
-    /* 3. TRANSITIONS & SCROLLING */
-    .sidebar-transition { transition: transform 0.3s ease-in-out; }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    
-    .active-scale:active { transform: scale(0.96); }
-    
-    /* Optimized snapping: Ensure center alignment on small screens */
+    /* 4. ANIMATION & SNAP LOGIC */
     .snap-x { 
         scroll-snap-type: x mandatory; 
         scroll-behavior: smooth;
-        -webkit-overflow-scrolling: touch; /* High-performance scrolling for iOS */
     }
     
-    .snap-start { scroll-snap-align: start; }
-
-    /* 4. MARQUEE LOGIC (Keep as is, but ensure width doesn't break page) */
-    @keyframes marquee {
-        0% { transform: translateX(0); }
-        100% { transform: translateX(-50%); }
+    .snap-start { 
+        scroll-snap-align: start; 
     }
 
+    .active-scale:active { 
+        transform: scale(0.95); 
+        transition: transform 0.1s ease;
+    }
+
+    /* 5. MARQUEE ADJUSTMENT (Ensure it doesn't push width) */
     .animate-marquee {
         display: flex;
         width: max-content;
-        animation: marquee 20s linear infinite;
+        will-change: transform; /* Optimizes GPU performance */
+        animation: marquee 25s linear infinite;
     }
-
-    .animate-marquee:hover {
-        animation-play-state: paused;
-    }
-
-     .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
@@ -182,60 +187,53 @@
                     </h3>
                 </div>
             </div>
-<section class="mt-6 mb-2 px-1">
-    <div class="flex items-center space-x-2 overflow-x-auto pb-4 no-scrollbar scroll-smooth">
-        
-        <button onclick="document.getElementById('activation-section').scrollIntoView({behavior: 'smooth'})" 
-                class="flex-shrink-0 flex items-center space-x-2 bg-blue-50 border border-blue-100 px-4 py-2.5 rounded-xl hover:bg-blue-100 transition-all active:scale-95">
-            <div class="w-6 h-6 bg-blue-600 rounded-lg flex items-center justify-center">
-                <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-            </div>
-            <span class="text-[11px] font-bold text-blue-800 uppercase tracking-tight">SMS Activation</span>
-        </button>
+     <section class="mt-4 mb-2 max-w-full overflow-hidden">
+    <div class="px-3">
+        <div class="flex items-center space-x-2 overflow-x-auto pb-3 no-scrollbar snap-x snap-mandatory touch-pan-x mask-edge">
+            
+            <button onclick="document.getElementById('activation-section').scrollIntoView({behavior: 'smooth'})" 
+                    class="flex-shrink-0 snap-start flex items-center space-x-2 bg-blue-50 border border-blue-100 px-3 py-2 rounded-xl active:scale-95 transition-all">
+                <div class="w-5 h-5 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                </div>
+                <span class="text-[10px] font-bold text-blue-800 uppercase tracking-tight">SMS Activation</span>
+            </button>
 
-        <button onclick="document.getElementById('esim-section').scrollIntoView({behavior: 'smooth'})" 
-                class="flex-shrink-0 flex items-center space-x-2 bg-emerald-50 border border-emerald-100 px-4 py-2.5 rounded-xl hover:bg-emerald-100 transition-all active:scale-95">
-            <div class="w-6 h-6 bg-emerald-500 rounded-lg flex items-center justify-center">
-                <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
-            </div>
-            <span class="text-[11px] font-bold text-emerald-800 uppercase tracking-tight">eSIM Data</span>
-        </button>
+            <button onclick="document.getElementById('esim-section').scrollIntoView({behavior: 'smooth'})" 
+                    class="flex-shrink-0 snap-start flex items-center space-x-2 bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-xl active:scale-95 transition-all">
+                <div class="w-5 h-5 bg-emerald-500 rounded-lg flex items-center justify-center">
+                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7" /></svg>
+                </div>
+                <span class="text-[10px] font-bold text-emerald-800 uppercase tracking-tight">eSIM Data</span>
+            </button>
 
-        <button onclick="document.getElementById('rdp-section').scrollIntoView({behavior: 'smooth'})" 
-                class="flex-shrink-0 flex items-center space-x-2 bg-slate-100 border border-slate-200 px-4 py-2.5 rounded-xl hover:bg-slate-200 transition-all active:scale-95">
-            <div class="w-6 h-6 bg-slate-700 rounded-lg flex items-center justify-center">
-                <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" /></svg>
-            </div>
-            <span class="text-[11px] font-bold text-slate-800 uppercase tracking-tight">Cloud RDP</span>
-        </button>
+            <button onclick="document.getElementById('rdp-section').scrollIntoView({behavior: 'smooth'})" 
+                    class="flex-shrink-0 snap-start flex items-center space-x-2 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl active:scale-95 transition-all">
+                <div class="w-5 h-5 bg-slate-700 rounded-lg flex items-center justify-center">
+                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25" /></svg>
+                </div>
+                <span class="text-[10px] font-bold text-slate-800 uppercase tracking-tight">Cloud RDP</span>
+            </button>
 
-        <button onclick="document.getElementById('vpn-section').scrollIntoView({behavior: 'smooth'})" 
-                class="flex-shrink-0 flex items-center space-x-2 bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-xl hover:bg-indigo-100 transition-all active:scale-95">
-            <div class="w-6 h-6 bg-indigo-600 rounded-lg flex items-center justify-center">
-                <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.744c0 5.562 3.864 10.218 9 11.256 5.136-1.038 9-11.256 9-11.256a11.99 11.99 0 00-.598-3.744A11.959 11.959 0 0112 2.714z" /></svg>
-            </div>
-            <span class="text-[11px] font-bold text-indigo-800 uppercase tracking-tight">Premium VPN</span>
-        </button>
+            <button onclick="document.getElementById('vpn-section').scrollIntoView({behavior: 'smooth'})" 
+                    class="flex-shrink-0 snap-start flex items-center space-x-2 bg-indigo-50 border border-indigo-100 px-3 py-2 rounded-xl active:scale-95 transition-all">
+                <div class="w-5 h-5 bg-indigo-600 rounded-lg flex items-center justify-center">
+                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12.75L11.25 15 15 9.75m-3-7.036" /></svg>
+                </div>
+                <span class="text-[10px] font-bold text-indigo-800 uppercase tracking-tight">Premium VPN</span>
+            </button>
 
-        <button onclick="document.getElementById('proxy-section').scrollIntoView({behavior: 'smooth'})" 
-                class="flex-shrink-0 flex items-center space-x-2 bg-orange-50 border border-orange-100 px-4 py-2.5 rounded-xl hover:bg-orange-100 transition-all active:scale-95">
-            <div class="w-6 h-6 bg-orange-500 rounded-lg flex items-center justify-center">
-                <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-.778.099-1.533.284-2.253" /></svg>
-            </div>
-            <span class="text-[11px] font-bold text-orange-800 uppercase tracking-tight">Proxies</span>
-        </button>
+            <button onclick="document.getElementById('proxy-section').scrollIntoView({behavior: 'smooth'})" 
+                    class="flex-shrink-0 snap-start flex items-center space-x-2 bg-orange-50 border border-orange-100 px-3 py-2 rounded-xl active:scale-95 transition-all">
+                <div class="w-5 h-5 bg-orange-500 rounded-lg flex items-center justify-center">
+                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 21a9.004 9.004 0 008.716-6.747" /></svg>
+                </div>
+                <span class="text-[10px] font-bold text-orange-800 uppercase tracking-tight">Proxies</span>
+            </button>
 
-        <button onclick="document.getElementById('gifts-section').scrollIntoView({behavior: 'smooth'})" 
-                class="flex-shrink-0 flex items-center space-x-2 bg-rose-50 border border-rose-100 px-4 py-2.5 rounded-xl hover:bg-rose-100 transition-all active:scale-95">
-            <div class="w-6 h-6 bg-rose-500 rounded-lg flex items-center justify-center">
-                <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H4.5a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
-            </div>
-            <span class="text-[11px] font-bold text-rose-800 uppercase tracking-tight">Send Gifts</span>
-        </button>
-
+        </div>
     </div>
 </section>
-
       <section class="mt-8 overflow-hidden bg-white border border-brand-border rounded-[20px] md:rounded-[24px] shadow-sm">
     <div class="flex flex-col md:flex-row">
         

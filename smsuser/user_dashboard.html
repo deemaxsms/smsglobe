@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard | SMSGlobe</title>
+    <meta name="description" content="Manage your SMSGlobe account, view virtual numbers, activate eSIMs, and manage your Cloud RDP instances.">
+    <meta name="google-site-verification" content="fTAchZCV3xVxBR75Z-jILoW7xPd5kSnfKTOpRrwC3BE" />
+    <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/png" href="https://i.imgur.com/syKFaNI.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -44,6 +47,13 @@
 .animate-marquee:hover {
     animation-play-state: paused;
 }
+@media screen and (max-width: 768px) {
+            input, select, textarea { font-size: 16px !important; }
+        }
+        /* Custom scrollbar for a cleaner dashboard look */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #EAECF0; border-radius: 10px; }
 </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
@@ -146,6 +156,50 @@
                     </h3>
                 </div>
             </div>
+
+            <section class="mt-6">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-brand-darkText">Our Services</h2>
+        <span class="text-[10px] font-medium text-brand-lightText bg-white px-2 py-1 rounded-full border border-brand-border">Jump to section</span>
+    </div>
+    
+    <div class="flex items-center gap-3 overflow-x-auto pb-4 no-scrollbar">
+        <a href="#vpn-section" class="flex-shrink-0 flex items-center px-4 py-3 bg-white border border-brand-border rounded-xl hover:border-brand-blue hover:bg-blue-50 transition-all active-scale">
+            <div class="w-8 h-8 rounded-lg bg-brand-blue/10 flex items-center justify-center mr-3">
+                <svg class="w-5 h-5 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.744c0 5.051 3.11 9.38 7.443 11.166a12.028 12.028 0 003.014 0c4.333-1.786 7.443-6.115 7.443-11.166 0-1.286-.203-2.526-.583-3.692A11.959 11.959 0 0112 2.714z" /></svg>
+            </div>
+            <span class="text-sm font-bold text-brand-darkText">VPN</span>
+        </a>
+
+        <a href="#esim-section" class="flex-shrink-0 flex items-center px-4 py-3 bg-white border border-brand-border rounded-xl hover:border-brand-orange hover:bg-orange-50 transition-all active-scale">
+            <div class="w-8 h-8 rounded-lg bg-brand-orange/10 flex items-center justify-center mr-3">
+                <svg class="w-5 h-5 text-brand-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582" /></svg>
+            </div>
+            <span class="text-sm font-bold text-brand-darkText">eSIM</span>
+        </a>
+
+        <a href="#proxy-section" class="flex-shrink-0 flex items-center px-4 py-3 bg-white border border-brand-border rounded-xl hover:border-indigo-600 hover:bg-indigo-50 transition-all active-scale">
+            <div class="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center mr-3">
+                <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.25 14.25h13.5m-13.5 0a3 3 0 01-3-3m3 3a3 3 0 100 6h13.5a3 3 0 100-6" /></svg>
+            </div>
+            <span class="text-sm font-bold text-brand-darkText">Proxies</span>
+        </a>
+
+        <a href="#rdp-section" class="flex-shrink-0 flex items-center px-4 py-3 bg-white border border-brand-border rounded-xl hover:border-slate-800 hover:bg-slate-50 transition-all active-scale">
+            <div class="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center mr-3">
+                <svg class="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25" /></svg>
+            </div>
+            <span class="text-sm font-bold text-brand-darkText">Cloud RDP</span>
+        </a>
+
+        <a href="#gifts-section" class="flex-shrink-0 flex items-center px-4 py-3 bg-white border border-brand-border rounded-xl hover:border-rose-500 hover:bg-rose-50 transition-all active-scale">
+            <div class="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center mr-3">
+                <svg class="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H4.5a1.5 1.5 0 01-1.5-1.5v-8.25" /></svg>
+            </div>
+            <span class="text-sm font-bold text-brand-darkText">Gifts</span>
+        </a>
+    </div>
+</section>
 
       <section class="mt-8 overflow-hidden bg-white border border-brand-border rounded-[20px] md:rounded-[24px] shadow-sm">
     <div class="flex flex-col md:flex-row">

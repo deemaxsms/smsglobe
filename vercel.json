@@ -16,8 +16,12 @@
       "destination": "/smsadmin/$1.html"
     },
     {
-      "source": "/((?!smsuser|smsadmin|api).*)",
-      "destination": "/api.js"
+      "source": "/sitemap.xml",
+      "destination": "/sitemap.xml"
+    },
+    {
+      "source": "/",
+      "destination": "/index.html"
     }
   ]
 }

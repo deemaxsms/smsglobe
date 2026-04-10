@@ -26,44 +26,53 @@
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-    /* 1. LOCK THE VIEWPORT (The "Anti-Zoom" Shield) */
+    /* 1. VIEWPORT LOCK (The Primary Fix) */
+    /* Forces the dashboard to stay exactly the width of the phone screen */
     html, body {
-        max-width: 100%;
+        max-width: 100vw;
         overflow-x: hidden;
         position: relative;
-        /* Prevents the 'rubber-band' effect on the whole page */
-        overscroll-behavior-y: none; 
+        /* Stops "rubber-banding" when users reach the top/bottom */
+        overscroll-behavior-y: none;
+        margin: 0;
+        padding: 0;
     }
 
-    /* 2. ENHANCED SLIDER COMPATIBILITY */
+    /* 2. SLIDER ISOLATION */
     .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-        /* Ensures smooth momentum scrolling on mobile */
-        -webkit-overflow-scrolling: touch; 
-        /* Prevents horizontal sliding from moving the whole page */
-        overscroll-behavior-x: contain; 
         display: flex;
         align-items: center;
+        /* Crucial: Keeps the horizontal scroll energy inside this div only */
+        overscroll-behavior-x: contain; 
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        /* Prevents the container from growing wider than its parent */
+        max-width: 100%; 
     }
     
     .no-scrollbar::-webkit-scrollbar { 
         display: none; 
     }
 
-    /* 3. REFINED MASKING */
+    /* 3. MOBILE REFINEMENTS */
     @media (max-width: 768px) {
         .mask-edge {
-            /* Black defines visibility, transparent defines the fade */
-            -webkit-mask-image: linear-gradient(to right, black 88%, transparent 100%);
-            mask-image: linear-gradient(to right, black 88%, transparent 100%);
+            /* Adjusted to 85% to give a clearer "more content" hint */
+            -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+            mask-image: linear-gradient(to right, black 85%, transparent 100%);
         }
         
-        /* Stop inputs from triggering automatic browser zoom */
+        /* Prevents iOS from zooming in when a user taps a form field */
         input, select, textarea { font-size: 16px !important; }
+
+        /* Forces section height to remain stable during interaction */
+        section {
+            max-width: 100vw;
+        }
     }
 
-    /* 4. ANIMATION & SNAP LOGIC */
+    /* 4. PERFORMANCE & SNAP LOGIC */
     .snap-x { 
         scroll-snap-type: x mandatory; 
         scroll-behavior: smooth;
@@ -71,19 +80,29 @@
     
     .snap-start { 
         scroll-snap-align: start; 
+        /* Adds a small buffer so buttons don't touch the screen edge */
+        scroll-margin-left: 12px; 
     }
 
+    /* Snappier feedback for your connectivity services */
     .active-scale:active { 
-        transform: scale(0.95); 
-        transition: transform 0.1s ease;
+        transform: scale(0.96); 
+        transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* 5. MARQUEE ADJUSTMENT (Ensure it doesn't push width) */
+    /* 5. MARQUEE STABILITY */
     .animate-marquee {
         display: flex;
         width: max-content;
-        will-change: transform; /* Optimizes GPU performance */
+        will-change: transform;
         animation: marquee 25s linear infinite;
+        /* Ensures the marquee stays behind interaction layers if needed */
+        pointer-events: none; 
+    }
+    
+    .animate-marquee:hover {
+        animation-play-state: paused;
+        pointer-events: auto;
     }
 </style>
 </head>
@@ -187,12 +206,12 @@
                     </h3>
                 </div>
             </div>
-     <section class="mt-4 mb-2 max-w-full overflow-hidden">
-    <div class="px-3">
-        <div class="flex items-center space-x-2 overflow-x-auto pb-3 no-scrollbar snap-x snap-mandatory touch-pan-x mask-edge">
+    <section class="relative w-full mt-4 mb-2 overflow-hidden">
+    <div class="relative w-screen left-1/2 -translate-x-1/2 px-4">
+        <div class="flex items-center space-x-2 overflow-x-auto pb-4 no-scrollbar snap-x snap-mandatory touch-pan-x mask-edge">
             
             <button onclick="document.getElementById('activation-section').scrollIntoView({behavior: 'smooth'})" 
-                    class="flex-shrink-0 snap-start flex items-center space-x-2 bg-blue-50 border border-blue-100 px-3 py-2 rounded-xl active:scale-95 transition-all">
+                    class="flex-shrink-0 snap-start flex items-center space-x-2 bg-blue-50 border border-blue-100 px-3.5 py-2.5 rounded-xl active-scale">
                 <div class="w-5 h-5 bg-blue-600 rounded-lg flex items-center justify-center">
                     <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
                 </div>
@@ -200,7 +219,7 @@
             </button>
 
             <button onclick="document.getElementById('esim-section').scrollIntoView({behavior: 'smooth'})" 
-                    class="flex-shrink-0 snap-start flex items-center space-x-2 bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-xl active:scale-95 transition-all">
+                    class="flex-shrink-0 snap-start flex items-center space-x-2 bg-emerald-50 border border-emerald-100 px-3.5 py-2.5 rounded-xl active-scale">
                 <div class="w-5 h-5 bg-emerald-500 rounded-lg flex items-center justify-center">
                     <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7" /></svg>
                 </div>
@@ -208,7 +227,7 @@
             </button>
 
             <button onclick="document.getElementById('rdp-section').scrollIntoView({behavior: 'smooth'})" 
-                    class="flex-shrink-0 snap-start flex items-center space-x-2 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl active:scale-95 transition-all">
+                    class="flex-shrink-0 snap-start flex items-center space-x-2 bg-slate-100 border border-slate-200 px-3.5 py-2.5 rounded-xl active-scale">
                 <div class="w-5 h-5 bg-slate-700 rounded-lg flex items-center justify-center">
                     <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25" /></svg>
                 </div>
@@ -216,21 +235,14 @@
             </button>
 
             <button onclick="document.getElementById('vpn-section').scrollIntoView({behavior: 'smooth'})" 
-                    class="flex-shrink-0 snap-start flex items-center space-x-2 bg-indigo-50 border border-indigo-100 px-3 py-2 rounded-xl active:scale-95 transition-all">
+                    class="flex-shrink-0 snap-start flex items-center space-x-2 bg-indigo-50 border border-indigo-100 px-3.5 py-2.5 rounded-xl active-scale">
                 <div class="w-5 h-5 bg-indigo-600 rounded-lg flex items-center justify-center">
                     <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12.75L11.25 15 15 9.75m-3-7.036" /></svg>
                 </div>
                 <span class="text-[10px] font-bold text-indigo-800 uppercase tracking-tight">Premium VPN</span>
             </button>
 
-            <button onclick="document.getElementById('proxy-section').scrollIntoView({behavior: 'smooth'})" 
-                    class="flex-shrink-0 snap-start flex items-center space-x-2 bg-orange-50 border border-orange-100 px-3 py-2 rounded-xl active:scale-95 transition-all">
-                <div class="w-5 h-5 bg-orange-500 rounded-lg flex items-center justify-center">
-                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 21a9.004 9.004 0 008.716-6.747" /></svg>
-                </div>
-                <span class="text-[10px] font-bold text-orange-800 uppercase tracking-tight">Proxies</span>
-            </button>
-
+            <div class="flex-shrink-0 w-4 h-1"></div>
         </div>
     </div>
 </section>

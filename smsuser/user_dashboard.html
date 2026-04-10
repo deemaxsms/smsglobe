@@ -750,17 +750,17 @@
             }
         });
 
-        // --- NEW: Handle 401 Unauthorized explicitly ---
+        // --- Handle 401 Unauthorized explicitly ---
         if (profileRes.status === 401) {
             console.error("Session expired or invalid token.");
-            localStorage.removeItem('userToken'); // Clean up
+            localStorage.removeItem('userToken'); 
             window.location.href = 'user_login.html';
             return;
         }
 
         const userData = await profileRes.json();
 
-        // 4. Security Gate: Handle 403 or Suspended status
+        // 4. Security Gate
         if (profileRes.status === 403 || userData.status === 'suspended' || userData.isSuspended) {
             if (typeof showSuspendedNotice === 'function') showSuspendedNotice();
             return; 
@@ -768,7 +768,7 @@
 
         if (!profileRes.ok) throw new Error(`HTTP error! status: ${profileRes.status}`);
 
-        // 5. Data Mapping
+        // 5. Data Mapping (User Header/Profile)
         const displayName = userData.fullName || "User";
         const displayEmail = userData.email || "No email";
 
@@ -791,25 +791,19 @@
         
         if (initialsEl) initialsEl.innerText = initials;
         
-        // 7. Parallel Loading
-        // We wrap these in try-catch so one failing component doesn't break the whole page
+        // 7. Component Loading (ONLY keep what is actually dynamic)
+        // Removed: fetchFeaturedProxies, fetchFeaturedVPNs, loadActivations, loadRDP, loadGifts
         try {
-            await Promise.allSettled([
-                typeof fetchFeaturedProxies === 'function' ? fetchFeaturedProxies() : Promise.resolve(), 
-                typeof fetchFeaturedVPNs === 'function' ? fetchFeaturedVPNs() : Promise.resolve()
-            ]);
-
-            if (typeof loadActivations === 'function') loadActivations();
-            if (typeof loadFeaturedCarriers === 'function') loadFeaturedCarriers();
-            if (typeof loadRDP === 'function') loadRDP();
-            if (typeof loadGifts === 'function') loadGifts();
+            // If "loadFeaturedCarriers" still fetches real numbers/data for "Buy Number", keep it.
+            // Otherwise, if you made that section static too, remove this line.
+            if (typeof loadFeaturedCarriers === 'function') await loadFeaturedCarriers();
+            
         } catch (loadErr) {
-            console.warn("Some dashboard components failed to load:", loadErr);
+            console.warn("Dynamic components failed to load:", loadErr);
         }
 
     } catch (err) { 
         console.error("Dashboard init error:", err);
-        // Generic error handling
         if (document.getElementById('dashboardContent')) {
             document.getElementById('dashboardContent').innerText = "Error loading dashboard. Please refresh.";
         }

@@ -147,14 +147,62 @@
                 </div>
             </div>
 
-            <section class="space-y-2">
-                <div class="flex items-center justify-between px-1">
-                    <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-tight">VPN Nodes</h4>
-                    <a href="user_vpn.html" class="text-[9px] font-bold text-brand-blue underline">View All</a>
+          <section class="mt-8 overflow-hidden bg-white border border-brand-border rounded-[24px] shadow-sm hover:shadow-md transition-shadow duration-300">
+    <div class="flex flex-col md:flex-row">
+        
+        <div class="hidden md:flex w-1/3 bg-brand-blue/5 items-center justify-center border-r border-brand-border p-8">
+            <div class="relative">
+                <div class="absolute inset-0 bg-brand-blue/20 blur-3xl rounded-full"></div>
+                <svg class="relative w-24 h-24 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04m12.728 5.232L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="flex-1 p-6 md:p-10">
+            <div class="flex items-center space-x-2 mb-4">
+                <span class="px-2 py-1 bg-blue-100 text-brand-blue text-[10px] font-bold uppercase rounded-md tracking-wider">Premium Service</span>
+                <span class="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+                <span class="text-[10px] font-medium text-gray-500">Nodes Online</span>
+            </div>
+
+            <h3 class="text-xl md:text-2xl font-extrabold text-brand-darkText leading-tight mb-4">
+                Secure Your Connection with <span class="text-brand-blue">Global VPN Nodes</span>
+            </h3>
+
+            <p class="text-sm text-brand-lightText leading-relaxed mb-6 max-w-2xl">
+                Experience unrestricted internet access with SMSGlobe's enterprise-grade VPN network. Our nodes are optimized for high-speed browsing, secure RDP sessions, and complete digital anonymity. Whether you're bypassing geo-restrictions or securing your workspace, we provide the ultimate privacy shield.
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
+                <div class="flex items-center text-xs font-semibold text-brand-midText">
+                    <svg class="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    Military-Grade Encryption
                 </div>
-                <div id="featuredVPNs" class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    </div>
-            </section>
+                <div class="flex items-center text-xs font-semibold text-brand-midText">
+                    <svg class="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    Unlimited Bandwidth
+                </div>
+                <div class="flex items-center text-xs font-semibold text-brand-midText">
+                    <svg class="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    Strict No-Logs Policy
+                </div>
+                <div class="flex items-center text-xs font-semibold text-brand-midText">
+                    <svg class="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    Global Server Locations
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                <a href="user_vpn.html" class="w-full sm:w-auto bg-brand-blue text-white px-8 py-3.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-95 flex items-center justify-center">
+                    View All Nodes & Purchase
+                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </a>
+                <p class="text-[11px] text-brand-lightText">Plans starting from <span class="text-brand-darkText font-bold">$1.99/mo</span></p>
+            </div>
+        </div>
+    </div>
+</section>
 
             <section class="space-y-2">
                 <div class="flex items-center justify-between px-1">
@@ -474,25 +522,7 @@
         } catch (e) { container.innerHTML = '<p class="text-[9px] col-span-full text-center">Data unavailable.</p>'; }
     }
 
-    async function fetchFeaturedVPNs() {
-        const container = document.getElementById('featuredVPNs');
-        try {
-            const res = await fetch(`${API_BASE_URL}/products`);
-            const data = await res.json();
-            if (data.success && data.products) {
-                const featured = data.products.slice(0, 4);
-                container.innerHTML = featured.map(vpn => `
-                    <div class="bg-white border border-brand-border p-2 rounded-xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer active-scale" onclick="window.location.href='user_vpn.html'">
-                        <div class="w-5 h-5 bg-gray-50 rounded-md flex items-center justify-center p-0.5 mb-1">
-                            <img src="${vpn.image || 'https://via.placeholder.com/50'}" class="max-h-full max-w-full object-contain">
-                        </div>
-                        <p class="text-[12px] font-bold text-brand-darkText truncate w-full">${vpn.name}</p>
-                        <p class="text-[12px] font-bold text-brand-blue mt-0.5">$${vpn.plans?.[0]?.price || '0.00'}</p>
-                    </div>
-                `).join('');
-            }
-        } catch (e) { container.innerHTML = '<p class="text-[12px] col-span-full text-center">Data unavailable.</p>'; }
-    }
+   
 
     function loadFeaturedCarriers() {
         const container = document.getElementById('featuredESIMs');

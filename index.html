@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>SMSGlobe - Instant Virtual Numbers & eSIMs</title>
     <link rel="icon" type="image/png" href="https://i.imgur.com/syKFaNI.png">
     <link rel="apple-touch-icon" href="https://i.imgur.com/syKFaNI.png">
@@ -36,6 +36,12 @@
         body { background-color: #F0F5FE; }
         .logo-img { height: 32px; width: auto; object-fit: contain; }
         .hero-logo { height: 80px; width: auto; object-fit: contain; }
+        /* Add this to your internal <style> or CSS file */
+@media screen and (max-width: 768px) {
+    input, select, textarea {
+        font-size: 16px !important;
+    }
+}
     </style>
 </head>
 <body class="min-h-screen flex flex-col font-sans text-brand-midText selection:bg-brand-blue selection:text-white">

@@ -21,24 +21,30 @@
             },
         }
     </script>
-    <style>
-        .glass-card {
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(234, 236, 240, 1);
-    /* Ensure the card doesn't get too wide */
-    width: 100%;
-    max-width: 140px; 
-    margin: 0 auto;
-}
-    </style>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .active-scale:active { transform: scale(0.96); }
-        .glass-card { background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
-    </style>
+        /* Optimized card snapping for mobile */
+        .snap-x { scroll-snap-type: x mandatory; scroll-behavior: smooth; }
+/* CSS Animation for smooth scrolling */
+@keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+    display: flex;
+    width: max-content;
+    /* Increased duration to 20s for a smoother, slower scroll at small heights */
+    animation: marquee 20s linear infinite;
+}
+
+.animate-marquee:hover {
+    animation-play-state: paused;
+}
+</style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
 
@@ -97,7 +103,7 @@
     </aside>
 
     <div class="flex-grow lg:ml-60 flex flex-col min-h-screen">
-      <header class="bg-white border-b border-brand-border sticky top-0 z-30 px-4 py-2 flex items-center justify-between">
+      <header class="bg-white border-b border-brand-border sticky top-0 z-30 px-4 py-2.5 flex items-center justify-between">
     <div class="flex items-center space-x-2">
         <button id="openSidebar" class="lg:hidden p-1 text-brand-midText border border-brand-border rounded">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,28 +113,33 @@
         <span class="text-xs font-bold text-brand-darkText">Overview</span>
     </div>
 
-    <a href="user_profile.html" class="flex items-center space-x-3 group cursor-pointer transition-all active-scale">
-        <div class="hidden sm:block text-right">
-            <p id="userName" class="text-[10px] font-bold text-brand-darkText group-hover:text-brand-blue transition-colors"> </p>
-            <p id="userEmail" class="text-[9px] text-brand-lightText">...</p>
-        </div>
-        <div class="w-7 h-7 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center text-[10px] font-bold border border-brand-blue/20 group-hover:border-brand-blue group-hover:bg-brand-blue/20 transition-all">
-            <span id="userInitials">U</span>
-        </div>
-    </a>
+   <a href="user_profile.html" class="flex items-center space-x-3 group cursor-pointer transition-all active:scale-95">
+    <div class="hidden sm:block text-right">
+        <p id="userName" class="text-[10px] font-bold text-brand-darkText group-hover:text-brand-blue transition-colors leading-tight">
+            Loading...
+        </p>
+        <p id="userEmail" class="text-[9px] text-brand-lightText leading-tight">
+            Please wait
+        </p>
+    </div>
+
+    <div class="w-8 h-8 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center text-[11px] font-bold border border-brand-blue/20 group-hover:border-brand-blue group-hover:bg-brand-blue/20 transition-all shadow-sm">
+        <span id="userInitials">U</span>
+    </div>
+</a>
 </header>
 
-        <main class="p-3 md:p-5 max-w-6xl w-full mx-auto space-y-4">
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-1.5">
-                <div class="glass-card p-2 rounded-xl shadow-sm">
+        <main class="p-3 md:p-6 max-w-6xl w-full mx-auto space-y-4">
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <div class="bg-white p-2.5 rounded-xl border border-brand-border shadow-sm">
                     <p class="text-[8px] font-bold text-brand-lightText uppercase tracking-wider">Services</p>
                     <h3 id="activeNumbersCount" class="text-sm font-extrabold text-brand-darkText">7</h3>
                 </div>
-                <div class="glass-card p-2 rounded-xl shadow-sm">
+                <div class="bg-white p-2.5 rounded-xl border border-brand-border shadow-sm">
                     <p class="text-[8px] font-bold text-brand-lightText uppercase tracking-wider">Success</p>
                     <h3 class="text-sm font-extrabold text-brand-darkText">99.2%</h3>
                 </div>
-                <div class="hidden md:block glass-card p-2 rounded-xl shadow-sm">
+                <div class="hidden md:block bg-white p-2.5 rounded-xl border border-brand-border shadow-sm">
                     <p class="text-[8px] font-bold text-brand-lightText uppercase tracking-wider">System</p>
                     <h3 class="text-[10px] font-extrabold text-green-500 uppercase flex items-center gap-1">
                         <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> Operational
@@ -136,163 +147,310 @@
                 </div>
             </div>
 
-            <section class="space-y-1.5">
+            <section class="space-y-2">
                 <div class="flex items-center justify-between px-1">
                     <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-tight">VPN Nodes</h4>
                     <a href="user_vpn.html" class="text-[9px] font-bold text-brand-blue underline">View All</a>
                 </div>
-                <div id="featuredVPNs" class="grid grid-cols-2 md:grid-cols-4 gap-1.5">
+                <div id="featuredVPNs" class="grid grid-cols-2 md:grid-cols-4 gap-2">
                     </div>
             </section>
 
-            <section class="space-y-1.5">
+            <section class="space-y-2">
                 <div class="flex items-center justify-between px-1">
                     <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-tight">eSIM Activation</h4>
                     <a href="esim_activation.html" class="text-[9px] font-bold text-brand-blue underline">View Plans</a>
                 </div>
-                <div id="activationGrid" class="grid grid-cols-2 md:grid-cols-4 gap-1.5">
+                <div id="activationGrid" class="grid grid-cols-2 md:grid-cols-5 gap-2">
                     </div>
             </section>
 
-            <section class="space-y-1.5">
+           <section class="px-1">
+    <div class="relative overflow-hidden rounded-2xl border border-brand-border bg-black shadow-sm group">
+        <div class="aspect-[18/9] md:aspect-[21/9] w-full overflow-hidden">
+            <video 
+                autoplay 
+                muted 
+                loop 
+                playsinline 
+                class="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity duration-500 scale-105 group-hover:scale-100"
+            >
+                <source src="sms_ads.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+
+        <div class="absolute inset-0 flex flex-col justify-center px-4 md:px-8 pointer-events-none">
+            <span class="text-[7px] md:text-[8px] font-bold text-brand-blue uppercase tracking-widest mb-0.5">Featured</span>
+            <h2 class="text-white text-base md:text-2xl font-black leading-tight">
+                SMS GLOBE <span class="hidden md:inline">|</span> 
+                <br class="md:hidden" />
+                <span class="text-brand-blue">GLOBAL CONNECTIVITY.</span>
+            </h2>
+            <p class="text-white/80 text-[8px] md:text-[10px] max-w-[180px] md:max-w-xs mt-0.5 font-medium leading-tight">
+                Premium Virtual Numbers, eSIMs, and Proxies. Instant activation.
+            </p>
+        </div>
+
+        <div class="absolute top-2 right-2 md:top-3 md:right-3 bg-white/10 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/20">
+            <p class="text-[6px] md:text-[7px] font-bold text-white uppercase tracking-tighter">Fastest Delivery</p>
+        </div>
+    </div>
+</section>
+
+            <section class="space-y-2">
                 <div class="flex items-center justify-between px-1">
                     <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-tight">Proxies</h4>
                     <a href="user_proxy.html" class="text-[9px] font-bold text-brand-blue underline">View All</a>
                 </div>
-                <div id="featuredProxies" class="grid grid-cols-2 md:grid-cols-4 gap-1.5">
+                <div id="featuredProxies" class="grid grid-cols-2 md:grid-cols-4 gap-2">
                     </div>
             </section>
 
-            <section class="space-y-1.5">
+            <section class="space-y-2">
                 <div class="flex items-center justify-between px-1">
                     <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-tight">eSIM Refills</h4>
                     <a href="esim_refill.html" class="text-[9px] font-bold text-brand-blue underline">View All</a>
                 </div>
-                <div id="featuredESIMs" class="grid grid-cols-2 md:grid-cols-4 gap-1.5">
+                <div id="featuredESIMs" class="grid grid-cols-2 md:grid-cols-4 gap-2">
                     </div>
             </section>
 
-            <section class="space-y-1.5">
-                <div class="flex items-center justify-between px-1">
-                    <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-tight">Cloud RDP (USA)</h4>
-                    <a href="user_rdp.html" class="text-[9px] font-bold text-brand-blue underline">Full Specs</a>
-                </div>
-                <div id="rdpGrid" class="grid grid-cols-2 md:grid-cols-4 gap-1.5">
-                    </div>
-            </section>
+            <section class="space-y-2">
+    <div class="flex items-center justify-between px-1">
+        <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-tight">Cloud RDP (USA)</h4>
+        <a href="user_rdp.html" class="text-[9px] font-bold text-brand-blue underline">Full Specs</a>
+    </div>
+    <div id="rdpGrid" class="grid grid-cols-2 md:grid-cols-3 gap-2">
+        </div>
+</section>
 
-            <section class="space-y-1.5">
-                <div class="flex items-center justify-between px-1">
-                    <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-tight">Send a Gift</h4>
-                    <a href="send_gifts.html" class="text-[9px] font-bold text-brand-blue underline">View Catalog</a>
-                </div>
-                <div id="giftGrid" class="grid grid-cols-3 md:grid-cols-6 gap-1.5">
-                    </div>
-            </section>
+<section class="space-y-2">
+    <div class="flex items-center justify-between px-1">
+        <h4 class="text-[10px] font-bold text-brand-darkText uppercase tracking-tight">Send a Gift</h4>
+        <a href="send_gifts.html" class="text-[9px] font-bold text-brand-blue underline">View Catalog</a>
+    </div>
+    <div id="giftGrid" class="grid grid-cols-3 md:grid-cols-6 gap-2">
+        </div>
+</section>
 
-            <div class="grid grid-cols-2 gap-2 mt-4">
-                <div class="glass-card rounded-xl p-2 shadow-sm flex flex-col items-center text-center justify-between min-h-[75px]">
-                    <div>
-                        <h3 class="text-[9px] font-bold text-brand-darkText">WhatsApp</h3>
-                        <p class="text-[8px] text-brand-lightText">Instant Chat</p>
-                    </div>
-                    <button onclick="window.open('https://wa.me/7059450227', '_blank')" 
-                            class="w-full flex items-center justify-center space-x-1 py-1 bg-[#25D366] text-white rounded-lg font-bold text-[9px] transition-all active-scale">
-                        <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" class="w-2.5 h-2.5 invert">
-                        <span>Chat</span>
-                    </button>
-                </div>
 
-                <div class="glass-card rounded-xl p-2 shadow-sm flex flex-col items-center text-center justify-between min-h-[75px]">
-                    <div>
-                        <h3 class="text-[9px] font-bold text-brand-darkText">Email Help</h3>
-                        <p class="text-[8px] text-brand-lightText">24h Response</p>
-                    </div>
-                    <button onclick="window.location.href='mailto:support@smsglobe.com'" 
-                            class="w-full flex items-center justify-center space-x-1 py-1 bg-brand-blue text-white rounded-lg font-bold text-[9px] transition-all active-scale">
-                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                        </svg>
-                        <span>Email</span>
-                    </button>
-                </div>
+<div class="fixed bottom-6 right-6 z-50 flex flex-col items-end space-y-4">
+    
+    <div id="supportMenu" class="hidden flex flex-col space-y-3 mb-2 transition-all duration-300 transform translate-y-10 opacity-0 scale-95">
+        
+        <button onclick="window.open('https://wa.me/2347059450227', '_blank')" 
+                class="flex items-center space-x-3 bg-white border border-brand-border px-4 py-2.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all active:scale-95 group">
+            <div class="w-8 h-8 bg-[#25D366] rounded-full flex items-center justify-center">
+                <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" class="w-4 h-4 invert">
             </div>
+            <div class="text-left">
+                <p class="text-[10px] font-bold text-brand-darkText leading-none">WhatsApp</p>
+                <p class="text-[8px] text-brand-lightText">Instant Chat</p>
+            </div>
+        </button>
+
+        <button onclick="window.open('https://t.me/@Deemax_Trades', '_blank')" 
+                class="flex items-center space-x-3 bg-white border border-brand-border px-4 py-2.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all active:scale-95 group">
+            <div class="w-8 h-8 bg-[#0088cc] rounded-full flex items-center justify-center">
+                <img src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png" class="w-4 h-4 invert">
+            </div>
+            <div class="text-left">
+                <p class="text-[10px] font-bold text-brand-darkText leading-none">Telegram</p>
+                <p class="text-[8px] text-brand-lightText">Secure Channel</p>
+            </div>
+        </button>
+
+        <button onclick="window.location.href='mailto:support@smsglobe.com'" 
+                class="flex items-center space-x-3 bg-white border border-brand-border px-4 py-2.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all active:scale-95 group">
+            <div class="w-8 h-8 bg-brand-blue rounded-full flex items-center justify-center">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+            <div class="text-left">
+                <p class="text-[10px] font-bold text-brand-darkText leading-none">Email Help</p>
+                <p class="text-[8px] text-brand-lightText">24h Response</p>
+            </div>
+        </button>
+    </div>
+
+  <button onclick="toggleSupportMenu()" 
+        id="supportTrigger"
+        class="w-14 h-14 bg-white rounded-full shadow-2xl flex flex-col items-center justify-center border-2 border-brand-blue transition-all hover:scale-105 active:scale-90 overflow-hidden">
+    
+    <img src="https://i.imgur.com/syKFaNI.png" 
+         alt="SMSG Logo" 
+         class="w-7 h-7 object-contain mb-0.5">
+    
+    <span class="text-[7px] font-black uppercase leading-none text-brand-blue tracking-tighter">Support</span>
+</button>
+</div>
+<div class="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-sm border-t border-brand-border h-7 flex items-center overflow-hidden z-40">
+    <div class="flex whitespace-nowrap animate-marquee items-center">
+        <div class="flex items-center px-6 space-x-1.5">
+            <img src="https://i.imgur.com/syKFaNI.png" class="h-3.5 w-3.5 object-contain">
+            <span class="text-[9px] font-black text-brand-blue uppercase tracking-[0.2em]">SMSGlobe</span>
+        </div>
+        <div class="flex items-center px-6 space-x-1.5">
+            <img src="https://i.imgur.com/syKFaNI.png" class="h-3.5 w-3.5 object-contain">
+            <span class="text-[9px] font-black text-brand-blue uppercase tracking-[0.2em]">SMSGlobe</span>
+        </div>
+        <div class="flex items-center px-6 space-x-1.5">
+            <img src="https://i.imgur.com/syKFaNI.png" class="h-3.5 w-3.5 object-contain">
+            <span class="text-[9px] font-black text-brand-blue uppercase tracking-[0.2em]">SMSGlobe</span>
+        </div>
+        <div class="flex items-center px-6 space-x-1.5">
+            <img src="https://i.imgur.com/syKFaNI.png" class="h-3.5 w-3.5 object-contain">
+            <span class="text-[9px] font-black text-brand-blue uppercase tracking-[0.2em]">SMSGlobe</span>
+        </div>
+        <div class="flex items-center px-6 space-x-1.5">
+            <img src="https://i.imgur.com/syKFaNI.png" class="h-3.5 w-3.5 object-contain">
+            <span class="text-[9px] font-black text-brand-blue uppercase tracking-[0.2em]">SMSGlobe</span>
+        </div>
+        <div class="flex items-center px-6 space-x-1.5">
+            <img src="https://i.imgur.com/syKFaNI.png" class="h-3.5 w-3.5 object-contain">
+            <span class="text-[9px] font-black text-brand-blue uppercase tracking-[0.2em]">SMSGlobe</span>
+        </div>
+    </div>
+</div>
+
         </main>
     </div>
+
 
 <script>
     const API_BASE_URL = '/api';
     const PROXY_ICON = 'https://i.imgur.com/n5ZZeLf.png';
 
     const carriers = [
-        { id: 'tmobile', name: 'T-Mobile', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Carrier' },
-        { id: 'att', name: 'AT&T', image: 'https://i.imgur.com/WDCo1gM.png', type: 'Carrier' },
-        { id: '1month', name: '1 Month', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term' },
-        { id: '3months', name: '3 Months', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term' }
+        { id: 'tmobile', name: 'T-Mobile (Prepaid)', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Carrier' },
+        { id: 'att', name: 'AT&T (Prepaid)', image: 'https://i.imgur.com/WDCo1gM.png', type: 'Carrier' },
+        { id: '1month', name: '1 Month eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term' },
+        { id: '3months', name: '3 Months eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term' },
+        { id: '1year', name: '1 Year eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term' }
     ];
 
-    const rdpPlans = {
-        tier1: { id: "tier1", name: "USA T1", price: "₦45k", hardware: "4GB | 2 CPU" },
-        tier2: { id: "tier2", name: "USA T2", price: "₦55k", hardware: "6GB | 3 CPU" },
-        tier3: { id: "tier3", name: "USA T3", price: "₦65k", hardware: "8GB | 4 CPU" },
-        tier4: { id: "tier4", name: "USA T4", price: "₦80k", hardware: "12GB | 6 CPU"}
+       const rdpPlans = {
+        tier1: { id: "tier1", name: "USA Tier 1", price: "₦45,000", hardware: "4GB RAM | 2 CPU", storage: "60GB SSD" },
+        tier2: { id: "tier2", name: "USA Tier 2", price: "₦55,000", hardware: "6GB RAM | 3 CPU", storage: "100GB SSD" },
+        tier3: { id: "tier3", name: "USA Tier 3", price: "₦65,000", hardware: "8GB RAM | 4 CPU", storage: "140GB SSD" },
+        tier4: { id: "tier4", name: "USA Tier 4", price: "80,000", hardware: "12GB RAM | 6 CPU Cores", storage: "180GB SSD"},
+
     };
 
+    async function checkMaintenance() {
+    try {
+        const response = await fetch('/api/system-status');
+        const status = await response.json();
+
+        // If maintenance is ON, redirect to a maintenance page
+        if (status.maintenanceMode === true) {
+            window.location.href = 'maintenance.html';
+        }
+    } catch (err) {
+        console.error("Status check failed", err);
+    }
+}
+
     function loadGifts() {
-        const container = document.getElementById('giftGrid');
-        if (!container) return;
-        const gifts = [
-            { name: 'Flowers', img: 'https://images.unsplash.com/photo-1526047932273-341f2a7631f9?w=150&h=150&fit=crop', link: 'flowers' },
-            { name: 'Jewelry', img: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=150&h=150&fit=crop', link: 'rings' },
-            { name: 'Cakes', img: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=150&h=150&fit=crop', link: 'cakes' },
-            { name: 'Frames', img: 'https://images.unsplash.com/photo-1513519247388-1934518a9169?w=150&h=150&fit=crop', link: 'frames' },
-            { name: 'Pizza', img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=150&h=150&fit=crop', link: 'pizza' },
-            { name: 'Wine', img: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=150&h=150&fit=crop', link: 'wine' }
-        ];
-        container.innerHTML = gifts.map(g => `
-            <div onclick="window.location.href='send_gifts.html?cat=${g.link}'" 
-                 class="glass-card p-1.5 rounded-xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer active-scale group">
-                <div class="aspect-square w-full rounded-lg overflow-hidden mb-1 bg-white/20">
-                    <img src="${g.img}" alt="${g.name}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-                </div>
-                <p class="text-[8px] font-bold text-brand-darkText uppercase truncate w-full leading-tight">${g.name}</p>
-            </div>
-        `).join('');
-    }
+    const container = document.getElementById('giftGrid');
+    if (!container) return;
 
-    function loadRDP() {
-        const grid = document.getElementById('rdpGrid');
-        if (!grid) return;
-        grid.innerHTML = Object.values(rdpPlans).map(plan => `
-            <div onclick="window.location.href='user_rdp.html?plan=${plan.id}'" class="glass-card p-2 rounded-xl active-scale shadow-sm flex flex-col justify-between">
-                <div class="flex items-center justify-between mb-0.5">
-                    <h3 class="text-[8px] font-extrabold text-brand-darkText uppercase truncate">${plan.name}</h3>
-                    <span class="w-1 h-1 bg-green-500 rounded-full animate-pulse"></span>
+    const gifts = [
+        { name: 'Flowers', img: 'https://images.unsplash.com/photo-1526047932273-341f2a7631f9?w=150&h=150&fit=crop', link: 'flowers' },
+        { name: 'Jewelry', img: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=150&h=150&fit=crop', link: 'rings' },
+        { name: 'Cakes', img: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=150&h=150&fit=crop', link: 'cakes' },
+        { name: 'Frames', img: 'https://imgur.com/SkmdudQ', link: 'frames' },
+        { name: 'Pizza', img: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=150&h=150&fit=crop', link: 'pizza' },
+        { name: 'Wine', img: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=150&h=150&fit=crop', link: 'wine' }
+    ];
+
+    container.innerHTML = gifts.map(g => `
+        <div onclick="window.location.href='send_gifts.html?cat=${g.link}'" 
+             class="bg-white border border-brand-border p-1.5 rounded-xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer active-scale group">
+            
+            <div class="aspect-square w-full rounded-lg overflow-hidden mb-1 bg-gray-50">
+                <img src="${g.img}" alt="${g.name}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+            </div>
+
+            <p class="text-[8px] font-bold text-brand-darkText uppercase truncate w-full leading-tight">
+                ${g.name}
+            </p>
+            
+            <span class="text-[6px] font-extrabold text-brand-blue mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                SEND NOW
+            </span>
+        </div>
+    `).join('');
+}
+
+  function loadRDP() {
+    const grid = document.getElementById('rdpGrid');
+    if (!grid) return;
+    
+    grid.innerHTML = Object.values(rdpPlans).map(plan => `
+        <div onclick="window.location.href='user_rdp.html?plan=${plan.id}'" 
+             class="bg-white border border-brand-border p-4 md:p-3 rounded-2xl active-scale shadow-sm flex flex-col justify-between min-h-[110px] md:min-h-[90px] transition-all hover:border-brand-blue">
+            
+            <div class="flex items-start justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <img src="https://flagcdn.com/w40/us.png" class="w-4 h-auto rounded-[2px] shadow-sm border border-gray-100" alt="USA">
+                    <h3 class="text-[15px] md:text-[8px] font-extrabold text-brand-darkText uppercase truncate leading-none">
+                        ${plan.name}
+                    </h3>
                 </div>
-                <p class="text-[7px] text-brand-lightText truncate mb-1">${plan.hardware}</p>
-                <div class="flex items-center justify-between border-t border-white/20 pt-1">
-                    <span class="text-[8px] font-black text-brand-darkText">${plan.price}</span>
-                    <span class="text-[7px] font-bold text-brand-blue uppercase">GO</span>
+                <span class="flex items-center gap-1">
+                    <span class="text-[7px] font-bold text-green-500 uppercase">Live</span>
+                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                </span>
+            </div>
+            
+            <p class="text-[12px] md:text-[10px] text-brand-lightText font-medium mb-3">
+                ${plan.hardware}
+            </p>
+            
+            <div class="flex items-center justify-between border-t border-brand-border pt-2 mt-auto">
+                <span class="text-[15px] md:text-[12px] font-black text-brand-darkText">
+                    ${plan.price}
+                </span>
+                <div class="bg-brand-blue/10 px-2 py-1 rounded-md">
+                    <span class="text-[10px] md:text-[9px] font-black text-brand-blue uppercase tracking-tighter">
+                        BUY NOW
+                    </span>
                 </div>
             </div>
-        `).join('');
-    }
+        </div>
+    `).join('');
+}
 
-    function loadActivations() {
-        const grid = document.getElementById('activationGrid');
-        if (!grid) return;
-        grid.innerHTML = carriers.map(c => `
-            <div onclick="window.location.href='esim_activation.html?id=${c.id}'" 
-                 class="glass-card p-2 rounded-xl cursor-pointer hover:border-brand-blue transition-all active-scale text-center relative flex flex-col items-center shadow-sm">
-                <div class="h-4 w-full mb-1 flex items-center justify-center">
-                    <img src="${c.image}" class="max-h-full max-w-[80%] object-contain">
-                </div>
-                <h3 class="text-[9px] font-bold text-brand-darkText uppercase truncate w-full leading-tight">${c.name}</h3>
-                <span class="text-[7px] text-brand-blue font-bold mt-0.5 uppercase">ACTIVATE</span>
+  function loadActivations() {
+    const grid = document.getElementById('activationGrid');
+    if (!grid) return;
+
+    // Use .slice(0, 4) to ensure only 4 items display, matching the Refill section
+    grid.innerHTML = carriers.slice(0, 4).map(c => `
+        <div onclick="window.location.href='esim_activation.html?id=${c.id}'" 
+             class="bg-white border border-brand-border p-2 rounded-xl cursor-pointer hover:border-brand-blue transition-all active-scale text-center relative overflow-hidden flex flex-col items-center shadow-sm">
+            
+            <span class="absolute top-1 right-1 bg-brand-blue text-white text-[6px] font-bold px-1 py-0.5 rounded-full uppercase z-10">
+                ${c.type}
+            </span>
+
+            <div class="h-5 w-full mb-1 flex items-center justify-center">
+                <img src="${c.image}" class="max-h-full max-w-[90%] object-contain">
             </div>
-        `).join('');
-    }
 
+            <h3 class="text-[12px] font-bold text-brand-darkText uppercase truncate w-full px-1 leading-tight">
+                ${c.name}
+            </h3>
+            
+            <span class="text-[10px] text-brand-blue font-bold mt-0.5 uppercase">Activate &rarr;</span>
+        </div>
+    `).join('');
+}
+
+    // Updated Card Templates for smaller sizes
     async function fetchFeaturedProxies() {
         const container = document.getElementById('featuredProxies');
         try {
@@ -303,12 +461,12 @@
                 container.innerHTML = categories.map(cat => {
                     const count = data.proxies.filter(p => p.category === cat).length;
                     return `
-                        <div onclick="window.location.href='user_proxy.html'" class="glass-card p-2 rounded-xl flex flex-col items-center text-center shadow-sm active-scale cursor-pointer hover:border-brand-blue transition-all">
-                            <div class="w-4 h-4 bg-brand-background/30 rounded flex items-center justify-center mb-1 p-0.5">
+                        <div onclick="window.location.href='user_proxy.html'" class="bg-white border border-brand-border p-2 rounded-xl flex flex-col items-center text-center shadow-sm active-scale cursor-pointer hover:border-brand-blue transition-all">
+                            <div class="w-5 h-5 bg-brand-background rounded-md flex items-center justify-center mb-1 p-1">
                                 <img src="${PROXY_ICON}" class="w-full h-full object-contain">
                             </div>
-                            <h3 class="text-[9px] font-bold text-brand-darkText uppercase truncate w-full">${cat}</h3>
-                            <p class="text-[8px] text-brand-lightText mt-0.5">${count} Packs</p>
+                            <h3 class="text-[12px] font-bold text-brand-darkText uppercase truncate w-full">${cat}</h3>
+                            <p class="text-[12px] text-brand-lightText mt-0.5">${count} Available</p>
                         </div>
                     `;
                 }).join('');
@@ -323,17 +481,17 @@
             const data = await res.json();
             if (data.success && data.products) {
                 const featured = data.products.slice(0, 4);
-              container.innerHTML = featured.map(vpn => `
-    <div class="glass-card p-2 rounded-xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer active-scale max-w-[120px] mx-auto w-full" onclick="window.location.href='user_vpn.html'">
-        <div class="w-8 h-8 rounded flex items-center justify-center p-0.5 mb-1 bg-gray-50">
-            <img src="${vpn.image || 'https://via.placeholder.com/50'}" class="max-h-full max-w-full object-contain">
-        </div>
-        <p class="text-[9px] font-bold text-brand-darkText truncate w-full">${vpn.name}</p>
-        <p class="text-[10px] font-extrabold text-brand-blue mt-0.5">$${vpn.plans?.[0]?.price || '0.0'}</p>
-    </div>
-`).join('');
+                container.innerHTML = featured.map(vpn => `
+                    <div class="bg-white border border-brand-border p-2 rounded-xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer active-scale" onclick="window.location.href='user_vpn.html'">
+                        <div class="w-5 h-5 bg-gray-50 rounded-md flex items-center justify-center p-0.5 mb-1">
+                            <img src="${vpn.image || 'https://via.placeholder.com/50'}" class="max-h-full max-w-full object-contain">
+                        </div>
+                        <p class="text-[12px] font-bold text-brand-darkText truncate w-full">${vpn.name}</p>
+                        <p class="text-[12px] font-bold text-brand-blue mt-0.5">$${vpn.plans?.[0]?.price || '0.00'}</p>
+                    </div>
+                `).join('');
             }
-        } catch (e) { container.innerHTML = '<p class="text-[9px] col-span-full text-center">Data unavailable.</p>'; }
+        } catch (e) { container.innerHTML = '<p class="text-[12px] col-span-full text-center">Data unavailable.</p>'; }
     }
 
     function loadFeaturedCarriers() {
@@ -341,16 +499,16 @@
         const featured = [
             { name: 'T-Mobile', image: 'https://i.imgur.com/pyDMW1t.png' },
             { name: 'AT&T', image: 'https://i.imgur.com/WDCo1gM.png' },
-            { name: 'Verizon', image: 'https://i.imgur.com/ylEL7gO.jpeg' },
-            { name: 'Vodafone', image: 'https://i.imgur.com/r7a0fpw.png' }
+            { name: '1 Month Esim', image: 'https://i.imgur.com/syKFaNI.png' },
+            { name: '3 Month Esim', image: 'hthttps://i.imgur.com/syKFaNI.png' }
         ];
         container.innerHTML = featured.map(carrier => `
-            <div onclick="window.location.href='esim_refill.html'" class="glass-card p-2 rounded-xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer active-scale">
-                <div class="h-4 w-full flex items-center justify-center mb-1">
+            <div onclick="window.location.href='esim_refill.html'" class="bg-white border border-brand-border p-2 rounded-xl flex flex-col items-center text-center shadow-sm hover:border-brand-blue transition-all cursor-pointer active-scale">
+                <div class="h-5 w-full flex items-center justify-center mb-1">
                     <img src="${carrier.image}" alt="${carrier.name}" class="max-h-full max-w-full object-contain">
                 </div>
-                <p class="text-[9px] font-bold text-brand-darkText uppercase truncate w-full">${carrier.name}</p>
-                <span class="text-[7px] font-bold text-brand-blue bg-blue-50/50 px-1 rounded">Refill</span>
+                <p class="text-[12px] font-bold text-brand-darkText uppercase truncate w-full">${carrier.name}</p>
+                <span class="text-[10px] font-bold text-brand-blue bg-blue-50 px-1.5 rounded">Refill</span>
             </div>
         `).join('');
     }
@@ -365,44 +523,149 @@
                         </svg>
                     </div>
                     <h2 class="text-2xl font-bold text-brand-darkText mb-2">Account Suspended</h2>
-                    <p class="text-brand-lightText mb-8 text-sm leading-relaxed">Your account has been suspended. Please contact management to appeal this decision.</p>
+                    <p class="text-brand-lightText mb-8 text-sm leading-relaxed">
+                        Your account has been suspended for violating <b>SMSGlobe</b> rules. Please contact management to appeal this decision.
+                    </p>
+                    
                     <div class="space-y-3">
-                        <a href="https://wa.me/7059450227" target="_blank" class="flex items-center justify-center gap-2 w-full py-3 bg-[#25D366] text-white rounded-xl font-bold text-xs hover:opacity-90">Contact Support (WhatsApp)</a>
+                        <a href="https://wa.me/7059450227" target="_blank" class="flex items-center justify-center gap-2 w-full py-3 bg-[#25D366] text-white rounded-xl font-bold text-xs hover:opacity-90 transition-all">
+                            Contact Support (WhatsApp)
+                        </a>
+                        <a href="mailto:support@smsglobe.com" class="flex items-center justify-center gap-2 w-full py-3 bg-brand-blue text-white rounded-xl font-bold text-xs hover:opacity-90 transition-all">
+                            Email Management
+                        </a>
                     </div>
-                    <button onclick="logout()" class="mt-8 text-[10px] text-brand-lightText underline uppercase font-bold tracking-tighter">Log out</button>
+                    
+                    <button onclick="logout()" class="mt-8 text-[10px] text-brand-lightText hover:text-brand-darkText underline uppercase font-bold tracking-tighter">
+                        Log out of this account
+                    </button>
                 </div>
             </div>
         `;
     }
 
-    async function initDashboard() {
-        const token = localStorage.getItem('userToken');
-        if (!token) { window.location.href = 'user_login.html'; return; }
+ async function initDashboard() {
+    // 1. Maintenance Check
+    await checkMaintenance(); 
+
+    // 2. Auth Check: Initial local check
+    const token = localStorage.getItem('userToken');
+    if (!token) { 
+        console.warn("No token found, redirecting to login...");
+        window.location.href = 'user_login.html'; 
+        return; 
+    }
+    
+    try {
+        // 3. Fetch Profile
+        const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
+            method: 'GET',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        // --- NEW: Handle 401 Unauthorized explicitly ---
+        if (profileRes.status === 401) {
+            console.error("Session expired or invalid token.");
+            localStorage.removeItem('userToken'); // Clean up
+            window.location.href = 'user_login.html';
+            return;
+        }
+
+        const userData = await profileRes.json();
+
+        // 4. Security Gate: Handle 403 or Suspended status
+        if (profileRes.status === 403 || userData.status === 'suspended' || userData.isSuspended) {
+            if (typeof showSuspendedNotice === 'function') showSuspendedNotice();
+            return; 
+        }
+
+        if (!profileRes.ok) throw new Error(`HTTP error! status: ${profileRes.status}`);
+
+        // 5. Data Mapping
+        const displayName = userData.fullName || "User";
+        const displayEmail = userData.email || "No email";
+
+        const nameEl = document.getElementById('userName');
+        const emailEl = document.getElementById('userEmail');
+        const initialsEl = document.getElementById('userInitials');
+
+        if (nameEl) nameEl.innerText = displayName;
+        if (emailEl) emailEl.innerText = displayEmail;
+
+        // 6. Initials Logic
+        const nameParts = displayName.trim().split(/\s+/);
+        let initials = "U"; 
+        
+        if (nameParts.length >= 2 && nameParts[0][0] && nameParts[1][0]) {
+            initials = (nameParts[0][0] + nameParts[1][0]).toUpperCase();
+        } else if (nameParts[0] && nameParts[0][0]) {
+            initials = nameParts[0][0].toUpperCase();
+        }
+        
+        if (initialsEl) initialsEl.innerText = initials;
+        
+        // 7. Parallel Loading
+        // We wrap these in try-catch so one failing component doesn't break the whole page
         try {
-            const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const userData = await profileRes.json();
-            if (profileRes.status === 403 || userData.status === 'suspended' || userData.isSuspended) { showSuspendedNotice(); return; }
-            document.getElementById('userName').innerText = userData.full_name;
-            document.getElementById('userEmail').innerText = userData.email;
-            document.getElementById('userInitials').innerText = (userData.full_name || "U").charAt(0).toUpperCase();
-            await Promise.all([fetchFeaturedProxies(), fetchFeaturedVPNs()]);
-            loadActivations();
-            loadFeaturedCarriers();
-            loadRDP();
-            loadGifts();
-        } catch (err) { logout(); }
+            await Promise.allSettled([
+                typeof fetchFeaturedProxies === 'function' ? fetchFeaturedProxies() : Promise.resolve(), 
+                typeof fetchFeaturedVPNs === 'function' ? fetchFeaturedVPNs() : Promise.resolve()
+            ]);
+
+            if (typeof loadActivations === 'function') loadActivations();
+            if (typeof loadFeaturedCarriers === 'function') loadFeaturedCarriers();
+            if (typeof loadRDP === 'function') loadRDP();
+            if (typeof loadGifts === 'function') loadGifts();
+        } catch (loadErr) {
+            console.warn("Some dashboard components failed to load:", loadErr);
+        }
+
+    } catch (err) { 
+        console.error("Dashboard init error:", err);
+        // Generic error handling
+        if (document.getElementById('dashboardContent')) {
+            document.getElementById('dashboardContent').innerText = "Error loading dashboard. Please refresh.";
+        }
+    }
+}
+
+function toggleSupportMenu() {
+        const menu = document.getElementById('supportMenu');
+        const isHidden = menu.classList.contains('hidden');
+        
+        if (isHidden) {
+            menu.classList.remove('hidden');
+            // Small timeout to allow transition to trigger
+            setTimeout(() => {
+                menu.classList.remove('translate-y-10', 'opacity-0', 'scale-95');
+            }, 10);
+        } else {
+            menu.classList.add('translate-y-10', 'opacity-0', 'scale-95');
+            setTimeout(() => {
+                menu.classList.add('hidden');
+            }, 300);
+        }
     }
 
-    function logout() { localStorage.removeItem('userToken'); window.location.href = 'user_login.html'; }
+    function logout() { 
+        localStorage.removeItem('userToken'); 
+        window.location.href = 'user_login.html'; 
+    }
     
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
-    const toggleSidebar = () => { sidebar.classList.toggle('-translate-x-full'); overlay.classList.toggle('hidden'); };
+    const toggleSidebar = () => { 
+        sidebar.classList.toggle('-translate-x-full'); 
+        overlay.classList.toggle('hidden'); 
+    };
+    
     document.getElementById('openSidebar').addEventListener('click', toggleSidebar);
     document.getElementById('closeSidebar').addEventListener('click', toggleSidebar);
     overlay.addEventListener('click', toggleSidebar);
+    
     window.onload = initDashboard;
 </script>
 </body>

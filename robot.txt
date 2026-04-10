@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /smsadmin/
+
+Sitemap: https://smsglobe.net/sitemap.xml

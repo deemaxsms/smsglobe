@@ -82,6 +82,8 @@
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #EAECF0; border-radius: 10px; }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
@@ -185,6 +187,33 @@
                 </div>
             </div>
 
+            <section class="mt-6 mb-2 px-1">
+    <div class="flex items-center space-x-2 overflow-x-auto pb-4 no-scrollbar scroll-smooth">
+        <button onclick="document.getElementById('esim-section').scrollIntoView({behavior: 'smooth'})" 
+                class="flex-shrink-0 flex items-center space-x-2 bg-emerald-50 border border-emerald-100 px-4 py-2.5 rounded-xl hover:bg-emerald-100 transition-all active:scale-95">
+            <div class="w-6 h-6 bg-emerald-500 rounded-lg flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+            </div>
+            <span class="text-[11px] font-bold text-emerald-800 uppercase tracking-tight">eSIM Data</span>
+        </button>
+
+        <button onclick="document.getElementById('rdp-section').scrollIntoView({behavior: 'smooth'})" 
+                class="flex-shrink-0 flex items-center space-x-2 bg-slate-100 border border-slate-200 px-4 py-2.5 rounded-xl hover:bg-slate-200 transition-all active:scale-95">
+            <div class="w-6 h-6 bg-slate-700 rounded-lg flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" /></svg>
+            </div>
+            <span class="text-[11px] font-bold text-slate-800 uppercase tracking-tight">Cloud RDP</span>
+        </button>
+
+        <button onclick="document.getElementById('gifts-section').scrollIntoView({behavior: 'smooth'})" 
+                class="flex-shrink-0 flex items-center space-x-2 bg-rose-50 border border-rose-100 px-4 py-2.5 rounded-xl hover:bg-rose-100 transition-all active:scale-95">
+            <div class="w-6 h-6 bg-rose-500 rounded-lg flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H4.5a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 109.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1114.625 7.5H12m0 0V21m-8.625-9.75h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+            </div>
+            <span class="text-[11px] font-bold text-rose-800 uppercase tracking-tight">Gift Cards</span>
+        </button>
+    </div>
+</section>
 
       <section class="mt-8 overflow-hidden bg-white border border-brand-border rounded-[20px] md:rounded-[24px] shadow-sm">
     <div class="flex flex-col md:flex-row">

@@ -31,6 +31,16 @@ app.use('/smsuser', express.static(path.join(__dirname, 'smsuser'), {
     extensions: ['html', 'htm']
 }));
 
+// Manually serve sitemap.xml
+app.get('/sitemap.xml', (req, res) => {
+    res.sendFile(path.join(__dirname, 'sitemap.xml'));
+});
+
+// Manually serve robots.txt
+app.get('/robots.txt', (req, res) => {
+    res.sendFile(path.join(__dirname, 'robots.txt'));
+});
+
 // --- 2. CONFIGURATION & SCHEMA ---
 const JWT_SECRET = process.env.JWT_SECRET;
 const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET_KEY;

@@ -1031,7 +1031,6 @@ async function handleDeleteVPN(req, res) {
         res.status(500).json({ success: false, message: "Delete failed" });
     }
 }
-
 // --- 1. User Login Handler ---
 async function handleUserLogin(req, res) {
     const { email, password, captchaToken } = req.body;
@@ -1040,6 +1039,7 @@ async function handleUserLogin(req, res) {
         return res.status(400).json({ success: false, message: "reCAPTCHA token missing." });
     }
 
+    // Wrap verification in try/catch if verifyRecaptcha is an external call
     const isHuman = await verifyRecaptcha(captchaToken);
     if (!isHuman) {
         return res.status(400).json({ success: false, message: "Security verification failed." });
@@ -1047,7 +1047,6 @@ async function handleUserLogin(req, res) {
 
     try {
         // --- 1. GLOBAL MAINTENANCE CHECK ---
-        // Fetch settings from the SystemSettings collection
         const settings = await SystemSettings.findOne(); 
         if (settings && settings.maintenanceMode === true) {
             return res.status(503).json({ 
@@ -1056,14 +1055,15 @@ async function handleUserLogin(req, res) {
             });
         }
 
+        // --- 2. USER LOOKUP ---
         const user = await User.findOne({ email: email.toLowerCase().trim() });
         
-        // 2. Standard Credential Check
+        // --- 3. CREDENTIAL CHECK ---
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ success: false, message: "Invalid email or password." });
         }
 
-        // 3. STATUS CHECK
+        // --- 4. STATUS CHECK ---
         if (user.status === 'suspended') {
             return res.status(403).json({ 
                 success: false, 
@@ -1071,7 +1071,8 @@ async function handleUserLogin(req, res) {
             });
         }
 
-        // 4. Generate Token if everything is okay
+        // --- 5. TOKEN GENERATION ---
+        // Ensure JWT_SECRET is loaded correctly from your environment
         const token = jwt.sign(
             { id: user._id, email: user.email, type: 'user' }, 
             JWT_SECRET, 
@@ -1083,9 +1084,20 @@ async function handleUserLogin(req, res) {
             token,
             user: { name: user.fullName, email: user.email, balance: user.balance || 0 } 
         });
+
     } catch (err) {
-        console.error("Login Error:", err);
-        return res.status(500).json({ success: false, message: "Internal server error." });
+        // --- DETAILED LOGGING ---
+        console.error("========== LOGIN ERROR ==========");
+        console.error("Message:", err.message);
+        console.error("Stack:", err.stack); // This tells you exactly which LINE failed
+        console.error("=================================");
+
+        // Return a slightly more helpful message for debugging
+        return res.status(500).json({ 
+            success: false, 
+            message: "Internal server error.",
+            error: process.env.NODE_ENV === 'development' ? err.message : undefined 
+        });
     }
 }
 

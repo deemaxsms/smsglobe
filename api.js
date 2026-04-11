@@ -588,24 +588,41 @@ case 'system-status': // Public route for the frontend to check
 });
 
 // --- 7. LOGIC HANDLERS ---
-
 async function handleLogin(req, res) {
     const { email, password, captchaToken } = req.body;
 
+    // 1. RECAPTCHA VERIFICATION
     const isHuman = await verifyRecaptcha(captchaToken);
+    
     if (!isHuman) {
-        return res.status(400).json({ success: false, message: "reCAPTCHA failed." });
+        // This is where your 400 error is coming from. 
+        // Ensure your frontend is sending 'captchaToken' in the JSON body.
+        console.log(`Admin login blocked: reCAPTCHA failed for ${email}`); 
+        return res.status(400).json({ 
+            success: false, 
+            message: "reCAPTCHA verification failed. Please refresh and try again." 
+        });
     }
 
     try {
+        // 2. ADMIN AUTHENTICATION
         const admin = await Admin.findOne({ email });
+        
         if (!admin || !(await bcrypt.compare(password, admin.password))) {
-            return res.status(401).json({ success: false, message: "Invalid credentials" });
+            return res.status(401).json({ success: false, message: "Invalid admin credentials" });
         }
-        const token = jwt.sign({ id: admin._id, email: admin.email }, JWT_SECRET, { expiresIn: '24h' });
+
+        // 3. TOKEN GENERATION
+        const token = jwt.sign(
+            { id: admin._id, email: admin.email, role: 'admin' }, 
+            JWT_SECRET, 
+            { expiresIn: '24h' }
+        );
+
         return res.json({ success: true, token });
     } catch (err) {
-        return res.status(500).json({ success: false, message: "Login error" });
+        console.error("Admin Login Error:", err);
+        return res.status(500).json({ success: false, message: "Internal server error" });
     }
 }
 

@@ -1071,12 +1071,7 @@ async function handleUserLogin(req, res) {
                 message: "SMSGlobe is currently under maintenance. Please try again later." 
             });
         }
-
-        // --- 2. USER LOOKUP ---
-        const user = await User.findOne({ email: email.toLowerCase().trim() });
-        
-        // --- 3. PASSWORD CHECK ---
-        // We already validated 'password' is a string, so bcrypt won't throw "Illegal arguments"
+    const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');        
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ success: false, message: "Invalid email or password." });
         }

@@ -921,23 +921,14 @@ async function handleManageUser(req, res) {
     }
 }
 
-/**
- * VPN Controller Actions
- * Handles CRUD operations for VPN nodes including inventory,
- * pricing tiers, and device-specific configurations.
- */
-
 async function handleGetVPNs(req, res) {
     try {
-        // Fetch all VPNs, including hidden fields (password & activationCode) for admin management
-        const vpns = await VPN.find({})
-            .sort({ createdAt: -1 })
-            .select('+password +activationCode'); 
-
+        // Fetch all VPNs, including the hidden password field for admin management
+        const vpns = await VPN.find({}).sort({ createdAt: -1 }).select('+password');
         res.json({ success: true, products: vpns }); 
     } catch (err) {
         console.error("Fetch VPN Error:", err);
-        res.status(500).json({ success: false, message: "Fetch failed" });
+        res.status(500).json({ success: false, message: "Failed to fetch VPN list" });
     }
 }
 
@@ -945,74 +936,58 @@ async function handleAddVPN(req, res) {
     try {
         const data = req.body;
 
-        // 1. Format plans and ensure prices are numbers
+        // Ensure plans is an array and numbers are parsed correctly
+        let formattedPlans = [];
         if (data.plans && Array.isArray(data.plans)) {
-            data.plans = data.plans.map(p => ({
-                duration: p.duration,
+            formattedPlans = data.plans.map(p => ({
+                duration: p.duration || "",
                 price: parseFloat(p.price) || 0
             }));
         }
 
-        // 2. Prepare the new document object
         const newVPN = new VPN({
             ...data,
-            // Ensure numeric fields are stored as Integers
+            plans: formattedPlans,
             stock: parseInt(data.stock) || 0, 
             deviceLimit: parseInt(data.deviceLimit) || 0,
-            // Capture the new fields from the frontend
-            deviceType: data.deviceType || 'Both',
-            activationCode: data.activationCode || '',
-            // Sync legacy price field with the first plan for backward compatibility
-            price: data.plans && data.plans.length > 0 ? parseFloat(data.plans[0].price) : 0
+            price: formattedPlans.length > 0 ? formattedPlans[0].price : (parseFloat(data.price) || 0)
         });
 
         await newVPN.save();
-        res.json({ success: true, message: "VPN Node & Activation Settings Synced Successfully" });
+        res.json({ success: true, message: "VPN Node & Stock Synced Successfully" });
     } catch (err) {
         console.error("Add VPN Error:", err);
-        res.status(500).json({ success: false, message: "Upload failed" });
+        res.status(500).json({ success: false, message: "Failed to create VPN node" });
     }
 }
 
 async function handleUpdateVPN(req, res) {
     try {
-        const { vpnId, ...updateData } = req.body;
-        
-        if (!vpnId) {
-            return res.status(400).json({ success: false, message: "VPN ID is required for updates" });
-        }
+        const { vpnId, id, ...updateData } = req.body;
+        const targetId = vpnId || id; // Handle both common naming conventions
 
-        // 1. Clean up plans data if present in update
+        if (!targetId) {
+            return res.status(400).json({ success: false, message: "VPN ID is required for update" });
+        }        
         if (updateData.plans && Array.isArray(updateData.plans)) {
             updateData.plans = updateData.plans.map(p => ({
                 duration: p.duration,
                 price: parseFloat(p.price) || 0
-            }));
-            
-            // Sync primary price field
+            }));            
             if (updateData.plans.length > 0) {
                 updateData.price = updateData.plans[0].price;
             }
         }
-
-        // 2. Parse Numeric Fields
-        if (updateData.stock !== undefined) {
-            updateData.stock = parseInt(updateData.stock) || 0;
-        }
-
-        if (updateData.deviceLimit !== undefined) {
-            updateData.deviceLimit = parseInt(updateData.deviceLimit) || 0;
-        }
-
-        // 3. Update the document
-        // { new: true } returns the updated document instead of the old one
-        const updated = await VPN.findByIdAndUpdate(vpnId, updateData, { new: true });
+        if (updateData.stock !== undefined) updateData.stock = parseInt(updateData.stock) || 0;
+        if (updateData.deviceLimit !== undefined) updateData.deviceLimit = parseInt(updateData.deviceLimit) || 0;
+        
+        const updated = await VPN.findByIdAndUpdate(targetId, updateData, { new: true, runValidators: true });
         
         if (!updated) {
             return res.status(404).json({ success: false, message: "VPN node not found" });
         }
 
-        res.json({ success: true, message: "VPN Configuration, Device Type & Codes Updated" });
+        res.json({ success: true, message: "VPN Configuration & Stock Updated" });
     } catch (err) {
         console.error("Update VPN Error:", err);
         res.status(500).json({ success: false, message: "Update failed" });
@@ -1027,10 +1002,9 @@ async function handleDeleteVPN(req, res) {
         const deleted = await VPN.findByIdAndDelete(id);
         
         if (!deleted) {
-            return res.status(404).json({ success: false, message: "Node already deleted or not found" });
+            return res.status(404).json({ success: false, message: "VPN node not found" });
         }
-
-        res.json({ success: true, message: "VPN Node Removed from Inventory" });
+        res.json({ success: true, message: "VPN Node Deleted Successfully" });
     } catch (err) {
         console.error("Delete VPN Error:", err);
         res.status(500).json({ success: false, message: "Delete failed" });

@@ -165,6 +165,22 @@
                     </div>
                 </div>
 
+                <div class="md:col-span-2">
+                    <label class="block text-[10px] font-bold text-brand-midText mb-1.5 uppercase tracking-widest">Target Device Type</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label onclick="handleDeviceChange('phone')" class="flex items-center justify-center gap-2 p-3 border border-brand-border rounded-xl cursor-pointer hover:bg-gray-50 transition-all has-[:checked]:border-brand-blue has-[:checked]:bg-blue-50">
+                            <input type="radio" name="deviceType" value="phone" class="hidden" checked>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                            <span class="font-bold text-xs">Phone Device</span>
+                        </label>
+                        <label onclick="handleDeviceChange('pc')" class="flex items-center justify-center gap-2 p-3 border border-brand-border rounded-xl cursor-pointer hover:bg-gray-50 transition-all has-[:checked]:border-brand-blue has-[:checked]:bg-blue-50">
+                            <input type="radio" name="deviceType" value="pc" class="hidden">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                            <span class="font-bold text-xs">PC Device</span>
+                        </label>
+                    </div>
+                </div>
+
                 <div class="md:col-span-2 bg-gray-50 p-4 rounded-2xl border border-brand-border">
                     <label class="block text-[10px] font-bold text-brand-midText mb-3 uppercase tracking-widest">Pricing Plans (Duration & Price)</label>
                     <div id="pricingContainer" class="space-y-3"></div>
@@ -173,14 +189,38 @@
                     </button>
                 </div>
 
-                <div class="md:col-span-2 bg-brand-background p-5 rounded-2xl border border-blue-100">
-                    <p class="font-bold text-brand-blue mb-4 text-[10px] uppercase tracking-widest flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                        Server Access Credentials
-                    </p>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input type="text" id="username" name="username" placeholder="VPN Account ID" class="w-full bg-white border border-brand-border p-2.5 rounded-lg text-sm">
-                        <input type="text" id="password" name="password" placeholder="Key / Passphrase" class="w-full bg-white border border-brand-border p-2.5 rounded-lg text-sm">
+                <div id="credentialsWrapper" class="md:col-span-2 bg-brand-background p-5 rounded-2xl border border-blue-100">
+                    <div id="phoneCreds" class="space-y-4">
+                        <p class="font-bold text-brand-blue text-[10px] uppercase tracking-widest flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                            Phone Access Credentials
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" id="username" name="username" placeholder="Phone Username" class="w-full bg-white border border-brand-border p-2.5 rounded-lg text-sm">
+                            <input type="text" id="password" name="password" placeholder="Phone Password" class="w-full bg-white border border-brand-border p-2.5 rounded-lg text-sm">
+                        </div>
+                    </div>
+
+                    <div id="pcCreds" class="hidden space-y-4">
+                        <p class="font-bold text-brand-blue text-[10px] uppercase tracking-widest flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                            PC Activation Method
+                        </p>
+                        <div class="flex flex-col gap-4">
+                            <select id="pcMethod" name="pcMethod" onchange="togglePcInputs(this.value)" class="w-full bg-white border border-brand-border p-2.5 rounded-lg text-sm font-semibold text-brand-darkText">
+                                <option value="userpass">Use Username & Password</option>
+                                <option value="code">Use Activation Code</option>
+                            </select>
+                            
+                            <div id="pcUserPassInputs" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <input type="text" id="pcUsername" name="pcUsername" placeholder="PC Account ID" class="w-full bg-white border border-brand-border p-2.5 rounded-lg text-sm">
+                                <input type="text" id="pcPassword" name="pcPassword" placeholder="PC Password" class="w-full bg-white border border-brand-border p-2.5 rounded-lg text-sm">
+                            </div>
+
+                            <div id="pcCodeInput" class="hidden">
+                                <input type="text" id="activationCode" name="activationCode" placeholder="Enter 16-digit Activation Code" class="w-full bg-white border border-brand-border p-2.5 rounded-lg text-sm">
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -204,6 +244,33 @@
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('-translate-x-full');
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
+    }
+
+    // --- Device UI Logic ---
+    function handleDeviceChange(type) {
+        const phoneSection = document.getElementById('phoneCreds');
+        const pcSection = document.getElementById('pcCreds');
+        
+        if (type === 'phone') {
+            phoneSection.classList.remove('hidden');
+            pcSection.classList.add('hidden');
+        } else {
+            phoneSection.classList.add('hidden');
+            pcSection.classList.remove('hidden');
+        }
+    }
+
+    function togglePcInputs(method) {
+        const userPassFields = document.getElementById('pcUserPassInputs');
+        const codeField = document.getElementById('pcCodeInput');
+        
+        if (method === 'userpass') {
+            userPassFields.classList.remove('hidden');
+            codeField.classList.add('hidden');
+        } else {
+            userPassFields.classList.add('hidden');
+            codeField.classList.remove('hidden');
+        }
     }
 
     function addPriceRow(duration = '', price = '') {
@@ -232,7 +299,6 @@
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
-            // Filter products that are specifically VPNs if your API returns mixed types
             allVPNs = (data.products || []).filter(p => p.type === 'vpn' || !p.type);
             
             if (allVPNs.length === 0) {
@@ -258,7 +324,7 @@
                                 </div>
                                 <div class="min-w-0">
                                     <div class="font-bold text-brand-darkText truncate max-w-[150px]">${v.name}</div>
-                                    <div class="text-[11px] text-brand-lightText">${v.deviceLimit || 0} Device Limit</div>
+                                    <div class="text-[11px] text-brand-lightText">${v.deviceLimit || 0} Device Limit (${v.deviceType || 'Phone'})</div>
                                 </div>
                             </div>
                         </td>
@@ -302,6 +368,7 @@
         document.getElementById('vpnId').value = '';
         document.getElementById('pricingContainer').innerHTML = '';
         addPriceRow();
+        handleDeviceChange('phone'); // Default view
         document.getElementById('imgPreviewContainer').classList.add('hidden');
         document.getElementById('modalTitle').innerText = 'New VPN Configuration';
         document.getElementById('submitBtn').innerText = 'Sync VPN Data';
@@ -319,10 +386,31 @@
         document.getElementById('region').value = v.region || '';
         document.getElementById('stock').value = v.stock || 0;
         document.getElementById('deviceLimit').value = v.deviceLimit || '';
+        
+        // Populate standard credentials
         document.getElementById('username').value = v.username || '';
         document.getElementById('password').value = v.password || '';
         document.getElementById('instructions').value = v.instructions || '';
 
+        // NEW: Populate Device Logic
+        if (v.deviceType) {
+            const radio = document.querySelector(`input[name="deviceType"][value="${v.deviceType}"]`);
+            if (radio) {
+                radio.checked = true;
+                handleDeviceChange(v.deviceType);
+            }
+        }
+
+        // NEW: Populate PC Methods
+        if (v.pcMethod) {
+            document.getElementById('pcMethod').value = v.pcMethod;
+            togglePcInputs(v.pcMethod);
+        }
+        document.getElementById('pcUsername').value = v.pcUsername || '';
+        document.getElementById('pcPassword').value = v.pcPassword || '';
+        document.getElementById('activationCode').value = v.activationCode || '';
+
+        // Plans
         const container = document.getElementById('pricingContainer');
         container.innerHTML = '';
         if (v.plans && v.plans.length > 0) {
@@ -370,10 +458,7 @@
             price: row.querySelector('.plan-price').value.trim()
         })).filter(p => p.duration && p.price);
 
-        // Ensure numeric fields are numbers
-        vpnData.stock = parseInt(vpnData.stock) || 0;
-        vpnData.deviceLimit = parseInt(vpnData.deviceLimit) || 0;
-        vpnData.type = 'vpn'; // Identifying the product type
+        vpnData.type = 'vpn';
 
         const method = id ? 'PATCH' : 'POST';
         const btn = document.getElementById('submitBtn');
@@ -398,7 +483,7 @@
                 alert('Sync failed: ' + (errorData.message || 'Unknown error'));
             }
         } catch (e) {
-            alert('Network error. Check your server connection.');
+            alert('Network error.');
         } finally {
             btn.disabled = false;
             btn.innerText = id ? 'Save Changes' : 'Sync VPN Data';

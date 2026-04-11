@@ -1285,7 +1285,7 @@ async function handleInitiateTopup(req, res) {
                 tx_ref,
                 amount: finalAmountNGN,
                 currency: "NGN",
-                redirect_url: "https://smsglobe.net/smsuser/user_dashboard.html",
+                redirect_url: "https://www.smsglobe.net/smsuser/user_topup.html",
                 customer: { 
                     email: user.email, 
                     name: user.fullName 
@@ -1294,7 +1294,8 @@ async function handleInitiateTopup(req, res) {
                 meta: { 
                     userId: user._id.toString(), 
                     type: "WALLET_TOPUP", 
-                    usdAmount: amountUSD 
+                    usdAmount: amountUSD,
+                    amountNGN: finalAmountNGN
                 },
                 customizations: { 
                     title: "SMSGlobe Wallet Topup", 
@@ -1314,7 +1315,6 @@ async function handleInitiateTopup(req, res) {
     }
 }
 
-// --- Optimized & Corrected Verify Topup ---
 async function handleVerifyTopup(req, res) {
     const { transactionId } = req.body;
 
@@ -1323,7 +1323,6 @@ async function handleVerifyTopup(req, res) {
     }
 
     try {
-        // 1. Verify payment status with Flutterwave
         const response = await fetch(`https://api.flutterwave.com/v3/transactions/${transactionId}/verify`, {
             method: "GET",
             headers: { 
@@ -1334,14 +1333,10 @@ async function handleVerifyTopup(req, res) {
 
         const flwData = await response.json();
 
-        // Check if Flutterwave actually confirmed the payment
         if (flwData.status === "success" && flwData.data.status === "successful") {
-            
-            // 2. Extract data from Flutterwave response
             const { userId, usdAmount } = flwData.data.meta;
             const txRef = flwData.data.tx_ref;
             
-            // Fallback: If meta is missing for some reason, calculate USD from NGN amount
             let amountCreditUSD = parseFloat(usdAmount);
             if (isNaN(amountCreditUSD)) {
                 const settings = await SystemSettings.findOne();
@@ -1349,33 +1344,24 @@ async function handleVerifyTopup(req, res) {
                 amountCreditUSD = flwData.data.amount / rate;
             }
 
-            // 3. Idempotency Check: Verify this transaction hasn't been processed yet
-            // We check the Transaction schema because that's where we record deposits
             const existingTx = await Transaction.findOne({ reference: txRef });
             if (existingTx) {
                 return res.json({ 
                     success: true, 
-                    message: "Already credited", 
-                    newBalance: existingTx.balanceAfter 
+                    amountUSD: amountCreditUSD,
+                    amountNGN: flwData.data.amount,
+                    newBalance: existingTx.balanceAfter,
+                    message: "Already credited" 
                 });
             }
 
-            // 4. Update User Balance (Atomic Operation)
-            // Using $inc ensures we don't accidentally overwrite the balance with the wrong value
             const updatedUser = await User.findByIdAndUpdate(
                 userId,
                 { $inc: { balance: amountCreditUSD } },
                 { new: true, runValidators: true }
             );
 
-            if (!updatedUser) {
-                console.error(`Credit Failed: User ID ${userId} not found in database.`);
-                return res.status(404).json({ success: false, message: "User not found during credit process" });
-            }
-
-            // 5. Create the Audit Trail in Transaction Schema
-            // This matches your provided Transaction schema exactly
-            const newTransaction = await Transaction.create({
+            await Transaction.create({
                 userId: updatedUser._id,
                 type: 'credit',
                 purpose: 'deposit',
@@ -1385,24 +1371,24 @@ async function handleVerifyTopup(req, res) {
                 status: 'successful',
                 reference: txRef,
                 balanceBefore: updatedUser.balance - amountCreditUSD,
-                balanceAfter: updatedUser.balance,
-                metadata: flwData.data // Stores raw Flutterwave JSON for debugging
+                balanceAfter: updatedUser.balance
             });
 
-            console.log(`Successfully funded ${updatedUser.email} with $${amountCreditUSD}. Ref: ${txRef}`);
-
+            // Return all data needed for the Congratulations UI
             return res.json({ 
                 success: true, 
+                amountUSD: amountCreditUSD,
+                amountNGN: flwData.data.amount,
                 newBalance: updatedUser.balance,
                 message: "Wallet funded successfully!" 
             });
         }
         
-        return res.status(400).json({ success: false, message: "Flutterwave could not verify payment" });
+        return res.status(400).json({ success: false, message: "Verification failed" });
 
     } catch (err) {
-        console.error("CRITICAL DATABASE UPDATE ERROR:", err);
-        return res.status(500).json({ success: false, message: "Internal server error during balance update" });
+        console.error("CRITICAL ERROR:", err);
+        return res.status(500).json({ success: false, message: "Server error" });
     }
 }
 

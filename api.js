@@ -1031,6 +1031,7 @@ async function handleDeleteVPN(req, res) {
         res.status(500).json({ success: false, message: "Delete failed" });
     }
 }
+
 // --- 1. User Login Handler ---
 async function handleUserLogin(req, res) {
     // 1. Log the incoming request to verify property names (email vs userName, etc.)
@@ -2901,7 +2902,7 @@ async function handleForgotPasswordRequest(req, res) {
         const { email } = req.body;
         if (!email) return res.status(400).json({ success: false, message: "Email required" });
 
-        const user = await User.findOne({ email: email.toLowerCase().trim() });
+const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');
         if (!user) {
             return res.json({ success: true, message: "If an account exists, a reset link has been sent." });
         }

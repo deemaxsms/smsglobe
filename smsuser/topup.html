@@ -30,7 +30,6 @@
         input, select, textarea { font-size: 16px !important; }
         .btn-active { border-color: #0F54C6 !important; color: #0F54C6 !important; background-color: rgba(15, 84, 198, 0.05); }
         
-        /* Mobile Sidebar Transitions */
         #sidebar { transition: transform 0.3s ease-in-out; }
         @media (max-width: 1023px) {
             #sidebar.hidden-mobile { transform: translateX(-100%); }
@@ -79,6 +78,14 @@
         </header>
 
         <main class="p-4 md:p-8 lg:p-10 max-w-4xl w-full mx-auto">
+            <div id="statusAlert" class="hidden mb-6 p-4 rounded-2xl border flex items-center gap-3">
+                <div id="statusIcon" class="flex-shrink-0"></div>
+                <div>
+                    <p id="statusTitle" class="text-xs font-black uppercase tracking-widest"></p>
+                    <p id="statusMessage" class="text-[11px]"></p>
+                </div>
+            </div>
+
             <div class="bg-white rounded-[24px] md:rounded-[32px] border border-brand-border shadow-sm overflow-hidden">
                 <div class="flex flex-col md:flex-row">
                     
@@ -130,7 +137,7 @@
                                     <h4 class="text-2xl md:text-3xl font-black tracking-tighter" id="ngnDisplay">₦0.00</h4>
                                 </div>
                                 <div class="text-right">
-                                     <img src="https://imgur.com/l5GcIDZ" alt="Flutterwave" class="h-4 object-contain ml-auto filter brightness-0 invert opacity-80">
+                                     <img src="https://i.imgur.com/l5GcIDZ.png" alt="Flutterwave" class="h-4 object-contain ml-auto filter brightness-0 invert opacity-80">
                                      <span class="text-[8px] text-white/30 mt-2 block font-bold uppercase tracking-widest">via Flutterwave</span>
                                 </div>
                             </div>
@@ -146,47 +153,89 @@
         </main>
     </div>
 
-   <script>
+<script>
     let currentRate = 1380;
     let currentMarkup = 0;
-    
-    // Consistent token key used across the app
     const token = localStorage.getItem('userToken'); 
 
+    // 1. Payment Verification Logic
+    async function verifyPaymentOnLoad() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const transactionId = urlParams.get('transaction_id');
+        const status = urlParams.get('status');
+
+        if (transactionId && (status === 'successful' || status === 'completed')) {
+            const alertBox = document.getElementById('statusAlert');
+            const title = document.getElementById('statusTitle');
+            const msg = document.getElementById('statusMessage');
+            const icon = document.getElementById('statusIcon');
+
+            alertBox.className = "mb-6 p-4 rounded-2xl border flex items-center gap-3 bg-blue-50 border-blue-100 text-blue-700 animate-pulse";
+            title.innerText = "Verifying Transaction...";
+            msg.innerText = "Hold tight, we are confirming your payment with Flutterwave.";
+            icon.innerHTML = `<svg class="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg>`;
+            
+            try {
+                const response = await fetch('/api/verify-topup', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ transactionId })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alertBox.className = "mb-6 p-4 rounded-2xl border flex items-center gap-3 bg-green-50 border-green-100 text-green-700";
+                    title.innerText = "Wallet Funded!";
+                    msg.innerText = `Successfully added $${data.amountUSD} to your account. New balance: $${data.newBalance.toFixed(2)}`;
+                    icon.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`;
+                    
+                    document.getElementById('currentBalance').innerText = `Bal: $${data.newBalance.toFixed(2)}`;
+                    
+                    setTimeout(() => {
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        alertBox.classList.add('hidden');
+                    }, 6000);
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                alertBox.className = "mb-6 p-4 rounded-2xl border flex items-center gap-3 bg-red-50 border-red-100 text-red-700";
+                title.innerText = "Verification Failed";
+                msg.innerText = err.message || "We couldn't confirm your payment. Please contact support.";
+                icon.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>`;
+            }
+        }
+    }
+
+    // 2. Main Sync Function
     async function syncWithBackend() {
-        // 1. Auth Guard: Redirect if no token exists
         if (!token) {
-            console.warn("No session found. Redirecting...");
             window.location.href = 'user_login.html';
             return;
         }
 
         try {
-            // 2. Fetch User Profile & System Settings in parallel
             const [settingsRes, userRes] = await Promise.all([
                 fetch('/api/get-system-settings'),
-                fetch('/api/user-profile', { // Unified endpoint
+                fetch('/api/user-profile', { 
                     headers: { 'Authorization': `Bearer ${token}` }
                 })
             ]);
 
-            // 3. Update UI with User Data
             const userData = await userRes.json();
             if (userRes.ok && userData) {
-                // Map fields from your database (fullName, balance)
                 document.getElementById('userName').innerText = userData.fullName || "User";
                 document.getElementById('currentBalance').innerText = `Bal: $${(userData.balance || 0).toFixed(2)}`;
-                
-                // Set Initials
-                const initials = userData.fullName ? userData.fullName.charAt(0).toUpperCase() : "U";
-                document.getElementById('userInitials').innerText = initials;
+                document.getElementById('userInitials').innerText = userData.fullName?.charAt(0).toUpperCase() || "U";
             } else if (userRes.status === 401) {
-                // Token is invalid/expired
                 localStorage.removeItem('userToken');
                 window.location.href = 'user_login.html';
             }
 
-            // 4. Update Exchange Rates
             const settingsData = await settingsRes.json();
             if (settingsData.success && settingsData.settings) {
                 currentRate = settingsData.settings.exchangeRate || 1380;
@@ -194,74 +243,62 @@
             }
             
             calculateTotal();
+            verifyPaymentOnLoad(); // Check for transaction ID in URL
         } catch (err) {
             console.error("Sync Error:", err);
             calculateTotal();
         }
     }
 
-    // Calculation Logic
     function calculateTotal() {
         const usdAmount = parseFloat(document.getElementById('usdInput').value) || 0;
         const ngnDisplay = document.getElementById('ngnDisplay');
-        
         if (usdAmount > 0) {
-            const totalWithMarkup = usdAmount + currentMarkup; 
-            const finalNGN = totalWithMarkup * currentRate;
-            ngnDisplay.innerText = `₦${finalNGN.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            })}`;
+            const finalNGN = (usdAmount + currentMarkup) * currentRate;
+            ngnDisplay.innerText = `₦${finalNGN.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         } else {
             ngnDisplay.innerText = "₦0.00";
         }
     }
 
-  document.getElementById('initiateBtn').addEventListener('click', async function() {
-    const usdAmount = parseFloat(document.getElementById('usdInput').value);
-    const btn = this;
-
-    if (!usdAmount || usdAmount <= 0) {
-        alert("Please enter a valid amount.");
-        return;
-    }
-
-    // Capture the email from the UI or localStorage to ensure it's sent
-    const userEmail = document.getElementById('userEmail')?.innerText || "";
-
-    btn.disabled = true;
-    btn.innerHTML = `<span>Connecting to Gateway...</span>`;
-
-    try {
-        const response = await fetch('/api/initiate-topup', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ 
-                amountUSD: usdAmount,
-                email: userEmail // Explicitly send email if your backend needs it
-            })
-        });
-
-        const data = await response.json();
-
-        if (data.success && data.link) {
-            // Redirecting to the link provided by the backend
-            window.location.href = data.link;
-        } else {
-            alert(data.message || "Failed to initialize payment.");
-            resetButton(btn, "Pay Securely Now");
+    document.getElementById('initiateBtn').addEventListener('click', async function() {
+        const usdAmount = parseFloat(document.getElementById('usdInput').value);
+        if (!usdAmount || usdAmount <= 0) {
+            alert("Please enter a valid amount.");
+            return;
         }
-    } catch (err) {
-        console.error("Payment Error:", err);
-        alert("Payment gateway unreachable. Try again later.");
-        resetButton(btn, "Pay Securely Now");
-    }
-});
 
-    // UI Helpers
+        this.disabled = true;
+        this.innerHTML = `<span>Connecting to Gateway...</span>`;
+
+        try {
+            const response = await fetch('/api/initiate-topup', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: JSON.stringify({ amountUSD: usdAmount })
+            });
+
+            const data = await response.json();
+            if (data.success && data.link) {
+                window.location.href = data.link;
+            } else {
+                alert(data.message || "Failed to initialize payment.");
+                resetButton(this);
+            }
+        } catch (err) {
+            alert("Payment gateway unreachable. Try again later.");
+            resetButton(this);
+        }
+    });
+
+    function resetButton(btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Pay Securely Now</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    }
+
     function setAmount(val, btn) {
         document.getElementById('usdInput').value = val;
         document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('btn-active'));
@@ -281,7 +318,6 @@
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
 
-    // Initialize
     window.onload = syncWithBackend;
 </script>
 </body>

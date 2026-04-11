@@ -58,33 +58,67 @@ const adminSchema = new mongoose.Schema({
 const Admin = mongoose.models.Admin || mongoose.model('Admin', adminSchema);
 
 const userSchema = new mongoose.Schema({
-    fullName: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    balance: { type: Number, default: 0 },
+    fullName: { 
+        type: String, 
+        required: [true, "Full name is required"], 
+        trim: true 
+    },
+    email: { 
+        type: String, 
+        required: [true, "Email is required"], 
+        unique: true, 
+        lowercase: true, 
+        trim: true,
+        match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please fill a valid email address']
+    },
+    password: { 
+        type: String, 
+        required: [true, "Password is required"],
+        select: false // Automatically hide password from API queries for security
+    },
+    // Financial fields should always be Decimal128 or have careful rounding logic
+    balance: { 
+        type: Number, 
+        default: 0, 
+        min: [0, "Balance cannot be negative"] 
+    },
     status: { 
         type: String, 
         enum: ['active', 'suspended'], 
-        default: 'active' 
+        default: 'active',
+        index: true // Faster filtering for admin dashboards
     },
     referralCode: { 
         type: String, 
         unique: true,
-        sparse: true 
+        sparse: true,
+        uppercase: true, // Standardize codes to uppercase
+        trim: true
     },
     referredBy: { 
         type: String, 
-        default: null 
+        default: null,
+        index: true 
     },
     referralCount: { 
         type: Number, 
         default: 0 
     },
-    resetPasswordToken: { type: String },
-    resetPasswordExpires: { type: Date }
-}, { timestamps: true });
+    resetPasswordToken: String,
+    resetPasswordExpires: Date
+}, { 
+    timestamps: true,
+    toJSON: { virtuals: true }, // Important for the frontend to "see" NGN balance
+    toObject: { virtuals: true }
+});
 
-// 2. Define the Model (MUST happen before you try to query it)
+userSchema.index({ email: 1, referralCode: 1 });
+
+userSchema.virtual('balanceNGN').get(function() {
+    const FIXED_RATE = 1380; 
+    return (this.balance * FIXED_RATE).toFixed(2);
+});
+
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 
 
@@ -250,6 +284,59 @@ rentedNumberSchema.index({ user: 1, createdAt: -1 });
 rentedNumberSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); 
 
 const RentedNumber = mongoose.models.RentedNumber || mongoose.model('RentedNumber', rentedNumberSchema);
+
+const transactionSchema = new mongoose.Schema({
+    userId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'User', 
+        required: true, 
+        index: true 
+    },
+    type: { 
+        type: String, 
+        enum: ['credit', 'debit'], 
+        required: true 
+    },
+    purpose: { 
+        type: String, 
+        enum: ['deposit', 'purchase', 'refund', 'referral_bonus'], 
+        required: true 
+    },
+    // Using a setter to prevent floating-point math errors (e.g., 10.0000000004)
+    amountUSD: { 
+        type: Number, 
+        required: true,
+        set: v => Math.round(v * 100) / 100 
+    },
+    amountNGN: { 
+        type: Number,
+        set: v => Math.round(v * 100) / 100 
+    },
+    exchangeRate: { 
+        type: Number 
+    },
+    status: { 
+        type: String, 
+        enum: ['pending', 'successful', 'failed'], 
+        default: 'pending',
+        index: true
+    },
+    reference: { 
+        type: String, 
+        unique: true, 
+        required: true,
+        trim: true 
+    }, 
+    balanceBefore: { type: Number, default: 0 }, 
+    balanceAfter: { type: Number, default: 0 },  
+    // Mixed allows you to store the raw Flutterwave JSON response for debugging
+    metadata: { type: mongoose.Schema.Types.Mixed } 
+}, { timestamps: true });
+
+// CRITICAL: Compound index for fast transaction history loading
+transactionSchema.index({ userId: 1, createdAt: -1 });
+
+const Transaction = mongoose.models.Transaction || mongoose.model('Transaction', transactionSchema);
 
 const orderSchema = new mongoose.Schema({
     userEmail: { type: String, required: true, index: true },
@@ -1159,27 +1246,34 @@ async function handlePurchaseVPN(req, res) {
         return res.status(401).json({ success: false, message: "Unauthorized or Session Expired" });
     }
 }
-
-// --- Repurposed handleInitiatePayment for Topup ONLY ---
+// --- 1. Initiate Topup ---
 async function handleInitiateTopup(req, res) {
-    const { amountUSD } = req.body; // User wants to add $50
+    const { amountUSD } = req.body; 
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
+    if (!token || !amountUSD) {
+        return res.status(400).json({ success: false, message: "Missing required data" });
+    }
+
     try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        
+        // Fetch Live settings
         const settings = await SystemSettings.findOne();
         const LIVE_RATE = settings?.exchangeRate || 1380;
         const MARKUP = settings?.globalMarkup || 0;
 
-        const decoded = jwt.verify(token, JWT_SECRET);
         const user = await User.findById(decoded.id);
+        if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-        // Calculate NGN: ($Amount + GlobalMarkup) * Rate
+        // Calculate NGN: ($Requested + Markup) * Rate
         const totalUSD = parseFloat(amountUSD) + MARKUP;
         const finalAmountNGN = Math.round(totalUSD * LIVE_RATE);
 
         const tx_ref = `TOPUP-${Date.now()}-${decoded.id.slice(-4)}`;
 
+        // Initiate Flutterwave Payment
         const response = await fetch("https://api.flutterwave.com/v3/payments", {
             method: "POST",
             headers: {
@@ -1191,19 +1285,35 @@ async function handleInitiateTopup(req, res) {
                 amount: finalAmountNGN,
                 currency: "NGN",
                 redirect_url: "https://smsglobe.net/smsuser/user_dashboard.html",
-                customer: { email: user.email, name: user.fullName },
-                meta: { userId: decoded.id, type: "WALLET_TOPUP", usdAmount: amountUSD },
-                customizations: { title: "Wallet Topup", logo: "https://imgur.com/8YeZgfx.png" }
+                customer: { 
+                    email: user.email, 
+                    name: user.fullName 
+                },
+                // CRITICAL: We pass amountUSD here so we know exactly how much to credit later
+                meta: { 
+                    userId: user._id.toString(), 
+                    type: "WALLET_TOPUP", 
+                    usdAmount: amountUSD 
+                },
+                customizations: { 
+                    title: "SMSGlobe Wallet Topup", 
+                    logo: "https://imgur.com/8YeZgfx.png" 
+                }
             }),
         });
 
         const data = await response.json();
+        if (data.status !== "success") throw new Error(data.message);
+
         return res.json({ success: true, link: data.data.link });
+
     } catch (err) {
-        return res.status(500).json({ success: false, message: "Topup initiation failed" });
+        console.error("Topup Init Error:", err);
+        return res.status(500).json({ success: false, message: "Could not initiate payment" });
     }
 }
 
+// --- 2. Verify Topup ---
 async function handleVerifyTopup(req, res) {
     const { transactionId } = req.body;
 
@@ -1219,63 +1329,68 @@ async function handleVerifyTopup(req, res) {
 
         const data = await response.json();
 
-        // Check if Flutterwave actually confirmed the payment
         if (data.status === "success" && data.data.status === "successful") {
-            
-            // CRITICAL: Flutterwave metadata is sometimes returned as strings. 
-            // We must parse them to ensure calculations work.
-            const userId = data.data.meta.userId;
-            const usdAmount = parseFloat(data.data.meta.usdAmount);
+            const { userId, usdAmount } = data.data.meta;
             const txRef = data.data.tx_ref;
+            const amountCreditUSD = parseFloat(usdAmount);
 
-            if (!userId || isNaN(usdAmount)) {
-                console.error("Missing metadata in Flutterwave response:", data.data.meta);
-                return res.status(400).json({ success: false, message: "Invalid payment metadata" });
+            // 1. Idempotency Check (Prevent double funding)
+            const existingTx = await Transaction.findOne({ reference: txRef });
+            if (existingTx) {
+                return res.json({ success: true, message: "Balance already credited" });
             }
 
-            // 1. Check for duplicate to prevent double-funding
-            const existingTopup = await Order.findOne({ paymentReference: txRef });
-            if (existingTopup) {
-                return res.json({ success: true, message: "Balance already updated", newBalance: 0 }); // Or fetch current balance
-            }
+            // 2. Atomic Balance Update
+            const user = await User.findById(userId);
+            if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-            // 2. Update User Balance using $inc (Atomic Update)
-            // This is safer than user.balance += amount because it prevents race conditions
-            const user = await User.findByIdAndUpdate(
+            const balanceBefore = user.balance;
+            
+            // Use $inc for safety in real applications
+            const updatedUser = await User.findByIdAndUpdate(
                 userId,
-                { $inc: { balance: usdAmount } },
-                { new: true } // Return the updated document to get the new balance
+                { $inc: { balance: amountCreditUSD } },
+                { new: true }
             );
 
-            if (!user) {
-                return res.status(404).json({ success: false, message: "User not found" });
-            }
+            // 3. Create Audit Trail (Transaction Schema)
+            await Transaction.create({
+                userId: user._id,
+                type: 'credit',
+                purpose: 'deposit',
+                amountUSD: amountCreditUSD,
+                amountNGN: data.data.amount,
+                exchangeRate: data.data.amount / amountCreditUSD,
+                status: 'successful',
+                reference: txRef,
+                balanceBefore: balanceBefore,
+                balanceAfter: updatedUser.balance
+            });
 
-            // 3. Create History Record
+            // 4. Update Order History (For the "Orders" tab)
             await Order.create({
                 userId: user._id,
                 userEmail: user.email,
                 fullName: user.fullName,
                 productType: 'WALLET_TOPUP', 
-                amount: usdAmount,
+                amount: amountCreditUSD,
                 currency: 'USD',
                 status: 'successful',
                 paymentReference: txRef,
-                nodeName: "Wallet Funding",
-                planName: `Added $${usdAmount.toFixed(2)} to Wallet`
+                planName: `Wallet Funding: $${amountCreditUSD.toFixed(2)}`
             });
 
             return res.json({ 
                 success: true, 
-                newBalance: user.balance,
+                newBalance: updatedUser.balance,
                 message: "Wallet funded successfully!" 
             });
         }
         
-        return res.status(400).json({ success: false, message: "Verification failed with payment provider" });
+        return res.status(400).json({ success: false, message: "Payment verification failed" });
 
     } catch (err) {
-        console.error("Topup Verification Error:", err);
+        console.error("Critical Verification Error:", err);
         return res.status(500).json({ success: false, message: "Internal server error" });
     }
 }

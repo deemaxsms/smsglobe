@@ -868,20 +868,17 @@
     const API_BASE_URL = '/api';
     const PROXY_ICON = 'https://i.imgur.com/n5ZZeLf.png';
 
-    
     async function checkMaintenance() {
-    try {
-        const response = await fetch('/api/system-status');
-        const status = await response.json();
-
-        // If maintenance is ON, redirect to a maintenance page
-        if (status.maintenanceMode === true) {
-            window.location.href = 'maintenance.html';
+        try {
+            const response = await fetch('/api/system-status');
+            const status = await response.json();
+            if (status.maintenanceMode === true) {
+                window.location.href = 'maintenance.html';
+            }
+        } catch (err) {
+            console.error("Status check failed", err);
         }
-    } catch (err) {
-        console.error("Status check failed", err);
     }
-}
 
     function showSuspendedNotice() {
         document.body.innerHTML = `
@@ -896,7 +893,6 @@
                     <p class="text-brand-lightText mb-8 text-sm leading-relaxed">
                         Your account has been suspended for violating <b>SMSGlobe</b> rules. Please contact management to appeal this decision.
                     </p>
-                    
                     <div class="space-y-3">
                         <a href="https://wa.me/7059450227" target="_blank" class="flex items-center justify-center gap-2 w-full py-3 bg-[#25D366] text-white rounded-xl font-bold text-xs hover:opacity-90 transition-all">
                             Contact Support (WhatsApp)
@@ -905,7 +901,6 @@
                             Email Management
                         </a>
                     </div>
-                    
                     <button onclick="logout()" class="mt-8 text-[10px] text-brand-lightText hover:text-brand-darkText underline uppercase font-bold tracking-tighter">
                         Log out of this account
                     </button>
@@ -914,124 +909,128 @@
         `;
     }
 
- async function initDashboard() {
-    // 1. Critical Check: Maintenance Mode
-    await checkMaintenance(); 
+    async function initDashboard() {
+        await checkMaintenance(); 
 
-    const token = localStorage.getItem('userToken');
-    if (!token) { 
-        window.location.href = 'user_login.html'; 
-        return; 
-    }
-
-    // --- STEP 1: INSTANT UI LOAD (From Cache) ---
-    const cachedData = JSON.parse(localStorage.getItem('dashboard_cache'));
-    if (cachedData) {
-        updateDashboardUI(cachedData.user, cachedData.rate);
-    }
-
-    try {
-        // --- STEP 2: PARALLEL DATA FETCHING ---
-        // Using Promise.all to fetch profile and settings at the same time
-        const [profileRes, settingsRes] = await Promise.all([
-            fetch(`${API_BASE_URL}/user-profile`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            }),
-            fetch(`${API_BASE_URL}/get-system-settings`)
-        ]);
-
-        if (profileRes.status === 401) return logout();
-
-        const userData = await profileRes.json();
-        const settingsData = await settingsRes.json();
-        const liveRate = settingsData.settings?.exchangeRate || 1380;
-
-        // --- STEP 3: SECURITY CHECK ---
-        if (userData.status === 'suspended') {
-            showSuspendedNotice();
-            return;
+        const token = localStorage.getItem('userToken');
+        if (!token) { 
+            window.location.href = 'user_login.html'; 
+            return; 
         }
 
-        // --- STEP 4: UPDATE UI & REFRESH CACHE ---
-        updateDashboardUI(userData, liveRate);
+        // --- NEW: HANDLE POST-TOPUP REDIRECT ---
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('status') === 'successful') {
+            // Clear cache to force fresh balance fetch after topup
+            localStorage.removeItem('dashboard_cache');
+            console.log("Top-up detected. Refreshing balance...");
+            // Optional: Show a success toast here if you have a toast component
+        }
+
+        // --- STEP 1: UI LOAD (From Cache) ---
+        const cachedData = JSON.parse(localStorage.getItem('dashboard_cache'));
+        if (cachedData) {
+            updateDashboardUI(cachedData.user, cachedData.rate);
+        }
+
+        try {
+            // --- STEP 2: PARALLEL DATA FETCHING ---
+            const [profileRes, settingsRes] = await Promise.all([
+                fetch(`${API_BASE_URL}/user-profile`, {
+                    headers: { 'Authorization': `Bearer ${token}`, 'Cache-Control': 'no-cache' }
+                }),
+                fetch(`${API_BASE_URL}/get-system-settings`)
+            ]);
+
+            if (profileRes.status === 401) return logout();
+
+            const userData = await profileRes.json();
+            const settingsData = await settingsRes.json();
+            const liveRate = settingsData.settings?.exchangeRate || 1380;
+
+            // --- STEP 3: SECURITY CHECK ---
+            if (userData.status === 'suspended') {
+                showSuspendedNotice();
+                return;
+            }
+
+            // --- STEP 4: UPDATE UI & REFRESH CACHE ---
+            updateDashboardUI(userData, liveRate);
+            
+            localStorage.setItem('dashboard_cache', JSON.stringify({
+                user: userData,
+                rate: liveRate
+            }));
+
+            // Clean URL if it contains transaction params to prevent repeat refreshes
+            if (urlParams.has('transaction_id')) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+
+        } catch (err) { 
+            console.error("Dashboard refresh failed:", err);
+        }
+    }
+
+    function updateDashboardUI(user, rate) {
+        if (!user) return;
+
+        const fullName = user.fullName || "User Account";
+        const balanceUSD = parseFloat(user.balance) || 0;
+        const balanceNGN = balanceUSD * rate;
+
+        // 1. Update Names
+        const elements = {
+            welcome: document.getElementById('userDisplayName'),
+            sidebar: document.getElementById('userName'),
+            initials: document.getElementById('userInitials'),
+            usd: document.getElementById('mainBalanceDisplay'),
+            ngn: document.getElementById('mainBalanceDisplayNGN'),
+            refCode: document.getElementById('userReferralCode'),
+            refCount: document.getElementById('userReferralCount')
+        };
+
+        if (elements.welcome) elements.welcome.innerText = fullName;
+        if (elements.sidebar) elements.sidebar.innerText = fullName;
+
+        // 2. Update Initials (Handles multi-word names)
+        if (elements.initials) {
+            const parts = fullName.split(' ');
+            const initials = parts.length > 1 
+                ? (parts[0][0] + parts[1][0]).toUpperCase() 
+                : parts[0][0].toUpperCase();
+            elements.initials.innerText = initials;
+        }
+
+        // 3. Update Balances (Formatted)
+        const format = (val) => val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         
-        // Store for the next session
-        localStorage.setItem('dashboard_cache', JSON.stringify({
-            user: userData,
-            rate: liveRate
-        }));
+        if (elements.usd) elements.usd.innerText = `$${format(balanceUSD)}`;
+        if (elements.ngn) elements.ngn.innerText = `₦${format(balanceNGN)}`;
 
-    } catch (err) { 
-        console.error("Dashboard refresh failed:", err);
-    }
-}
-
-/**
- * Reusable function to handle all DOM updates
- */
-function updateDashboardUI(user, rate) {
-    if (!user) return;
-
-    const fullName = user.fullName || "User";
-    const balanceUSD = user.balance || 0;
-    const balanceNGN = balanceUSD * rate;
-
-    // 1. Update Names (Welcome & Sidebar)
-    const welcomeNameEl = document.getElementById('userDisplayName');
-    const sidebarNameEl = document.getElementById('userName');
-    if (welcomeNameEl) welcomeNameEl.innerText = fullName;
-    if (sidebarNameEl) sidebarNameEl.innerText = fullName;
-
-    // 2. Update Initials
-    const initialsEl = document.getElementById('userInitials');
-    if (initialsEl) {
-        initialsEl.innerText = fullName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+        // 4. Update Referral Data
+        if (elements.refCode) elements.refCode.innerText = user.referralCode || "N/A";
+        if (elements.refCount) elements.refCount.innerText = user.referralCount || 0;
     }
 
-    // 3. Update Balances
-    const usdDisplay = document.getElementById('mainBalanceDisplay');
-    const ngnDisplay = document.getElementById('mainBalanceDisplayNGN');
-    const formatOptions = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
-
-    if (usdDisplay) {
-        usdDisplay.innerText = `$${balanceUSD.toLocaleString(undefined, formatOptions)}`;
-    }
-    if (ngnDisplay) {
-        ngnDisplay.innerText = `₦${balanceNGN.toLocaleString(undefined, formatOptions)}`;
-    }
-
-    // 4. Update Referral Data (Ensure these IDs exist in your HTML)
-    const refCodeEl = document.getElementById('userReferralCode');
-    const refCountEl = document.getElementById('userReferralCount');
-    
-    if (refCodeEl) refCodeEl.innerText = user.referralCode || "N/A";
-    if (refCountEl) refCountEl.innerText = user.referralCount || 0;
-}
-
-function toggleSupportMenu() {
+    function toggleSupportMenu() {
         const menu = document.getElementById('supportMenu');
-        const isHidden = menu.classList.contains('hidden');
-        
-        if (isHidden) {
+        if (menu.classList.contains('hidden')) {
             menu.classList.remove('hidden');
-            // Small timeout to allow transition to trigger
-            setTimeout(() => {
-                menu.classList.remove('translate-y-10', 'opacity-0', 'scale-95');
-            }, 10);
+            setTimeout(() => menu.classList.remove('translate-y-10', 'opacity-0', 'scale-95'), 10);
         } else {
             menu.classList.add('translate-y-10', 'opacity-0', 'scale-95');
-            setTimeout(() => {
-                menu.classList.add('hidden');
-            }, 300);
+            setTimeout(() => menu.classList.add('hidden'), 300);
         }
     }
-
 
     function logout() { 
         localStorage.removeItem('userToken'); 
+        localStorage.removeItem('dashboard_cache');
         window.location.href = 'user_login.html'; 
     }
     
+    // Sidebar Logic
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const toggleSidebar = () => { 
@@ -1039,9 +1038,9 @@ function toggleSupportMenu() {
         overlay.classList.toggle('hidden'); 
     };
     
-    document.getElementById('openSidebar').addEventListener('click', toggleSidebar);
-    document.getElementById('closeSidebar').addEventListener('click', toggleSidebar);
-    overlay.addEventListener('click', toggleSidebar);
+    if(document.getElementById('openSidebar')) document.getElementById('openSidebar').addEventListener('click', toggleSidebar);
+    if(document.getElementById('closeSidebar')) document.getElementById('closeSidebar').addEventListener('click', toggleSidebar);
+    if(overlay) overlay.addEventListener('click', toggleSidebar);
     
     window.onload = initDashboard;
 </script>

@@ -210,116 +210,105 @@
     </div>
 </a>
 </header>
+<main class="p-4 md:p-8 max-w-7xl w-full mx-auto space-y-8">
+    
+    <div class="w-full">
+        <div class="relative overflow-hidden bg-brand-darkText rounded-[32px] p-6 md:p-10 shadow-2xl shadow-brand-blue/20">
+            <div class="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-brand-blue opacity-10 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 bg-brand-orange opacity-10 rounded-full blur-3xl"></div>
 
-        <main class="p-3 md:p-6 max-w-6xl w-full mx-auto space-y-4">
-   <div class="w-full mb-8">
-    <div class="relative overflow-hidden bg-brand-darkText rounded-[24px] md:rounded-[32px] p-6 md:p-10 shadow-2xl shadow-brand-blue/20">
-        <div class="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-brand-blue opacity-10 rounded-full blur-3xl"></div>
-        <div class="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 bg-brand-orange opacity-10 rounded-full blur-3xl"></div>
-
-        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div class="space-y-1">
-                <p class="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] mb-1">
-                    Welcome back, <span id="userDisplayName" class="text-white">User</span>
-                </p>
-                <h2 class="text-white/80 text-[11px] md:text-base font-medium">Total Available Balance</h2>
-                
-                <div class="flex flex-col">
-                    <div class="flex items-baseline gap-2">
-                        <span class="text-2xl md:text-5xl font-black text-white tracking-tighter" id="mainBalanceDisplay">$0.00</span>
-                        <span class="text-brand-orange text-[10px] md:text-sm font-black uppercase tracking-wider">USD</span>
-                    </div>
+            <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+                <div class="space-y-2">
+                    <p class="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em]">
+                        Welcome back, <span id="userDisplayName" class="text-white">User</span>
+                    </p>
+                    <h2 class="text-white/80 text-[11px] md:text-base font-medium">Total Available Balance</h2>
                     
-                    <div class="flex items-center gap-1.5 mt-0.5 opacity-80">
-                        <span class="text-white/40 text-[10px] md:text-xs font-bold uppercase tracking-widest">Equivalent:</span>
-                        <span id="mainBalanceDisplayNGN" class="text-sm md:text-xl font-bold text-white/90">₦0.00</span>
+                    <div class="flex flex-col">
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl md:text-5xl font-black text-white tracking-tighter" id="mainBalanceDisplay">$0.00</span>
+                            <span class="text-brand-orange text-[10px] md:text-sm font-black uppercase tracking-wider">USD</span>
+                        </div>
+                        
+                        <div class="flex items-center gap-2 mt-1 opacity-80">
+                            <span class="text-white/40 text-[10px] md:text-xs font-bold uppercase tracking-widest">Equivalent:</span>
+                            <span id="mainBalanceDisplayNGN" class="text-sm md:text-xl font-bold text-white/90">₦0.00</span>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="flex items-center">
-                <a href="topup.html" class="w-full md:w-auto bg-brand-blue hover:bg-blue-700 text-white px-5 py-3.5 md:px-8 md:py-4 rounded-2xl font-bold text-[13px] md:text-sm transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-brand-blue/30">
-                    <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                    Topup Wallet
-                </a>
+                <div class="flex">
+                    <a href="topup.html" class="w-full md:w-auto bg-brand-blue hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-3 shadow-lg shadow-brand-blue/30">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Topup Wallet
+                    </a>
+                </div>
             </div>
-        </div>
-        
-        <div class="mt-6 md:mt-8 pt-5 md:pt-6 border-t border-white/10 flex flex-wrap items-center gap-4 md:gap-6">
-            <div class="flex items-center gap-2">
-                <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                <span class="text-[9px] md:text-xs font-bold text-white/40 uppercase tracking-widest">Server Status: <span class="text-green-500">Online</span></span>
-            </div>
-            <div class="hidden md:block h-3 w-[1px] bg-white/10"></div>
-            <div class="flex items-center gap-2">
-                <span class="text-[9px] md:text-xs font-bold text-white/40 uppercase tracking-widest">Active Services: <span class="text-white">7</span></span>
+            
+            <div class="mt-8 pt-6 border-t border-white/10 flex flex-wrap items-center gap-6">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-[10px] md:text-xs font-bold text-white/40 uppercase tracking-widest">Server Status: <span class="text-green-500">Online</span></span>
+                </div>
+                <div class="hidden md:block h-3 w-[1px] bg-white/10"></div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] md:text-xs font-bold text-white/40 uppercase tracking-widest">Active Services: <span class="text-white font-black ml-1">7</span></span>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<div class="px-1 mt-8 mb-4">
-    <h2 class="text-[10px] md:text-[8px] font-black uppercase tracking-[0.2em] text-brand-lightText/60 flex items-center">
-        <span class="w-8 h-[1px] bg-brand-border mr-3"></span>
-        Our Services
-    </h2>
-</div>
-
-<div class="w-full overflow-hidden px-1">
-    <div class="flex items-center justify-between md:justify-start flex-nowrap md:space-x-3 overflow-x-auto pb-4 no-scrollbar scroll-smooth">
-        
-        <button onclick="document.getElementById('vpn-section').scrollIntoView({behavior: 'smooth'})" 
-                class="flex-shrink-0 inline-flex flex-col bg-white px-1.5 py-2 md:px-4 md:py-3 rounded-xl border-2 md:border border-indigo-100 shadow-md md:shadow-sm transition-all active:scale-95 min-w-[58px] md:min-w-[110px]">
-            <p class="text-[7px] md:text-[9px] font-black text-indigo-400 uppercase tracking-tighter md:tracking-normal text-left">Connect</p>
-            <h3 class="text-[10px] md:text-base font-black text-brand-darkText flex items-center">
-                VPN <svg class="hidden md:block w-3 h-3 ml-1 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </h3>
-        </button>
-
-        <button onclick="document.getElementById('esim-section').scrollIntoView({behavior: 'smooth'})" 
-                class="flex-shrink-0 inline-flex flex-col bg-white px-1.5 py-2 md:px-4 md:py-3 rounded-xl border-2 md:border border-emerald-100 shadow-md md:shadow-sm transition-all active:scale-95 min-w-[58px] md:min-w-[110px]">
-            <p class="text-[7px] md:text-[9px] font-black text-emerald-500 uppercase tracking-tighter md:tracking-normal text-left">Refill</p>
-            <h3 class="text-[10px] md:text-base font-black text-brand-darkText flex items-center">
-                eSIM
-            </h3>
-        </button>
-
-        <button onclick="document.getElementById('esims-section').scrollIntoView({behavior: 'smooth'})" 
-                class="flex-shrink-0 inline-flex flex-col bg-white px-1.5 py-2 md:px-4 md:py-3 rounded-xl border-2 md:border border-emerald-100 shadow-md md:shadow-sm transition-all active:scale-95 min-w-[58px] md:min-w-[110px]">
-            <p class="text-[7px] md:text-[9px] font-black text-emerald-600 uppercase tracking-tighter md:tracking-normal text-left">Activate</p>
-            <h3 class="text-[10px] md:text-base font-black text-brand-darkText flex items-center">
-                eSIM
-            </h3>
-        </button>
-
-        <button onclick="document.getElementById('proxy-section').scrollIntoView({behavior: 'smooth'})" 
-                class="flex-shrink-0 inline-flex flex-col bg-white px-1.5 py-2 md:px-4 md:py-3 rounded-xl border-2 md:border border-orange-100 shadow-md md:shadow-sm transition-all active:scale-95 min-w-[58px] md:min-w-[110px]">
-            <p class="text-[7px] md:text-[9px] font-black text-orange-500 uppercase tracking-tighter md:tracking-normal text-left">Proxy</p>
-            <h3 class="text-[10px] md:text-base font-black text-brand-darkText flex items-center">
-                IPs
-            </h3>
-        </button>
-
-        <button onclick="document.getElementById('rdp-section').scrollIntoView({behavior: 'smooth'})" 
-                class="flex-shrink-0 inline-flex flex-col bg-white px-1.5 py-2 md:px-4 md:py-3 rounded-xl border-2 md:border border-slate-200 shadow-md md:shadow-sm transition-all active:scale-95 min-w-[58px] md:min-w-[110px]">
-            <p class="text-[7px] md:text-[9px] font-black text-slate-500 uppercase tracking-tighter md:tracking-normal text-left">Server</p>
-            <h3 class="text-[10px] md:text-base font-black text-brand-darkText flex items-center">
-                RDP
-            </h3>
-        </button>
-
-        <button onclick="document.getElementById('gifts-section').scrollIntoView({behavior: 'smooth'})" 
-                class="flex-shrink-0 inline-flex flex-col bg-white px-1.5 py-2 md:px-4 md:py-3 rounded-xl border-2 md:border border-rose-100 shadow-md md:shadow-sm transition-all active:scale-95 min-w-[58px] md:min-w-[110px]">
-            <p class="text-[7px] md:text-[9px] font-black text-rose-500 uppercase tracking-tighter md:tracking-normal text-left">Send</p>
-            <h3 class="text-[10px] md:text-base font-black text-brand-darkText flex items-center">
-                Gifts
-            </h3>
-        </button>
-
+    <div class="px-2 flex items-center gap-4">
+        <h2 class="text-[11px] font-black uppercase tracking-[0.25em] text-brand-lightText/50 whitespace-nowrap">Our Services</h2>
+        <div class="h-[1px] w-full bg-brand-border/60"></div>
     </div>
-</div>
+
+    <div class="w-full">
+        <div class="flex items-center gap-3 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
+            
+            <button onclick="document.getElementById('vpn-section').scrollIntoView({behavior: 'smooth'})" 
+                    class="flex-shrink-0 group bg-white p-4 rounded-2xl border border-brand-border hover:border-indigo-400 shadow-sm transition-all active:scale-95 min-w-[100px] md:min-w-[130px] text-left">
+                <p class="text-[9px] font-black text-indigo-500 uppercase tracking-wider mb-1">Connect</p>
+                <h3 class="text-sm md:text-base font-black text-brand-darkText flex items-center justify-between">
+                    VPN <svg class="w-4 h-4 text-indigo-200 group-hover:text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </h3>
+            </button>
+
+            <button onclick="document.getElementById('esim-section').scrollIntoView({behavior: 'smooth'})" 
+                    class="flex-shrink-0 group bg-white p-4 rounded-2xl border border-brand-border hover:border-emerald-400 shadow-sm transition-all active:scale-95 min-w-[100px] md:min-w-[130px] text-left">
+                <p class="text-[9px] font-black text-emerald-500 uppercase tracking-wider mb-1">Refill</p>
+                <h3 class="text-sm md:text-base font-black text-brand-darkText">eSIM</h3>
+            </button>
+
+            <button onclick="document.getElementById('esims-section').scrollIntoView({behavior: 'smooth'})" 
+                    class="flex-shrink-0 group bg-white p-4 rounded-2xl border border-brand-border hover:border-emerald-400 shadow-sm transition-all active:scale-95 min-w-[100px] md:min-w-[130px] text-left">
+                <p class="text-[9px] font-black text-emerald-600 uppercase tracking-wider mb-1">Activate</p>
+                <h3 class="text-sm md:text-base font-black text-brand-darkText">eSIM</h3>
+            </button>
+
+            <button onclick="document.getElementById('proxy-section').scrollIntoView({behavior: 'smooth'})" 
+                    class="flex-shrink-0 group bg-white p-4 rounded-2xl border border-brand-border hover:border-orange-400 shadow-sm transition-all active:scale-95 min-w-[100px] md:min-w-[130px] text-left">
+                <p class="text-[9px] font-black text-orange-500 uppercase tracking-wider mb-1">Proxy</p>
+                <h3 class="text-sm md:text-base font-black text-brand-darkText">IPs</h3>
+            </button>
+
+            <button onclick="document.getElementById('rdp-section').scrollIntoView({behavior: 'smooth'})" 
+                    class="flex-shrink-0 group bg-white p-4 rounded-2xl border border-brand-border hover:border-slate-400 shadow-sm transition-all active:scale-95 min-w-[100px] md:min-w-[130px] text-left">
+                <p class="text-[9px] font-black text-slate-500 uppercase tracking-wider mb-1">Server</p>
+                <h3 class="text-sm md:text-base font-black text-brand-darkText">RDP</h3>
+            </button>
+
+            <button onclick="document.getElementById('gifts-section').scrollIntoView({behavior: 'smooth'})" 
+                    class="flex-shrink-0 group bg-white p-4 rounded-2xl border border-brand-border hover:border-rose-400 shadow-sm transition-all active:scale-95 min-w-[100px] md:min-w-[130px] text-left">
+                <p class="text-[9px] font-black text-rose-500 uppercase tracking-wider mb-1">Send</p>
+                <h3 class="text-sm md:text-base font-black text-brand-darkText">Gifts</h3>
+            </button>
+
+        </div>
+    </div>
+
       <section id="vpn-section" class="mt-8 overflow-hidden bg-white border border-brand-border rounded-[20px] md:rounded-[24px] shadow-sm">
     <div class="flex flex-col md:flex-row">
         

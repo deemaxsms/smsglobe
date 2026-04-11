@@ -1144,7 +1144,7 @@ async function handleGetUserProfile(req, res) {
             fullName: user.fullName,
             email: user.email, 
             status: user.status || 'active',
-            // Added referral data
+            balance: user.balance || 0,
             referralCode: user.referralCode || "", 
             referralCount: user.referralCount || 0 
         });

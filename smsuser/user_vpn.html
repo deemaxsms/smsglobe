@@ -301,37 +301,31 @@ function renderVPNs() {
     const emptyState = document.getElementById('emptyState');
     
     if (loader) loader.classList.add('hidden');
-    
-  const filtered = allVPNs.filter(vpn => {
-        const activeTab = currentCategory.toLowerCase(); // will be "phone" or "pc"
+        const filtered = allVPNs.filter(vpn => {
+        const activeTab = (currentCategory || '').toLowerCase();         
         const dbDevice = (vpn.deviceType || '').toLowerCase().trim();
-        if (activeTab === 'phone') {
+        if (activeTab.includes('phone')) {
             return dbDevice === 'phone';
         }         
-        if (activeTab === 'pc') {
+        if (activeTab.includes('pc')) {
             return dbDevice === 'pc';
         }
 
         return false; 
     });
 
-    // 2. EMPTY STATE HANDLING
     if (filtered.length === 0) {
         grid.classList.add('hidden');
         emptyState.classList.remove('hidden');
         emptyState.querySelector('p').innerText = `No nodes available for ${currentCategory}.`;
         return;
     }
-
-    // 3. SMART SORTING (Push Sold Out to the bottom within the correct section)
     const sorted = filtered.sort((a, b) => {
         const aStock = (a.stock || 0) > 0;
         const bStock = (b.stock || 0) > 0;
-        
-        // If one is in stock and other isn't, put in-stock first
         if (aStock && !bStock) return -1;
         if (!aStock && bStock) return 1;
-        return 0; // Maintain original order if stock status is same
+        return 0;
     });
 
     emptyState.classList.add('hidden');
@@ -340,6 +334,8 @@ function renderVPNs() {
     // 4. RENDER HTML
     grid.innerHTML = sorted.map(vpn => {
         const isOutOfStock = (vpn.stock || 0) <= 0;
+        const price = vpn.plans && vpn.plans.length > 0 ? parseFloat(vpn.plans[0].price).toFixed(2) : "0.00";
+        
         return `
         <div class="bg-white border border-brand-border rounded-2xl shadow-sm flex flex-col overflow-hidden transition-all ${isOutOfStock ? 'opacity-60' : 'hover:shadow-md'}">
             <div class="h-24 md:h-32 bg-gray-50 relative flex items-center justify-center p-4 border-b">
@@ -357,8 +353,8 @@ function renderVPNs() {
                 <div class="bg-brand-background rounded-lg p-1.5 mb-3 border border-brand-border/50">
                     <select id="plan-${vpn._id}" ${isOutOfStock ? 'disabled' : ''} class="w-full bg-transparent text-[10px] font-bold outline-none cursor-pointer">
                         ${vpn.plans.map((p, i) => {
-                            const price = parseFloat(p.price).toFixed(2);
-                            return `<option value="${i}">${p.duration} - $${price}</option>`;
+                            const pPrice = parseFloat(p.price).toFixed(2);
+                            return `<option value="${i}">${p.duration} - $${pPrice}</option>`;
                         }).join('')}
                     </select>
                 </div>
@@ -373,16 +369,16 @@ function renderVPNs() {
 
 
 function switchTab(category) {
-    // Standardize to uppercase for reliable matching
-    currentCategory = category.toUpperCase().trim(); 
+    // category will be 'Phone' or 'PC'
+    currentCategory = category; 
     
     const tabs = ['Phone', 'PC'];
     
     tabs.forEach(tab => {
         const btn = document.getElementById(`tab-${tab}`);
-        if (!btn) return; // Safety check
+        if (!btn) return;
 
-        if (tab.toUpperCase() === currentCategory) {
+        if (tab === category) {
             btn.classList.add('tab-active', 'text-brand-blue');
             btn.classList.remove('text-brand-lightText');
         } else {

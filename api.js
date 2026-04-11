@@ -257,7 +257,7 @@ const orderSchema = new mongoose.Schema({
     fullName: { type: String },         
     productType: { 
         type: String, 
-        enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill', 'eSIM_Activation', 'RDP', 'RentedNumber'], 
+        enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill', 'eSIM_Activation', 'RDP', 'RentedNumber', 'WALLET_TOPUP'], 
         required: true 
     },
     planName: { type: String }, 
@@ -1203,6 +1203,7 @@ async function handleInitiateTopup(req, res) {
         return res.status(500).json({ success: false, message: "Topup initiation failed" });
     }
 }
+
 async function handleVerifyTopup(req, res) {
     const { transactionId } = req.body;
 
@@ -1224,19 +1225,22 @@ async function handleVerifyTopup(req, res) {
                 return res.json({ success: true, message: "Balance already updated" });
             }
 
-            // 2. Update User Balance
-            const user = await User.findByIdAndUpdate(
-                userId,
-                { $inc: { balance: parseFloat(usdAmount) } },
-                { new: true }
-            );
+            // 2. Find the user first to ensure they exist
+            const user = await User.findById(userId);
+            if (!user) {
+                return res.status(404).json({ success: false, message: "User not found" });
+            }
 
-            // 3. Create a History Record in the Order Schema
-            const topupRecord = await Order.create({
+            // 3. Update User Balance
+            user.balance += parseFloat(usdAmount);
+            await user.save();
+
+            // 4. Create History Record (This will now pass because we updated the Enum)
+            await Order.create({
                 userId: user._id,
                 userEmail: user.email,
                 fullName: user.fullName,
-                productType: 'WALLET_TOPUP', // Matches your enum
+                productType: 'WALLET_TOPUP', 
                 amount: parseFloat(usdAmount),
                 currency: 'USD',
                 status: 'successful',
@@ -1259,6 +1263,7 @@ async function handleVerifyTopup(req, res) {
         return res.status(500).json({ success: false, message: "Internal server error" });
     }
 }
+
 async function handlePurchaseWithWallet(req, res) {
     const { 
         vpnId, proxyId, rdpId, carrierName, 

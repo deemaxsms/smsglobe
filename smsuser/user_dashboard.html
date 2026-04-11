@@ -915,78 +915,98 @@
     }
 
  async function initDashboard() {
-        await checkMaintenance(); 
+    // 1. Critical Check: Maintenance Mode
+    await checkMaintenance(); 
 
-        const token = localStorage.getItem('userToken');
-        if (!token) { 
-            window.location.href = 'user_login.html'; 
-            return; 
-        }
-        
-        try {
-            // 1. Fetch User Profile & System Settings (for Exchange Rate)
-            const [profileRes, settingsRes] = await Promise.all([
-                fetch(`${API_BASE_URL}/user-profile`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                }),
-                fetch(`${API_BASE_URL}/get-system-settings`)
-            ]);
-
-            if (profileRes.status === 401) {
-                logout();
-                return;
-            }
-
-            const userData = await profileRes.json();
-            const settingsData = await settingsRes.json();
-
-            // 2. Handle Suspension
-            if (userData.status === 'suspended') {
-                showSuspendedNotice();
-                return;
-            }
-
-            // 3. Map User Name & Welcome Message
-            const fullName = userData.fullName || "User";
-            const welcomeNameEl = document.getElementById('userDisplayName');
-            const sidebarNameEl = document.getElementById('userName'); // If you have one in sidebar
-            
-            if (welcomeNameEl) welcomeNameEl.innerText = fullName;
-            if (sidebarNameEl) sidebarNameEl.innerText = fullName;
-
-            // 4. Handle Initials
-            const initialsEl = document.getElementById('userInitials');
-            if (initialsEl) {
-                initialsEl.innerText = fullName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-            }
-
-            // 5. Balance Calculations
-            const balanceUSD = userData.balance || 0;
-            const exchangeRate = settingsData.settings?.exchangeRate || 1380;
-            const balanceNGN = balanceUSD * exchangeRate;
-
-            // 6. Update Balance Displays (matching your HTML IDs)
-            const usdDisplay = document.getElementById('mainBalanceDisplay');
-            const ngnDisplay = document.getElementById('mainBalanceDisplayNGN');
-
-            if (usdDisplay) {
-                usdDisplay.innerText = `$${balanceUSD.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                })}`;
-            }
-
-            if (ngnDisplay) {
-                ngnDisplay.innerText = `₦${balanceNGN.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                })}`;
-            }
-
-        } catch (err) { 
-            console.error("Dashboard init error:", err);
-        }
+    const token = localStorage.getItem('userToken');
+    if (!token) { 
+        window.location.href = 'user_login.html'; 
+        return; 
     }
+
+    // --- STEP 1: INSTANT UI LOAD (From Cache) ---
+    const cachedData = JSON.parse(localStorage.getItem('dashboard_cache'));
+    if (cachedData) {
+        updateDashboardUI(cachedData.user, cachedData.rate);
+    }
+
+    try {
+        // --- STEP 2: PARALLEL DATA FETCHING ---
+        // Using Promise.all to fetch profile and settings at the same time
+        const [profileRes, settingsRes] = await Promise.all([
+            fetch(`${API_BASE_URL}/user-profile`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            }),
+            fetch(`${API_BASE_URL}/get-system-settings`)
+        ]);
+
+        if (profileRes.status === 401) return logout();
+
+        const userData = await profileRes.json();
+        const settingsData = await settingsRes.json();
+        const liveRate = settingsData.settings?.exchangeRate || 1380;
+
+        // --- STEP 3: SECURITY CHECK ---
+        if (userData.status === 'suspended') {
+            showSuspendedNotice();
+            return;
+        }
+
+        // --- STEP 4: UPDATE UI & REFRESH CACHE ---
+        updateDashboardUI(userData, liveRate);
+        
+        // Store for the next session
+        localStorage.setItem('dashboard_cache', JSON.stringify({
+            user: userData,
+            rate: liveRate
+        }));
+
+    } catch (err) { 
+        console.error("Dashboard refresh failed:", err);
+    }
+}
+
+/**
+ * Reusable function to handle all DOM updates
+ */
+function updateDashboardUI(user, rate) {
+    if (!user) return;
+
+    const fullName = user.fullName || "User";
+    const balanceUSD = user.balance || 0;
+    const balanceNGN = balanceUSD * rate;
+
+    // 1. Update Names (Welcome & Sidebar)
+    const welcomeNameEl = document.getElementById('userDisplayName');
+    const sidebarNameEl = document.getElementById('userName');
+    if (welcomeNameEl) welcomeNameEl.innerText = fullName;
+    if (sidebarNameEl) sidebarNameEl.innerText = fullName;
+
+    // 2. Update Initials
+    const initialsEl = document.getElementById('userInitials');
+    if (initialsEl) {
+        initialsEl.innerText = fullName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+    }
+
+    // 3. Update Balances
+    const usdDisplay = document.getElementById('mainBalanceDisplay');
+    const ngnDisplay = document.getElementById('mainBalanceDisplayNGN');
+    const formatOptions = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+
+    if (usdDisplay) {
+        usdDisplay.innerText = `$${balanceUSD.toLocaleString(undefined, formatOptions)}`;
+    }
+    if (ngnDisplay) {
+        ngnDisplay.innerText = `₦${balanceNGN.toLocaleString(undefined, formatOptions)}`;
+    }
+
+    // 4. Update Referral Data (Ensure these IDs exist in your HTML)
+    const refCodeEl = document.getElementById('userReferralCode');
+    const refCountEl = document.getElementById('userReferralCount');
+    
+    if (refCodeEl) refCodeEl.innerText = user.referralCode || "N/A";
+    if (refCountEl) refCountEl.innerText = user.referralCount || 0;
+}
 
 function toggleSupportMenu() {
         const menu = document.getElementById('supportMenu');

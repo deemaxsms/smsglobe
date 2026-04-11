@@ -1676,19 +1676,42 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
                 </td>
             </tr>`;
     } else if (isVPN) {
+        const hasUserPass = !!credentials.username;
+        const hasCode = !!credentials.activationCode;
         dataTableHtml = `
             <tr>
-                <td class="mobile-full" width="33%" valign="top" style="padding-bottom: 10px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Username</span><br>
-                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.username}</strong>
+                <td class="mobile-full" width="100%" valign="top" style="padding-bottom: 20px;">
+                    <div style="background: #ffffff; border: 1px dashed #D1E0FF; padding: 15px; border-radius: 10px;">
+                        <span style="font-size: 10px; color: #667085; text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em;">Device Limit</span><br>
+                        <strong style="font-size: 14px; color: #101828;">${credentials.deviceLimit || 1} Connected Device(s)</strong>
+                    </div>
                 </td>
-                <td class="mobile-full" width="33%" valign="top" style="padding-bottom: 10px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Security Key</span><br>
-                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.password}</strong>
+            </tr>
+            <tr>
+                ${hasUserPass ? `
+                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">VPN Username</span><br>
+                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828; background: #f4f7ff; padding: 2px 5px;">${credentials.username}</strong>
                 </td>
-                <td class="mobile-full" width="33%" valign="top" style="text-align: right; padding-bottom: 10px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Limit</span><br>
-                    <strong style="font-size: 13px; color: #101828;">${credentials.deviceLimit || 1} Device(s)</strong>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Security Password</span><br>
+                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6; background: #f4f7ff; padding: 2px 5px;">${credentials.password}</strong>
+                </td>
+                ` : ''}
+
+                ${hasCode ? `
+                <td class="mobile-full" colspan="2" valign="top" style="padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation / License Key</span><br>
+                    <strong style="font-size: 16px; font-family: 'Courier New', monospace; color: #0F54C6; letter-spacing: 1px;">${credentials.activationCode}</strong>
+                </td>
+                ` : ''}
+            </tr>
+            <tr>
+                <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Setup Instructions</span><br>
+                    <p style="font-size: 12px; color: #344054; line-height: 1.6; margin: 5px 0;">
+                        ${credentials.instructions || 'Download the recommended app for your device and enter the credentials above to start browsing securely.'}
+                    </p>
                 </td>
             </tr>`;
    } else if (isESIM_Activation) {

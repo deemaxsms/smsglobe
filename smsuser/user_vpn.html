@@ -136,30 +136,73 @@
         </main>
     </div>
 
-    <div id="vpnModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
-        <div class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl modal-animate">
-            <div class="bg-brand-blue p-8 text-center">
-                <h2 id="modalTitle" class="text-2xl font-bold text-white">Payment Successful!</h2>
-            </div>
-            <div class="p-6 md:p-8 space-y-4">
-                <div class="bg-brand-background rounded-xl p-4 border border-brand-border">
-                    <p class="text-[9px] font-bold text-brand-blue uppercase mb-1">Username</p>
-                    <div class="flex items-center justify-between">
-                        <span id="modalUser" class="text-xs font-mono font-bold">---</span>
-                        <button onclick="copyToClipboard('modalUser', this)" class="text-brand-blue">Copy</button>
-                    </div>
+<div id="vpnModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
+    <div id="modalContent" class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl modal-animate">
+        
+        <div id="confirmState" class="hidden">
+            <div class="p-8 text-center">
+                <div class="w-16 h-16 bg-brand-background text-brand-blue rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 </div>
-                <div class="bg-brand-background rounded-xl p-4 border border-brand-border">
-                    <p class="text-[9px] font-bold text-brand-blue uppercase mb-1">Password</p>
-                    <div class="flex items-center justify-between">
-                        <span id="modalPass" class="text-xs font-mono font-bold text-brand-blue">---</span>
-                        <button onclick="copyToClipboard('modalPass', this)" class="text-brand-blue">Copy</button>
-                    </div>
+                <h2 class="text-xl font-bold text-brand-darkText mb-2">Confirm Purchase</h2>
+                <p class="text-xs text-brand-lightText mb-6">The plan amount will be deducted from your wallet balance. Do you wish to proceed?</p>
+                <div class="flex gap-3">
+                    <button onclick="closeModal()" class="flex-1 py-3 border border-brand-border rounded-xl font-bold text-xs uppercase text-brand-midText">Cancel</button>
+                    <button id="finalConfirmBtn" class="flex-1 py-3 bg-brand-blue text-white rounded-xl font-bold text-xs uppercase">Confirm & Pay</button>
                 </div>
-                <button onclick="closeModal()" class="w-full py-4 bg-brand-blue text-white rounded-2xl font-bold">Done</button>
             </div>
         </div>
+
+        <div id="successState" class="hidden">
+            <div class="bg-brand-blue p-6 text-center">
+                <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <h2 class="text-lg font-bold text-white">Purchase Successful!</h2>
+                <p class="text-[10px] text-blue-100 uppercase tracking-widest mt-1">Your credentials are ready</p>
+            </div>
+            
+            <div class="p-6 space-y-3 max-h-[60vh] overflow-y-auto no-scrollbar">
+                <div id="wrapUser" class="hidden bg-brand-background rounded-xl p-3 border border-brand-border">
+                    <p class="text-[9px] font-bold text-brand-blue uppercase mb-1">Username / Email</p>
+                    <div class="flex items-center justify-between">
+                        <span id="resUser" class="text-xs font-mono font-bold text-brand-darkText">---</span>
+                        <button onclick="copyText('resUser')" class="text-[10px] font-bold text-brand-blue uppercase">Copy</button>
+                    </div>
+                </div>
+
+                <div id="wrapPass" class="hidden bg-brand-background rounded-xl p-3 border border-brand-border">
+                    <p class="text-[9px] font-bold text-brand-blue uppercase mb-1">Password</p>
+                    <div class="flex items-center justify-between">
+                        <span id="resPass" class="text-xs font-mono font-bold text-brand-darkText">---</span>
+                        <button onclick="copyText('resPass')" class="text-[10px] font-bold text-brand-blue uppercase">Copy</button>
+                    </div>
+                </div>
+
+                <div id="wrapCode" class="hidden bg-brand-background rounded-xl p-3 border border-brand-border">
+                    <p class="text-[9px] font-bold text-brand-blue uppercase mb-1">Activation Code</p>
+                    <div class="flex items-center justify-between">
+                        <span id="resCode" class="text-xs font-mono font-bold text-brand-darkText">---</span>
+                        <button onclick="copyText('resCode')" class="text-[10px] font-bold text-brand-blue uppercase">Copy</button>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center px-1">
+                    <p class="text-[10px] font-bold text-brand-lightText uppercase">Device Limit</p>
+                    <p id="resLimit" class="text-xs font-bold text-brand-darkText">1 Device</p>
+                </div>
+
+                <div class="pt-2 border-t border-brand-border">
+                    <p class="text-[9px] font-bold text-brand-lightText uppercase mb-1">How to setup:</p>
+                    <p id="resInstructions" class="text-[10px] leading-relaxed text-brand-midText">Check your dashboard for details.</p>
+                </div>
+
+                <button onclick="location.reload()" class="w-full py-3.5 bg-brand-darkText text-white rounded-2xl font-bold text-xs uppercase mt-4">Close & Refresh</button>
+            </div>
+        </div>
+
     </div>
+</div>
 
     <script>
         const API_BASE_URL = '/api';
@@ -266,73 +309,109 @@
         </div>`;
     }).join('');
 }
-       async function buyVPN(vpnId) {
-    const btn = document.getElementById(`btn-${vpnId}`);
-    const token = localStorage.getItem('userToken');
+     async function buyVPN(vpnId) {
     const planIndex = document.getElementById(`plan-${vpnId}`).value;
+    const modal = document.getElementById('vpnModal');
+    const confirmState = document.getElementById('confirmState');
+    const successState = document.getElementById('successState');
+    const confirmBtn = document.getElementById('finalConfirmBtn');
 
-    // 1. UI Feedback
-    btn.disabled = true;
-    const originalText = btn.innerText;
-    btn.innerText = "Processing...";
+    // 1. Show Confirmation State
+    successState.classList.add('hidden');
+    confirmState.classList.remove('hidden');
+    modal.classList.remove('hidden');
 
-    try {
-        // 2. Call the Wallet Purchase Endpoint
-        const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${token}` 
-            },
-            body: JSON.stringify({ 
-                vpnId: vpnId, 
-                planIndex: parseInt(planIndex) 
-            })
-        });
+    // 2. Attach click event to the "Confirm & Pay" button
+    confirmBtn.onclick = async () => {
+        confirmBtn.disabled = true;
+        confirmBtn.innerText = "Processing...";
 
-        const data = await res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
+                },
+                body: JSON.stringify({ vpnId, planIndex: parseInt(planIndex) })
+            });
 
-        if (data.success) {
-            // 3. Show Success Modal with Credentials immediately
-            showCredentialsModal(data.credentials);
-            
-            // Optional: Refresh balance display if you have one on the page
-            if (typeof fetchUserBalance === "function") fetchUserBalance();
-        } else {
-            // Handle Insufficient Balance or Stock errors
-            alert(data.message || "Purchase failed");
+            const data = await res.json();
+
+            if (data.success) {
+                // Find the original VPN object to get device limits
+                const vpnData = allVPNs.find(v => v._id === vpnId);
+                showSuccessDetails(data.credentials, vpnData);
+            } else {
+                alert(data.message || "Purchase failed");
+                closeModal();
+            }
+        } catch (err) {
+            alert("Connection Error");
+            closeModal();
+        } finally {
+            confirmBtn.disabled = false;
+            confirmBtn.innerText = "Confirm & Pay";
         }
-    } catch (err) {
-        console.error(err);
-        alert("Connection Error. Please check your internet.");
-    } finally {
-        btn.disabled = false;
-        btn.innerText = originalText;
-    }
+    };
 }
 
+function showSuccessDetails(creds, vpnData) {
+    const confirmState = document.getElementById('confirmState');
+    const successState = document.getElementById('successState');
 
+    // Toggle states
+    confirmState.classList.add('hidden');
+    successState.classList.remove('hidden');
 
-        function closeModal() { document.getElementById('vpnModal').classList.add('hidden'); }
+    // Map UI Elements
+    const userWrap = document.getElementById('wrapUser');
+    const passWrap = document.getElementById('wrapPass');
+    const codeWrap = document.getElementById('wrapCode');
+
+    // Reset visibility
+    userWrap.classList.add('hidden');
+    passWrap.classList.add('hidden');
+    codeWrap.classList.add('hidden');
+
+    // Fill Username
+    if (creds.username) {
+        document.getElementById('resUser').innerText = creds.username;
+        userWrap.classList.remove('hidden');
+    }
+
+    // Fill Password
+    if (creds.password) {
+        document.getElementById('resPass').innerText = creds.password;
+        passWrap.classList.remove('hidden');
+    }
+
+    // Fill Activation Code
+    if (creds.activationCode) {
+        document.getElementById('resCode').innerText = creds.activationCode;
+        codeWrap.classList.remove('hidden');
+    }
+
+    // Set Device Limit & Instructions (From Database)
+    document.getElementById('resLimit').innerText = `${vpnData.deviceLimit || 1} Device(s)`;
+    document.getElementById('resInstructions').innerText = creds.instructions || "Download the app and use the credentials above to connect.";
+}
+
+function copyText(id) {
+    const text = document.getElementById(id).innerText;
+    navigator.clipboard.writeText(text);
+    alert("Copied to clipboard!");
+}
+
+function closeModal() {
+    document.getElementById('vpnModal').classList.add('hidden');
+}
         function toggleSidebar() { 
             document.getElementById('sidebar').classList.toggle('-translate-x-full');
             document.getElementById('sidebarOverlay').classList.toggle('hidden');
         }
 
-        function showCredentialsModal(creds) {
-    const modal = document.getElementById('vpnModal');
     
-    // Set the text based on what the VPN provides (Username/Password or Code)
-    document.getElementById('modalUser').innerText = creds.username || "N/A";
-    document.getElementById('modalPass').innerText = creds.password || creds.activationCode || "N/A";
-    
-    // If you have an instructions area in your modal:
-    const instructionsArea = document.getElementById('modalInstructions');
-    if (instructionsArea) instructionsArea.innerText = creds.instructions || "";
-
-    modal.classList.remove('hidden');
-}
-
         window.onload = initVPNPage;
     </script>
 </body>

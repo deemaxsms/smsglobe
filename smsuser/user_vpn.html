@@ -269,6 +269,7 @@
         let allVPNs = [];
         let currentCategory = 'Phone';
 
+
         async function initVPNPage() {
             const token = localStorage.getItem('userToken');
             if (!token) { window.location.href = 'user_login.html'; return; }
@@ -301,28 +302,30 @@ function renderVPNs() {
     const emptyState = document.getElementById('emptyState');
     
     if (loader) loader.classList.add('hidden');
-    
+    if (!grid) return;
+
     grid.innerHTML = ''; 
 
+    // 1. FILTERING LOGIC
+    // We normalize both values to lowercase to ensure "PC" matches "pc"
     const filtered = allVPNs.filter(vpn => {
-        const activeTab = (currentCategory || '').toLowerCase();         
+        const activeTab = currentCategory.toLowerCase(); // 'phone' or 'pc'
         const dbDevice = (vpn.deviceType || '').toLowerCase().trim();
         
-        if (activeTab.includes('phone')) {
-            return dbDevice === 'phone';
-        }         
-        if (activeTab.includes('pc')) {
-            return dbDevice === 'pc';
-        }
-        return false; 
+        // Exact match ensures 'phone' doesn't accidentally pick up 'phone-tablet' 
+        // unless you want it to.
+        return dbDevice === activeTab;
     });
 
+    // 2. EMPTY STATE CHECK
     if (filtered.length === 0) {
         grid.classList.add('hidden');
         emptyState.classList.remove('hidden');
-        emptyState.querySelector('p').innerText = `No nodes available for ${currentCategory}.`;
+        emptyState.querySelector('p').innerText = `No VPNs available for ${currentCategory}.`;
         return;
     }
+
+    // 3. SORTING (Stock first)
     const sorted = filtered.sort((a, b) => {
         const aStock = (a.stock || 0) > 0;
         const bStock = (b.stock || 0) > 0;
@@ -337,7 +340,9 @@ function renderVPNs() {
     // 4. RENDER HTML
     grid.innerHTML = sorted.map(vpn => {
         const isOutOfStock = (vpn.stock || 0) <= 0;
-        const price = vpn.plans && vpn.plans.length > 0 ? parseFloat(vpn.plans[0].price).toFixed(2) : "0.00";
+        const price = vpn.plans && vpn.plans.length > 0 
+            ? parseFloat(vpn.plans[0].price).toFixed(2) 
+            : "0.00";
         
         return `
         <div class="bg-white border border-brand-border rounded-2xl shadow-sm flex flex-col overflow-hidden transition-all ${isOutOfStock ? 'opacity-60' : 'hover:shadow-md'}">
@@ -370,9 +375,8 @@ function renderVPNs() {
     }).join('');
 }
 
-
 function switchTab(category) {
-    // category will be 'Phone' or 'PC'
+    // Standardize category to 'Phone' or 'PC'
     currentCategory = category; 
     
     const tabs = ['Phone', 'PC'];
@@ -382,14 +386,17 @@ function switchTab(category) {
         if (!btn) return;
 
         if (tab === category) {
-            btn.classList.add('tab-active', 'text-brand-blue');
+            // UI state for active tab
+            btn.classList.add('tab-active', 'border-b-2', 'border-brand-blue', 'text-brand-blue');
             btn.classList.remove('text-brand-lightText');
         } else {
-            btn.classList.remove('tab-active', 'text-brand-blue');
+            // UI state for inactive tab
+            btn.classList.remove('tab-active', 'border-b-2', 'border-brand-blue', 'text-brand-blue');
             btn.classList.add('text-brand-lightText');
         }
     });
 
+    // Re-run the render function to filter the list
     renderVPNs();
 }
 

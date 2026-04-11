@@ -67,12 +67,26 @@ const userSchema = new mongoose.Schema({
         enum: ['active', 'suspended'], 
         default: 'active' 
     },
-    // Add these two fields for the Forgot Password flow
+    referralCode: { 
+        type: String, 
+        unique: true,
+        sparse: true 
+    },
+    referredBy: { 
+        type: String, 
+        default: null 
+    },
+    referralCount: { 
+        type: Number, 
+        default: 0 
+    },
     resetPasswordToken: { type: String },
     resetPasswordExpires: { type: Date }
 }, { timestamps: true });
 
+// 2. Define the Model (MUST happen before you try to query it)
 const User = mongoose.models.User || mongoose.model('User', userSchema);
+
 
 const systemSettingsSchema = new mongoose.Schema({
     maintenanceMode: { type: Boolean, default: false },
@@ -362,6 +376,24 @@ const verifyToken = async (req, res, next) => {
         return res.status(401).json({ success: false, error: "Unauthorized or expired session" });
     }
 };
+
+async function getReferrals(user) {
+    // This only works after 'User' is defined above
+    const count = await User.countDocuments({ referredBy: user.referralCode });
+    return count;
+}
+async function generateUniqueCode() {
+    let isUnique = false;
+    let code = "";
+    while (!isUnique) {
+        // Generates 3 random bytes -> 6 hex characters (e.g., 7F2A9B)
+        code = crypto.randomBytes(3).toString('hex').toUpperCase();
+        const existing = await User.findOne({ referralCode: code });
+        if (!existing) isUnique = true;
+    }
+    return code;
+}
+
 
 app.all('/api/:action', async (req, res) => {
     await connectDB();
@@ -919,10 +951,16 @@ async function handleUserLogin(req, res) {
     }
 }
 
-// --- 2. User Registration Handler ---
-async function handleUserRegister(req, res) {
-    const { fullName, email, password, captchaToken } = req.body;
 
+/**
+ * User Registration Handler
+ * Handles: reCAPTCHA, Email Validation, Optional Referrals, 
+ * and Unique Referral Code Generation.
+ */
+async function handleUserRegister(req, res) {
+    const { fullName, email, password, captchaToken, friendReferralCode } = req.body;
+
+    // 1. reCAPTCHA Validation
     if (!captchaToken) {
         return res.status(400).json({ success: false, message: "reCAPTCHA token missing." });
     }
@@ -935,35 +973,58 @@ async function handleUserRegister(req, res) {
     try {
         const normalizedEmail = email.toLowerCase().trim();
 
+        // 2. Check if user already exists
         const existingUser = await User.findOne({ email: normalizedEmail });
         if (existingUser) {
             return res.status(400).json({ success: false, message: "This email is already registered." });
         }
+        let referredBy = null;
+        if (friendReferralCode && friendReferralCode.trim().length > 0) {
+            const cleanFriendCode = friendReferralCode.trim().toUpperCase();            
+            const referrer = await User.findOne({ referralCode: cleanFriendCode });
+            
+            if (referrer) {
+                referredBy = referrer.referralCode;
+                // Increment referrer's count immediately
+                referrer.referralCount = (referrer.referralCount || 0) + 1;
+                await referrer.save();
+            } else {
+                // If they provided a code but it's wrong, we notify them
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "The referral code provided is invalid. Leave it blank if you don't have one." 
+                });
+            }
+        }
 
-        const hashedPassword = await bcrypt.hash(password, 12);
-        
+        const myNewReferralCode = await generateUniqueCode();
+        const hashedPassword = await bcrypt.hash(password, 12);        
         const newUser = new User({ 
             fullName: fullName.trim(), 
             email: normalizedEmail, 
             password: hashedPassword,
-            balance: 0 
+            balance: 0,
+            referralCode: myNewReferralCode, // This is their new 6-char code
+            referredBy: referredBy           // This stays null if no code was used
         });
         
         await newUser.save();
         
         return res.status(201).json({ 
             success: true, 
-            message: "Account created successfully! You can now log in." 
+            message: "Account created successfully! You can now log in.",
+            referralCode: myNewReferralCode 
         });
+
     } catch (err) {
         console.error("Registration Error:", err);
-        return res.status(500).json({ success: false, message: "Failed to create account." });
+        return res.status(500).json({ success: false, message: "Failed to create account. Please try again." });
     }
 }
 
 // Fetch profile for the logged-in user
 async function handleGetUserProfile(req, res) {
-    // 1. Manually verify token
+    // 1. Verify token
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     
@@ -971,6 +1032,9 @@ async function handleGetUserProfile(req, res) {
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
+        
+        // Include referral fields in the selection
+        // We select '-password' to keep it secure, but ensure referralCode and referralCount are present
         const user = await User.findById(decoded.id).select('-password');
         
         if (!user) {
@@ -978,7 +1042,6 @@ async function handleGetUserProfile(req, res) {
         }
 
         // 2. Check for suspension
-        // If the user is suspended, we return a 403 Forbidden status
         if (user.status === 'suspended') {
             return res.status(403).json({ 
                 success: false, 
@@ -987,13 +1050,16 @@ async function handleGetUserProfile(req, res) {
             });
         }
         
-        // 3. Return user data including status and ID
+        // 3. Return user data including referral information
         return res.json({ 
             success: true, 
             _id: user._id,
-            fullName: user.fullName, // Matched to frontend userData.fullName
+            fullName: user.fullName,
             email: user.email, 
-            status: user.status || 'active'
+            status: user.status || 'active',
+            // Added referral data
+            referralCode: user.referralCode || "", 
+            referralCount: user.referralCount || 0 
         });
 
     } catch (err) {

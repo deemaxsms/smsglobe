@@ -173,16 +173,16 @@
                             <div>
                                 <div class="flex justify-between text-[9px] font-bold mb-1 uppercase">
                                     <span class="text-brand-lightText">Total Orders</span>
-                                    <span class="text-brand-blue">24</span>
+                                    <span id="insightOrderCount" class="text-brand-blue">0</span>
                                 </div>
                                 <div class="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                                    <div class="bg-brand-blue h-full w-[65%]"></div>
+                                    <div id="orderProgress" class="bg-brand-blue h-full w-[0%] transition-all duration-700"></div>
                                 </div>
                             </div>
                             <div>
                                 <div class="flex justify-between text-[9px] font-bold mb-1 uppercase">
                                     <span class="text-brand-lightText">Wallet Status</span>
-                                    <span class="text-green-500">Active</span>
+                                    <span id="walletStatusText" class="text-green-500">Active</span>
                                 </div>
                             </div>
                         </div>
@@ -302,19 +302,16 @@
     if (!token) { window.location.href = 'user_login.html'; return; }
 
     try {
-        // 1. Fetch Profile Data
         const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const userData = await profileRes.json();
 
-        // Check for suspension (Status code 403 or specific status field)
         if (profileRes.status === 403 || userData.status === 'suspended') {
             showSuspendedNotice();
             return;
         }
 
-        // Populate Profile UI (Using proper field names from your DB)
         const name = userData.fullName || "User";
         const email = userData.email || "";
         document.getElementById('displayFullName').innerText = name;
@@ -322,9 +319,14 @@
         document.getElementById('pfpInitials').innerText = name.charAt(0).toUpperCase();
         document.getElementById('inputName').value = name;
         document.getElementById('inputEmail').value = email;
-        document.getElementById('inputID').value = userData._id;
+        document.getElementById('inputID').value = userData._id || 'N/A';
+        
+        // Dynamic Wallet Status (Assuming balance exists in profile)
+        if (userData.balance !== undefined) {
+             const statusText = document.getElementById('walletStatusText');
+             statusText.innerText = `Active (₦${userData.balance.toLocaleString()})`;
+        }
 
-        // 2. Fetch Order History
         const ordersRes = await fetch(`${API_BASE_URL}/user-orders`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -334,46 +336,42 @@
 
     } catch (err) {
         console.error("Profile load error:", err);
-        // If it's a network error or crash, we still check if they were unauthorized
         document.getElementById('transactionsBody').innerHTML = `
             <tr><td colspan="4" class="px-5 py-6 text-center text-red-500 text-[10px]">Failed to load transactions.</td></tr>
         `;
     }
 }
+
 function renderOrders(orders) {
     const container = document.getElementById('transactionsBody');
     const countLabel = document.getElementById('orderCount');
+    const insightCount = document.getElementById('insightOrderCount');
+    const progressBar = document.getElementById('orderProgress');
     
     if (!orders || orders.length === 0) {
         container.innerHTML = `<tr><td colspan="4" class="px-5 py-10 text-center text-[11px] text-brand-lightText">No transactions found.</td></tr>`;
         return;
     }
 
-    if (countLabel) countLabel.innerText = `${orders.length} Orders`;
+    const total = orders.length;
+    if (countLabel) countLabel.innerText = `${total} Orders`;
+    if (insightCount) insightCount.innerText = total;
+    if (progressBar) progressBar.style.width = `${Math.min(total * 4, 100)}%`; // Visual logic
+
     container.innerHTML = ''; 
 
     orders.forEach(order => {
-        // --- IMPROVED DATE DETECTION ---
-        // 1. Check createdAt, 2. Check date, 3. Try to extract from _id (Timestamp is encoded in MongoDB IDs)
         let rawDate = order.createdAt || order.date;
-        
-        if (!rawDate && order._id) {
-            // Extract date from MongoDB ObjectId if timestamps are missing
+        if (!rawDate && order._id && order._id.length === 24) {
             rawDate = new Date(parseInt(order._id.substring(0, 8), 16) * 1000);
         }
 
-        let dateStr = "N/A";
-        let timeStr = "---";
-
+        let dateStr = "N/A", timeStr = "---";
         if (rawDate) {
             const dateObj = new Date(rawDate);
             if (!isNaN(dateObj.getTime())) {
-                dateStr = dateObj.toLocaleDateString('en-GB', {
-                    day: 'numeric', month: 'short', year: 'numeric'
-                });
-                timeStr = dateObj.toLocaleTimeString('en-GB', {
-                    hour: '2-digit', minute: '2-digit', hour12: true
-                }).toUpperCase();
+                dateStr = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                timeStr = dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase();
             }
         }
 
@@ -386,8 +384,6 @@ function renderOrders(orders) {
         
         const currentStatus = (order.status || 'pending').toLowerCase();
         const colorClass = statusColors[currentStatus] || 'bg-gray-50 text-gray-600 border-gray-100';
-
-        // Match your Backend schema fields
         const displayProduct = order.productType || order.product || 'Service';
         const displayDetails = order.nodeName ? `${order.nodeName} - ${order.planName}` : (order.planName || 'Standard Plan');
         const displayCurrency = order.currency === 'USD' ? '$' : '₦';
@@ -420,7 +416,6 @@ function renderOrders(orders) {
     });
 }
 
-// --- MODAL CONTROLS ---
 const passModal = document.getElementById('passwordModal');
 
 function openPasswordModal() {
@@ -441,27 +436,19 @@ function togglePass(id) {
 
 document.getElementById('passwordForm').onsubmit = async (e) => {
     e.preventDefault();
-    
     const oldPass = document.getElementById('oldPassword').value;
     const newPass = document.getElementById('newPassword').value;
     const confirmPass = document.getElementById('confirmPassword').value;
     const token = localStorage.getItem('userToken');
 
-    if (newPass !== confirmPass) {
-        alert("New passwords do not match!");
-        return;
-    }
+    if (newPass !== confirmPass) { alert("New passwords do not match!"); return; }
 
     try {
         const res = await fetch(`${API_BASE_URL}/change-password`, {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ oldPass, newPass })
         });
-
         const data = await res.json();
         if (data.success) {
             alert("Password updated successfully!");
@@ -469,9 +456,7 @@ document.getElementById('passwordForm').onsubmit = async (e) => {
         } else {
             alert(data.message || "Failed to update password.");
         }
-    } catch (err) {
-        alert("Server error. Please try again.");
-    }
+    } catch (err) { alert("Server error. Please try again."); }
 };
 
         function logout() {

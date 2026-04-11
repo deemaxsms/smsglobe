@@ -244,74 +244,82 @@ function renderVPNs() {
     
     if (loader) loader.classList.add('hidden');
     
-    // 1. IMPROVED FILTERING (Aggressive Category Isolation)
+    // 1. STRICT CATEGORY ISOLATION & DEVICE MAPPING
     const filtered = allVPNs.filter(vpn => {
-        // We clean the string and provide a fallback 'phone' if the field is missing
-        const rawType = vpn.deviceType || 'Phone'; 
-        const deviceType = rawType.trim().toLowerCase();
-        const categoryTarget = currentCategory.toLowerCase();
+        // Normalize the current tab selection (e.g., "VPN FOR PC" -> "pc")
+        const currentTab = currentCategory.toLowerCase().trim();
         
-        // This ensures a PC product CANNOT show in Phone, and vice versa.
-        return deviceType === categoryTarget;
+        // Clean the database deviceType value
+        const deviceFromDb = (vpn.deviceType || '').toLowerCase().trim();
+
+        // ROUTING LOGIC: Match specific keywords to specific DB values
+        if (currentTab.includes('phone')) {
+            return deviceFromDb === 'phone';
+        } 
+        
+        if (currentTab.includes('pc')) {
+            return deviceFromDb === 'pc';
+        }
+
+        return false; // Prevents unassigned items from showing in either tab
     });
 
-    // 2. EMPTY STATE LOGIC
+    // 2. EMPTY STATE HANDLING
     if (filtered.length === 0) {
         grid.classList.add('hidden');
         emptyState.classList.remove('hidden');
-        emptyState.querySelector('p').innerText = `No VPN nodes available for ${currentCategory} at the moment.`;
+        emptyState.querySelector('p').innerText = `No nodes available for ${currentCategory}.`;
         return;
     }
 
-    // 3. SMART SORTING (In-Stock always at the top)
+    // 3. SMART SORTING (Push Sold Out to the bottom within the correct section)
     const sorted = filtered.sort((a, b) => {
         const aStock = (a.stock || 0) > 0;
         const bStock = (b.stock || 0) > 0;
+        
+        // If one is in stock and other isn't, put in-stock first
         if (aStock && !bStock) return -1;
         if (!aStock && bStock) return 1;
-        return 0;
+        return 0; // Maintain original order if stock status is same
     });
 
     emptyState.classList.add('hidden');
     grid.classList.remove('hidden');
 
-    // 4. RENDER
+    // 4. RENDER HTML
     grid.innerHTML = sorted.map(vpn => {
         const isOutOfStock = (vpn.stock || 0) <= 0;
         return `
-        <div class="bg-white border border-brand-border rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden ${isOutOfStock ? 'opacity-75' : ''}">
+        <div class="bg-white border border-brand-border rounded-2xl shadow-sm flex flex-col overflow-hidden transition-all ${isOutOfStock ? 'opacity-60' : 'hover:shadow-md'}">
             <div class="h-24 md:h-32 bg-gray-50 relative flex items-center justify-center p-4 border-b">
-                <img src="${vpn.image || 'https://via.placeholder.com/150'}" 
-                     class="max-h-full object-contain ${isOutOfStock ? 'grayscale opacity-40' : ''}">
-                ${isOutOfStock ? `<span class="absolute inset-0 flex items-center justify-center bg-white/10 backdrop-blur-[1px] text-[10px] font-black text-red-600 uppercase tracking-tighter">Sold Out</span>` : ''}
+                <img src="${vpn.image}" class="max-h-full object-contain ${isOutOfStock ? 'grayscale opacity-50' : ''}">
+                ${isOutOfStock ? `<div class="absolute inset-0 flex items-center justify-center bg-white/40 backdrop-blur-[1px] font-black text-red-600 text-[10px] uppercase">Sold Out</div>` : ''}
             </div>
             <div class="p-3 md:p-5 flex flex-col flex-grow">
                 <div class="mb-3">
                     <h3 class="font-bold text-brand-darkText text-[11px] md:text-xs uppercase truncate">${vpn.name}</h3>
-                    <p class="text-[10px] md:text-[10px] text-brand-lightText font-medium">${vpn.region || 'Global'}</p>
-                    <span class="inline-block mt-1 text-[10px] md:text-[9px] font-bold px-1.5 py-0.5 rounded ${isOutOfStock ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}">
+                    <p class="text-[10px] text-brand-lightText font-medium">${vpn.region || 'Global'}</p>
+                    <span class="inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded ${isOutOfStock ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-500'}">
                         ${isOutOfStock ? 'Out of Stock' : `Stock: ${vpn.stock}`}
                     </span>
                 </div>
-
                 <div class="bg-brand-background rounded-lg p-1.5 mb-3 border border-brand-border/50">
-                    <select id="plan-${vpn._id}" ${isOutOfStock ? 'disabled' : ''} 
-                        class="w-full bg-transparent text-[10px] md:text-xs font-bold outline-none cursor-pointer">
+                    <select id="plan-${vpn._id}" ${isOutOfStock ? 'disabled' : ''} class="w-full bg-transparent text-[10px] font-bold outline-none cursor-pointer">
                         ${vpn.plans.map((p, i) => {
                             const price = parseFloat(p.price).toFixed(2);
                             return `<option value="${i}">${p.duration} - $${price}</option>`;
                         }).join('')}
                     </select>
                 </div>
-
-                <button onclick="buyVPN('${vpn._id}')" id="btn-${vpn._id}" ${isOutOfStock ? 'disabled' : ''}
-                        class="mt-auto w-full py-2.5 md:py-3.5 ${isOutOfStock ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-brand-blue text-white hover:bg-blue-700'} text-[10px] md:text-xs font-bold rounded-lg transition-all">
+                <button onclick="buyVPN('${vpn._id}')" id="btn-${vpn._id}" ${isOutOfStock ? 'disabled' : ''} 
+                    class="mt-auto w-full py-2.5 ${isOutOfStock ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-brand-blue text-white hover:bg-blue-700'} text-[10px] font-bold rounded-lg transition-all">
                     ${isOutOfStock ? 'Unavailable' : 'Purchase'}
                 </button>
             </div>
         </div>`;
     }).join('');
 }
+
 
 function switchTab(category) {
     currentCategory = category;

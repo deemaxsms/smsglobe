@@ -368,18 +368,17 @@
     backBtn.classList.add('hidden');
     categoryGrid.classList.remove('hidden');
     hero.classList.remove('hidden');
+    
+    // Increased header font size
     currentViewName.innerText = "All Proxy Categories";
+    currentViewName.className = "text-2xl font-black text-brand-darkText uppercase tracking-tight";
 
     const categories = [...new Set(allProxies.map(p => p.category))];
 
     if (categories.length === 0) {
         categoryGrid.innerHTML = `
             <div class="col-span-full py-24 text-center">
-                <div class="inline-flex p-6 bg-white rounded-full mb-6 text-brand-lightText shadow-sm border border-brand-border">
-                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
-                </div>
-                <h3 class="text-lg font-extrabold text-brand-darkText uppercase tracking-tight">Restocking Fresh Proxies...</h3>
-                <p class="text-sm text-brand-lightText mt-2 font-medium max-w-xs mx-auto">Our elite IP pools are being refreshed for maximum performance. Please check back shortly.</p>
+                <h3 class="text-2xl font-black text-brand-darkText uppercase">Restocking...</h3>
             </div>
         `;
         return;
@@ -388,25 +387,24 @@
     categoryGrid.innerHTML = categories.map(cat => {
         const count = allProxies.filter(p => p.category === cat).length;
         return `
-            <div onclick="showProducts('${cat}')" class="category-card active-scale bg-white border border-brand-border p-5 sm:p-6 rounded-2xl shadow-sm cursor-pointer transition-all hover:shadow-md hover:border-brand-blue/30 flex items-center gap-5">
-                <div class="w-16 h-16 bg-brand-background rounded-2xl flex items-center justify-center shrink-0 border border-brand-blue/10 p-3 text-brand-blue">
+            <div onclick="showProducts('${cat}')" class="category-card active-scale bg-white border-2 border-brand-border p-6 rounded-3xl shadow-sm cursor-pointer transition-all hover:border-brand-blue flex items-center gap-6">
+                <div class="w-20 h-20 bg-brand-background rounded-2xl flex items-center justify-center shrink-0 border-2 border-brand-blue/10 p-4">
                     <img src="${CAT_IMAGE_URL}" alt="Icon" class="w-full h-full object-contain">
                 </div>
                 
                 <div class="flex-grow">
-                    <h3 class="text-sm sm:text-base font-black text-brand-darkText uppercase leading-tight tracking-tight">${cat}</h3>
-                    <p class="text-xs sm:text-sm text-brand-lightText font-semibold mt-1 opacity-80">${count} Packages Available</p>
+                    <h3 class="text-lg sm:text-xl font-black text-brand-darkText uppercase leading-none tracking-tighter">${cat}</h3>
+                    <p class="text-sm sm:text-base text-brand-lightText font-bold mt-2">${count} Packages Live</p>
                 </div>
                 
-                <div class="bg-brand-background p-2.5 rounded-xl text-brand-blue shadow-sm border border-brand-blue/5">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path></svg>
+                <div class="bg-brand-blue/5 p-3 rounded-2xl text-brand-blue">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M9 5l7 7-7 7"></path></svg>
                 </div>
             </div>
         `;
     }).join('');
 }
-
-   function showProducts(category) {
+function showProducts(category) {
     const categoryGrid = document.getElementById('categoryGrid');
     const proxyGrid = document.getElementById('proxyGrid');
     const backBtn = document.getElementById('backBtn');
@@ -418,52 +416,54 @@
     proxyGrid.classList.remove('hidden');
     backBtn.classList.remove('hidden');
     backBtn.classList.add('flex');
+    
+    // Header Title
     currentViewName.innerText = category;
+    currentViewName.className = "text-2xl font-black text-brand-darkText uppercase tracking-tight";
 
     const filtered = allProxies.filter(p => p.category === category);
 
-    // Grid change: we use larger min-widths for cards
     proxyGrid.innerHTML = filtered.map(proxy => {
         const stockCount = proxy.stock || 0;
         const isOutOfStock = (stockCount === 0);
-        let badgeColor = "bg-green-100 text-green-600";
-        if (isOutOfStock) badgeColor = "bg-red-100 text-red-600";
-        else if (stockCount < 5) badgeColor = "bg-orange-100 text-orange-600";
+        let badgeColor = "bg-green-100 text-green-700";
+        if (isOutOfStock) badgeColor = "bg-red-100 text-red-700";
 
         return `
-        <div class="bg-white border border-brand-border rounded-2xl shadow-sm flex flex-col overflow-hidden transition-all hover:shadow-lg relative h-full">
-            <div class="absolute top-3 right-3 z-10">
-                <span class="${badgeColor} text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-tight shadow-sm">
+        <div class="bg-white border-2 border-brand-border rounded-[2.5rem] shadow-md flex flex-col overflow-hidden transition-all hover:shadow-xl relative h-full">
+            <div class="absolute top-4 right-4 z-10">
+                <span class="${badgeColor} text-xs font-black px-4 py-2 rounded-full uppercase tracking-widest shadow-sm">
                     Stock: ${stockCount}
                 </span>
             </div>
-            <div class="h-40 bg-gray-50 flex items-center justify-center p-6 border-b border-brand-border/30">
+            
+            <div class="h-48 bg-gray-50 flex items-center justify-center p-8 border-b-2 border-brand-border/30">
                 <img src="${proxy.imageUrl || CAT_IMAGE_URL}" class="max-h-full w-auto object-contain ${isOutOfStock ? 'grayscale opacity-50' : ''}">
             </div>
             
-            <div class="p-5 flex flex-col flex-grow">
-                <h3 class="font-extrabold text-brand-darkText text-sm sm:text-base uppercase tracking-tight leading-snug mb-3">
+            <div class="p-8 flex flex-col flex-grow">
+                <h3 class="font-black text-brand-darkText text-xl sm:text-2xl uppercase tracking-tighter leading-none mb-6">
                     ${proxy.name}
                 </h3>
                 
-                <div class="mt-auto bg-brand-background rounded-xl p-3 border border-brand-blue/10">
-                    <label class="text-[10px] font-bold text-brand-lightText uppercase block mb-2 tracking-widest">Select Plan Tier</label>
+                <div class="mt-auto bg-brand-background rounded-2xl p-4 border-2 border-brand-blue/10">
+                    <label class="text-xs font-black text-brand-lightText uppercase block mb-3 tracking-widest">Pricing Plan</label>
                     
                     <select id="plan-${proxy._id}" ${isOutOfStock ? 'disabled' : ''} 
-                        class="w-full bg-white border border-brand-border rounded-lg text-xs sm:text-sm font-bold p-2.5 focus:ring-2 focus:ring-brand-blue outline-none disabled:opacity-50 cursor-pointer">
+                        class="w-full bg-white border-2 border-brand-border rounded-xl text-base sm:text-lg font-black p-4 focus:ring-4 focus:ring-brand-blue/20 outline-none disabled:opacity-50">
                         ${proxy.plans.map((p, i) => `<option value="${i}">${p.ip_count} IPs — $${p.price}</option>`).join('')}
                     </select>
                 </div>
                 
                 <button onclick="${isOutOfStock ? '' : `buyProxy('${proxy._id}')`}" id="btn-${proxy._id}" ${isOutOfStock ? 'disabled' : ''}
-                    class="mt-4 w-full py-3.5 ${isOutOfStock ? 'bg-gray-300 cursor-not-allowed' : 'bg-brand-blue hover:bg-blue-700 active-scale shadow-md'} text-white text-xs sm:text-sm font-extrabold rounded-xl transition-all uppercase tracking-wider">
-                    ${isOutOfStock ? 'Out of Stock' : 'Purchase Access Now'}
+                    class="mt-6 w-full py-5 ${isOutOfStock ? 'bg-gray-300' : 'bg-brand-blue hover:bg-blue-700 shadow-lg active:scale-95'} text-white text-base sm:text-lg font-black rounded-2xl transition-all uppercase tracking-widest">
+                    ${isOutOfStock ? 'Sold Out' : 'Get Access Now'}
                 </button>
             </div>
         </div>
     `}).join('');
 }
-    
+
     async function buyProxy(proxyId) {
         const planIndex = document.getElementById(`plan-${proxyId}`).value;
         const token = localStorage.getItem('userToken');

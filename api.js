@@ -1571,7 +1571,7 @@ async function handlePurchaseWithWallet(req, res) {
             amount: costInUSD,
             currency: "USD",
             status: "successful",
-            paymentReference: `WAL-${Date.now()}-${user._id.slice(-4)}`,
+            paymentReference: `WAL-${Date.now()}-${user._id.toString().slice(-4)}`,
             metadata: {
                 ...metadata,
                 mobileNumber: mobileNumber

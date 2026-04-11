@@ -14,14 +14,6 @@
     {
       "source": "/smsadmin/(.*)",
       "destination": "/smsadmin/$1.html"
-    },
-    {
-      "source": "/sitemap.xml",
-      "destination": "/sitemap.xml"
-    },
-    {
-      "source": "/",
-      "destination": "/index.html"
     }
   ]
 }

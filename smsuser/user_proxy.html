@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PROXIES - 9PROXY | SMSGlobe</title>
    <meta name="description" content="Buy high-quality residential, ISP, and datacenter proxies. Secure SOCKS5/HTTP protocols with high anonymity and global coverage for automation and browsing.">
     <meta name="keywords" content="buy proxies, residential proxies, ISP proxies, datacenter proxy, SOCKS5 proxy, HTTP proxy, private proxies, SMSGlobe">
     <meta name="google-site-verification" content="fTAchZCV3xVxBR75Z-jILoW7xPd5kSnfKTOpRrwC3BE" />
@@ -37,6 +40,9 @@
             from { opacity: 0; transform: scale(0.95) translateY(10px); }
             to { opacity: 1; transform: scale(1) translateY(0); }
         }
+        input, select, textarea {
+  font-size: 16px !important;
+}
     </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
@@ -349,104 +355,114 @@
         } catch (err) { console.error("Load Error:", err); }
     }
 
-    function showCategories() {
-        const categoryGrid = document.getElementById('categoryGrid');
-        const proxyGrid = document.getElementById('proxyGrid');
-        const loader = document.getElementById('proxyLoading');
-        const backBtn = document.getElementById('backBtn');
-        const currentViewName = document.getElementById('currentViewName');
-        const hero = document.getElementById('proxyHero');
+ function showCategories() {
+    const categoryGrid = document.getElementById('categoryGrid');
+    const proxyGrid = document.getElementById('proxyGrid');
+    const loader = document.getElementById('proxyLoading');
+    const backBtn = document.getElementById('backBtn');
+    const currentViewName = document.getElementById('currentViewName');
+    const hero = document.getElementById('proxyHero');
 
-        loader.classList.add('hidden');
-        proxyGrid.classList.add('hidden');
-        backBtn.classList.add('hidden');
-        categoryGrid.classList.remove('hidden');
-        hero.classList.remove('hidden');
-        currentViewName.innerText = "All Proxy Categories";
+    loader.classList.add('hidden');
+    proxyGrid.classList.add('hidden');
+    backBtn.classList.add('hidden');
+    categoryGrid.classList.remove('hidden');
+    hero.classList.remove('hidden');
+    currentViewName.innerText = "All Proxy Categories";
 
-        const categories = [...new Set(allProxies.map(p => p.category))];
+    const categories = [...new Set(allProxies.map(p => p.category))];
 
-        if (categories.length === 0) {
-            categoryGrid.innerHTML = `
-                <div class="col-span-full py-20 text-center">
-                    <div class="inline-flex p-5 bg-white rounded-full mb-4 text-brand-lightText shadow-sm">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
-                    </div>
-                    <h3 class="text-sm font-bold text-brand-darkText">Restocking Fresh Proxies...</h3>
-                    <p class="text-xs text-brand-lightText mt-1 font-medium">Our elite IP pools are being refreshed. Please check back shortly.</p>
+    if (categories.length === 0) {
+        categoryGrid.innerHTML = `
+            <div class="col-span-full py-24 text-center">
+                <div class="inline-flex p-6 bg-white rounded-full mb-6 text-brand-lightText shadow-sm border border-brand-border">
+                    <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
                 </div>
-            `;
-            return;
-        }
-
-        categoryGrid.innerHTML = categories.map(cat => {
-            const count = allProxies.filter(p => p.category === cat).length;
-            return `
-                <div onclick="showProducts('${cat}')" class="category-card active-scale bg-white border border-brand-border p-4 rounded-2xl shadow-sm cursor-pointer transition-all flex items-center gap-4">
-                    <div class="w-12 h-12 bg-brand-background rounded-xl flex items-center justify-center shrink-0 border border-brand-blue/10 p-2 text-brand-blue">
-                        <img src="${CAT_IMAGE_URL}" alt="Icon" class="w-full h-full object-contain">
-                    </div>
-                    <div class="flex-grow">
-                        <h3 class="text-xs font-extrabold text-brand-darkText uppercase leading-tight tracking-tight">${cat}</h3>
-                        <p class="text-[12px] text-brand-lightText font-medium mt-0.5">${count} Packages Available</p>
-                    </div>
-                    <div class="bg-brand-background p-1.5 rounded-lg text-brand-blue">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
-                    </div>
-                </div>
-            `;
-        }).join('');
+                <h3 class="text-lg font-extrabold text-brand-darkText uppercase tracking-tight">Restocking Fresh Proxies...</h3>
+                <p class="text-sm text-brand-lightText mt-2 font-medium max-w-xs mx-auto">Our elite IP pools are being refreshed for maximum performance. Please check back shortly.</p>
+            </div>
+        `;
+        return;
     }
 
-    function showProducts(category) {
-        const categoryGrid = document.getElementById('categoryGrid');
-        const proxyGrid = document.getElementById('proxyGrid');
-        const backBtn = document.getElementById('backBtn');
-        const currentViewName = document.getElementById('currentViewName');
-        const hero = document.getElementById('proxyHero');
-
-        hero.classList.add('hidden'); // Hide attractive sections to focus on buying
-        categoryGrid.classList.add('hidden');
-        proxyGrid.classList.remove('hidden');
-        backBtn.classList.remove('hidden');
-        backBtn.classList.add('flex');
-        currentViewName.innerText = category;
-
-        const filtered = allProxies.filter(p => p.category === category);
-
-        proxyGrid.innerHTML = filtered.map(proxy => {
-            const stockCount = proxy.stock || 0;
-            const isOutOfStock = (stockCount === 0);
-            let badgeColor = "bg-green-100 text-green-600";
-            if (isOutOfStock) badgeColor = "bg-red-100 text-red-600";
-            else if (stockCount < 5) badgeColor = "bg-orange-100 text-orange-600";
-
-            return `
-            <div class="bg-white border border-brand-border rounded-2xl shadow-sm flex flex-col overflow-hidden transition-all hover:shadow-md relative">
-                <div class="absolute top-2 right-2 z-10">
-                    <span class="${badgeColor} text-[8px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter">
-                        Stock: ${stockCount}
-                    </span>
+    categoryGrid.innerHTML = categories.map(cat => {
+        const count = allProxies.filter(p => p.category === cat).length;
+        return `
+            <div onclick="showProducts('${cat}')" class="category-card active-scale bg-white border border-brand-border p-5 sm:p-6 rounded-2xl shadow-sm cursor-pointer transition-all hover:shadow-md hover:border-brand-blue/30 flex items-center gap-5">
+                <div class="w-16 h-16 bg-brand-background rounded-2xl flex items-center justify-center shrink-0 border border-brand-blue/10 p-3 text-brand-blue">
+                    <img src="${CAT_IMAGE_URL}" alt="Icon" class="w-full h-full object-contain">
                 </div>
-                <div class="h-24 bg-gray-50 flex items-center justify-center p-4 border-b border-brand-border/30">
-                    <img src="${proxy.imageUrl || CAT_IMAGE_URL}" class="max-h-full object-contain ${isOutOfStock ? 'grayscale opacity-50' : ''}">
+                
+                <div class="flex-grow">
+                    <h3 class="text-sm sm:text-base font-black text-brand-darkText uppercase leading-tight tracking-tight">${cat}</h3>
+                    <p class="text-xs sm:text-sm text-brand-lightText font-semibold mt-1 opacity-80">${count} Packages Available</p>
                 </div>
-                <div class="p-3 flex flex-col flex-grow">
-                    <h3 class="font-extrabold text-brand-darkText text-[10px] uppercase truncate tracking-tight">${proxy.name}</h3>
-                    <div class="mt-2 bg-brand-background rounded-lg p-1.5 border border-brand-blue/5">
-                        <label class="text-[7px] font-bold text-brand-lightText uppercase block mb-1">Select Tier</label>
-                        <select id="plan-${proxy._id}" ${isOutOfStock ? 'disabled' : ''} class="w-full bg-white border border-brand-border rounded text-[9px] font-bold p-1 focus:ring-1 focus:ring-brand-blue outline-none disabled:opacity-50">
-                            ${proxy.plans.map((p, i) => `<option value="${i}">${p.ip_count} IPs — $${p.price}</option>`).join('')}
-                        </select>
-                    </div>
-                    <button onclick="${isOutOfStock ? '' : `buyProxy('${proxy._id}')`}" id="btn-${proxy._id}" ${isOutOfStock ? 'disabled' : ''}
-                        class="mt-3 w-full py-2.5 ${isOutOfStock ? 'bg-gray-300 cursor-not-allowed' : 'bg-brand-blue hover:brightness-110 active-scale shadow-sm'} text-white text-[9px] font-bold rounded-xl transition-all">
-                        ${isOutOfStock ? 'Out of Stock' : 'Purchase Access'}
-                    </button>
+                
+                <div class="bg-brand-background p-2.5 rounded-xl text-brand-blue shadow-sm border border-brand-blue/5">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path></svg>
                 </div>
             </div>
-        `}).join('');
-    }
+        `;
+    }).join('');
+}
+
+   function showProducts(category) {
+    const categoryGrid = document.getElementById('categoryGrid');
+    const proxyGrid = document.getElementById('proxyGrid');
+    const backBtn = document.getElementById('backBtn');
+    const currentViewName = document.getElementById('currentViewName');
+    const hero = document.getElementById('proxyHero');
+
+    hero.classList.add('hidden');
+    categoryGrid.classList.add('hidden');
+    proxyGrid.classList.remove('hidden');
+    backBtn.classList.remove('hidden');
+    backBtn.classList.add('flex');
+    currentViewName.innerText = category;
+
+    const filtered = allProxies.filter(p => p.category === category);
+
+    // Grid change: we use larger min-widths for cards
+    proxyGrid.innerHTML = filtered.map(proxy => {
+        const stockCount = proxy.stock || 0;
+        const isOutOfStock = (stockCount === 0);
+        let badgeColor = "bg-green-100 text-green-600";
+        if (isOutOfStock) badgeColor = "bg-red-100 text-red-600";
+        else if (stockCount < 5) badgeColor = "bg-orange-100 text-orange-600";
+
+        return `
+        <div class="bg-white border border-brand-border rounded-2xl shadow-sm flex flex-col overflow-hidden transition-all hover:shadow-lg relative h-full">
+            <div class="absolute top-3 right-3 z-10">
+                <span class="${badgeColor} text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-tight shadow-sm">
+                    Stock: ${stockCount}
+                </span>
+            </div>
+            <div class="h-40 bg-gray-50 flex items-center justify-center p-6 border-b border-brand-border/30">
+                <img src="${proxy.imageUrl || CAT_IMAGE_URL}" class="max-h-full w-auto object-contain ${isOutOfStock ? 'grayscale opacity-50' : ''}">
+            </div>
+            
+            <div class="p-5 flex flex-col flex-grow">
+                <h3 class="font-extrabold text-brand-darkText text-sm sm:text-base uppercase tracking-tight leading-snug mb-3">
+                    ${proxy.name}
+                </h3>
+                
+                <div class="mt-auto bg-brand-background rounded-xl p-3 border border-brand-blue/10">
+                    <label class="text-[10px] font-bold text-brand-lightText uppercase block mb-2 tracking-widest">Select Plan Tier</label>
+                    
+                    <select id="plan-${proxy._id}" ${isOutOfStock ? 'disabled' : ''} 
+                        class="w-full bg-white border border-brand-border rounded-lg text-xs sm:text-sm font-bold p-2.5 focus:ring-2 focus:ring-brand-blue outline-none disabled:opacity-50 cursor-pointer">
+                        ${proxy.plans.map((p, i) => `<option value="${i}">${p.ip_count} IPs — $${p.price}</option>`).join('')}
+                    </select>
+                </div>
+                
+                <button onclick="${isOutOfStock ? '' : `buyProxy('${proxy._id}')`}" id="btn-${proxy._id}" ${isOutOfStock ? 'disabled' : ''}
+                    class="mt-4 w-full py-3.5 ${isOutOfStock ? 'bg-gray-300 cursor-not-allowed' : 'bg-brand-blue hover:bg-blue-700 active-scale shadow-md'} text-white text-xs sm:text-sm font-extrabold rounded-xl transition-all uppercase tracking-wider">
+                    ${isOutOfStock ? 'Out of Stock' : 'Purchase Access Now'}
+                </button>
+            </div>
+        </div>
+    `}).join('');
+}
     
     async function buyProxy(proxyId) {
         const planIndex = document.getElementById(`plan-${proxyId}`).value;

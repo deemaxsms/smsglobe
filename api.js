@@ -1033,16 +1033,32 @@ async function handleDeleteVPN(req, res) {
 }
 // --- 1. User Login Handler ---
 async function handleUserLogin(req, res) {
+    // 1. Log the incoming request to verify property names (email vs userName, etc.)
+    console.log("Incoming Login Data:", req.body);
+
     const { email, password, captchaToken } = req.body;
+
+    // 2. PREVENT CRASH: Validate that essential fields exist as strings
+    if (!email || typeof email !== 'string') {
+        return res.status(400).json({ success: false, message: "Valid email is required." });
+    }
+    if (!password || typeof password !== 'string') {
+        return res.status(400).json({ success: false, message: "Password is required." });
+    }
 
     if (!captchaToken) {
         return res.status(400).json({ success: false, message: "reCAPTCHA token missing." });
     }
 
-    // Wrap verification in try/catch if verifyRecaptcha is an external call
-    const isHuman = await verifyRecaptcha(captchaToken);
-    if (!isHuman) {
-        return res.status(400).json({ success: false, message: "Security verification failed." });
+    // Wrap verification in a sub-try/catch to handle network issues with Google
+    try {
+        const isHuman = await verifyRecaptcha(captchaToken);
+        if (!isHuman) {
+            return res.status(400).json({ success: false, message: "Security verification failed." });
+        }
+    } catch (recaptchaErr) {
+        console.error("reCAPTCHA Service Error:", recaptchaErr.message);
+        // If reCAPTCHA service is down, decide if you want to block or allow
     }
 
     try {
@@ -1058,7 +1074,8 @@ async function handleUserLogin(req, res) {
         // --- 2. USER LOOKUP ---
         const user = await User.findOne({ email: email.toLowerCase().trim() });
         
-        // --- 3. CREDENTIAL CHECK ---
+        // --- 3. PASSWORD CHECK ---
+        // We already validated 'password' is a string, so bcrypt won't throw "Illegal arguments"
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ success: false, message: "Invalid email or password." });
         }
@@ -1072,7 +1089,11 @@ async function handleUserLogin(req, res) {
         }
 
         // --- 5. TOKEN GENERATION ---
-        // Ensure JWT_SECRET is loaded correctly from your environment
+        // Ensure JWT_SECRET is available
+        if (!JWT_SECRET) {
+            throw new Error("JWT_SECRET is not defined in environment variables.");
+        }
+
         const token = jwt.sign(
             { id: user._id, email: user.email, type: 'user' }, 
             JWT_SECRET, 
@@ -1082,21 +1103,25 @@ async function handleUserLogin(req, res) {
         return res.json({ 
             success: true, 
             token,
-            user: { name: user.fullName, email: user.email, balance: user.balance || 0 } 
+            user: { 
+                name: user.fullName, 
+                email: user.email, 
+                balance: user.balance || 0 
+            } 
         });
 
     } catch (err) {
-        // --- DETAILED LOGGING ---
+        // Log the stack trace so you know exactly which line failed in your terminal
         console.error("========== LOGIN ERROR ==========");
         console.error("Message:", err.message);
-        console.error("Stack:", err.stack); // This tells you exactly which LINE failed
+        console.error("Stack:", err.stack);
         console.error("=================================");
-
-        // Return a slightly more helpful message for debugging
+        
         return res.status(500).json({ 
             success: false, 
             message: "Internal server error.",
-            error: process.env.NODE_ENV === 'development' ? err.message : undefined 
+            // Only send error details to frontend if in development mode
+            dev_hint: err.message 
         });
     }
 }

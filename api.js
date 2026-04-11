@@ -1207,6 +1207,10 @@ async function handleInitiateTopup(req, res) {
 async function handleVerifyTopup(req, res) {
     const { transactionId } = req.body;
 
+    if (!transactionId) {
+        return res.status(400).json({ success: false, message: "Transaction ID is required" });
+    }
+
     try {
         const response = await fetch(`https://api.flutterwave.com/v3/transactions/${transactionId}/verify`, {
             method: "GET",
@@ -1215,38 +1219,50 @@ async function handleVerifyTopup(req, res) {
 
         const data = await response.json();
 
+        // Check if Flutterwave actually confirmed the payment
         if (data.status === "success" && data.data.status === "successful") {
-            const { userId, usdAmount } = data.data.meta;
+            
+            // CRITICAL: Flutterwave metadata is sometimes returned as strings. 
+            // We must parse them to ensure calculations work.
+            const userId = data.data.meta.userId;
+            const usdAmount = parseFloat(data.data.meta.usdAmount);
             const txRef = data.data.tx_ref;
+
+            if (!userId || isNaN(usdAmount)) {
+                console.error("Missing metadata in Flutterwave response:", data.data.meta);
+                return res.status(400).json({ success: false, message: "Invalid payment metadata" });
+            }
 
             // 1. Check for duplicate to prevent double-funding
             const existingTopup = await Order.findOne({ paymentReference: txRef });
             if (existingTopup) {
-                return res.json({ success: true, message: "Balance already updated" });
+                return res.json({ success: true, message: "Balance already updated", newBalance: 0 }); // Or fetch current balance
             }
 
-            // 2. Find the user first to ensure they exist
-            const user = await User.findById(userId);
+            // 2. Update User Balance using $inc (Atomic Update)
+            // This is safer than user.balance += amount because it prevents race conditions
+            const user = await User.findByIdAndUpdate(
+                userId,
+                { $inc: { balance: usdAmount } },
+                { new: true } // Return the updated document to get the new balance
+            );
+
             if (!user) {
                 return res.status(404).json({ success: false, message: "User not found" });
             }
 
-            // 3. Update User Balance
-            user.balance += parseFloat(usdAmount);
-            await user.save();
-
-            // 4. Create History Record (This will now pass because we updated the Enum)
+            // 3. Create History Record
             await Order.create({
                 userId: user._id,
                 userEmail: user.email,
                 fullName: user.fullName,
                 productType: 'WALLET_TOPUP', 
-                amount: parseFloat(usdAmount),
+                amount: usdAmount,
                 currency: 'USD',
                 status: 'successful',
                 paymentReference: txRef,
                 nodeName: "Wallet Funding",
-                planName: `Added $${usdAmount} to Wallet`
+                planName: `Added $${usdAmount.toFixed(2)} to Wallet`
             });
 
             return res.json({ 
@@ -1256,7 +1272,7 @@ async function handleVerifyTopup(req, res) {
             });
         }
         
-        return res.status(400).json({ success: false, message: "Verification failed" });
+        return res.status(400).json({ success: false, message: "Verification failed with payment provider" });
 
     } catch (err) {
         console.error("Topup Verification Error:", err);

@@ -61,6 +61,7 @@ const userSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
+    balance: { type: Number, default: 0 },
     status: { 
         type: String, 
         enum: ['active', 'suspended'], 
@@ -909,13 +910,14 @@ async function handleUserLogin(req, res) {
         return res.json({ 
             success: true, 
             token,
-            user: { name: user.fullName, email: user.email } 
+            user: { name: user.fullName, email: user.email, balance: user.balance || 0 } 
         });
     } catch (err) {
         console.error("Login Error:", err);
         return res.status(500).json({ success: false, message: "Internal server error." });
     }
 }
+
 // --- 2. User Registration Handler ---
 async function handleUserRegister(req, res) {
     const { fullName, email, password, captchaToken } = req.body;
@@ -942,8 +944,8 @@ async function handleUserRegister(req, res) {
         const newUser = new User({ 
             fullName: fullName.trim(), 
             email: normalizedEmail, 
-            password: hashedPassword
-            // balance: 0 <--- REMOVED
+            password: hashedPassword,
+            balance: 0 
         });
         
         await newUser.save();

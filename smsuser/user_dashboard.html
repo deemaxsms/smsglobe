@@ -186,6 +186,22 @@
         <span class="text-xs font-bold text-brand-darkText">Overview</span>
     </div>
 
+   <div class="flex items-center space-x-4 bg-gray-50 px-3 py-1.5 rounded-xl border border-brand-border">
+    <div class="text-left">
+        <p class="text-[9px] uppercase tracking-wider text-brand-lightText font-bold">Wallet Balance</p>
+        <div class="flex items-center space-x-1">
+            <span id="displayBalance" class="text-xs font-extrabold text-brand-blue">$0.00</span>
+            <span id="displayBalanceNGN" class="text-[9px] text-brand-lightText">(₦0.00)</span>
+        </div>
+    </div>
+
+    <a href="topup.html" class="bg-brand-blue text-white p-1.5 rounded-lg hover:bg-blue-700 transition-all shadow-sm active:scale-95 flex items-center justify-center">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+    </a>
+</div>
+
    <a href="user_profile.html" class="flex items-center space-x-3 group cursor-pointer transition-all active:scale-95">
     <div class="hidden sm:block text-right">
         <p id="userName" class="text-[10px] font-bold text-brand-darkText group-hover:text-brand-blue transition-colors leading-tight">
@@ -987,6 +1003,38 @@ function toggleSupportMenu() {
             }, 300);
         }
     }
+
+    async function updateUI() {
+    // 1. Get user data saved from login
+    const userData = JSON.parse(localStorage.getItem('userData'));
+    const token = localStorage.getItem('userToken');
+
+    if (userData) {
+        document.getElementById('userName').innerText = userData.name;
+        document.getElementById('userEmail').innerText = userData.email;
+        document.getElementById('userInitials').innerText = userData.name.charAt(0).toUpperCase();
+        
+        // 2. Fetch fresh balance and exchange rate from API
+        try {
+            const res = await fetch('/api/system-settings', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const settings = await res.json();
+            const rate = settings.exchangeRate || 1380;
+            
+            const balanceUSD = userData.balance || 0;
+            const balanceNGN = balanceUSD * rate;
+
+            document.getElementById('displayBalance').innerText = `$${balanceUSD.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+            document.getElementById('displayBalanceNGN').innerText = `(₦${balanceNGN.toLocaleString()})`;
+        } catch (err) {
+            console.error("Balance update failed", err);
+        }
+    }
+}
+
+// Run on load
+updateUI();
 
     function logout() { 
         localStorage.removeItem('userToken'); 

@@ -405,7 +405,7 @@ function showCategories() {
     }).join('');
 }
 
-   function showProducts(category) {
+  function showProducts(category) {
     const categoryGrid = document.getElementById('categoryGrid');
     const proxyGrid = document.getElementById('proxyGrid');
     const backBtn = document.getElementById('backBtn');
@@ -421,42 +421,41 @@ function showCategories() {
 
     const filtered = allProxies.filter(p => p.category === category);
 
-    // Grid change: we use larger min-widths for cards
     proxyGrid.innerHTML = filtered.map(proxy => {
         const stockCount = proxy.stock || 0;
         const isOutOfStock = (stockCount === 0);
         let badgeColor = "bg-green-100 text-green-600";
-        if (isOutOfStock) badgeColor = "bg-red-100 text-red-600";
-        else if (stockCount < 5) badgeColor = "bg-orange-100 text-orange-600";
+        if (isOutOfStock) badgeColor = "bg-red-50 text-red-500";
+        else if (stockCount < 5) badgeColor = "bg-orange-50 text-orange-500";
 
         return `
-        <div class="bg-white border border-brand-border rounded-2xl shadow-sm flex flex-col overflow-hidden transition-all hover:shadow-lg relative h-full">
-            <div class="absolute top-3 right-3 z-10">
-                <span class="${badgeColor} text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-tight shadow-sm">
+        <div class="bg-white border border-brand-border rounded-xl shadow-sm flex flex-col overflow-hidden transition-all relative h-full">
+            <div class="absolute top-2 right-2 z-10">
+                <span class="${badgeColor} text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-tighter border border-current/10">
                     Stock: ${stockCount}
                 </span>
             </div>
-            <div class="h-40 bg-gray-50 flex items-center justify-center p-6 border-b border-brand-border/30">
-                <img src="${proxy.imageUrl || CAT_IMAGE_URL}" class="max-h-full w-auto object-contain ${isOutOfStock ? 'grayscale opacity-50' : ''}">
+            
+            <div class="h-28 bg-gray-50/50 flex items-center justify-center p-4 border-b border-brand-border/20">
+                <img src="${proxy.imageUrl || CAT_IMAGE_URL}" class="max-h-full w-auto object-contain ${isOutOfStock ? 'grayscale opacity-40' : ''}">
             </div>
             
-            <div class="p-5 flex flex-col flex-grow">
-                <h3 class="font-extrabold text-brand-darkText text-sm sm:text-base uppercase tracking-tight leading-snug mb-3">
+            <div class="p-3 flex flex-col flex-grow">
+                <h3 class="font-bold text-brand-darkText text-[11px] sm:text-xs uppercase tracking-tight leading-tight mb-2 line-clamp-2">
                     ${proxy.name}
                 </h3>
                 
-                <div class="mt-auto bg-brand-background rounded-xl p-3 border border-brand-blue/10">
-                    <label class="text-[10px] font-bold text-brand-lightText uppercase block mb-2 tracking-widest">Select Plan Tier</label>
-                    
+                <div class="mt-auto bg-brand-background rounded-lg p-2 border border-brand-blue/5">
+                    <label class="text-[8px] font-bold text-brand-lightText uppercase block mb-1 opacity-70">Tier</label>
                     <select id="plan-${proxy._id}" ${isOutOfStock ? 'disabled' : ''} 
-                        class="w-full bg-white border border-brand-border rounded-lg text-xs sm:text-sm font-bold p-2.5 focus:ring-2 focus:ring-brand-blue outline-none disabled:opacity-50 cursor-pointer">
+                        class="w-full bg-white border border-brand-border rounded-md text-[10px] font-bold p-1.5 focus:ring-1 focus:ring-brand-blue outline-none disabled:opacity-50 cursor-pointer">
                         ${proxy.plans.map((p, i) => `<option value="${i}">${p.ip_count} IPs — $${p.price}</option>`).join('')}
                     </select>
                 </div>
                 
                 <button onclick="${isOutOfStock ? '' : `buyProxy('${proxy._id}')`}" id="btn-${proxy._id}" ${isOutOfStock ? 'disabled' : ''}
-                    class="mt-4 w-full py-3.5 ${isOutOfStock ? 'bg-gray-300 cursor-not-allowed' : 'bg-brand-blue hover:bg-blue-700 active-scale shadow-md'} text-white text-xs sm:text-sm font-extrabold rounded-xl transition-all uppercase tracking-wider">
-                    ${isOutOfStock ? 'Out of Stock' : 'Purchase Access Now'}
+                    class="mt-2 w-full py-2 ${isOutOfStock ? 'bg-gray-200 text-gray-500' : 'bg-brand-blue text-white active:scale-95'} text-[10px] font-bold rounded-lg transition-all uppercase">
+                    ${isOutOfStock ? 'Sold Out' : 'Buy Now'}
                 </button>
             </div>
         </div>

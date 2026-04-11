@@ -98,18 +98,40 @@
                 <p class="text-xs text-brand-lightText font-medium">No VPN nodes found for this category.</p>
             </div>
 
-            <div class="mt-auto pt-12 mb-10">
-                <div class="flex items-center gap-4 mb-8">
-                    <div class="h-px flex-grow bg-brand-border"></div>
-                    <h2 class="text-[10px] md:text-xs font-bold text-brand-lightText uppercase tracking-[0.2em]">Installation Guide</h2>
-                    <div class="h-px flex-grow bg-brand-border"></div>
-                </div>
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    <div class="bg-white border p-4 rounded-2xl text-center">
-                        <span class="w-8 h-8 bg-brand-background text-brand-blue rounded-full inline-flex items-center justify-center font-bold text-xs mb-2">1</span>
-                        <p class="text-[10px] font-bold uppercase">Download</p>
-                    </div>
-                    </div>
+          <div class="mt-auto pt-12 mb-10">
+    <div class="flex items-center gap-4 mb-8">
+        <div class="h-px flex-grow bg-brand-border"></div>
+        <h2 class="text-[10px] md:text-xs font-bold text-brand-lightText uppercase tracking-[0.2em]">Installation Guide</h2>
+        <div class="h-px flex-grow bg-brand-border"></div>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div class="bg-white border border-brand-border p-3 md:p-4 rounded-2xl text-center flex flex-col items-center justify-center shadow-sm">
+            <span class="w-7 h-7 md:w-8 md:h-8 bg-brand-background text-brand-blue rounded-full inline-flex items-center justify-center font-bold text-[10px] md:text-xs mb-2">1</span>
+            <p class="text-[9px] md:text-[10px] font-bold uppercase text-brand-darkText">Download App</p>
+        </div>
+
+        <div class="bg-white border border-brand-border p-3 md:p-4 rounded-2xl text-center flex flex-col items-center justify-center shadow-sm">
+            <span class="w-7 h-7 md:w-8 md:h-8 bg-brand-background text-brand-blue rounded-full inline-flex items-center justify-center font-bold text-[10px] md:text-xs mb-2">2</span>
+            <p class="text-[9px] md:text-[10px] font-bold uppercase text-brand-darkText">Get Login</p>
+        </div>
+
+        <div class="bg-white border border-brand-border p-3 md:p-4 rounded-2xl text-center flex flex-col items-center justify-center shadow-sm">
+            <span class="w-7 h-7 md:w-8 md:h-8 bg-brand-background text-brand-blue rounded-full inline-flex items-center justify-center font-bold text-[10px] md:text-xs mb-2">3</span>
+            <p class="text-[9px] md:text-[10px] font-bold uppercase text-brand-darkText">Enter Details</p>
+        </div>
+
+        <div class="bg-white border border-brand-border p-3 md:p-4 rounded-2xl text-center flex flex-col items-center justify-center shadow-sm">
+            <span class="w-7 h-7 md:w-8 md:h-8 bg-brand-background text-brand-blue rounded-full inline-flex items-center justify-center font-bold text-[10px] md:text-xs mb-2">4</span>
+            <p class="text-[9px] md:text-[10px] font-bold uppercase text-brand-darkText">Select Region</p>
+        </div>
+
+        <div class="bg-white border border-brand-border p-3 md:p-4 rounded-2xl text-center flex flex-col items-center justify-center shadow-sm col-span-2 md:col-span-1">
+            <span class="w-7 h-7 md:w-8 md:h-8 bg-brand-background text-brand-blue rounded-full inline-flex items-center justify-center font-bold text-[10px] md:text-xs mb-2">5</span>
+            <p class="text-[9px] md:text-[10px] font-bold uppercase text-brand-darkText">Connect Now</p>
+        </div>
+    </div>
+</div>
             </div>
         </main>
     </div>
@@ -256,7 +278,7 @@
 
     try {
         // 2. Call the Wallet Purchase Endpoint
-        const res = await fetch(`${API_BASE_URL}/purchase-wallet`, {
+        const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json', 

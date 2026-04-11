@@ -493,6 +493,14 @@ async function generateUniqueCode() {
     return code;
 }
 
+const normalizeDeviceType = (type) => {
+    if (!type) return 'Both';
+    // Converts "phone" -> "Phone", "pc" -> "PC", etc.
+    const formatted = type.toLowerCase() === 'pc' ? 'PC' : type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+    
+    // Validates against your Schema Enum
+    return ['Phone', 'PC', 'Both'].includes(formatted) ? formatted : 'Both';
+};
 
 app.all('/api/:action', async (req, res) => {
     await connectDB();
@@ -934,9 +942,9 @@ async function handleGetVPNs(req, res) {
 
 async function handleAddVPN(req, res) {
     try {
-        const data = req.body;
+        const { vpnId, ...data } = req.body;
 
-        // Ensure plans is an array and numbers are parsed correctly
+        // 1. Format plans and ensure prices are numbers
         let formattedPlans = [];
         if (data.plans && Array.isArray(data.plans)) {
             formattedPlans = data.plans.map(p => ({
@@ -948,36 +956,47 @@ async function handleAddVPN(req, res) {
         const newVPN = new VPN({
             ...data,
             plans: formattedPlans,
+            // 2. Normalize deviceType to match Enum ['Phone', 'PC', 'Both']
+            deviceType: normalizeDeviceType(data.deviceType),
             stock: parseInt(data.stock) || 0, 
             deviceLimit: parseInt(data.deviceLimit) || 0,
             price: formattedPlans.length > 0 ? formattedPlans[0].price : (parseFloat(data.price) || 0)
         });
 
         await newVPN.save();
-        res.json({ success: true, message: "VPN Node & Stock Synced Successfully" });
+        res.status(201).json({ success: true, message: "VPN Node & Stock Synced Successfully" });
     } catch (err) {
         console.error("Add VPN Error:", err);
-        res.status(500).json({ success: false, message: "Failed to create VPN node" });
+        res.status(500).json({ success: false, message: "Upload failed: " + err.message });
     }
 }
 
 async function handleUpdateVPN(req, res) {
     try {
         const { vpnId, id, ...updateData } = req.body;
-        const targetId = vpnId || id; // Handle both common naming conventions
+        const targetId = vpnId || id;
 
         if (!targetId) {
-            return res.status(400).json({ success: false, message: "VPN ID is required for update" });
-        }        
+            return res.status(400).json({ success: false, message: "VPN ID is required" });
+        }
+        
+        // 1. Normalize deviceType if it exists in the update
+        if (updateData.deviceType) {
+            updateData.deviceType = normalizeDeviceType(updateData.deviceType);
+        }
+
+        // 2. Clean up plans data
         if (updateData.plans && Array.isArray(updateData.plans)) {
             updateData.plans = updateData.plans.map(p => ({
                 duration: p.duration,
                 price: parseFloat(p.price) || 0
-            }));            
+            }));
             if (updateData.plans.length > 0) {
                 updateData.price = updateData.plans[0].price;
             }
         }
+
+        // 3. Parse Numeric Fields
         if (updateData.stock !== undefined) updateData.stock = parseInt(updateData.stock) || 0;
         if (updateData.deviceLimit !== undefined) updateData.deviceLimit = parseInt(updateData.deviceLimit) || 0;
         
@@ -987,10 +1006,10 @@ async function handleUpdateVPN(req, res) {
             return res.status(404).json({ success: false, message: "VPN node not found" });
         }
 
-        res.json({ success: true, message: "VPN Configuration & Stock Updated" });
+        res.json({ success: true, message: "VPN Configuration Updated" });
     } catch (err) {
         console.error("Update VPN Error:", err);
-        res.status(500).json({ success: false, message: "Update failed" });
+        res.status(500).json({ success: false, message: "Update failed: " + err.message });
     }
 }
 

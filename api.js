@@ -1063,7 +1063,6 @@ async function handleUserLogin(req, res) {
     }
 
     try {
-        // --- 1. GLOBAL MAINTENANCE CHECK ---
         const settings = await SystemSettings.findOne(); 
         if (settings && settings.maintenanceMode === true) {
             return res.status(503).json({ 
@@ -1075,17 +1074,12 @@ async function handleUserLogin(req, res) {
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ success: false, message: "Invalid email or password." });
         }
-
-        // --- 4. STATUS CHECK ---
         if (user.status === 'suspended') {
             return res.status(403).json({ 
                 success: false, 
                 message: "Your account has been suspended for violating SMSGlobe rules. Contact support." 
             });
         }
-
-        // --- 5. TOKEN GENERATION ---
-        // Ensure JWT_SECRET is available
         if (!JWT_SECRET) {
             throw new Error("JWT_SECRET is not defined in environment variables.");
         }

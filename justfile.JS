@@ -390,9 +390,8 @@ app.all('/api/:action', async (req, res) => {
         case 'forgot-password': return handleForgotPasswordRequest(req, res);
         case 'reset-password': return handleResetPassword(req, res);
         case 'purchase-vpn': return handlePurchaseVPN(req, res);
-        case 'initiate-topup': return handleInitiateTopup(req, res);
-        case 'verify-topup': return handleVerifyTopup(req, res);
-        case 'purchase-with-wallet': return handlePurchaseWithWallet(req, res);
+        case 'initiate-payment': return handleInitiatePayment(req, res);
+        case 'verify-payment': return handleVerifyPayment(req, res);
         case 'proxies': 
             if (req.method === 'GET') return handleGetProxies(req, res);
             if (req.method === 'POST') return handleAddProxy(req, res);
@@ -1094,26 +1093,98 @@ async function handlePurchaseVPN(req, res) {
     }
 }
 
-// --- Repurposed handleInitiatePayment for Topup ONLY ---
-async function handleInitiateTopup(req, res) {
-    const { amountUSD } = req.body; // User wants to add $50
+async function handleInitiatePayment(req, res) {
+    const { vpnId, proxyId, rdpId, carrierName, mobileNumber, planAmount, planIndex, metadata, planName } = req.body;
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
     try {
+        // 1. Fetch Dynamic Settings
         const settings = await SystemSettings.findOne();
         const LIVE_RATE = settings?.exchangeRate || 1380;
         const MARKUP = settings?.globalMarkup || 0;
 
+        // 2. Auth Check
         const decoded = jwt.verify(token, JWT_SECRET);
         const user = await User.findById(decoded.id);
+        if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-        // Calculate NGN: ($Amount + GlobalMarkup) * Rate
-        const totalUSD = parseFloat(amountUSD) + MARKUP;
-        const finalAmountNGN = Math.round(totalUSD * LIVE_RATE);
+        let item;
+        let itemType;
+        let title;
+        let amountInUSD = 0;
+        let finalAmountNGN = 0;
+        let redirectUrl = "https://smsglobe.net/smsuser/user_dashboard.html";
 
-        const tx_ref = `TOPUP-${Date.now()}-${decoded.id.slice(-4)}`;
+        // 3. Determine Product and Base USD Price
+        if (vpnId) {
+            item = await VPN.findById(vpnId);
+            if (!item || !item.plans[planIndex]) return res.status(404).json({ success: false, message: "VPN Plan not found" });
+            itemType = "VPN";
+            title = "SMSGlobe VPN";
+            amountInUSD = item.plans[planIndex].price;
+            redirectUrl = "https://smsglobe.net/smsuser/user_vpn.html";
+        } 
+        else if (proxyId) {
+            item = await Proxy.findById(proxyId);
+            if (!item || !item.plans[planIndex]) return res.status(404).json({ success: false, message: "Proxy Plan not found" });
+            itemType = "Proxy";
+            title = "SMSGlobe Proxy";
+            amountInUSD = item.plans[planIndex].price;
+            redirectUrl = "https://smsglobe.net/smsuser/user_proxy.html";
+        } 
+       else if (carrierName) {
+    itemType = metadata ? "eSIM_Activation" : "eSIM";
+    title = metadata ? `eSIM Activation: ${carrierName}` : `eSIM Refill: ${carrierName}`;    
+    const priceMatch = String(planAmount || "").match(/(\d+\.?\d*)/);
+    amountInUSD = priceMatch ? parseFloat(priceMatch[0]) : 0;
+    if (amountInUSD <= 0) {
+        return res.status(400).json({ 
+            success: false, 
+            message: "Could not determine plan price. Please try again." 
+        });
+    }
+    redirectUrl = metadata 
+        ? "https://smsglobe.net/smsuser/esim_activation.html" 
+        : "https://smsglobe.net/smsuser/esim_refill.html";
 
+    // 5. Success Log (Optional, for your Vercel logs)
+    console.log(`Processing ${itemType} for ${carrierName}: $${amountInUSD} USD`);
+}
+        else if (rdpId) {
+            itemType = "RDP";
+            redirectUrl = "https://smsglobe.net/smsuser/user_rdp.html";
+            const extraCPU = metadata?.extraCPU || 0;
+            const extraStorage = metadata?.extraStorage || 0;
+            const addonTotal = (extraCPU * 5000) + (extraStorage * 200);
+
+            if (typeof rdpId === 'string' && rdpId.startsWith('tier')) {
+                const tierPrices = { tier1: 45000, tier2: 55000, tier3: 65000, tier4: 80000, tier5: 90000, tier6: 130000 };
+                const basePriceNGN = tierPrices[rdpId] || 45000;
+                title = `SMSGlobe RDP: ${planName || rdpId.toUpperCase()}`;
+                finalAmountNGN = basePriceNGN + addonTotal;
+            } else {
+                item = await RDP.findById(rdpId);
+                if (!item) return res.status(404).json({ success: false, message: "RDP Plan not found" });
+                title = `SMSGlobe RDP: ${item.name}`;
+                finalAmountNGN = item.price + addonTotal;
+            }
+        } else {
+            return res.status(400).json({ success: false, message: "No product specified" });
+        }
+
+        // 4. Final Price Calculation (Skip for RDP as it's already in NGN)
+        if (itemType !== "RDP") {
+            if (isNaN(amountInUSD) || amountInUSD <= 0) {
+                return res.status(400).json({ success: false, message: "Invalid amount calculated." });
+            }
+            const basePriceNGN = amountInUSD * LIVE_RATE;
+            const markupAmount = basePriceNGN * (MARKUP / 100);
+            finalAmountNGN = Math.round(basePriceNGN + markupAmount);
+        }
+
+        // 5. Initiate Flutterwave
+        const tx_ref = `SMS-${itemType}-${Date.now()}-${decoded.id.slice(-4)}`;
         const response = await fetch("https://api.flutterwave.com/v3/payments", {
             method: "POST",
             headers: {
@@ -1124,23 +1195,47 @@ async function handleInitiateTopup(req, res) {
                 tx_ref,
                 amount: finalAmountNGN,
                 currency: "NGN",
-                redirect_url: "https://smsglobe.net/smsuser/user_dashboard.html",
+                redirect_url: redirectUrl,
                 customer: { email: user.email, name: user.fullName },
-                meta: { userId: decoded.id, type: "WALLET_TOPUP", usdAmount: amountUSD },
-                customizations: { title: "Wallet Topup", logo: "https://imgur.com/8YeZgfx.png" }
+                meta: {
+                    userId: decoded.id,
+                    email: metadata?.email || null,
+                    productType: itemType,
+                    productId: rdpId || vpnId || proxyId || carrierName,
+                    firstName: metadata?.firstName || null,
+                    lastName: metadata?.lastName || null,
+                    address: metadata?.address || null,
+                    zip: metadata?.zip || null,
+                    mobileNumber: mobileNumber || null
+                },
+                customizations: {
+                    title: title,
+                    description: `Payment for ${title}`,
+                    logo: "https://imgur.com/8YeZgfx.png"
+                },
             }),
         });
 
         const data = await response.json();
-        return res.json({ success: true, link: data.data.link });
+        if (data.status === "success") {
+            return res.json({ success: true, link: data.data.link });
+        } else {
+            console.error("Flutterwave Error:", data);
+            return res.status(500).json({ success: false, message: "Payment provider error" });
+        }
+
     } catch (err) {
-        return res.status(500).json({ success: false, message: "Topup initiation failed" });
+        console.error("Critical Error:", err);
+        const statusCode = err.name === 'JsonWebTokenError' ? 401 : 500;
+        return res.status(statusCode).json({ success: false, message: "Internal server error" });
     }
 }
-async function handleVerifyTopup(req, res) {
+
+async function handleVerifyPayment(req, res) {
     const { transactionId } = req.body;
 
     try {
+        // 1. Verify with Flutterwave
         const response = await fetch(`https://api.flutterwave.com/v3/transactions/${transactionId}/verify`, {
             method: "GET",
             headers: { Authorization: `Bearer ${process.env.FLW_SECRET_KEY}` },
@@ -1148,207 +1243,208 @@ async function handleVerifyTopup(req, res) {
 
         const data = await response.json();
 
-        if (data.status === "success" && data.data.status === "successful") {
-            const { userId, usdAmount } = data.data.meta;
-            const txRef = data.data.tx_ref;
+        // Debugging: Log the verification data
+        console.log("Flutterwave Verification Response:", JSON.stringify(data, null, 2));
 
-            // 1. Check for duplicate to prevent double-funding
-            const existingTopup = await Order.findOne({ paymentReference: txRef });
-            if (existingTopup) {
-                return res.json({ success: true, message: "Balance already updated" });
+        if (data.status === "success" && data.data.status === "successful") {
+            const meta = data.data.meta || {};
+            const paymentRef = data.data.tx_ref;
+
+            // --- CRITICAL: DUPLICATE CHECK (PREVENTS E11000 ERROR) ---
+            // If the user refreshes the page, this prevents creating the same order twice.
+            const existingOrder = await Order.findOne({ paymentReference: paymentRef });
+            if (existingOrder) {
+                console.log(`Order ${paymentRef} already exists. Returning existing data.`);
+                return res.json({ 
+                    success: true, 
+                    message: "Payment already verified", 
+                    order: existingOrder,
+                    // Note: In a real app, you might want to reconstruct 'credentials' 
+                    // based on the existing order if needed for the frontend receipt.
+                });
             }
 
-            // 2. Update User Balance
-            const user = await User.findByIdAndUpdate(
-                userId,
-                { $inc: { balance: parseFloat(usdAmount) } },
-                { new: true }
-            );
+            const { 
+                productId, 
+                productType, 
+                planIndex, 
+                userId, 
+                activationEmail,
+                mobileNumber, 
+                planAmount,
+                firstName,
+                lastName,
+                address,
+                zip,
+                osChoice
+            } = meta;
 
-            // 3. Create a History Record in the Order Schema
-            const topupRecord = await Order.create({
-                userId: user._id,
-                userEmail: user.email,
-                fullName: user.fullName,
-                productType: 'WALLET_TOPUP', // Matches your enum
-                amount: parseFloat(usdAmount),
-                currency: 'USD',
-                status: 'successful',
-                paymentReference: txRef,
-                nodeName: "Wallet Funding",
-                planName: `Added $${usdAmount} to Wallet`
-            });
+            // 2. SANITIZATION
+            const extraCPU = parseInt(meta.extraCPU) || 0;
+            const extraStorage = parseInt(meta.extraStorage) || 0;
+            const cleanPlanIndex = parseInt(planIndex) || 0;
+            
+            // 3. User Validation
+            if (!userId) {
+                return res.status(400).json({ success: false, message: "User ID missing in transaction metadata" });
+            }
+            
+            const actualUser = await User.findById(userId);
+            if (!actualUser) {
+                return res.status(404).json({ success: false, message: "User account not found" });
+            }
+
+            const userEmail = actualUser.email; 
+            const amountPaid = data.data.amount;
+            const currency = data.data.currency;
+            const formattedAmount = `${currency} ${amountPaid}`;
+
+            let credentials = {};
+            let productDetails = { name: "", plan: "" };
+            let targetNum = mobileNumber || null;
+
+            // --- 4. HANDLE PRODUCT TYPES ---
+            if (productType === "VPN") {
+                const item = await VPN.findOneAndUpdate(
+                    { _id: productId, stock: { $gt: 0 } },
+                    { $inc: { stock: -1 } },
+                    { new: true, select: '+password' }
+                );
+                if (!item) return res.status(400).json({ success: false, message: "VPN out of stock" });
+
+                productDetails.name = item.name;
+                productDetails.plan = item.plans[cleanPlanIndex]?.duration || "Standard Plan";
+                credentials = {
+                    type: "VPN",
+                    username: item.username,
+                    password: item.password,
+                    amount: formattedAmount,
+                    instructions: item.instructions || "Check dashboard."
+                };
+
+            } else if (productType === "Proxy") {
+                const item = await Proxy.findOneAndUpdate(
+                    { _id: productId, stock: { $gt: 0 } },
+                    { $inc: { stock: -1 } },
+                    { new: true }
+                );
+                if (!item) return res.status(400).json({ success: false, message: "Proxy out of stock" });
+
+                productDetails.name = item.name;
+                productDetails.plan = `${item.plans[cleanPlanIndex]?.ip_count || 0} IPs`;
+                credentials = {
+                    type: "Proxy",
+                    activationCode: item.activationCode,
+                    amount: formattedAmount,
+                    instructions: item.instructions || "Check dashboard."
+                };
+
+            } else if (productType === "RDP") {
+                const rdpPlans = {
+                    "tier1": { name: "USA Tier 1", ram: "4GB", cpu: "2 Cores", storage: "60GB SSD" },
+                    "tier2": { name: "USA Tier 2", ram: "6GB", cpu: "3 Cores", storage: "100GB SSD" },
+                    "tier3": { name: "USA Tier 3", ram: "8GB", cpu: "4 Cores", storage: "140GB SSD" },
+                    "tier4": { name: "USA Tier 4", ram: "12GB", cpu: "6 Cores", storage: "180GB SSD" },
+                    "tier5": { name: "USA Tier 5", ram: "18GB", cpu: "8 Cores", storage: "240GB SSD" },
+                    "tier6": { name: "USA Tier 6", ram: "24GB", cpu: "8 Cores", storage: "280GB SSD" }
+                };
+
+                const item = rdpPlans[productId];
+                if (!item) {
+                    return res.status(404).json({ success: false, message: "RDP Plan definition not found." });
+                }
+
+                productDetails.name = item.name;
+                const cpuDisplay = extraCPU > 0 ? `${item.cpu} (+${extraCPU} Extra)` : item.cpu;
+                const storageDisplay = extraStorage > 0 ? `${item.storage} (+${extraStorage}GB Extra)` : item.storage;
+                
+                productDetails.plan = `${item.ram} RAM | ${cpuDisplay} | ${osChoice || 'Windows Server'}`;
+                
+                credentials = {
+                    type: "RDP",
+                    os: osChoice || "Windows Server",
+                    specs: `${item.ram} RAM, ${cpuDisplay}, ${storageDisplay}`,
+                    amount: formattedAmount,
+                    instructions: "Your custom RDP is being provisioned. Credentials will be sent to your email within 1-6 hours."
+                };
+                
+           } else if (productType === "eSIM" || productType === "eSIM_Activation") {
+    productDetails.name = productId || "eSIM Service"; // This is the Carrier Name
+    productDetails.plan = planAmount || "Standard Plan";
+    
+    // 2. Build the exact 'credentials' object the email function expects
+    credentials = {
+        type: productType,
+        nodeName: productId,           // Maps to 'Carrier' in email
+        planName: planAmount,          // Maps to 'Plan' in email
+        amount: formattedAmount,       // Maps to 'Amount Paid' in email
+        email: activationEmail,        // Target email for activation
+        address: address || "Digital", // Delivery Address
+        zip: zip || "N/A",             // Zip Code
+        mobileNumber: mobileNumber,    // This is the "Device Name" (e.g. iPhone 15)
+        instructions: "Request received. Processing usually takes 5-30 minutes."
+    };
+
+    targetNum = mobileNumber; // Ensure the DB record also has the device/number
+}
+
+            // --- 5. ASSEMBLE ORDER OBJECT ---
+            const orderData = {
+                userId: userId,
+                userEmail: userEmail,
+                fullName: (productType === "eSIM_Activation" && firstName) 
+                            ? `${firstName} ${lastName}`.trim() 
+                            : (actualUser.fullName || "User"),
+                productType: productType || "Unknown",
+                planName: productDetails.plan || "Generic Plan",
+                nodeName: productDetails.name || "Generic Node",
+                targetNumber: targetNum,
+                amount: amountPaid,
+                currency: currency || "USD", 
+                status: "successful",
+                paymentReference: paymentRef,
+                activationCode: credentials.activationCode || null,
+                metadata: {
+                    address: address || null,
+                    zip: zip || null,
+                    firstName: firstName || null,
+                    lastName: lastName || null,
+                    email: activationEmail || null,
+                    extraCPU: extraCPU,
+                    extraStorage: extraStorage,
+                    osChoice: osChoice || null
+                }
+            };
+
+            if (productType === "VPN") {
+                orderData.vpnCredentials = { username: credentials.username, password: credentials.password };
+            }
+            if (productType === "RDP") {
+                orderData.rdpDetails = { os: credentials.os, specs: credentials.specs };
+            }
+
+            // --- 6. DATABASE PERSISTENCE ---
+            const newOrder = await Order.create(orderData);
+
+            // --- 7. DELIVERY EMAIL (Non-blocking) ---
+            try {
+                await sendDeliveryEmail(userEmail, credentials, newOrder); 
+            } catch (emailErr) {
+                console.error("Email Delivery Failed (Order Saved):", emailErr.message);
+            }
 
             return res.json({ 
                 success: true, 
-                newBalance: user.balance,
-                message: "Wallet funded successfully!" 
-            });
-        }
-        
-        return res.status(400).json({ success: false, message: "Verification failed" });
-
-    } catch (err) {
-        console.error("Topup Verification Error:", err);
-        return res.status(500).json({ success: false, message: "Internal server error" });
-    }
-}
-async function handlePurchaseWithWallet(req, res) {
-    const { 
-        vpnId, proxyId, rdpId, carrierName, 
-        mobileNumber, planAmount, planIndex, 
-        metadata, planName 
-    } = req.body;
-    
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        const user = await User.findById(decoded.id);
-        if (!user) return res.status(404).json({ success: false, message: "User not found" });
-
-        let item;
-        let itemType;
-        let title;
-        let costInUSD = 0;
-        let credentials = {};
-        let productDetails = { name: "", plan: "" };
-        let targetNum = mobileNumber || null;
-
-        if (vpnId) {
-            item = await VPN.findOneAndUpdate(
-                { _id: vpnId, stock: { $gt: 0 } },
-                { $inc: { stock: -1 } },
-                { new: true, select: '+password' }
-            );
-            if (!item || !item.plans[planIndex]) return res.status(404).json({ success: false, message: "VPN unavailable or out of stock" });
-            
-            itemType = "VPN";
-            title = "SMSGlobe VPN";
-            costInUSD = item.plans[planIndex].price;
-            productDetails.name = item.name;
-            productDetails.plan = item.plans[planIndex].duration;
-            credentials = {
-                type: "VPN",
-                username: item.username,
-                password: item.password,
-                instructions: item.instructions || "Check dashboard."
-            };
-        } 
-        else if (proxyId) {
-            item = await Proxy.findOneAndUpdate(
-                { _id: proxyId, stock: { $gt: 0 } },
-                { $inc: { stock: -1 } },
-                { new: true }
-            );
-            if (!item || !item.plans[planIndex]) return res.status(404).json({ success: false, message: "Proxy unavailable or out of stock" });
-            
-            itemType = "Proxy";
-            title = "SMSGlobe Proxy";
-            costInUSD = item.plans[planIndex].price;
-            productDetails.name = item.name;
-            productDetails.plan = `${item.plans[planIndex].ip_count} IPs`;
-            credentials = {
-                type: "Proxy",
-                activationCode: item.activationCode,
-                instructions: item.instructions || "Check dashboard."
-            };
-        } 
-        else if (carrierName) {
-            itemType = metadata ? "eSIM_Activation" : "eSIM";
-            title = carrierName;
-            const priceMatch = String(planAmount || "").match(/(\d+\.?\d*)/);
-            costInUSD = priceMatch ? parseFloat(priceMatch[0]) : 0;
-            
-            productDetails.name = carrierName;
-            productDetails.plan = planAmount;
-            credentials = {
-                type: itemType,
-                nodeName: carrierName,
-                planName: planAmount,
-                email: metadata?.email || user.email,
-                address: metadata?.address || "Digital",
-                zip: metadata?.zip || "N/A",
-                mobileNumber: mobileNumber,
-                instructions: "Processing usually takes 5-30 minutes."
-            };
-            targetNum = mobileNumber;
-        } 
-        else if (rdpId) {
-            itemType = "RDP";
-            const extraCPU = metadata?.extraCPU || 0;
-            const extraStorage = metadata?.extraStorage || 0;
-            
-            const rdpPlans = {
-                "tier1": { name: "USA Tier 1", price: 35, ram: "4GB", cpu: "2 Cores", storage: "60GB" },
-                "tier2": { name: "USA Tier 2", price: 45, ram: "6GB", cpu: "3 Cores", storage: "100GB" },
-                "tier3": { name: "USA Tier 3", price: 55, ram: "8GB", cpu: "4 Cores", storage: "140GB" }
-            };
-
-            const selectedTier = rdpPlans[rdpId];
-            if (!selectedTier) return res.status(404).json({ success: false, message: "RDP Plan not found" });
-
-            costInUSD = selectedTier.price + (extraCPU * 5) + (extraStorage * 0.5);
-            productDetails.name = selectedTier.name;
-            productDetails.plan = `${selectedTier.ram} RAM | ${metadata?.osChoice || 'Windows'}`;
-            credentials = {
-                type: "RDP",
-                os: metadata?.osChoice || "Windows Server",
-                specs: `${selectedTier.ram} RAM, ${selectedTier.cpu}, ${selectedTier.storage}`,
-                instructions: "Credentials will be sent to your email within 1-6 hours."
-            };
-        }
-
-        if (user.balance < costInUSD) {
-            return res.status(400).json({ 
-                success: false, 
-                message: `Insufficient Balance. Required: $${costInUSD.toFixed(2)}, Wallet: $${user.balance.toFixed(2)}` 
+                credentials: credentials,
+                order: newOrder
             });
         }
 
-        user.balance -= costInUSD;
-        await user.save();
-
-        const orderData = {
-            userId: user._id,
-            userEmail: user.email,
-            fullName: user.fullName,
-            productType: itemType,
-            planName: productDetails.plan,
-            nodeName: productDetails.name,
-            targetNumber: targetNum,
-            amount: costInUSD,
-            currency: "USD",
-            status: "successful",
-            paymentReference: `WAL-${Date.now()}-${user._id.slice(-4)}`,
-            metadata: {
-                ...metadata,
-                mobileNumber: mobileNumber
-            }
-        };
-
-        if (itemType === "VPN") orderData.vpnCredentials = { username: credentials.username, password: credentials.password };
-        if (itemType === "RDP") orderData.rdpDetails = { os: credentials.os, specs: credentials.specs };
-
-        const newOrder = await Order.create(orderData);
-
-        try {
-            await sendDeliveryEmail(user.email, { ...credentials, amount: `$${costInUSD}` }, newOrder);
-        } catch (emailErr) {
-            console.error("Email Error:", emailErr.message);
-        }
-
-        return res.json({ 
-            success: true, 
-            message: "Purchase successful!", 
-            balance: user.balance,
-            credentials 
-        });
+        return res.status(400).json({ success: false, message: "Transaction verification failed." });
 
     } catch (err) {
-        console.error("Wallet Purchase Error:", err);
-        return res.status(500).json({ success: false, message: err.message });
+        console.error("CRITICAL: Payment Verification Error:", err.message);
+        return res.status(500).json({ success: false, message: `Internal server error: ${err.message}` });
     }
 }
 

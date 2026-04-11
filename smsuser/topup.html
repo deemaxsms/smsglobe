@@ -146,66 +146,139 @@
         </main>
     </div>
 
-    <script>
-        let currentRate = 1380;
-        let currentMarkup = 0;
+   <script>
+    let currentRate = 1380;
+    let currentMarkup = 0;
+    const token = localStorage.getItem('token'); 
 
-        // Toggle Mobile Sidebar
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
+    // 1. Initial Sync: Get current rates and User Profile
+    async function syncWithBackend() {
+        if (!token) {
+            console.warn("No token found. Redirecting to login...");
+            window.location.href = 'login.html';
+            return;
+        }
+
+        try {
+            // Fetch system settings (Exchange Rate & Markup)
+            const settingsRes = await fetch('/api/get-system-settings'); 
+            const settingsData = await settingsRes.json();
+            if (settingsData.success && settingsData.settings) {
+                currentRate = settingsData.settings.exchangeRate || 1380;
+                currentMarkup = settingsData.settings.globalMarkup || 0;
+            }
             
-            if (sidebar.classList.contains('hidden-mobile')) {
-                sidebar.classList.replace('hidden-mobile', 'open-mobile');
-                overlay.classList.remove('hidden');
-            } else {
-                sidebar.classList.replace('open-mobile', 'hidden-mobile');
-                overlay.classList.add('hidden');
+            // Fetch User Profile to show Name and Balance
+            const userRes = await fetch('/api/user/profile', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const userData = await userRes.json();
+            if (userData.success) {
+                document.getElementById('userName').innerText = userData.user.fullName;
+                document.getElementById('currentBalance').innerText = `Bal: $${userData.user.balance.toFixed(2)}`;
+                document.getElementById('userInitials').innerText = userData.user.fullName.charAt(0);
             }
-        }
-
-        function setAmount(val, btn) {
-            document.getElementById('usdInput').value = val;
-            document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('btn-active'));
-            if(btn) btn.classList.add('btn-active');
+            
+            calculateTotal();
+        } catch (err) {
+            console.error("Initial Sync Error:", err);
             calculateTotal();
         }
+    }
 
-        async function syncWithBackend() {
-            try {
-                const response = await fetch('/api/get-system-settings'); 
-                const data = await response.json();
-                if (data.success && data.settings) {
-                    currentRate = data.settings.exchangeRate || 1380;
-                    currentMarkup = data.settings.globalMarkup || 0;
-                    calculateTotal();
-                }
-            } catch (err) {
-                console.error("Sync Error:", err);
-                calculateTotal();
-            }
+    // 2. Real-time Calculation Logic (USD to NGN)
+    function calculateTotal() {
+        const usdAmount = parseFloat(document.getElementById('usdInput').value) || 0;
+        if (usdAmount > 0) {
+            const totalWithMarkup = usdAmount + currentMarkup; 
+            const finalNGN = totalWithMarkup * currentRate;
+            document.getElementById('ngnDisplay').innerText = `₦${finalNGN.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            })}`;
+        } else {
+            document.getElementById('ngnDisplay').innerText = "₦0.00";
+        }
+    }
+
+    // 3. The "Pay Securely Now" Action
+    document.getElementById('initiateBtn').addEventListener('click', async function() {
+        const usdAmount = parseFloat(document.getElementById('usdInput').value);
+        const btn = this;
+
+        // Basic validation
+        if (!usdAmount || usdAmount <= 0) {
+            alert("Please enter a valid amount.");
+            return;
         }
 
-        function calculateTotal() {
-            const usdAmount = parseFloat(document.getElementById('usdInput').value) || 0;
-            if (usdAmount > 0) {
-                const totalWithMarkup = usdAmount + currentMarkup; 
-                const finalNGN = totalWithMarkup * currentRate;
-                document.getElementById('ngnDisplay').innerText = `₦${finalNGN.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                })}`;
+        // Set Loading State
+        btn.disabled = true;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = `
+            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Connecting to Flutterwave...</span>
+        `;
+
+        try {
+            // Hit the Topup Initiation endpoint
+            const response = await fetch('/api/initiate-topup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ amountUSD: usdAmount })
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.link) {
+                // REDIRECT TO FLUTTERWAVE
+                window.location.href = data.link;
             } else {
-                document.getElementById('ngnDisplay').innerText = "₦0.00";
+                alert(data.message || "Could not start transaction. Please try again.");
+                resetButton(btn, originalText);
             }
+        } catch (err) {
+            console.error("Initiation Error:", err);
+            alert("Connection error. Check your internet and try again.");
+            resetButton(btn, originalText);
         }
+    });
 
-        document.getElementById('usdInput').addEventListener('input', () => {
-            document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('btn-active'));
-            calculateTotal();
-        });
+    function resetButton(btn, text) {
+        btn.disabled = false;
+        btn.innerHTML = text;
+    }
 
-        syncWithBackend();
-    </script>
+    // --- UI Helper Functions ---
+
+    function setAmount(val, btn) {
+        document.getElementById('usdInput').value = val;
+        document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('btn-active'));
+        if(btn) btn.classList.add('btn-active');
+        calculateTotal();
+    }
+
+    document.getElementById('usdInput').addEventListener('input', () => {
+        document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('btn-active'));
+        calculateTotal();
+    });
+
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.toggle('hidden-mobile');
+        sidebar.classList.toggle('open-mobile');
+        overlay.classList.toggle('hidden');
+    }
+
+    // Run sync on load
+    syncWithBackend();
+</script>
 </body>
 </html>

@@ -301,16 +301,19 @@ function renderVPNs() {
     const emptyState = document.getElementById('emptyState');
     
     if (loader) loader.classList.add('hidden');
-        const filtered = allVPNs.filter(vpn => {
+    
+    grid.innerHTML = ''; 
+
+    const filtered = allVPNs.filter(vpn => {
         const activeTab = (currentCategory || '').toLowerCase();         
         const dbDevice = (vpn.deviceType || '').toLowerCase().trim();
+        
         if (activeTab.includes('phone')) {
             return dbDevice === 'phone';
         }         
         if (activeTab.includes('pc')) {
             return dbDevice === 'pc';
         }
-
         return false; 
     });
 

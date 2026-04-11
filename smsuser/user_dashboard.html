@@ -915,86 +915,78 @@
     }
 
  async function initDashboard() {
-    // 1. Maintenance Check
-    await checkMaintenance(); 
+        await checkMaintenance(); 
 
-    // 2. Auth Check: Initial local check
-    const token = localStorage.getItem('userToken');
-    if (!token) { 
-        console.warn("No token found, redirecting to login...");
-        window.location.href = 'user_login.html'; 
-        return; 
-    }
-    
-    try {
-        // 3. Fetch Profile
-        const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
-            method: 'GET',
-            headers: { 
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        });
-
-        // --- Handle 401 Unauthorized explicitly ---
-        if (profileRes.status === 401) {
-            console.error("Session expired or invalid token.");
-            localStorage.removeItem('userToken'); 
-            window.location.href = 'user_login.html';
-            return;
-        }
-
-        const userData = await profileRes.json();
-
-        // 4. Security Gate
-        if (profileRes.status === 403 || userData.status === 'suspended' || userData.isSuspended) {
-            if (typeof showSuspendedNotice === 'function') showSuspendedNotice();
+        const token = localStorage.getItem('userToken');
+        if (!token) { 
+            window.location.href = 'user_login.html'; 
             return; 
         }
-
-        if (!profileRes.ok) throw new Error(`HTTP error! status: ${profileRes.status}`);
-
-        // 5. Data Mapping (User Header/Profile)
-        const displayName = userData.fullName || "User";
-        const displayEmail = userData.email || "No email";
-
-        const nameEl = document.getElementById('userName');
-        const emailEl = document.getElementById('userEmail');
-        const initialsEl = document.getElementById('userInitials');
-
-        if (nameEl) nameEl.innerText = displayName;
-        if (emailEl) emailEl.innerText = displayEmail;
-
-        // 6. Initials Logic
-        const nameParts = displayName.trim().split(/\s+/);
-        let initials = "U"; 
         
-        if (nameParts.length >= 2 && nameParts[0][0] && nameParts[1][0]) {
-            initials = (nameParts[0][0] + nameParts[1][0]).toUpperCase();
-        } else if (nameParts[0] && nameParts[0][0]) {
-            initials = nameParts[0][0].toUpperCase();
-        }
-        
-        if (initialsEl) initialsEl.innerText = initials;
-        
-        // 7. Component Loading (ONLY keep what is actually dynamic)
-        // Removed: fetchFeaturedProxies, fetchFeaturedVPNs, loadActivations, loadRDP, loadGifts
         try {
-            // If "loadFeaturedCarriers" still fetches real numbers/data for "Buy Number", keep it.
-            // Otherwise, if you made that section static too, remove this line.
-            if (typeof loadFeaturedCarriers === 'function') await loadFeaturedCarriers();
-            
-        } catch (loadErr) {
-            console.warn("Dynamic components failed to load:", loadErr);
-        }
+            // 1. Fetch User Profile & System Settings (for Exchange Rate)
+            const [profileRes, settingsRes] = await Promise.all([
+                fetch(`${API_BASE_URL}/user-profile`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }),
+                fetch(`${API_BASE_URL}/get-system-settings`)
+            ]);
 
-    } catch (err) { 
-        console.error("Dashboard init error:", err);
-        if (document.getElementById('dashboardContent')) {
-            document.getElementById('dashboardContent').innerText = "Error loading dashboard. Please refresh.";
+            if (profileRes.status === 401) {
+                logout();
+                return;
+            }
+
+            const userData = await profileRes.json();
+            const settingsData = await settingsRes.json();
+
+            // 2. Handle Suspension
+            if (userData.status === 'suspended') {
+                showSuspendedNotice();
+                return;
+            }
+
+            // 3. Map User Name & Welcome Message
+            const fullName = userData.fullName || "User";
+            const welcomeNameEl = document.getElementById('userDisplayName');
+            const sidebarNameEl = document.getElementById('userName'); // If you have one in sidebar
+            
+            if (welcomeNameEl) welcomeNameEl.innerText = fullName;
+            if (sidebarNameEl) sidebarNameEl.innerText = fullName;
+
+            // 4. Handle Initials
+            const initialsEl = document.getElementById('userInitials');
+            if (initialsEl) {
+                initialsEl.innerText = fullName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+            }
+
+            // 5. Balance Calculations
+            const balanceUSD = userData.balance || 0;
+            const exchangeRate = settingsData.settings?.exchangeRate || 1380;
+            const balanceNGN = balanceUSD * exchangeRate;
+
+            // 6. Update Balance Displays (matching your HTML IDs)
+            const usdDisplay = document.getElementById('mainBalanceDisplay');
+            const ngnDisplay = document.getElementById('mainBalanceDisplayNGN');
+
+            if (usdDisplay) {
+                usdDisplay.innerText = `$${balanceUSD.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                })}`;
+            }
+
+            if (ngnDisplay) {
+                ngnDisplay.innerText = `₦${balanceNGN.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                })}`;
+            }
+
+        } catch (err) { 
+            console.error("Dashboard init error:", err);
         }
     }
-}
 
 function toggleSupportMenu() {
         const menu = document.getElementById('supportMenu');
@@ -1014,37 +1006,6 @@ function toggleSupportMenu() {
         }
     }
 
-    async function updateUI() {
-    // 1. Get user data saved from login
-    const userData = JSON.parse(localStorage.getItem('userData'));
-    const token = localStorage.getItem('userToken');
-
-    if (userData) {
-        document.getElementById('userName').innerText = userData.name;
-        document.getElementById('userEmail').innerText = userData.email;
-        document.getElementById('userInitials').innerText = userData.name.charAt(0).toUpperCase();
-        
-        // 2. Fetch fresh balance and exchange rate from API
-        try {
-            const res = await fetch('/api/system-settings', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const settings = await res.json();
-            const rate = settings.exchangeRate || 1380;
-            
-            const balanceUSD = userData.balance || 0;
-            const balanceNGN = balanceUSD * rate;
-
-            document.getElementById('displayBalance').innerText = `$${balanceUSD.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-            document.getElementById('displayBalanceNGN').innerText = `(₦${balanceNGN.toLocaleString()})`;
-        } catch (err) {
-            console.error("Balance update failed", err);
-        }
-    }
-}
-
-// Run on load
-updateUI();
 
     function logout() { 
         localStorage.removeItem('userToken'); 

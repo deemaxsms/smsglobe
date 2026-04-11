@@ -4,9 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Premium VPN Services | High-Speed Global Nodes | SMSGlobe</title>
-    <meta name="description" content="Access secure, ultra-fast premium VPN nodes. Encrypted browsing, global server locations, and total privacy.">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="description" content="Access secure, ultra-fast premium VPN nodes. Encrypted browsing, global server locations, and total privacy for your digital activities.">
+    <meta name="keywords" content="premium vpn, buy vpn, high speed vpn, encrypted browsing, private vpn nodes, SMSGlobe vpn">
+    <meta name="google-site-verification" content="fTAchZCV3xVxBR75Z-jILoW7xPd5kSnfKTOpRrwC3BE" />
+    <meta property="og:title" content="Premium VPN Services - SMSGlobe">
+    <meta property="og:description" content="Secure your connection with military-grade encryption and global VPN nodes.">
+    <meta property="og:image" content="https://imgur.com/8YeZgfx.png">    
+    <link rel="icon" type="image/png" href="https://i.imgur.com/syKFaNI.png">
+    <link rel="apple-touch-icon" href="https://i.imgur.com/syKFaNI.png">
+        <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -238,47 +244,72 @@
         </div>`;
     }).join('');
 }
-        async function buyVPN(vpnId) {
-            const btn = document.getElementById(`btn-${vpnId}`);
-            const token = localStorage.getItem('userToken');
-            btn.disabled = true;
-            btn.innerText = "Processing...";
-            try {
-                const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ vpnId, planIndex: document.getElementById(`plan-${vpnId}`).value, type: 'VPN' })
-                });
-                const data = await res.json();
-                if (data.success && data.link) window.location.href = data.link;
-                else alert(data.message || "Failed to initiate payment");
-            } catch (err) { alert("Connection Error"); }
-            finally { btn.disabled = false; btn.innerText = "Purchase"; }
-        }
+       async function buyVPN(vpnId) {
+    const btn = document.getElementById(`btn-${vpnId}`);
+    const token = localStorage.getItem('userToken');
+    const planIndex = document.getElementById(`plan-${vpnId}`).value;
 
-        async function verifyPayment(transactionId, txRef) {
-            const modal = document.getElementById('vpnModal');
-            modal.classList.remove('hidden');
-            try {
-                const res = await fetch(`${API_BASE_URL}/verify-payment`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('userToken')}` },
-                    body: JSON.stringify({ transactionId, txRef })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    document.getElementById('modalUser').innerText = data.credentials.username;
-                    document.getElementById('modalPass').innerText = data.credentials.password;
-                    window.history.replaceState({}, '', window.location.pathname);
-                } else { alert(data.message); closeModal(); }
-            } catch (err) { closeModal(); }
+    // 1. UI Feedback
+    btn.disabled = true;
+    const originalText = btn.innerText;
+    btn.innerText = "Processing...";
+
+    try {
+        // 2. Call the Wallet Purchase Endpoint
+        const res = await fetch(`${API_BASE_URL}/purchase-wallet`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({ 
+                vpnId: vpnId, 
+                planIndex: parseInt(planIndex) 
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            // 3. Show Success Modal with Credentials immediately
+            showCredentialsModal(data.credentials);
+            
+            // Optional: Refresh balance display if you have one on the page
+            if (typeof fetchUserBalance === "function") fetchUserBalance();
+        } else {
+            // Handle Insufficient Balance or Stock errors
+            alert(data.message || "Purchase failed");
         }
+    } catch (err) {
+        console.error(err);
+        alert("Connection Error. Please check your internet.");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = originalText;
+    }
+}
+
+
 
         function closeModal() { document.getElementById('vpnModal').classList.add('hidden'); }
         function toggleSidebar() { 
             document.getElementById('sidebar').classList.toggle('-translate-x-full');
             document.getElementById('sidebarOverlay').classList.toggle('hidden');
         }
+
+        function showCredentialsModal(creds) {
+    const modal = document.getElementById('vpnModal');
+    
+    // Set the text based on what the VPN provides (Username/Password or Code)
+    document.getElementById('modalUser').innerText = creds.username || "N/A";
+    document.getElementById('modalPass').innerText = creds.password || creds.activationCode || "N/A";
+    
+    // If you have an instructions area in your modal:
+    const instructionsArea = document.getElementById('modalInstructions');
+    if (instructionsArea) instructionsArea.innerText = creds.instructions || "";
+
+    modal.classList.remove('hidden');
+}
 
         window.onload = initVPNPage;
     </script>

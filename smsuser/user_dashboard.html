@@ -909,109 +909,118 @@
         `;
     }
 
-    async function initDashboard() {
-        await checkMaintenance(); 
+   async function initDashboard() {
+    await checkMaintenance(); 
 
-        const token = localStorage.getItem('userToken');
-        if (!token) { 
-            window.location.href = 'user_login.html'; 
-            return; 
-        }
-
-        // --- NEW: HANDLE POST-TOPUP REDIRECT ---
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('status') === 'successful') {
-            // Clear cache to force fresh balance fetch after topup
-            localStorage.removeItem('dashboard_cache');
-            console.log("Top-up detected. Refreshing balance...");
-            // Optional: Show a success toast here if you have a toast component
-        }
-
-        // --- STEP 1: UI LOAD (From Cache) ---
-        const cachedData = JSON.parse(localStorage.getItem('dashboard_cache'));
-        if (cachedData) {
-            updateDashboardUI(cachedData.user, cachedData.rate);
-        }
-
-        try {
-            // --- STEP 2: PARALLEL DATA FETCHING ---
-            const [profileRes, settingsRes] = await Promise.all([
-                fetch(`${API_BASE_URL}/user-profile`, {
-                    headers: { 'Authorization': `Bearer ${token}`, 'Cache-Control': 'no-cache' }
-                }),
-                fetch(`${API_BASE_URL}/get-system-settings`)
-            ]);
-
-            if (profileRes.status === 401) return logout();
-
-            const userData = await profileRes.json();
-            const settingsData = await settingsRes.json();
-            const liveRate = settingsData.settings?.exchangeRate || 1380;
-
-            // --- STEP 3: SECURITY CHECK ---
-            if (userData.status === 'suspended') {
-                showSuspendedNotice();
-                return;
-            }
-
-            // --- STEP 4: UPDATE UI & REFRESH CACHE ---
-            updateDashboardUI(userData, liveRate);
-            
-            localStorage.setItem('dashboard_cache', JSON.stringify({
-                user: userData,
-                rate: liveRate
-            }));
-
-            // Clean URL if it contains transaction params to prevent repeat refreshes
-            if (urlParams.has('transaction_id')) {
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
-
-        } catch (err) { 
-            console.error("Dashboard refresh failed:", err);
-        }
+    const token = localStorage.getItem('userToken');
+    if (!token) { 
+        window.location.href = 'user_login.html'; 
+        return; 
     }
 
-    function updateDashboardUI(user, rate) {
-        if (!user) return;
+    // --- 1. HANDLE POST-TOPUP REDIRECT ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const isPostTopup = urlParams.get('status') === 'successful' || urlParams.has('transaction_id');
 
-        const fullName = user.fullName || "User Account";
-        const balanceUSD = parseFloat(user.balance) || 0;
-        const balanceNGN = balanceUSD * rate;
+    if (isPostTopup) {
+        localStorage.removeItem('dashboard_cache');
+        console.log("Post-payment detected. Cache cleared.");
+    }
 
-        // 1. Update Names
-        const elements = {
-            welcome: document.getElementById('userDisplayName'),
-            sidebar: document.getElementById('userName'),
-            initials: document.getElementById('userInitials'),
-            usd: document.getElementById('mainBalanceDisplay'),
-            ngn: document.getElementById('mainBalanceDisplayNGN'),
-            refCode: document.getElementById('userReferralCode'),
-            refCount: document.getElementById('userReferralCount')
-        };
+    // --- 2. UI LOAD (From Cache) ---
+    const cachedData = isPostTopup ? null : JSON.parse(localStorage.getItem('dashboard_cache'));
+    if (cachedData) {
+        updateDashboardUI(cachedData.user, cachedData.rate);
+    }
 
-        if (elements.welcome) elements.welcome.innerText = fullName;
-        if (elements.sidebar) elements.sidebar.innerText = fullName;
+    try {
+        // --- 3. PARALLEL DATA FETCHING ---
+        const [profileRes, settingsRes] = await Promise.all([
+            fetch(`${API_BASE_URL}/user-profile`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'Cache-Control': 'no-cache' }
+            }),
+            fetch(`${API_BASE_URL}/get-system-settings`)
+        ]);
 
-        // 2. Update Initials (Handles multi-word names)
-        if (elements.initials) {
-            const parts = fullName.split(' ');
-            const initials = parts.length > 1 
-                ? (parts[0][0] + parts[1][0]).toUpperCase() 
-                : parts[0][0].toUpperCase();
-            elements.initials.innerText = initials;
-        }
+        if (profileRes.status === 401) return logout();
 
-        // 3. Update Balances (Formatted)
-        const format = (val) => val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const userData = await profileRes.json();
+        const settingsData = await settingsRes.json();
+
+        // --- 4. DATA EXTRACTION FIX BASED ON YOUR LOGS ---
+        // Your profile JSON is flat: { success: true, fullName: "Wale Femi", ... }
+        // Your settings JSON is nested: { success: true, settings: { exchangeRate: 1380 } }
         
-        if (elements.usd) elements.usd.innerText = `$${format(balanceUSD)}`;
-        if (elements.ngn) elements.ngn.innerText = `₦${format(balanceNGN)}`;
+        const finalUser = userData; // Use directly since it's not wrapped in .user
+        const liveRate = settingsData.settings?.exchangeRate || 1380;
 
-        // 4. Update Referral Data
-        if (elements.refCode) elements.refCode.innerText = user.referralCode || "N/A";
-        if (elements.refCount) elements.refCount.innerText = user.referralCount || 0;
+        // --- 5. SECURITY CHECK ---
+        if (finalUser.status === 'suspended') {
+            showSuspendedNotice();
+            return;
+        }
+
+        // --- 6. UPDATE UI & REFRESH CACHE ---
+        updateDashboardUI(finalUser, liveRate);
+        
+        localStorage.setItem('dashboard_cache', JSON.stringify({
+            user: finalUser,
+            rate: liveRate
+        }));
+
+        // Clean URL
+        if (isPostTopup) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+    } catch (err) { 
+        console.error("Dashboard refresh failed:", err);
     }
+}
+
+function updateDashboardUI(user, rate) {
+    if (!user) return;
+
+    // IMPORTANT: Make sure these IDs match your HTML exactly
+    const fullName = user.fullName || "User Account";
+    
+    // We use user.balance because your DB log shows it exists there
+    const balanceUSD = parseFloat(user.balance) || 0; 
+    const balanceNGN = balanceUSD * rate;
+
+    const elements = {
+        welcome: document.getElementById('userDisplayName'),
+        sidebar: document.getElementById('userName'),
+        initials: document.getElementById('userInitials'),
+        usd: document.getElementById('mainBalanceDisplay'),
+        ngn: document.getElementById('mainBalanceDisplayNGN'),
+        refCode: document.getElementById('userReferralCode'),
+        refCount: document.getElementById('userReferralCount')
+    };
+
+    // Update Text
+    if (elements.welcome) elements.welcome.innerText = fullName;
+    if (elements.sidebar) elements.sidebar.innerText = fullName;
+
+    // Update Initials
+    if (elements.initials && fullName) {
+        const parts = fullName.trim().split(/\s+/);
+        const initials = parts.length > 1 
+            ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() 
+            : parts[0][0].toUpperCase();
+        elements.initials.innerText = initials;
+    }
+
+    // Update Balances
+    const format = (val) => val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    
+    if (elements.usd) elements.usd.innerText = `$${format(balanceUSD)}`;
+    if (elements.ngn) elements.ngn.innerText = `₦${format(balanceNGN)}`;
+
+    // Update Referrals
+    if (elements.refCode) elements.refCode.innerText = user.referralCode || "N/A";
+    if (elements.refCount) elements.refCount.innerText = user.referralCount || 0;
+}
 
     function toggleSupportMenu() {
         const menu = document.getElementById('supportMenu');

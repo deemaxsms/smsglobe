@@ -1285,7 +1285,7 @@ async function handleInitiateTopup(req, res) {
                 tx_ref,
                 amount: finalAmountNGN,
                 currency: "NGN",
-                redirect_url: "https://www.smsglobe.net/smsuser/user_topup.html",
+                redirect_url: "https://www.smsglobe.net/smsuser/topup.html",
                 customer: { 
                     email: user.email, 
                     name: user.fullName 

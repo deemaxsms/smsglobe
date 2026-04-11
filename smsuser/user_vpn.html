@@ -302,14 +302,13 @@ function renderVPNs() {
     
     if (loader) loader.classList.add('hidden');
     
-    const filtered = allVPNs.filter(vpn => {
-        const currentTab = currentCategory.toLowerCase();        
+  const filtered = allVPNs.filter(vpn => {
+        const activeTab = currentCategory.toLowerCase(); // will be "phone" or "pc"
         const dbDevice = (vpn.deviceType || '').toLowerCase().trim();
-
-        if (currentTab.includes('phone')) {
+        if (activeTab === 'phone') {
             return dbDevice === 'phone';
         }         
-        if (currentTab.includes('pc')) {
+        if (activeTab === 'pc') {
             return dbDevice === 'pc';
         }
 
@@ -374,14 +373,16 @@ function renderVPNs() {
 
 
 function switchTab(category) {
-    currentCategory = category;
+    // Standardize to uppercase for reliable matching
+    currentCategory = category.toUpperCase().trim(); 
     
-    // Select all tab buttons
     const tabs = ['Phone', 'PC'];
     
     tabs.forEach(tab => {
         const btn = document.getElementById(`tab-${tab}`);
-        if (tab === category) {
+        if (!btn) return; // Safety check
+
+        if (tab.toUpperCase() === currentCategory) {
             btn.classList.add('tab-active', 'text-brand-blue');
             btn.classList.remove('text-brand-lightText');
         } else {

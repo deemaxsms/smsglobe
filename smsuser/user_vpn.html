@@ -98,38 +98,40 @@
                 <p class="text-xs text-brand-lightText font-medium">No VPN nodes found for this category.</p>
             </div>
 
-          <div class="mt-auto pt-12 mb-10">
-    <div class="flex items-center gap-4 mb-8">
+          <div class="mt-auto pt-8 mb-10">
+    <div class="flex items-center gap-4 mb-6">
         <div class="h-px flex-grow bg-brand-border"></div>
         <h2 class="text-[10px] md:text-xs font-bold text-brand-lightText uppercase tracking-[0.2em]">Installation Guide</h2>
         <div class="h-px flex-grow bg-brand-border"></div>
     </div>
 
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div class="bg-white border border-brand-border p-3 md:p-4 rounded-2xl text-center flex flex-col items-center justify-center shadow-sm">
-            <span class="w-7 h-7 md:w-8 md:h-8 bg-brand-background text-brand-blue rounded-full inline-flex items-center justify-center font-bold text-[10px] md:text-xs mb-2">1</span>
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3">
+        
+        <div class="bg-white border border-brand-border p-2 md:p-4 rounded-xl text-center flex flex-col items-center justify-center shadow-sm">
+            <span class="w-5 h-5 md:w-8 md:h-8 bg-brand-background text-brand-blue rounded-full inline-flex items-center justify-center font-bold text-[9px] md:text-xs mb-1.5">1</span>
             <p class="text-[9px] md:text-[10px] font-bold uppercase text-brand-darkText">Download App</p>
         </div>
 
-        <div class="bg-white border border-brand-border p-3 md:p-4 rounded-2xl text-center flex flex-col items-center justify-center shadow-sm">
-            <span class="w-7 h-7 md:w-8 md:h-8 bg-brand-background text-brand-blue rounded-full inline-flex items-center justify-center font-bold text-[10px] md:text-xs mb-2">2</span>
+        <div class="bg-white border border-brand-border p-2 md:p-4 rounded-xl text-center flex flex-col items-center justify-center shadow-sm">
+            <span class="w-5 h-5 md:w-8 md:h-8 bg-brand-background text-brand-blue rounded-full inline-flex items-center justify-center font-bold text-[9px] md:text-xs mb-1.5">2</span>
             <p class="text-[9px] md:text-[10px] font-bold uppercase text-brand-darkText">Get Login</p>
         </div>
 
-        <div class="bg-white border border-brand-border p-3 md:p-4 rounded-2xl text-center flex flex-col items-center justify-center shadow-sm">
-            <span class="w-7 h-7 md:w-8 md:h-8 bg-brand-background text-brand-blue rounded-full inline-flex items-center justify-center font-bold text-[10px] md:text-xs mb-2">3</span>
+        <div class="bg-white border border-brand-border p-2 md:p-4 rounded-xl text-center flex flex-col items-center justify-center shadow-sm">
+            <span class="w-5 h-5 md:w-8 md:h-8 bg-brand-background text-brand-blue rounded-full inline-flex items-center justify-center font-bold text-[9px] md:text-xs mb-1.5">3</span>
             <p class="text-[9px] md:text-[10px] font-bold uppercase text-brand-darkText">Enter Details</p>
         </div>
 
-        <div class="bg-white border border-brand-border p-3 md:p-4 rounded-2xl text-center flex flex-col items-center justify-center shadow-sm">
-            <span class="w-7 h-7 md:w-8 md:h-8 bg-brand-background text-brand-blue rounded-full inline-flex items-center justify-center font-bold text-[10px] md:text-xs mb-2">4</span>
+        <div class="bg-white border border-brand-border p-2 md:p-4 rounded-xl text-center flex flex-col items-center justify-center shadow-sm">
+            <span class="w-5 h-5 md:w-8 md:h-8 bg-brand-background text-brand-blue rounded-full inline-flex items-center justify-center font-bold text-[9px] md:text-xs mb-1.5">4</span>
             <p class="text-[9px] md:text-[10px] font-bold uppercase text-brand-darkText">Select Region</p>
         </div>
 
-        <div class="bg-white border border-brand-border p-3 md:p-4 rounded-2xl text-center flex flex-col items-center justify-center shadow-sm col-span-2 md:col-span-1">
-            <span class="w-7 h-7 md:w-8 md:h-8 bg-brand-background text-brand-blue rounded-full inline-flex items-center justify-center font-bold text-[10px] md:text-xs mb-2">5</span>
+        <div class="bg-white border border-brand-border p-2 md:p-4 rounded-xl text-center flex flex-col items-center justify-center shadow-sm col-span-2 md:col-span-1">
+            <span class="w-5 h-5 md:w-8 md:h-8 bg-brand-background text-brand-blue rounded-full inline-flex items-center justify-center font-bold text-[9px] md:text-xs mb-1.5">5</span>
             <p class="text-[9px] md:text-[10px] font-bold uppercase text-brand-darkText">Connect Now</p>
         </div>
+        
     </div>
 </div>
             </div>
@@ -242,42 +244,51 @@
     const emptyState = document.getElementById('emptyState');
     
     if (loader) loader.classList.add('hidden');
-    grid.classList.remove('hidden');
-
-    // STRICT FILTERING: 
-    // This ensures Phone only shows Phone, and PC only shows PC.
+    
+    // 1. STRICT FILTERING (Category Isolation)
     const filtered = allVPNs.filter(vpn => {
-        // Normalize the data from DB (handles 'phone' vs 'Phone')
         const deviceType = (vpn.deviceType || '').trim().toLowerCase();
         const categoryTarget = currentCategory.toLowerCase();
-        
         return deviceType === categoryTarget;
     });
 
     if (filtered.length === 0) {
         grid.classList.add('hidden');
         emptyState.classList.remove('hidden');
-        // Update empty state text based on category
         emptyState.querySelector('p').innerText = `No VPN nodes available for ${currentCategory} at the moment.`;
         return;
     }
 
+    // 2. SMART SORTING (Push Out of Stock to Bottom)
+    // This sorts by stock status: In-stock (true/1) comes before Out-of-stock (false/0)
+    const sorted = filtered.sort((a, b) => {
+        const aStock = (a.stock || 0) > 0;
+        const bStock = (b.stock || 0) > 0;
+        
+        if (aStock && !bStock) return -1; // a comes first
+        if (!aStock && bStock) return 1;  // b comes first
+        return 0; // maintain original order if both are same status
+    });
+
     emptyState.classList.add('hidden');
     grid.classList.remove('hidden');
 
-    grid.innerHTML = filtered.map(vpn => {
+    // 3. RENDER THE SORTED LIST
+    grid.innerHTML = sorted.map(vpn => {
         const isOutOfStock = (vpn.stock || 0) <= 0;
         return `
-        <div class="bg-white border border-brand-border rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden">
+        <div class="bg-white border border-brand-border rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden ${isOutOfStock ? 'opacity-75' : ''}">
             <div class="h-24 md:h-32 bg-gray-50 relative flex items-center justify-center p-4 border-b">
-                <img src="${vpn.image || 'https://via.placeholder.com/150'}" class="max-h-full object-contain ${isOutOfStock ? 'grayscale opacity-50' : ''}">
+                <img src="${vpn.image || 'https://via.placeholder.com/150'}" 
+                     class="max-h-full object-contain ${isOutOfStock ? 'grayscale opacity-40' : ''}">
+                ${isOutOfStock ? `<span class="absolute inset-0 flex items-center justify-center bg-white/10 backdrop-blur-[1px] text-[10px] font-black text-red-600 uppercase tracking-tighter">Sold Out</span>` : ''}
             </div>
             <div class="p-3 md:p-5 flex flex-col flex-grow">
                 <div class="mb-3">
                     <h3 class="font-bold text-brand-darkText text-[11px] md:text-xs uppercase truncate">${vpn.name}</h3>
                     <p class="text-[10px] md:text-[10px] text-brand-lightText font-medium">${vpn.region || 'Global'}</p>
                     <span class="inline-block mt-1 text-[10px] md:text-[9px] font-bold px-1.5 py-0.5 rounded ${isOutOfStock ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}">
-                        ${isOutOfStock ? 'Sold Out' : `Stock: ${vpn.stock}`}
+                        ${isOutOfStock ? 'Out of Stock' : `Stock: ${vpn.stock}`}
                     </span>
                 </div>
 
@@ -292,8 +303,8 @@
                 </div>
 
                 <button onclick="buyVPN('${vpn._id}')" id="btn-${vpn._id}" ${isOutOfStock ? 'disabled' : ''}
-                        class="mt-auto w-full py-2.5 md:py-3.5 ${isOutOfStock ? 'bg-gray-200 text-gray-400' : 'bg-brand-blue text-white hover:bg-blue-700'} text-[10px] md:text-xs font-bold rounded-lg transition-all">
-                    ${isOutOfStock ? 'Sold Out' : 'Purchase'}
+                        class="mt-auto w-full py-2.5 md:py-3.5 ${isOutOfStock ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-brand-blue text-white hover:bg-blue-700'} text-[10px] md:text-xs font-bold rounded-lg transition-all">
+                    ${isOutOfStock ? 'Unavailable' : 'Purchase'}
                 </button>
             </div>
         </div>`;

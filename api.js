@@ -928,11 +928,13 @@ async function handleManageUser(req, res) {
         return res.status(500).json({ success: false, message: err.message });
     }
 }
-
 async function handleGetVPNs(req, res) {
     try {
-        // Fetch all VPNs, including the hidden password field for admin management
-        const vpns = await VPN.find({}).sort({ createdAt: -1 }).select('+password');
+        // We ensure 'deviceType' is included (along with the hidden password)
+        const vpns = await VPN.find({})
+            .sort({ createdAt: -1 })
+            .select('+password +deviceType'); 
+            
         res.json({ success: true, products: vpns }); 
     } catch (err) {
         console.error("Fetch VPN Error:", err);

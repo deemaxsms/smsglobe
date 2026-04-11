@@ -1102,7 +1102,7 @@ async function handleInitiatePayment(req, res) {
         let title;
         let amountInUSD = 0;
         let finalAmountNGN = 0;
-        let redirectUrl = "https://smsglobe.vercel.app/smsuser/user_dashboard.html";
+        let redirectUrl = "https://smsglobe.net/smsuser/user_dashboard.html";
 
         // 3. Determine Product and Base USD Price
         if (vpnId) {
@@ -1111,7 +1111,7 @@ async function handleInitiatePayment(req, res) {
             itemType = "VPN";
             title = "SMSGlobe VPN";
             amountInUSD = item.plans[planIndex].price;
-            redirectUrl = "https://smsglobe.vercel.app/smsuser/user_vpn.html";
+            redirectUrl = "https://smsglobe.net/smsuser/user_vpn.html";
         } 
         else if (proxyId) {
             item = await Proxy.findById(proxyId);
@@ -1119,7 +1119,7 @@ async function handleInitiatePayment(req, res) {
             itemType = "Proxy";
             title = "SMSGlobe Proxy";
             amountInUSD = item.plans[planIndex].price;
-            redirectUrl = "https://smsglobe.vercel.app/smsuser/user_proxy.html";
+            redirectUrl = "https://smsglobe.net/smsuser/user_proxy.html";
         } 
        else if (carrierName) {
     itemType = metadata ? "eSIM_Activation" : "eSIM";
@@ -1133,15 +1133,15 @@ async function handleInitiatePayment(req, res) {
         });
     }
     redirectUrl = metadata 
-        ? "https://smsglobe.vercel.app/smsuser/esim_activation.html" 
-        : "https://smsglobe.vercel.app/smsuser/esim_refill.html";
+        ? "https://smsglobe.net/smsuser/esim_activation.html" 
+        : "https://smsglobe.net/smsuser/esim_refill.html";
 
     // 5. Success Log (Optional, for your Vercel logs)
     console.log(`Processing ${itemType} for ${carrierName}: $${amountInUSD} USD`);
 }
         else if (rdpId) {
             itemType = "RDP";
-            redirectUrl = "https://smsglobe.vercel.app/smsuser/user_rdp.html";
+            redirectUrl = "https://smsglobe.net/smsuser/user_rdp.html";
             const extraCPU = metadata?.extraCPU || 0;
             const extraStorage = metadata?.extraStorage || 0;
             const addonTotal = (extraCPU * 5000) + (extraStorage * 200);
@@ -2683,7 +2683,7 @@ async function handleForgotPasswordRequest(req, res) {
         user.resetPasswordToken = token;
         user.resetPasswordExpires = Date.now() + 3600000; 
         await user.save();
-        const resetLink = `https://smsglobe.vercel.app/smsuser/change-password.html?token=${token}`;
+        const resetLink = `https://smsglobe.net/smsuser/change-password.html?token=${token}`;
     await sendResetPasswordEmail(user.email, resetLink);
         console.log("Reset link for testing:", resetLink);
         return res.json({ 
@@ -2767,7 +2767,7 @@ async function handleAdminForgotPasswordRequest(req, res) {
         await admin.save();
 
         // 3. Admin-specific reset link
-        const resetLink = `https://smsglobe.vercel.app/smsadmin/sms_forgot.html?token=${token}`;
+        const resetLink = `https://smsglobe.net/smsadmin/sms_forgot.html?token=${token}`;
         
         // Use your email utility (ensure it's configured for Admin notifications)
         await sendResetPasswordEmail(admin.email, resetLink, true);

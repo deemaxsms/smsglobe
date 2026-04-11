@@ -29,12 +29,12 @@
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input, select, textarea { font-size: 16px !important; }
         .btn-active { border-color: #0F54C6 !important; color: #0F54C6 !important; background-color: rgba(15, 84, 198, 0.05); }
-        
         #sidebar { transition: transform 0.3s ease-in-out; }
         @media (max-width: 1023px) {
             #sidebar.hidden-mobile { transform: translateX(-100%); }
             #sidebar.open-mobile { transform: translateX(0); display: flex !important; }
         }
+        .confetti-glow { box-shadow: 0 0 20px rgba(34, 197, 94, 0.2); }
     </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText overflow-x-hidden">
@@ -78,17 +78,20 @@
         </header>
 
         <main class="p-4 md:p-8 lg:p-10 max-w-4xl w-full mx-auto">
-            <div id="statusAlert" class="hidden mb-6 p-4 rounded-2xl border flex items-center gap-3">
-                <div id="statusIcon" class="flex-shrink-0"></div>
-                <div>
-                    <p id="statusTitle" class="text-xs font-black uppercase tracking-widest"></p>
-                    <p id="statusMessage" class="text-[11px]"></p>
+            <div id="statusAlert" class="hidden mb-6 p-5 rounded-[24px] border flex flex-col sm:flex-row items-center gap-4 transition-all duration-500">
+                <div id="statusIcon" class="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center"></div>
+                <div class="flex-grow text-center sm:text-left">
+                    <p id="statusTitle" class="text-[13px] font-black uppercase tracking-widest mb-0.5"></p>
+                    <p id="statusMessage" class="text-[12px] opacity-90 leading-relaxed"></p>
+                    <div id="redirectCounter" class="text-[10px] mt-2 font-bold opacity-60 hidden">Redirecting to dashboard in <span id="seconds">8</span>s...</div>
+                </div>
+                <div id="statusAction" class="hidden">
+                    <a href="user_dashboard.html" class="px-5 py-2.5 bg-white/20 hover:bg-white/30 border border-current rounded-xl text-[11px] font-black uppercase tracking-wider transition-all">Go to Dashboard</a>
                 </div>
             </div>
 
             <div class="bg-white rounded-[24px] md:rounded-[32px] border border-brand-border shadow-sm overflow-hidden">
                 <div class="flex flex-col md:flex-row">
-                    
                     <div class="md:w-2/5 bg-brand-blue/5 p-6 md:p-8 border-b md:border-b-0 md:border-r border-brand-border">
                         <h2 class="text-sm font-black text-brand-darkText uppercase tracking-widest mb-4">How to Top-up</h2>
                         <ul class="space-y-4">
@@ -105,10 +108,6 @@
                                 <p class="text-[11px] leading-relaxed">Complete payment via <b>Flutterwave</b> using Card, Bank Transfer, or USSD.</p>
                             </li>
                         </ul>
-                        <div class="mt-8 p-4 bg-orange-50 rounded-xl border border-orange-100">
-                            <p class="text-[10px] text-brand-orange font-bold uppercase tracking-tight mb-1">Important Note</p>
-                            <p class="text-[10px] text-brand-midText leading-snug">Do not refresh the page while your transaction is being processed to avoid duplicate charges.</p>
-                        </div>
                     </div>
 
                     <div class="flex-1 p-6 md:p-10">
@@ -169,11 +168,14 @@
             const title = document.getElementById('statusTitle');
             const msg = document.getElementById('statusMessage');
             const icon = document.getElementById('statusIcon');
+            const action = document.getElementById('statusAction');
 
-            alertBox.className = "mb-6 p-4 rounded-2xl border flex items-center gap-3 bg-blue-50 border-blue-100 text-blue-700 animate-pulse";
-            title.innerText = "Verifying Transaction...";
-            msg.innerText = "Hold tight, we are confirming your payment with Flutterwave.";
-            icon.innerHTML = `<svg class="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke-width="2" stroke-linecap="round"/></svg>`;
+            alertBox.classList.remove('hidden');
+            alertBox.className = "mb-6 p-5 rounded-[24px] border flex flex-col sm:flex-row items-center gap-4 bg-blue-50 border-blue-200 text-blue-800 animate-pulse";
+            icon.className = "flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-blue-100 text-blue-600";
+            title.innerText = "Verifying Payment...";
+            msg.innerText = "Please wait while we confirm your transaction with Flutterwave. Do not close this page.";
+            icon.innerHTML = `<svg class="w-6 h-6 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke-width="3" stroke-linecap="round"/></svg>`;
             
             try {
                 const response = await fetch('/api/verify-topup', {
@@ -188,25 +190,48 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    alertBox.className = "mb-6 p-4 rounded-2xl border flex items-center gap-3 bg-green-50 border-green-100 text-green-700";
-                    title.innerText = "Wallet Funded!";
-                    msg.innerText = `Successfully added $${data.amountUSD} to your account. New balance: $${data.newBalance.toFixed(2)}`;
-                    icon.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`;
+                    // 🎉 CONGRATULATIONS STATE
+                    alertBox.className = "mb-6 p-6 rounded-[24px] border flex flex-col sm:flex-row items-center gap-5 bg-green-50 border-green-200 text-green-800 confetti-glow";
+                    icon.className = "flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center bg-green-500 text-white shadow-lg";
+                    title.innerText = "Congratulations! Wallet Funded";
                     
+                    // Show both USD and NGN (if available in data)
+                    const ngnPaid = data.amountNGN ? `(₦${data.amountNGN.toLocaleString()})` : '';
+                    msg.innerHTML = `You have successfully topped up <b>$${data.amountUSD.toFixed(2)}</b> ${ngnPaid}. <br>Your new balance is <b>$${data.newBalance.toFixed(2)}</b>.`;
+                    
+                    icon.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>`;
+                    
+                    // Show Button and Redirect Counter
+                    action.classList.remove('hidden');
+                    const counter = document.getElementById('redirectCounter');
+                    counter.classList.remove('hidden');
+                    
+                    // Update header balance
                     document.getElementById('currentBalance').innerText = `Bal: $${data.newBalance.toFixed(2)}`;
                     
-                    setTimeout(() => {
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                        alertBox.classList.add('hidden');
-                    }, 6000);
+                    // Start Countdown
+                    let timeLeft = 8;
+                    const timer = setInterval(() => {
+                        timeLeft--;
+                        document.getElementById('seconds').innerText = timeLeft;
+                        if (timeLeft <= 0) {
+                            clearInterval(timer);
+                            window.location.href = 'user_dashboard.html';
+                        }
+                    }, 1000);
+
+                    // Clean URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
                 } else {
                     throw new Error(data.message);
                 }
             } catch (err) {
-                alertBox.className = "mb-6 p-4 rounded-2xl border flex items-center gap-3 bg-red-50 border-red-100 text-red-700";
+                alertBox.className = "mb-6 p-5 rounded-[24px] border flex flex-col sm:flex-row items-center gap-4 bg-red-50 border-red-200 text-red-800";
+                icon.className = "flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-red-100 text-red-600";
                 title.innerText = "Verification Failed";
-                msg.innerText = err.message || "We couldn't confirm your payment. Please contact support.";
-                icon.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>`;
+                msg.innerText = err.message || "We couldn't confirm your payment. If you were debited, please contact support.";
+                icon.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>`;
+                action.classList.remove('hidden');
             }
         }
     }
@@ -231,9 +256,6 @@
                 document.getElementById('userName').innerText = userData.fullName || "User";
                 document.getElementById('currentBalance').innerText = `Bal: $${(userData.balance || 0).toFixed(2)}`;
                 document.getElementById('userInitials').innerText = userData.fullName?.charAt(0).toUpperCase() || "U";
-            } else if (userRes.status === 401) {
-                localStorage.removeItem('userToken');
-                window.location.href = 'user_login.html';
             }
 
             const settingsData = await settingsRes.json();
@@ -243,7 +265,7 @@
             }
             
             calculateTotal();
-            verifyPaymentOnLoad(); // Check for transaction ID in URL
+            verifyPaymentOnLoad(); 
         } catch (err) {
             console.error("Sync Error:", err);
             calculateTotal();

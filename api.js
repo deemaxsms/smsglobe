@@ -344,7 +344,7 @@ const orderSchema = new mongoose.Schema({
     fullName: { type: String },         
     productType: { 
         type: String, 
-        enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill', 'eSIM_Activation', 'RDP', 'RentedNumber', 'WALLET_TOPUP'], 
+        enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill', 'eSIM_Activation', 'RDP', 'RentedNumber',], 
         required: true 
     },
     planName: { type: String }, 
@@ -1246,6 +1246,7 @@ async function handlePurchaseVPN(req, res) {
         return res.status(401).json({ success: false, message: "Unauthorized or Session Expired" });
     }
 }
+
 // --- 1. Initiate Topup ---
 async function handleInitiateTopup(req, res) {
     const { amountUSD } = req.body; 
@@ -1313,7 +1314,7 @@ async function handleInitiateTopup(req, res) {
     }
 }
 
-// --- 2. Verify Topup ---
+// --- Optimized & Corrected Verify Topup ---
 async function handleVerifyTopup(req, res) {
     const { transactionId } = req.body;
 
@@ -1322,63 +1323,73 @@ async function handleVerifyTopup(req, res) {
     }
 
     try {
+        // 1. Verify payment status with Flutterwave
         const response = await fetch(`https://api.flutterwave.com/v3/transactions/${transactionId}/verify`, {
             method: "GET",
-            headers: { Authorization: `Bearer ${process.env.FLW_SECRET_KEY}` },
+            headers: { 
+                Authorization: `Bearer ${process.env.FLW_SECRET_KEY}`,
+                "Content-Type": "application/json"
+            },
         });
 
-        const data = await response.json();
+        const flwData = await response.json();
 
-        if (data.status === "success" && data.data.status === "successful") {
-            const { userId, usdAmount } = data.data.meta;
-            const txRef = data.data.tx_ref;
-            const amountCreditUSD = parseFloat(usdAmount);
-
-            // 1. Idempotency Check (Prevent double funding)
-            const existingTx = await Transaction.findOne({ reference: txRef });
-            if (existingTx) {
-                return res.json({ success: true, message: "Balance already credited" });
+        // Check if Flutterwave actually confirmed the payment
+        if (flwData.status === "success" && flwData.data.status === "successful") {
+            
+            // 2. Extract data from Flutterwave response
+            const { userId, usdAmount } = flwData.data.meta;
+            const txRef = flwData.data.tx_ref;
+            
+            // Fallback: If meta is missing for some reason, calculate USD from NGN amount
+            let amountCreditUSD = parseFloat(usdAmount);
+            if (isNaN(amountCreditUSD)) {
+                const settings = await SystemSettings.findOne();
+                const rate = settings?.exchangeRate || 1380;
+                amountCreditUSD = flwData.data.amount / rate;
             }
 
-            // 2. Atomic Balance Update
-            const user = await User.findById(userId);
-            if (!user) return res.status(404).json({ success: false, message: "User not found" });
+            // 3. Idempotency Check: Verify this transaction hasn't been processed yet
+            // We check the Transaction schema because that's where we record deposits
+            const existingTx = await Transaction.findOne({ reference: txRef });
+            if (existingTx) {
+                return res.json({ 
+                    success: true, 
+                    message: "Already credited", 
+                    newBalance: existingTx.balanceAfter 
+                });
+            }
 
-            const balanceBefore = user.balance;
-            
-            // Use $inc for safety in real applications
+            // 4. Update User Balance (Atomic Operation)
+            // Using $inc ensures we don't accidentally overwrite the balance with the wrong value
             const updatedUser = await User.findByIdAndUpdate(
                 userId,
                 { $inc: { balance: amountCreditUSD } },
-                { new: true }
+                { new: true, runValidators: true }
             );
 
-            // 3. Create Audit Trail (Transaction Schema)
-            await Transaction.create({
-                userId: user._id,
+            if (!updatedUser) {
+                console.error(`Credit Failed: User ID ${userId} not found in database.`);
+                return res.status(404).json({ success: false, message: "User not found during credit process" });
+            }
+
+            // 5. Create the Audit Trail in Transaction Schema
+            // This matches your provided Transaction schema exactly
+            const newTransaction = await Transaction.create({
+                userId: updatedUser._id,
                 type: 'credit',
                 purpose: 'deposit',
                 amountUSD: amountCreditUSD,
-                amountNGN: data.data.amount,
-                exchangeRate: data.data.amount / amountCreditUSD,
+                amountNGN: flwData.data.amount,
+                exchangeRate: flwData.data.amount / amountCreditUSD,
                 status: 'successful',
                 reference: txRef,
-                balanceBefore: balanceBefore,
-                balanceAfter: updatedUser.balance
+                balanceBefore: updatedUser.balance - amountCreditUSD,
+                balanceAfter: updatedUser.balance,
+                metadata: flwData.data // Stores raw Flutterwave JSON for debugging
             });
 
-            // 4. Update Order History (For the "Orders" tab)
-            await Order.create({
-                userId: user._id,
-                userEmail: user.email,
-                fullName: user.fullName,
-                productType: 'WALLET_TOPUP', 
-                amount: amountCreditUSD,
-                currency: 'USD',
-                status: 'successful',
-                paymentReference: txRef,
-                planName: `Wallet Funding: $${amountCreditUSD.toFixed(2)}`
-            });
+            console.log(`Successfully funded ${updatedUser.email} with $${amountCreditUSD}. Ref: ${txRef}`);
 
             return res.json({ 
                 success: true, 
@@ -1387,11 +1398,11 @@ async function handleVerifyTopup(req, res) {
             });
         }
         
-        return res.status(400).json({ success: false, message: "Payment verification failed" });
+        return res.status(400).json({ success: false, message: "Flutterwave could not verify payment" });
 
     } catch (err) {
-        console.error("Critical Verification Error:", err);
-        return res.status(500).json({ success: false, message: "Internal server error" });
+        console.error("CRITICAL DATABASE UPDATE ERROR:", err);
+        return res.status(500).json({ success: false, message: "Internal server error during balance update" });
     }
 }
 

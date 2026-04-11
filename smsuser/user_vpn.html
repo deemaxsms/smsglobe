@@ -222,7 +222,7 @@
             }
         }
 
-     function renderVPNs() {
+        function renderVPNs() {
             const grid = document.getElementById('vpnGrid');
             const loader = document.getElementById('vpnLoading');
             const emptyState = document.getElementById('emptyState');
@@ -230,17 +230,16 @@
             if (loader) loader.classList.add('hidden');
             grid.innerHTML = ''; 
 
-            // LOGIC FIX: Robust sanitization of category and deviceType
+            // IMPORTANT: Case-insensitive filtering for Device Type
             const filtered = allVPNs.filter(vpn => {
-                const vpnType = (vpn.deviceType || '').toString().trim().toLowerCase();
-                const targetType = currentCategory.trim().toLowerCase();
+                const vpnType = (vpn.deviceType || '').trim().toLowerCase();
+                const targetType = currentCategory.toLowerCase();
                 return vpnType === targetType;
             });
 
             if (filtered.length === 0) {
                 grid.classList.add('hidden');
                 emptyState.classList.remove('hidden');
-                document.getElementById('emptyMessage').innerText = `No ${currentCategory} nodes available currently.`;
                 return;
             }
 
@@ -250,24 +249,27 @@
             grid.innerHTML = filtered.map(vpn => {
                 const isOutOfStock = (vpn.stock || 0) <= 0;
                 return `
-                <div class="bg-white border border-brand-border rounded-2xl overflow-hidden flex flex-col">
-                    <div class="h-32 bg-gray-50 flex items-center justify-center p-4 relative border-b">
-                        <img src="${vpn.image}" class="max-h-full object-contain">
-                        ${isOutOfStock ? `<div class="absolute inset-0 bg-white/60 flex items-center justify-center font-bold text-red-500 text-[10px]">SOLD OUT</div>` : ''}
+                <div class="bg-white border border-brand-border rounded-2xl shadow-sm flex flex-col overflow-hidden transition-all ${isOutOfStock ? 'opacity-60' : 'hover:shadow-md'}">
+                    <div class="h-24 md:h-32 bg-gray-50 relative flex items-center justify-center p-4 border-b">
+                        <img src="${vpn.image}" class="max-h-full object-contain ${isOutOfStock ? 'grayscale opacity-50' : ''}">
+                        ${isOutOfStock ? `<div class="absolute inset-0 flex items-center justify-center bg-white/40 backdrop-blur-[1px] font-black text-red-600 text-[10px] uppercase">Sold Out</div>` : ''}
                     </div>
-                    <div class="p-4 flex flex-col flex-grow">
-                        <h3 class="font-bold text-[11px] uppercase">${vpn.name}</h3>
-                        <p class="text-[10px] text-brand-lightText mb-3">${vpn.region || 'Global'}</p>
-                        
-                        <div class="bg-brand-background rounded-lg p-2 mb-3 border border-brand-border/50">
-                            <select id="plan-${vpn._id}" class="w-full bg-transparent text-[10px] font-bold outline-none">
-                                ${vpn.plans.map((p, i) => `<option value="${i}">${p.duration || 'Plan'} - $${p.price}</option>`).join('')}
+                    <div class="p-3 md:p-5 flex flex-col flex-grow">
+                        <div class="mb-3">
+                            <h3 class="font-bold text-brand-darkText text-[11px] md:text-xs uppercase truncate">${vpn.name}</h3>
+                            <p class="text-[10px] text-brand-lightText font-medium">${vpn.region || 'Global'}</p>
+                            <span class="inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded ${isOutOfStock ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-500'}">
+                                ${isOutOfStock ? 'Out of Stock' : `In Stock: ${vpn.stock}`}
+                            </span>
+                        </div>
+                        <div class="bg-brand-background rounded-lg p-1.5 mb-3 border border-brand-border/50">
+                            <select id="plan-${vpn._id}" ${isOutOfStock ? 'disabled' : ''} class="w-full bg-transparent text-[10px] font-bold outline-none cursor-pointer">
+                                ${vpn.plans.map((p, i) => `<option value="${i}">${p.duration || 'Plan'} - $${parseFloat(p.price).toFixed(2)}</option>`).join('')}
                             </select>
                         </div>
-
                         <button onclick="buyVPN('${vpn._id}')" ${isOutOfStock ? 'disabled' : ''} 
-                            class="w-full py-2.5 rounded-lg text-[10px] font-bold transition-all ${isOutOfStock ? 'bg-gray-100 text-gray-400' : 'bg-brand-blue text-white hover:bg-blue-700'}">
-                            ${isOutOfStock ? 'Unavailable' : 'Purchase Now'}
+                            class="mt-auto w-full py-2.5 ${isOutOfStock ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-brand-blue text-white hover:bg-blue-700'} text-[10px] font-bold rounded-lg transition-all">
+                            ${isOutOfStock ? 'Unavailable' : 'Purchase'}
                         </button>
                     </div>
                 </div>`;
@@ -276,8 +278,10 @@
 
         function switchTab(category) {
             currentCategory = category;
-            ['Phone', 'PC'].forEach(tab => {
+            const tabs = ['Phone', 'PC'];
+            tabs.forEach(tab => {
                 const btn = document.getElementById(`tab-${tab}`);
+                if (!btn) return;
                 if (tab === category) {
                     btn.classList.add('tab-active', 'text-brand-blue');
                     btn.classList.remove('text-brand-lightText');

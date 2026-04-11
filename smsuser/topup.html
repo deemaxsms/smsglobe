@@ -27,15 +27,27 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        /* Prevent font-size zoom on mobile */
         input, select, textarea { font-size: 16px !important; }
+        .btn-active { border-color: #0F54C6 !important; color: #0F54C6 !important; background-color: rgba(15, 84, 198, 0.05); }
+        
+        /* Mobile Sidebar Transitions */
+        #sidebar { transition: transform 0.3s ease-in-out; }
+        @media (max-width: 1023px) {
+            #sidebar.hidden-mobile { transform: translateX(-100%); }
+            #sidebar.open-mobile { transform: translateX(0); display: flex !important; }
+        }
     </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText overflow-x-hidden">
 
-    <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white border-r border-brand-border z-50 hidden lg:flex flex-col shadow-sm">
+    <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/20 z-40 hidden lg:hidden backdrop-blur-sm"></div>
+
+    <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white border-r border-brand-border z-50 hidden lg:flex flex-col shadow-sm hidden-mobile">
         <div class="p-5 border-b border-brand-border flex items-center justify-between">
             <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-6 w-auto">
+            <button onclick="toggleSidebar()" class="lg:hidden p-2 text-brand-lightText">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
         </div>
         <nav class="flex-grow p-4 space-y-1 overflow-y-auto no-scrollbar">
             <p class="px-3 text-[10px] font-bold text-brand-lightText uppercase tracking-widest mb-3">Main Menu</p>
@@ -48,13 +60,16 @@
 
     <div class="flex-grow lg:ml-64 flex flex-col min-h-screen w-full">
         <header class="bg-white border-b border-brand-border sticky top-0 z-30 px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center space-x-2">
+            <div class="flex items-center space-x-3">
+                <button onclick="toggleSidebar()" class="lg:hidden p-1.5 rounded-lg bg-gray-50 border border-brand-border text-brand-darkText">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
                 <span class="text-xs font-bold text-brand-darkText uppercase tracking-tight">Fund Wallet</span>
             </div>
             
             <div class="flex items-center space-x-3">
-                <div class="text-right hidden xs:block">
-                    <p id="userName" class="text-[10px] font-bold text-brand-darkText leading-tight">Loading...</p>
+                <div class="text-right hidden sm:block">
+                    <p id="userName" class="text-[10px] font-bold text-brand-darkText leading-tight">User Account</p>
                     <p id="currentBalance" class="text-[9px] text-brand-blue font-bold tracking-tighter">Bal: $0.00</p>
                 </div>
                 <div class="w-8 h-8 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center text-[11px] font-bold border border-brand-blue/20">
@@ -67,57 +82,64 @@
             <div class="bg-white rounded-[24px] md:rounded-[32px] border border-brand-border shadow-sm overflow-hidden">
                 <div class="flex flex-col md:flex-row">
                     
-                    <div class="md:w-1/3 bg-brand-blue/5 p-6 md:p-8 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-brand-border">
-                        <div class="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-4">
-                            <svg class="w-7 h-7 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
+                    <div class="md:w-2/5 bg-brand-blue/5 p-6 md:p-8 border-b md:border-b-0 md:border-r border-brand-border">
+                        <h2 class="text-sm font-black text-brand-darkText uppercase tracking-widest mb-4">How to Top-up</h2>
+                        <ul class="space-y-4">
+                            <li class="flex gap-3">
+                                <span class="flex-shrink-0 w-5 h-5 bg-brand-blue text-white text-[10px] font-bold rounded-full flex items-center justify-center">1</span>
+                                <p class="text-[11px] leading-relaxed">Enter the <b>USD amount</b> you wish to add to your SMSGlobe wallet.</p>
+                            </li>
+                            <li class="flex gap-3">
+                                <span class="flex-shrink-0 w-5 h-5 bg-brand-blue text-white text-[10px] font-bold rounded-full flex items-center justify-center">2</span>
+                                <p class="text-[11px] leading-relaxed">Review the <b>Naira (NGN)</b> equivalent calculated at the current admin rate.</p>
+                            </li>
+                            <li class="flex gap-3">
+                                <span class="flex-shrink-0 w-5 h-5 bg-brand-blue text-white text-[10px] font-bold rounded-full flex items-center justify-center">3</span>
+                                <p class="text-[11px] leading-relaxed">Complete payment via <b>Flutterwave</b> using Card, Bank Transfer, or USSD.</p>
+                            </li>
+                        </ul>
+                        <div class="mt-8 p-4 bg-orange-50 rounded-xl border border-orange-100">
+                            <p class="text-[10px] text-brand-orange font-bold uppercase tracking-tight mb-1">Important Note</p>
+                            <p class="text-[10px] text-brand-midText leading-snug">Do not refresh the page while your transaction is being processed to avoid duplicate charges.</p>
                         </div>
-                        <h2 class="text-base md:text-lg font-bold text-brand-darkText text-center uppercase tracking-tight">Instant Topup</h2>
-                        <p class="text-[10px] md:text-[11px] text-brand-lightText text-center mt-2 leading-relaxed max-w-[200px]">
-                            Credits are applied to your balance instantly after verification.
-                        </p>
                     </div>
 
-                    <div class="flex-1 p-5 md:p-10">
-                        
+                    <div class="flex-1 p-6 md:p-10">
                         <div class="mb-6">
-                            <label class="text-[9px] font-black text-brand-lightText uppercase tracking-[0.15em] mb-3 block">Quick Select Amount</label>
+                            <label class="text-[9px] font-black text-brand-lightText uppercase tracking-[0.15em] mb-3 block">Choose Amount</label>
                             <div class="grid grid-cols-4 gap-2">
-                                <button onclick="setAmount(30)" class="py-2.5 bg-white border border-brand-border rounded-xl text-[11px] font-bold hover:border-brand-blue hover:text-brand-blue transition-all active:scale-95">$30</button>
-                                <button onclick="setAmount(50)" class="py-2.5 bg-white border border-brand-border rounded-xl text-[11px] font-bold hover:border-brand-blue hover:text-brand-blue transition-all active:scale-95">$50</button>
-                                <button onclick="setAmount(100)" class="py-2.5 bg-white border border-brand-border rounded-xl text-[11px] font-bold hover:border-brand-blue hover:text-brand-blue transition-all active:scale-95">$100</button>
-                                <button onclick="setAmount(1000)" class="py-2.5 bg-white border border-brand-border rounded-xl text-[11px] font-bold hover:border-brand-blue hover:text-brand-blue transition-all active:scale-95">$1k</button>
+                                <button onclick="setAmount(30, this)" class="quick-btn py-2.5 bg-white border border-brand-border rounded-xl text-[11px] font-bold hover:border-brand-blue hover:text-brand-blue transition-all active:scale-95">$30</button>
+                                <button onclick="setAmount(50, this)" class="quick-btn py-2.5 bg-white border border-brand-border rounded-xl text-[11px] font-bold hover:border-brand-blue hover:text-brand-blue transition-all active:scale-95">$50</button>
+                                <button onclick="setAmount(100, this)" class="quick-btn py-2.5 bg-white border border-brand-border rounded-xl text-[11px] font-bold hover:border-brand-blue hover:text-brand-blue transition-all active:scale-95">$100</button>
+                                <button onclick="setAmount(1000, this)" class="quick-btn py-2.5 bg-white border border-brand-border rounded-xl text-[11px] font-bold hover:border-brand-blue hover:text-brand-blue transition-all active:scale-95">$1k</button>
                             </div>
                         </div>
 
                         <div class="mb-6">
-                            <label class="text-[9px] font-black text-brand-lightText uppercase tracking-[0.15em] mb-2 block">Amount to Credit (USD)</label>
+                            <label class="text-[9px] font-black text-brand-lightText uppercase tracking-[0.15em] mb-2 block">Custom USD Amount</label>
                             <div class="relative">
                                 <span class="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-brand-darkText text-lg">$</span>
                                 <input type="number" id="usdInput" placeholder="0.00" inputmode="decimal" class="w-full bg-gray-50 border border-brand-border rounded-2xl py-4 pl-10 pr-6 text-xl font-black text-brand-darkText focus:ring-4 focus:ring-brand-blue/5 outline-none transition-all">
                             </div>
                         </div>
 
-                        <div class="bg-brand-darkText rounded-[20px] p-5 md:p-7 mb-8 text-white shadow-xl shadow-brand-blue/20">
+                        <div class="bg-brand-darkText rounded-[24px] p-6 mb-8 text-white shadow-xl shadow-brand-blue/20">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <p class="text-[9px] font-bold text-white/50 uppercase tracking-[0.2em] mb-1">Total Payable in Naira</p>
-                                    <h4 class="text-2xl md:text-3xl font-black tracking-tight" id="ngnDisplay">₦0.00</h4>
+                                    <p class="text-[9px] font-bold text-white/40 uppercase tracking-[0.2em] mb-1">Payable Amount</p>
+                                    <h4 class="text-2xl md:text-3xl font-black tracking-tighter" id="ngnDisplay">₦0.00</h4>
                                 </div>
-                                <div class="text-right flex flex-col items-end">
-                                     <img src="https://i.imgur.com/vH3vNf4.png" alt="Paystack" class="h-4 opacity-90 brightness-200">
-                                     <span class="text-[8px] text-white/30 mt-2 font-medium tracking-widest uppercase">Safe & Secure</span>
+                                <div class="text-right">
+                                     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Flutterwave_Logo.png/1200px-Flutterwave_Logo.png" alt="Flutterwave" class="h-4 object-contain ml-auto filter brightness-0 invert opacity-80">
+                                     <span class="text-[8px] text-white/30 mt-2 block font-bold uppercase tracking-widest">via Flutterwave</span>
                                 </div>
                             </div>
                         </div>
 
                         <button id="initiateBtn" class="w-full bg-brand-blue text-white py-4 md:py-5 rounded-2xl font-bold shadow-lg shadow-brand-blue/20 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-2">
-                            <span>Proceed to Payment</span>
+                            <span>Pay Securely Now</span>
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         </button>
-                        
-                        <p class="text-[9px] text-brand-lightText text-center mt-5 uppercase tracking-widest font-bold opacity-60">Verified by SMSGlobe Financial Systems</p>
                     </div>
                 </div>
             </div>
@@ -128,9 +150,24 @@
         let currentRate = 1380;
         let currentMarkup = 0;
 
-        // Sync inputs and calculations
-        function setAmount(val) {
+        // Toggle Mobile Sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            if (sidebar.classList.contains('hidden-mobile')) {
+                sidebar.classList.replace('hidden-mobile', 'open-mobile');
+                overlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.replace('open-mobile', 'hidden-mobile');
+                overlay.classList.add('hidden');
+            }
+        }
+
+        function setAmount(val, btn) {
             document.getElementById('usdInput').value = val;
+            document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('btn-active'));
+            if(btn) btn.classList.add('btn-active');
             calculateTotal();
         }
 
@@ -138,7 +175,6 @@
             try {
                 const response = await fetch('/api/get-system-settings'); 
                 const data = await response.json();
-
                 if (data.success && data.settings) {
                     currentRate = data.settings.exchangeRate || 1380;
                     currentMarkup = data.settings.globalMarkup || 0;
@@ -146,18 +182,15 @@
                 }
             } catch (err) {
                 console.error("Sync Error:", err);
-                // Fallback to defaults if sync fails
                 calculateTotal();
             }
         }
 
         function calculateTotal() {
             const usdAmount = parseFloat(document.getElementById('usdInput').value) || 0;
-            
             if (usdAmount > 0) {
                 const totalWithMarkup = usdAmount + currentMarkup; 
                 const finalNGN = totalWithMarkup * currentRate;
-
                 document.getElementById('ngnDisplay').innerText = `₦${finalNGN.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
@@ -167,10 +200,11 @@
             }
         }
 
-        // Attach listener to input
-        document.getElementById('usdInput').addEventListener('input', calculateTotal);
+        document.getElementById('usdInput').addEventListener('input', () => {
+            document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('btn-active'));
+            calculateTotal();
+        });
 
-        // Run on page load
         syncWithBackend();
     </script>
 </body>

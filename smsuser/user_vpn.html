@@ -237,21 +237,25 @@
         }
 
      
-
-     function renderVPNs() {
+function renderVPNs() {
     const grid = document.getElementById('vpnGrid');
     const loader = document.getElementById('vpnLoading');
     const emptyState = document.getElementById('emptyState');
     
     if (loader) loader.classList.add('hidden');
     
-    // 1. STRICT FILTERING (Category Isolation)
+    // 1. IMPROVED FILTERING (Aggressive Category Isolation)
     const filtered = allVPNs.filter(vpn => {
-        const deviceType = (vpn.deviceType || '').trim().toLowerCase();
+        // We clean the string and provide a fallback 'phone' if the field is missing
+        const rawType = vpn.deviceType || 'Phone'; 
+        const deviceType = rawType.trim().toLowerCase();
         const categoryTarget = currentCategory.toLowerCase();
+        
+        // This ensures a PC product CANNOT show in Phone, and vice versa.
         return deviceType === categoryTarget;
     });
 
+    // 2. EMPTY STATE LOGIC
     if (filtered.length === 0) {
         grid.classList.add('hidden');
         emptyState.classList.remove('hidden');
@@ -259,21 +263,19 @@
         return;
     }
 
-    // 2. SMART SORTING (Push Out of Stock to Bottom)
-    // This sorts by stock status: In-stock (true/1) comes before Out-of-stock (false/0)
+    // 3. SMART SORTING (In-Stock always at the top)
     const sorted = filtered.sort((a, b) => {
         const aStock = (a.stock || 0) > 0;
         const bStock = (b.stock || 0) > 0;
-        
-        if (aStock && !bStock) return -1; // a comes first
-        if (!aStock && bStock) return 1;  // b comes first
-        return 0; // maintain original order if both are same status
+        if (aStock && !bStock) return -1;
+        if (!aStock && bStock) return 1;
+        return 0;
     });
 
     emptyState.classList.add('hidden');
     grid.classList.remove('hidden');
 
-    // 3. RENDER THE SORTED LIST
+    // 4. RENDER
     grid.innerHTML = sorted.map(vpn => {
         const isOutOfStock = (vpn.stock || 0) <= 0;
         return `
@@ -294,7 +296,7 @@
 
                 <div class="bg-brand-background rounded-lg p-1.5 mb-3 border border-brand-border/50">
                     <select id="plan-${vpn._id}" ${isOutOfStock ? 'disabled' : ''} 
-                        class="w-full bg-transparent text-[10px] md:text-xs font-bold outline-none cursor-pointer truncate">
+                        class="w-full bg-transparent text-[10px] md:text-xs font-bold outline-none cursor-pointer">
                         ${vpn.plans.map((p, i) => {
                             const price = parseFloat(p.price).toFixed(2);
                             return `<option value="${i}">${p.duration} - $${price}</option>`;

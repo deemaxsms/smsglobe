@@ -67,6 +67,56 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
                 <span>VPN</span>
             </a>
+               <a href="send_gifts.html" class="flex items-center gap-3 px-4 py-3 text-brand-midText hover:bg-gray-50 rounded-xl text-[13px] font-semibold transition-all">
+            <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path>
+            </svg>
+            <span>Send Gifts</span>
+        </a>
+
+        <a href="user_proxy.html" class="flex items-center gap-3 px-4 py-3 text-brand-midText hover:bg-gray-50 rounded-xl text-[13px] font-semibold transition-all">
+            <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path>
+            </svg>
+            <span>Proxies</span>
+        </a>
+
+        <a href="esim_refill.html" class="flex items-center gap-3 px-4 py-3 text-brand-midText hover:bg-gray-50 rounded-xl text-[13px] font-semibold transition-all">
+            <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+            </svg>
+            <span>eSIMs Refill</span>
+        </a>
+
+        <a href="esim_activation.html" class="flex items-center gap-3 px-4 py-3 text-brand-midText hover:bg-gray-50 rounded-xl text-[13px] font-semibold transition-all">
+            <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+            </svg>
+            <span>eSIMs Activation</span>
+        </a>
+
+        <a href="user_rdp.html" class="flex items-center gap-3 px-4 py-3 text-brand-midText hover:bg-gray-50 rounded-xl text-[13px] font-semibold transition-all">
+            <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+            </svg>
+            <span>RDP</span>
+        </a>
+
+        <a href="user_profile.html" class="flex items-center gap-3 px-4 py-3 text-brand-midText hover:bg-gray-50 rounded-xl text-[13px] font-semibold transition-all">
+            <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+            </svg>
+            <span>Profile</span>
+        </a>
+
+    <div class="p-4 border-t border-brand-border">
+        <button onclick="logout()" class="flex items-center gap-3 w-full px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl text-[13px] font-bold transition-all">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+            </svg>
+            <span>Log Out</span>
+        </button>
+    </div>
         </nav>
     </aside>
 
@@ -285,7 +335,7 @@ async function fetchUserProfile() {
             emptyState.classList.add('hidden');
             grid.classList.remove('hidden');
 
-            grid.innerHTML = filtered.map(vpn => {
+          grid.innerHTML = filtered.map(vpn => {
     const isOutOfStock = (vpn.stock || 0) <= 0;
     return `
     <div class="bg-white border border-brand-border rounded-2xl shadow-sm flex flex-col overflow-hidden transition-all ${isOutOfStock ? 'opacity-60' : 'hover:shadow-md'}">
@@ -295,16 +345,16 @@ async function fetchUserProfile() {
         </div>
         <div class="p-3 md:p-5 flex flex-col flex-grow">
             <div class="mb-3">
-                <h3 class="font-bold text-brand-darkText text-[11px] md:text-xs uppercase truncate">${vpn.name}</h3>
-                <p class="text-[10px] text-brand-lightText font-medium">${vpn.region || 'Global'}</p>
-                <span class="inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded ${isOutOfStock ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-500'}">
+                <h3 class="font-bold text-brand-darkText text-[10px] md:text-xs uppercase truncate leading-tight">${vpn.name}</h3>
+                <p class="text-[9px] text-brand-lightText font-medium">${vpn.region || 'Global'}</p>
+                <span class="inline-block mt-1 text-[8px] font-bold px-1.5 py-0.5 rounded ${isOutOfStock ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-500'}">
                     ${isOutOfStock ? 'Out of Stock' : `In Stock: ${vpn.stock}`}
                 </span>
             </div>
 
-            <div class="bg-brand-background rounded-lg mb-3 border border-brand-border/50 overflow-hidden">
+            <div class="bg-brand-background rounded-xl mb-3 border border-brand-border/50 overflow-hidden">
                 <select id="plan-${vpn._id}" ${isOutOfStock ? 'disabled' : ''} 
-                    class="w-full bg-transparent px-2 py-1.5 text-[10px] md:text-xs font-bold outline-none cursor-pointer appearance-none">
+                    class="w-full bg-transparent px-2 py-2 text-[9px] md:text-xs font-black text-brand-darkText outline-none cursor-pointer appearance-none tracking-tight">
                     ${vpn.plans.map((p, i) => `
                         <option value="${i}">
                             ${p.duration || 'Plan'} - ₦${parseFloat(p.price).toLocaleString()}
@@ -314,7 +364,7 @@ async function fetchUserProfile() {
             </div>
 
             <button onclick="buyVPN('${vpn._id}')" ${isOutOfStock ? 'disabled' : ''} 
-                class="mt-auto w-full py-2.5 ${isOutOfStock ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-brand-blue text-white hover:bg-blue-700'} text-[10px] font-bold rounded-lg transition-all active-scale">
+                class="mt-auto w-full py-2.5 ${isOutOfStock ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-brand-blue text-white hover:bg-blue-700'} text-[10px] font-bold rounded-lg transition-all active-scale shadow-sm">
                 ${isOutOfStock ? 'Unavailable' : 'Purchase Now'}
             </button>
         </div>

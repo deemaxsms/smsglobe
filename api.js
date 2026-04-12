@@ -548,6 +548,7 @@ app.all('/api/:action', async (req, res) => {
             if (req.method === 'DELETE') return handleDeleteProxy(req, res);
             break;
         case 'transactions': return handleAllTransactions(req, res);
+        case 'user-transactions': return handleGetUserTransactions(req, res);
         case 'esim-refill': 
             if (req.method === 'POST') return handleEsimRefill(req, res);
             break;
@@ -1410,7 +1411,9 @@ async function handleVerifyTopup(req, res) {
     if (!transactionId) {
         return res.status(400).json({ success: false, message: "Transaction ID is required" });
     }
+
     try {
+        // 1. Verify with Flutterwave
         const response = await fetch(`https://api.flutterwave.com/v3/transactions/${transactionId}/verify`, {
             method: "GET",
             headers: { 
@@ -1418,56 +1421,77 @@ async function handleVerifyTopup(req, res) {
                 "Content-Type": "application/json"
             },
         });
+
         const flwData = await response.json();
+
         if (flwData.status === "success" && flwData.data.status === "successful") {
             const { userId, usdAmount } = flwData.data.meta;
             const txRef = flwData.data.tx_ref;
+            const flwAmountNGN = flwData.data.amount;
+
+            // 2. CRITICAL: Check if this transaction has already been processed
+            const existingTx = await Transaction.findOne({ reference: txRef });
+            
+            if (existingTx) {
+                // Return success immediately without incrementing balance again
+                return res.json({ 
+                    success: true, 
+                    amountUSD: existingTx.amountUSD,
+                    amountNGN: existingTx.amountNGN,
+                    newBalance: existingTx.balanceAfter,
+                    message: "Transaction already processed." 
+                });
+            }
+
+            // 3. Logic to determine USD amount to credit
             let amountCreditUSD = parseFloat(usdAmount);
             if (isNaN(amountCreditUSD)) {
                 const settings = await SystemSettings.findOne();
                 const rate = settings?.exchangeRate || 1380;
-                amountCreditUSD = flwData.data.amount / rate;
+                amountCreditUSD = flwAmountNGN / rate;
             }
-            const existingTx = await Transaction.findOne({ reference: txRef });
-            if (existingTx) {
-                return res.json({ 
-                    success: true, 
-                    amountUSD: amountCreditUSD,
-                    amountNGN: flwData.data.amount,
-                    newBalance: existingTx.balanceAfter,
-                    message: "Already credited" 
-                });
-            }
-            const updatedUser = await User.findByIdAndUpdate(
-                userId,
-                { $inc: { balance: amountCreditUSD } },
-                { new: true, runValidators: true }
-            );
+
+            // 4. Atomic Update: Increment balance and record transaction
+            // We find the user first to get 'balanceBefore' accurately
+            const user = await User.findById(userId);
+            if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+            const balanceBefore = user.balance;
+            const balanceAfter = balanceBefore + amountCreditUSD;
+
+            // Save the transaction record
             await Transaction.create({
-                userId: updatedUser._id,
+                userId: user._id,
                 type: 'credit',
                 purpose: 'deposit',
                 amountUSD: amountCreditUSD,
-                amountNGN: flwData.data.amount,
-                exchangeRate: flwData.data.amount / amountCreditUSD,
+                amountNGN: flwAmountNGN,
+                exchangeRate: flwAmountNGN / amountCreditUSD,
                 status: 'successful',
                 reference: txRef,
-                balanceBefore: updatedUser.balance - amountCreditUSD,
-                balanceAfter: updatedUser.balance
+                balanceBefore: balanceBefore,
+                balanceAfter: balanceAfter,
+                metadata: flwData.data // Store raw response for audit trails
             });
+
+            // Update user balance
+            user.balance = balanceAfter;
+            await user.save();
+
             return res.json({ 
                 success: true, 
                 amountUSD: amountCreditUSD,
-                amountNGN: flwData.data.amount,
-                newBalance: updatedUser.balance,
+                amountNGN: flwAmountNGN,
+                newBalance: user.balance,
                 message: "Wallet funded successfully!" 
             });
         }
-        return res.status(400).json({ success: false, message: "Verification failed" });
+
+        return res.status(400).json({ success: false, message: "Payment verification failed at gateway" });
 
     } catch (err) {
-        console.error("CRITICAL ERROR:", err);
-        return res.status(500).json({ success: false, message: "Server error" });
+        console.error("CRITICAL TOPUP ERROR:", err);
+        return res.status(500).json({ success: false, message: "Internal server error during verification" });
     }
 }
 
@@ -3117,6 +3141,51 @@ async function handleGetSystemStatus(req, res) {
     } catch (err) {
         // If the DB fails, we default to false so we don't lock everyone out by accident
         res.json({ success: false, maintenanceMode: false }); 
+    }
+}
+
+async function handleGetUserTransactions(req, res) {
+    try {
+        // 1. Verify Authentication
+        const user = await verifyUser(req);
+        if (!user) {
+            return res.status(401).json({ success: false, message: "Unauthorized" });
+        }
+
+        // 2. Get Query Filters
+        // We look for 'deposit' purpose for the Topup page history
+        const { type } = req.query; 
+        let query = { userId: user._id };
+
+        if (type === 'topup') {
+            query.purpose = 'deposit';
+        }
+
+        // 3. Fetch Transactions
+        // Sort by createdAt -1 to show the newest transactions first
+        const transactions = await Transaction.find(query)
+            .sort({ createdAt: -1 })
+            .limit(50); // Limit to last 50 for performance
+
+        return res.json({
+            success: true,
+            transactions: transactions.map(tx => ({
+                id: tx._id,
+                amountUSD: tx.amountUSD,
+                amountNGN: tx.amountNGN,
+                status: tx.status,
+                reference: tx.reference,
+                purpose: tx.purpose,
+                createdAt: tx.createdAt
+            }))
+        });
+
+    } catch (error) {
+        console.error("Error fetching transactions:", error);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Failed to fetch transaction history" 
+        });
     }
 }
 // --- 8. STARTUP ---

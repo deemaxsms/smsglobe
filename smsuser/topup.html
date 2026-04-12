@@ -204,6 +204,42 @@
                         </button>
                     </div>
                 </div>
+
+                <div class="mt-10">
+    <div class="flex items-center justify-between mb-5 px-2">
+        <div>
+            <h3 class="text-sm font-black text-brand-darkText uppercase tracking-widest">Top-up History</h3>
+            <p class="text-[11px] text-brand-lightText">View your recent wallet funding activities</p>
+        </div>
+        <button onclick="fetchTransactionHistory()" class="p-2 text-brand-blue hover:bg-brand-blue/5 rounded-lg transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+    </div>
+
+    <div class="bg-white rounded-[24px] border border-brand-border shadow-sm overflow-hidden">
+        <div class="overflow-x-auto no-scrollbar">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-50/50 border-b border-brand-border">
+                        <th class="px-6 py-4 text-[10px] font-bold text-brand-lightText uppercase tracking-wider">Date & Time</th>
+                        <th class="px-6 py-4 text-[10px] font-bold text-brand-lightText uppercase tracking-wider">Amount</th>
+                        <th class="px-6 py-4 text-[10px] font-bold text-brand-lightText uppercase tracking-wider">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody" class="divide-y divide-brand-border">
+                    <tr>
+                        <td colspan="3" class="px-6 py-10 text-center">
+                            <div class="flex flex-col items-center gap-2">
+                                <div class="w-5 h-5 border-2 border-brand-blue/30 border-t-brand-blue rounded-full animate-spin"></div>
+                                <span class="text-[11px] font-medium text-brand-lightText">Loading history...</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
             </div>
         </main>
     </div>
@@ -396,7 +432,73 @@
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
 
-    window.onload = syncWithBackend;
+    // 3. Fetch Transaction History
+async function fetchTransactionHistory() {
+    const tableBody = document.getElementById('historyTableBody');
+    
+    try {
+        const response = await fetch('/api/user-transactions?type=topup', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+
+        if (!data.success || !data.transactions || data.transactions.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="3" class="px-6 py-12 text-center">
+                        <img src="https://i.imgur.com/G368osH.png" class="h-12 w-12 mx-auto mb-3 opacity-20" alt="No data">
+                        <p class="text-[11px] font-bold text-brand-lightText uppercase tracking-tight">No transactions found</p>
+                    </td>
+                </tr>`;
+            return;
+        }
+
+        tableBody.innerHTML = ''; // Clear loading state
+
+        data.transactions.forEach(tx => {
+            const date = new Date(tx.createdAt).toLocaleDateString('en-GB', {
+                day: '2-digit', month: 'short', year: 'numeric'
+            });
+            const time = new Date(tx.createdAt).toLocaleTimeString('en-GB', {
+                hour: '2-digit', minute: '2-digit'
+            });
+
+            // Status Styling Logic
+            let statusClass = "bg-gray-100 text-gray-600";
+            if (tx.status === 'successful' || tx.status === 'completed') statusClass = "bg-green-100 text-green-700";
+            if (tx.status === 'failed') statusClass = "bg-red-100 text-red-700";
+            if (tx.status === 'cancelled' || tx.status === 'pending') statusClass = "bg-orange-100 text-orange-700";
+
+            tableBody.innerHTML += `
+                <tr class="hover:bg-gray-50/50 transition-colors">
+                    <td class="px-6 py-4">
+                        <p class="text-[12px] font-bold text-brand-darkText">${date}</p>
+                        <p class="text-[10px] text-brand-lightText">${time}</p>
+                    </td>
+                    <td class="px-6 py-4">
+                        <p class="text-[12px] font-black text-brand-darkText">$${Number(tx.amountUSD).toFixed(2)}</p>
+                        <p class="text-[9px] font-bold text-brand-blue uppercase">₦${Number(tx.amountNGN || 0).toLocaleString()}</p>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${statusClass}">
+                            ${tx.status}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        });
+
+    } catch (err) {
+        console.error("History Fetch Error:", err);
+        tableBody.innerHTML = `<tr><td colspan="3" class="px-6 py-8 text-center text-red-500 text-[11px]">Failed to load history.</td></tr>`;
+    }
+}
+
+// Update window.onload to include history
+window.onload = () => {
+    syncWithBackend();
+    fetchTransactionHistory();
+};
 </script>
 </body>
 </html>

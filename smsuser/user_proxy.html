@@ -283,6 +283,38 @@
             </div>
         </button>
     </div>
+<div id="proxyModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
+    <div id="modalContent" class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl">
+        
+        <div id="confirmState" class="p-8 text-center">
+            <div class="w-16 h-16 bg-brand-background text-brand-blue rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <h2 class="text-xl font-bold text-brand-darkText mb-2">Confirm Proxy Purchase</h2>
+            
+            <div class="flex flex-col gap-3 mb-6">
+                <div class="py-2 px-4 bg-gray-50 rounded-xl border border-brand-border">
+                    <p class="text-[10px] font-bold text-brand-lightText uppercase tracking-tight">Current Balance</p>
+                    <p id="modalUserBalance" class="text-lg font-black text-brand-blue">$0.00</p>
+                </div>
+                <div class="py-2 px-4 bg-blue-50/50 rounded-xl border border-brand-blue/10">
+                    <p class="text-[10px] font-bold text-brand-blue uppercase tracking-tight">Amount to Deduct</p>
+                    <p id="modalPurchaseAmount" class="text-lg font-black text-brand-darkText">$0.00</p>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="closeModal()" class="flex-1 py-3 border border-brand-border rounded-xl font-bold text-xs uppercase text-brand-midText">Cancel</button>
+                <button id="finalConfirmBtn" class="flex-1 py-3 bg-brand-blue text-white rounded-xl font-bold text-xs uppercase">Confirm & Pay</button>
+            </div>
+        </div>
+
+        <div id="successState" class="hidden p-8 text-center">
+            </div>
+    </div>
+</div>
 
   <button onclick="toggleSupportMenu()" 
         id="supportTrigger"
@@ -299,7 +331,7 @@
     const CAT_IMAGE_URL = 'https://i.imgur.com/n5ZZeLf.png';
     let allProxies = [];
     let userBalance = 0;
-
+let currentPendingPurchase = null;
 
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('-translate-x-full');
@@ -458,24 +490,51 @@ function showCategories() {
 }
     
  
-   /* --- UPDATED JAVASCRIPT FOR PROXY PAGE --- */
-
 async function buyProxy(proxyId) {
     const planIndex = document.getElementById(`plan-${proxyId}`).value;
     const token = localStorage.getItem('userToken');
-    const btn = document.getElementById(`btn-${proxyId}`);
+    
+    // 1. Find the selected proxy and plan price
+    const proxy = allProxies.find(p => p._id === proxyId);
+    const selectedPlan = proxy.plans[planIndex];
 
-    // UI Feedback: Loading state
-    const originalText = btn.innerText;
+    // 2. Fetch latest balance from backend (to ensure it's accurate)
+    try {
+        const res = await fetch(`${API_BASE_URL}/user-profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const userData = await res.json();
+        
+        if (userData.success) {
+            // Update Modal UI
+            document.getElementById('modalUserBalance').innerText = `$${userData.user.balance.toFixed(2)}`;
+            document.getElementById('modalPurchaseAmount').innerText = `$${(selectedPlan.price / 1380).toFixed(2)}`; // Adjust rate if needed
+            
+            // Show Modal and Confirmation State
+            document.getElementById('proxyModal').classList.remove('hidden');
+            document.getElementById('confirmState').classList.remove('hidden');
+            document.getElementById('successState').classList.add('hidden');
+
+            // Store info for the final step
+            currentPendingPurchase = { proxyId, planIndex };
+
+            // Attach final action to the button
+            document.getElementById('finalConfirmBtn').onclick = executeFinalPurchase;
+        }
+    } catch (err) {
+        alert("Could not verify balance. Please try again.");
+    }
+}
+
+async function executeFinalPurchase() {
+    if (!currentPendingPurchase) return;
+
+    const { proxyId, planIndex } = currentPendingPurchase;
+    const token = localStorage.getItem('userToken');
+    const btn = document.getElementById('finalConfirmBtn');
+
     btn.disabled = true;
-    btn.innerHTML = `
-        <span class="flex items-center justify-center gap-2">
-            <svg class="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg> 
-            Processing...
-        </span>`;
+    btn.innerText = "Processing...";
 
     try {
         const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
@@ -484,33 +543,28 @@ async function buyProxy(proxyId) {
                 'Content-Type': 'application/json', 
                 'Authorization': `Bearer ${token}` 
             },
-            body: JSON.stringify({ 
-                proxyId, 
-                planIndex 
-            })
+            body: JSON.stringify({ proxyId, planIndex })
         });
 
         const data = await res.json();
 
         if (data.success) {
-            // Show Success Modal with the Activation Code
-            showSuccessModal(data.credentials);
-            // Refresh stock in background
-            refreshProxyData();
+            // Switch from Confirm UI to Success UI
+            document.getElementById('confirmState').classList.add('hidden');
+            document.getElementById('successState').classList.remove('hidden');
+            
+            // Inject credentials into success state
+            document.getElementById('modalCode').innerText = data.credentials.activationCode;
+            // ... other success UI updates
         } else {
-            // Check if it's an insufficient balance error
-            if (data.message.includes("Insufficient Balance")) {
-                alert(data.message);
-            } else {
-                alert("Error: " + data.message);
-            }
+            alert(data.message);
+            closeModal();
         }
     } catch (err) {
-        console.error("Purchase Error:", err);
-        alert("Network error. Please check your connection.");
+        alert("Transaction failed.");
     } finally {
         btn.disabled = false;
-        btn.innerText = originalText;
+        btn.innerText = "Confirm & Pay";
     }
 }
 

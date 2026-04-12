@@ -140,19 +140,25 @@
 
     <div id="vpnModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
         <div id="modalContent" class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl modal-animate">
-            <div id="confirmState" class="hidden">
-                <div class="p-8 text-center">
-                    <div class="w-16 h-16 bg-brand-background text-brand-blue rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </div>
-                    <h2 class="text-xl font-bold text-brand-darkText mb-2">Confirm Purchase</h2>
-                    <p class="text-xs text-brand-lightText mb-6">The plan amount will be deducted from your wallet balance. Do you wish to proceed?</p>
-                    <div class="flex gap-3">
-                        <button onclick="closeModal()" class="flex-1 py-3 border border-brand-border rounded-xl font-bold text-xs uppercase text-brand-midText">Cancel</button>
-                        <button id="finalConfirmBtn" class="flex-1 py-3 bg-brand-blue text-white rounded-xl font-bold text-xs uppercase">Confirm & Pay</button>
-                    </div>
-                </div>
-            </div>
+           <div id="confirmState" class="hidden">
+    <div class="p-8 text-center">
+        <div class="w-16 h-16 bg-brand-background text-brand-blue rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
+        <h2 class="text-xl font-bold text-brand-darkText mb-2">Confirm Purchase</h2>
+        
+        <div class="mb-4 py-2 px-4 bg-gray-50 rounded-xl border border-brand-border inline-block">
+            <p class="text-[10px] font-bold text-brand-lightText uppercase tracking-tight">Your Balance</p>
+            <p id="modalUserBalance" class="text-lg font-black text-brand-blue">$0.00</p>
+        </div>
+
+        <p class="text-xs text-brand-lightText mb-6">The plan amount will be deducted from your wallet balance. Do you wish to proceed?</p>
+        <div class="flex gap-3">
+            <button onclick="closeModal()" class="flex-1 py-3 border border-brand-border rounded-xl font-bold text-xs uppercase text-brand-midText">Cancel</button>
+            <button id="finalConfirmBtn" class="flex-1 py-3 bg-brand-blue text-white rounded-xl font-bold text-xs uppercase">Confirm & Pay</button>
+        </div>
+    </div>
+</div>
 
             <div id="successState" class="hidden">
                 <div class="bg-brand-blue p-6 text-center">
@@ -201,12 +207,29 @@
         const API_BASE_URL = '/api';
         let allVPNs = [];
         let currentCategory = 'Phone';
+        let userBalance = 0;
 
-        async function initVPNPage() {
-            const token = localStorage.getItem('userToken');
-            if (!token) { window.location.href = 'user_login.html'; return; }
-            await fetchVPNs();
+       async function initVPNPage() {
+    const token = localStorage.getItem('userToken');
+    if (!token) { window.location.href = 'user_login.html'; return; }
+    
+    // Fetch both VPNs and User Profile (for balance)
+    await Promise.all([fetchVPNs(), fetchUserProfile()]);
+}
+
+async function fetchUserProfile() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/user/profile`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+            userBalance = data.user.walletBalance; // Assuming your API returns this
         }
+    } catch (err) {
+        console.error("Failed to fetch balance", err);
+    }
+}
 
         async function fetchVPNs() {
             try {
@@ -294,46 +317,59 @@
         }
 
         async function buyVPN(vpnId) {
-            const planIndex = document.getElementById(`plan-${vpnId}`).value;
-            const modal = document.getElementById('vpnModal');
-            const confirmState = document.getElementById('confirmState');
-            const successState = document.getElementById('successState');
-            const confirmBtn = document.getElementById('finalConfirmBtn');
+    const planIndex = document.getElementById(`plan-${vpnId}`).value;
+    const vpnData = allVPNs.find(v => v._id === vpnId);
+    const selectedPlan = vpnData.plans[planIndex];
 
-            successState.classList.add('hidden');
-            confirmState.classList.remove('hidden');
-            modal.classList.remove('hidden');
+    const modal = document.getElementById('vpnModal');
+    const confirmState = document.getElementById('confirmState');
+    const successState = document.getElementById('successState');
+    const confirmBtn = document.getElementById('finalConfirmBtn');
 
-            confirmBtn.onclick = async () => {
-                confirmBtn.disabled = true;
-                confirmBtn.innerText = "Processing...";
-                try {
-                    const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json', 
-                            'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
-                        },
-                        body: JSON.stringify({ vpnId, planIndex: parseInt(planIndex) })
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        const vpnData = allVPNs.find(v => v._id === vpnId);
-                        showSuccessDetails(data.credentials, vpnData);
-                    } else {
-                        alert(data.message || "Insufficient Balance");
-                        closeModal();
-                    }
-                } catch (err) {
-                    alert("Connection Error");
-                    closeModal();
-                } finally {
-                    confirmBtn.disabled = false;
-                    confirmBtn.innerText = "Confirm & Pay";
-                }
-            };
+    // Update the balance display in the modal
+    document.getElementById('modalUserBalance').innerText = `$${parseFloat(userBalance).toFixed(2)}`;
+
+    // Optional: Highlight balance red if they can't afford it
+    if (userBalance < selectedPlan.price) {
+        document.getElementById('modalUserBalance').classList.add('text-red-600');
+    } else {
+        document.getElementById('modalUserBalance').classList.remove('text-red-600');
+        document.getElementById('modalUserBalance').classList.add('text-brand-blue');
+    }
+
+    successState.classList.add('hidden');
+    confirmState.classList.remove('hidden');
+    modal.classList.remove('hidden');
+
+    confirmBtn.onclick = async () => {
+        // ... (rest of your existing purchase logic remains the same)
+        confirmBtn.disabled = true;
+        confirmBtn.innerText = "Processing...";
+        try {
+            const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
+                },
+                body: JSON.stringify({ vpnId, planIndex: parseInt(planIndex) })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showSuccessDetails(data.credentials, vpnData);
+            } else {
+                alert(data.message || "Insufficient Balance");
+                closeModal();
+            }
+        } catch (err) {
+            alert("Connection Error");
+            closeModal();
+        } finally {
+            confirmBtn.disabled = false;
+            confirmBtn.innerText = "Confirm & Pay";
         }
-
+    };
+}
       function showSuccessDetails(creds, vpnData) {
     document.getElementById('confirmState').classList.add('hidden');
     document.getElementById('successState').classList.remove('hidden');

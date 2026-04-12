@@ -196,6 +196,21 @@
         </main>
     </div>
 
+    <div id="statusAlert" class="hidden p-8 rounded-3xl bg-white shadow-xl max-w-sm mx-auto border border-brand-border text-center">
+    <h2 id="statusTitle" class="text-lg font-bold text-brand-darkText mb-2"></h2>
+    <div id="statusMessage" class="text-xs text-brand-lightText mb-6"></div>
+    <button id="manualRedirectBtn" onclick="window.location.href='user_dashboard.html'" 
+            class="hidden w-full py-4 bg-brand-darkText text-white rounded-2xl font-bold text-xs uppercase shadow-lg active-scale transition-all">
+        Go to Dashboard Now
+    </button>
+    
+    <div class="mt-6 pt-4 border-t border-gray-100">
+        <p class="text-[9px] text-gray-400 leading-tight">
+            Security Note: All transactions on SMSGlobe are encrypted. If your balance doesn't reflect within 5 minutes, please reach out via the support bubble.
+        </p>
+    </div>
+</div>
+
 <script>
     const token = localStorage.getItem('userToken');
 
@@ -314,6 +329,7 @@ async function verifyPaymentOnLoad() {
         const alertBox = document.getElementById('statusAlert');
         const title = document.getElementById('statusTitle');
         const msg = document.getElementById('statusMessage');
+        const redirectBtn = document.getElementById('manualRedirectBtn');
 
         alertBox.classList.remove('hidden');
         title.innerText = "Verifying Transaction...";
@@ -331,19 +347,56 @@ async function verifyPaymentOnLoad() {
             const data = await response.json();
 
             if (data.success) {
-                title.innerText = "Wallet Funded!";
-                msg.innerHTML = `Success! New Balance: ₦${data.newBalance.toLocaleString()}`;
-                // Refresh balance in header
-                document.getElementById('currentBalance').innerText = `Bal: ₦${data.newBalance.toLocaleString()}`;
+                // SUCCESS STATE: Professional Green UI
+                alertBox.className = "p-6 rounded-3xl bg-emerald-50 border border-emerald-100 text-center animate-in fade-in zoom-in duration-500";
+                title.className = "text-xl font-black text-emerald-700 uppercase tracking-tight mb-2";
+                title.innerText = "Payment Confirmed!";
+                
+                msg.className = "text-emerald-600 text-sm leading-relaxed";
+                msg.innerHTML = `
+                    <p class="font-bold text-lg mb-1">₦${data.newBalance.toLocaleString()}</p>
+                    <p>Your wallet has been credited successfully. Our systems have synchronized your new balance.</p>
+                    <p class="mt-4 text-[10px] uppercase font-bold tracking-widest opacity-70">Redirecting to dashboard in <span id="countdown">3</span>s...</p>
+                `;
+
+                // Update Header Balance if element exists
+                const balanceEl = document.getElementById('currentBalance');
+                if(balanceEl) balanceEl.innerText = `Bal: ₦${data.newBalance.toLocaleString()}`;
+
+                // Show Manual Button
+                redirectBtn.classList.remove('hidden');
+
+                // 3-Second Redirect Logic
+                let timeLeft = 3;
+                const timer = setInterval(() => {
+                    timeLeft--;
+                    const countEl = document.getElementById('countdown');
+                    if(countEl) countEl.innerText = timeLeft;
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(timer);
+                        window.location.href = 'user_dashboard.html';
+                    }
+                }, 1000);
+
             } else {
-                title.innerText = "Verification Failed";
-                msg.innerText = data.message || "Please contact support.";
+                // ERROR STATE: Professional Red UI
+                alertBox.className = "p-6 rounded-3xl bg-rose-50 border border-rose-100 text-center";
+                title.className = "text-xl font-black text-rose-700 uppercase tracking-tight";
+                title.innerText = "Verification Encountered an Issue";
+                msg.className = "text-rose-600 text-sm mt-2";
+                msg.innerText = data.message || "We couldn't verify this transaction automatically. Please contact our 24/7 support with your Transaction ID.";
+                redirectBtn.classList.remove('hidden');
+                redirectBtn.innerText = "Return to Dashboard";
             }
         } catch (err) {
             console.error("Verification Error:", err);
+            title.innerText = "Connection Error";
+            msg.innerText = "Please check your internet and refresh the page.";
         }
     }
 }
+
     window.onload = () => {
         syncWithBackend();
         fetchTransactionHistory();

@@ -188,43 +188,53 @@
         </main>
     </div>
 
-  <div id="vpnModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
+<div id="vpnModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
     <div id="modalContent" class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl modal-animate">
         
-       <div id="confirmState" class="hidden">
-    <div class="p-8 text-center">
-        <div class="w-16 h-16 bg-brand-background text-brand-blue rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-        </div>
+        <div id="confirmState" class="hidden">
+            <div class="p-8 text-center">
+                <div class="w-16 h-16 bg-brand-background text-brand-blue rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
 
-        <h2 class="text-xl font-bold text-brand-darkText mb-2">Confirm Purchase</h2>
-        
-        <div class="mb-3 py-2 px-4 bg-gray-50 rounded-xl border border-brand-border inline-block w-full max-w-[240px]">
-            <p class="text-[10px] font-bold text-brand-lightText uppercase tracking-tight">Your Balance</p>
-            <p id="modalUserBalance" class="text-lg font-black text-brand-blue">₦0</p>
-        </div>
+                <h2 class="text-xl font-bold text-brand-darkText mb-2 uppercase tracking-tight">Confirm Purchase</h2>
+                
+                <div class="space-y-3 mb-6">
+                    <div class="py-2 px-4 bg-gray-50 rounded-xl border border-brand-border text-left">
+                        <p class="text-[10px] font-bold text-brand-lightText uppercase tracking-tight">Your Balance</p>
+                        <p id="modalUserBalance" class="text-lg font-black text-brand-blue">₦0</p>
+                    </div>
 
-        <div class="mb-6 py-2 px-4 bg-blue-50/50 rounded-xl border border-brand-blue/10 inline-block w-full max-w-[240px]">
-            <p class="text-[10px] font-bold text-brand-blue uppercase tracking-tight">Purchase Amount</p>
-            <p id="modalPurchaseAmount" class="text-lg font-black text-brand-darkText">₦0</p>
-        </div>
+                    <div class="py-2 px-4 bg-blue-50/50 rounded-xl border border-brand-blue/10 text-left">
+                        <p class="text-[10px] font-bold text-brand-blue uppercase tracking-tight">Purchase Amount</p>
+                        <p id="modalPurchaseAmount" class="text-lg font-black text-brand-darkText">₦0</p>
+                    </div>
+                </div>
 
-        <p class="text-xs text-brand-lightText mb-6">The plan amount will be deducted from your wallet balance. Do you wish to proceed?</p>
-        
-        <div class="flex gap-3">
-            <button onclick="closeModal()" class="flex-1 py-3 border border-brand-border rounded-xl font-bold text-xs uppercase text-brand-midText">Cancel</button>
-           <button id="finalConfirmBtn" class="flex-1 py-3 bg-brand-blue text-white rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2 disabled:opacity-70">
-    <span id="btnText">Confirm & Pay</span>
-    <svg id="btnLoader" class="hidden animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-    </svg>
-</button>
+                <p class="text-xs text-brand-lightText mb-6">The plan amount will be deducted from your wallet balance.</p>
+                
+                <div class="flex gap-3">
+                    <button onclick="closeModal()" class="flex-1 py-4 border border-brand-border rounded-xl font-bold text-xs uppercase text-brand-midText active-scale">Cancel</button>
+                    
+                    <button id="finalConfirmBtn" class="flex-1 py-4 bg-brand-blue text-white rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2 active-scale transition-all shadow-lg shadow-blue-100">
+                        <span id="btnText">Confirm & Pay</span>
+                        <svg id="btnLoader" class="hidden animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
+
+                    <a href="topup.html" id="modalTopupBtn" class="hidden flex-1 py-4 bg-emerald-600 text-white rounded-xl font-bold text-xs uppercase text-center flex items-center justify-center active-scale transition-all shadow-lg shadow-emerald-100">
+                        Topup Wallet
+                    </a>
+                </div>
+            </div>
         </div>
-    </div>
+        </div>
 </div>
+
         <div id="successState" class="hidden">
             <div class="bg-brand-blue p-6 text-center">
                 <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -392,6 +402,7 @@ async function fetchUserProfile() {
 async function buyVPN(vpnId) {
     const planIndex = document.getElementById(`plan-${vpnId}`).value;
     const vpnData = allVPNs.find(v => v._id === vpnId);
+    const token = localStorage.getItem('userToken');
     
     if (!vpnData || !vpnData.plans[planIndex]) {
         alert("Invalid plan selection.");
@@ -405,82 +416,91 @@ async function buyVPN(vpnId) {
     const confirmState = document.getElementById('confirmState');
     const successState = document.getElementById('successState');
     const confirmBtn = document.getElementById('finalConfirmBtn');
+    const topupBtn = document.getElementById('modalTopupBtn');
     const btnLoader = document.getElementById('btnLoader');
 
     const formatNaira = (amt) => {
         return '₦' + parseFloat(amt).toLocaleString('en-NG', {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
         });
     };
 
-    // UI Updates for Modal
-    document.getElementById('modalUserBalance').innerText = formatNaira(userBalance);
-    document.getElementById('modalPurchaseAmount').innerText = formatNaira(price);
-
-    if (userBalance < price) {
-        document.getElementById('modalUserBalance').className = 'text-red-600 font-bold';
-        confirmBtn.disabled = true;
-        confirmBtn.innerText = "Insufficient Funds";
-        confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
-    } else {
-        document.getElementById('modalUserBalance').className = 'text-brand-blue font-bold';
-        confirmBtn.disabled = false;
-        confirmBtn.innerText = "Confirm & Pay";
-        confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-    }
-
-    successState.classList.add('hidden');
-    confirmState.classList.remove('hidden');
-    modal.classList.remove('hidden');
-
-    confirmBtn.onclick = async () => {
-        confirmBtn.disabled = true;
-        if (btnLoader) btnLoader.classList.remove('hidden');
-        confirmBtn.innerText = "Securing Transaction...";
+    try {
+        // Fetch fresh balance to be certain
+        const res = await fetch(`${API_BASE_URL}/user-profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
         
-        try {
-            // Simulated delay for security verification
-            await new Promise(resolve => setTimeout(resolve, 2000));
+        if (data.success) {
+            const currentBalance = data.user ? data.user.balance : data.balance;
 
-            const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
-                },
-                body: JSON.stringify({ vpnId, planIndex: parseInt(planIndex) })
-            });
+            // UI Updates for Modal
+            document.getElementById('modalUserBalance').innerText = formatNaira(currentBalance);
+            document.getElementById('modalPurchaseAmount').innerText = formatNaira(price);
 
-            const data = await res.json();
-            
-            if (data.success) {
-                userBalance = data.balance; // Sync balance with backend exactly
-                const credentials = data.credentials || (data.order ? {
-    username: data.order.username || data.order.vpnCredentials?.username,
-    password: data.order.password || data.order.vpnCredentials?.password,
-    pcUsername: data.order.pcUsername,    // Added
-    pcPassword: data.order.pcPassword,    // Added
-    activationCode: data.order.activationCode,
-    instructions: data.order.instructions
-} : null);
-
-showSuccessDetails(credentials, vpnData);
-                showSuccessDetails(credentials, vpnData);
+            // Handle Insufficient Funds State
+            if (currentBalance < price) {
+                confirmBtn.classList.add('hidden');
+                topupBtn.classList.remove('hidden');
             } else {
-                alert(data.message || "Purchase failed");
-                closeModal();
+                confirmBtn.classList.remove('hidden');
+                topupBtn.classList.add('hidden');
+                
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = `<span>Confirm & Pay</span>`; 
             }
-        } catch (err) {
-            console.error("Purchase error:", err);
-            alert("Connection Error. Please check your network and try again.");
-            closeModal();
-        } finally {
-            confirmBtn.disabled = false;
-            if (btnLoader) btnLoader.classList.add('hidden');
-            confirmBtn.innerText = "Confirm & Pay";
+
+            if (successState) successState.classList.add('hidden');
+            confirmState.classList.remove('hidden');
+            modal.classList.remove('hidden');
+
+            confirmBtn.onclick = async () => {
+                confirmBtn.disabled = true;
+                if (btnLoader) btnLoader.classList.remove('hidden');
+                document.getElementById('btnText').innerText = "Processing...";
+                
+                try {
+                    const purchaseRes = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json', 
+                            'Authorization': `Bearer ${token}` 
+                        },
+                        body: JSON.stringify({ vpnId, planIndex: parseInt(planIndex) })
+                    });
+
+                    const pData = await purchaseRes.json();
+                    
+                    if (pData.success) {
+                        const credentials = pData.credentials || (pData.order ? {
+                            username: pData.order.username || pData.order.vpnCredentials?.username,
+                            password: pData.order.password || pData.order.vpnCredentials?.password,
+                            pcUsername: pData.order.pcUsername,
+                            pcPassword: pData.order.pcPassword,
+                            activationCode: pData.order.activationCode,
+                            instructions: pData.order.instructions
+                        } : null);
+
+                        showSuccessDetails(credentials, vpnData);
+                    } else {
+                        alert(pData.message || "Purchase failed");
+                        closeModal();
+                    }
+                } catch (err) {
+                    alert("Connection Error. Please check your network.");
+                    closeModal();
+                } finally {
+                    confirmBtn.disabled = false;
+                    if (btnLoader) btnLoader.classList.add('hidden');
+                    document.getElementById('btnText').innerText = "Confirm & Pay";
+                }
+            };
         }
-    };
+    } catch (err) {
+        console.error("Verification Error:", err);
+    }
 }
 
 function showSuccessDetails(creds, vpnData) {

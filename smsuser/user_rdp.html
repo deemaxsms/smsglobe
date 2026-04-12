@@ -296,6 +296,10 @@
     </div>
 
 <div id="receiptView" class="hidden fade-in space-y-6">
+    <span id="rAmount" class="hidden"></span>
+    <span id="rFullName" class="hidden"></span>
+    <span id="rEmail" class="hidden"></span>
+
     <div class="max-w-4xl mx-auto px-4 md:px-0"> 
         <div class="bg-white border border-brand-border rounded-3xl overflow-hidden shadow-sm">
             <div class="p-8 md:p-12 text-center border-b border-brand-border bg-gray-50/50">
@@ -332,12 +336,17 @@
                         <span id="rCPU" class="text-xs font-black text-brand-darkText text-right"></span>
                     </div>
 
+                    <div class="flex justify-between items-center py-4 border-b border-gray-100">
+                        <span class="text-[10px] font-bold text-brand-lightText uppercase tracking-wider shrink-0 mr-4">Total Paid</span>
+                        <span class="text-xs font-black text-emerald-600 text-right">₦<span id="displayRAmount">0.00</span></span>
+                    </div>
+
                     <div class="flex justify-between items-center py-4 border-b border-gray-100 md:border-b-0">
                         <span class="text-[10px] font-bold text-brand-lightText uppercase tracking-wider shrink-0 mr-4">Storage</span>
                         <span id="rStorage" class="text-xs font-black text-brand-darkText text-right"></span>
                     </div>
 
-                    <div class="flex justify-between items-center py-4">
+                    <div class="flex justify-between items-center py-4 md:col-span-2">
                         <span class="text-[10px] font-bold text-brand-lightText uppercase tracking-wider shrink-0 mr-4">Reference ID</span>
                         <span id="rID" class="font-mono text-[9px] md:text-[10px] bg-gray-100 px-2 py-1 rounded break-all text-right leading-tight"></span>
                     </div>
@@ -586,11 +595,9 @@ async function fetchUserProfile() {
 async function initiateRDPPayment() {
     const payBtn = document.getElementById('payBtn');
     const confirmBtn = document.getElementById('confirmPurchaseBtn');
-    const topupBtn = document.getElementById('topupBtn'); // Get the topup button
-    
-    if (!payBtn || !confirmBtn) return;
+    const topupBtn = document.getElementById('topupBtn'); 
 
-    // Reset UI state before processing
+    if (!payBtn || !confirmBtn) return;
     if (topupBtn) topupBtn.classList.add('hidden');
     confirmBtn.innerText = "Confirm & Pay Now";
     confirmBtn.classList.remove('bg-red-500', 'cursor-not-allowed');
@@ -599,24 +606,19 @@ async function initiateRDPPayment() {
 
     payBtn.innerText = "Verifying Balance...";
     payBtn.disabled = true;
-
-    // Refresh user balance from server
     const success = await fetchUserProfile();    
-    
     payBtn.innerText = "Pay Securely Now";
     payBtn.disabled = false;
 
     if (!success) {
-        alert("Could not verify balance.");
+        alert("Could not verify balance. Please check your connection.");
         return;
     }
-
-    // Logic: Convert USD Wallet (e.g. 32) to NGN using Admin Rate
     const EXCHANGE_RATE = Number(userBalances.rate) || 1380; 
     const usdValue = Number(userBalances.ngn); 
     const nairaEquivalent = usdValue * EXCHANGE_RATE;
 
-    // UI: Update Balance Displays
+    // 4. UI: Update Balance Displays in Modal
     const modalBalanceNGN = document.getElementById('modalBalanceNGN');
     const modalBalanceUSD = document.getElementById('modalBalanceUSD');
     const modalTotalDisplay = document.getElementById('modalTotalDue');
@@ -634,41 +636,29 @@ async function initiateRDPPayment() {
             maximumFractionDigits: 2
         });
     }
-
-    // UI: Update Total Due
-    const totalRequiredText = document.getElementById('summaryTotal').innerText;
+    const totalRequiredText = document.getElementById('summaryTotal')?.innerText || "₦0.00";
     if (modalTotalDisplay) {
         modalTotalDisplay.innerText = totalRequiredText;
     }
-
-    // Validation: Compare Wallet NGN vs Plan NGN
-    const numericPrice = parseFloat(totalRequiredText.replace(/[^\d.]/g, ''));
-    
-    // Check if user has enough funds
-    if (nairaEquivalent < numericPrice) {
-        // 1. Update Pay Button to Error State
+    const numericPrice = parseFloat(totalRequiredText.replace(/[^\d.]/g, ''));    
+    if (Math.floor(nairaEquivalent) < numericPrice) {
         confirmBtn.innerText = "Insufficient Funds";
-        confirmBtn.classList.remove('bg-brand-blue');
-        confirmBtn.classList.add('bg-red-500', 'cursor-not-allowed');
+        confirmBtn.classList.replace('bg-brand-blue', 'bg-red-500');
+        confirmBtn.classList.add('cursor-not-allowed');
         confirmBtn.disabled = true;
-
-        // 2. Show the Topup Button
         if (topupBtn) {
             topupBtn.classList.remove('hidden');
         }
     } else {
-        // Ensure buttons are in correct state for successful purchase
         confirmBtn.innerText = "Confirm & Pay Now";
         confirmBtn.classList.remove('bg-red-500', 'cursor-not-allowed');
         confirmBtn.classList.add('bg-brand-blue');
         confirmBtn.disabled = false;
 
-        // Hide Topup Button if balance is sufficient
         if (topupBtn) {
             topupBtn.classList.add('hidden');
         }
     }
-
     const modal = document.getElementById('paymentModal');
     if (modal) modal.classList.remove('hidden');
 }
@@ -746,41 +736,39 @@ function resetPurchaseButton(btn) {
 function closePaymentModal() {
     document.getElementById('paymentModal').classList.add('hidden');
 }
-   function showReceipt(order) {
+ function showReceipt(order) {
+    // 1. Handle view transitions
     selectionView?.classList.add('hidden');
     checkoutView?.classList.add('hidden');
     receiptView?.classList.remove('hidden');
     headerTitle.innerText = "Order Confirmed";
-
-    const meta = order.metadata || {};
+    const meta = order.metadata || {};    
     const setField = (id, value) => {
         const el = document.getElementById(id);
         if (el) el.innerText = value;
     };
-
-    // Logical displays for hardware specs
-    const cpuDisplay = meta.extraCPU > 0 ? `${meta.baseCPU || "2 Cores"} (+${meta.extraCPU} Cores)` : (meta.baseCPU || "Standard");
-    const storageDisplay = meta.extraStorage > 0 ? `${meta.baseStorage || "60GB"} (+${meta.extraStorage}GB)` : (meta.baseStorage || "Standard");
-
-    // Existing fields
+    const cpuDisplay = meta.extraCPU > 0 
+        ? `${meta.baseCPU || "2 Cores"} (+${meta.extraCPU} Cores)` 
+        : (meta.baseCPU || "Standard");
+        
+    const storageDisplay = meta.extraStorage > 0 
+        ? `${meta.baseStorage || "60GB"} (+${meta.extraStorage}GB)` 
+        : (meta.baseStorage || "Standard");
     setField('rPlan', order.planName);
     setField('rOS', meta.osChoice);
     setField('rRAM', meta.baseRAM);
     setField('rCPU', cpuDisplay);
     setField('rStorage', storageDisplay);
-    setField('rID', order.paymentReference || "N/A");
-
-    // NEW: Added fields for WhatsApp Admin contact logic
+    setField('rID', order.paymentReference || "N/A");    
+    setField('displayRAmount', order.amount ? order.amount.toLocaleString() : "0.00");
     setField('rAmount', order.amount ? order.amount.toLocaleString() : "N/A");
     setField('rFullName', order.fullName || "Customer");
-    setField('rEmail', order.userEmail || "N/A");
-    
+    setField('rEmail', order.userEmail || "N/A");    
     window.scrollTo(0, 0);
 }
 
-
-    function contactRDPAdmin() {
-    // Pulling the data from your UI elements
+ function contactRDPAdmin() {
+    // 1. Pulling core order data from the receipt UI
     const tid = document.getElementById('rID')?.innerText || "N/A";
     const plan = document.getElementById('rPlan')?.innerText || "N/A";
     const ram = document.getElementById('rRAM')?.innerText || "N/A";
@@ -788,12 +776,20 @@ function closePaymentModal() {
     const storage = document.getElementById('rStorage')?.innerText || "N/A";
     const os = document.getElementById('rOS')?.innerText || "N/A";
     
-    // Data for verification
+    // 2. Pulling verification data from the hidden tracking spans
     const amount = document.getElementById('rAmount')?.innerText || "N/A";
     const userEmail = document.getElementById('rEmail')?.innerText || "N/A";
-    const fullName = document.getElementById('rFullName')?.innerText || "Customer Name N/A";
+    const fullName = document.getElementById('rFullName')?.innerText || "Customer";
 
+    // 3. Generate a local timestamp for the admin
+    const timeSent = new Date().toLocaleString('en-NG', { 
+        dateStyle: 'medium', 
+        timeStyle: 'short' 
+    });
+
+    // 4. Construct the professional WhatsApp template
     const msg = `🚀 *SMSGlobe: NEW RDP PROVISIONING*\n` +
+                `📅 *DATE:* ${timeSent}\n` +
                 `__________________________________\n\n` +
                 `✅ *PAYMENT STATUS:* CONFIRMED\n` +
                 `🆔 *REF ID:* ${tid}\n` +
@@ -808,9 +804,11 @@ function closePaymentModal() {
                 `⚡ *CPU:* ${cpu}\n` +
                 `💾 *STORAGE:* ${storage}\n` +
                 `━━━━━━━━━━━━━━━━━━\n\n` +
-                `⚡ Please proceed with setup for this customer.`;
+                `⚡ *Admin:* Please proceed with setup for this customer.`;
 
-    window.open(`https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`, '_blank');
+    // 5. Open WhatsApp in a new tab
+    const whatsappUrl = `https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`;
+    window.open(whatsappUrl, '_blank');
 }
 
     function showSelectionView() {

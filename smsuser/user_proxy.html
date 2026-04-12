@@ -498,17 +498,22 @@ async function buyProxy(proxyId) {
     const proxy = allProxies.find(p => p._id === proxyId);
     const selectedPlan = proxy.plans[planIndex];
 
-    // 2. Fetch latest balance from backend (to ensure it's accurate)
     try {
         const res = await fetch(`${API_BASE_URL}/user-profile`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        const userData = await res.json();
+        const data = await res.json();
         
-        if (userData.success) {
+        if (data.success) {
+            // FIX: Check if balance is in data.balance or data.user.balance
+            const balance = data.user ? data.user.balance : data.balance;
+            
             // Update Modal UI
-            document.getElementById('modalUserBalance').innerText = `$${userData.user.balance.toFixed(2)}`;
-            document.getElementById('modalPurchaseAmount').innerText = `$${(selectedPlan.price / 1380).toFixed(2)}`; // Adjust rate if needed
+            document.getElementById('modalUserBalance').innerText = `$${Number(balance).toFixed(2)}`;
+            
+            // Calculate USD price (Cost in NGN / Rate)
+            const priceInUSD = selectedPlan.price / 1380;
+            document.getElementById('modalPurchaseAmount').innerText = `$${priceInUSD.toFixed(2)}`;
             
             // Show Modal and Confirmation State
             document.getElementById('proxyModal').classList.remove('hidden');
@@ -520,9 +525,12 @@ async function buyProxy(proxyId) {
 
             // Attach final action to the button
             document.getElementById('finalConfirmBtn').onclick = executeFinalPurchase;
+        } else {
+            alert(data.message || "Session expired. Please login again.");
         }
     } catch (err) {
-        alert("Could not verify balance. Please try again.");
+        console.error("Balance Verification Error:", err);
+        alert("Connection error. Please check your internet and try again.");
     }
 }
 

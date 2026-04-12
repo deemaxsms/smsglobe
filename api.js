@@ -135,6 +135,7 @@ const systemSettingsSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const SystemSettings = mongoose.models.SystemSettings || mongoose.model('SystemSettings', systemSettingsSchema, 'system_settings');
+
 const vpnSchema = new mongoose.Schema({
     // Product identification
     name: { type: String, required: true },
@@ -156,6 +157,9 @@ const vpnSchema = new mongoose.Schema({
     username: { type: String },
     password: { type: String, select: false },    
     activationCode: { type: String, select: false },
+    pcUsername: { type: String },
+    pcPassword: { type: String, select: false },
+    pcMethod: { type: String, enum: ['userpass', 'code'], default: 'userpass' },
     instructions: { type: String },
     
     price: { type: Number } 
@@ -928,12 +932,13 @@ async function handleManageUser(req, res) {
         return res.status(500).json({ success: false, message: err.message });
     }
 }
+
 async function handleGetVPNs(req, res) {
     try {
-        // We ensure 'deviceType' is included (along with the hidden password)
         const vpns = await VPN.find({})
             .sort({ createdAt: -1 })
-            .select('+password +deviceType'); 
+            // ADD: pcPassword and activationCode to the selection
+            .select('+password +pcPassword +activationCode +deviceType'); 
             
         res.json({ success: true, products: vpns }); 
     } catch (err) {

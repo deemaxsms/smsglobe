@@ -165,21 +165,22 @@
                     </div>
                 </div>
 
-                <div class="md:col-span-2">
-                    <label class="block text-[10px] font-bold text-brand-midText mb-1.5 uppercase tracking-widest">Target Device Type</label>
-                    <div class="grid grid-cols-2 gap-3">
-                        <label onclick="handleDeviceChange('phone')" class="flex items-center justify-center gap-2 p-3 border border-brand-border rounded-xl cursor-pointer hover:bg-gray-50 transition-all has-[:checked]:border-brand-blue has-[:checked]:bg-blue-50">
-                            <input type="radio" name="deviceType" value="phone" class="hidden" checked>
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                            <span class="font-bold text-xs">Phone Device</span>
-                        </label>
-                        <label onclick="handleDeviceChange('pc')" class="flex items-center justify-center gap-2 p-3 border border-brand-border rounded-xl cursor-pointer hover:bg-gray-50 transition-all has-[:checked]:border-brand-blue has-[:checked]:bg-blue-50">
-                            <input type="radio" name="deviceType" value="pc" class="hidden">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                            <span class="font-bold text-xs">PC Device</span>
-                        </label>
-                    </div>
-                </div>
+               <div class="md:col-span-2">
+    <label class="block text-[10px] font-bold text-brand-midText mb-1.5 uppercase tracking-widest">Target Device Type</label>
+    <div class="grid grid-cols-2 gap-3">
+        <label onclick="handleDeviceChange('Phone')" class="flex items-center justify-center gap-2 p-3 border border-brand-border rounded-xl cursor-pointer hover:bg-gray-50 transition-all has-[:checked]:border-brand-blue has-[:checked]:bg-blue-50">
+            <input type="radio" name="deviceType" value="Phone" class="hidden" checked>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            <span class="font-bold text-xs">Phone Device</span>
+        </label>
+        
+        <label onclick="handleDeviceChange('PC')" class="flex items-center justify-center gap-2 p-3 border border-brand-border rounded-xl cursor-pointer hover:bg-gray-50 transition-all has-[:checked]:border-brand-blue has-[:checked]:bg-blue-50">
+            <input type="radio" name="deviceType" value="PC" class="hidden">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            <span class="font-bold text-xs">PC Device</span>
+        </label>
+    </div>
+</div>
 
                 <div class="md:col-span-2 bg-gray-50 p-4 rounded-2xl border border-brand-border">
                     <label class="block text-[10px] font-bold text-brand-midText mb-3 uppercase tracking-widest">Pricing Plans (Duration & Price)</label>
@@ -246,20 +247,19 @@
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
 
-    // --- Device UI Logic ---
-    function handleDeviceChange(type) {
-        const phoneSection = document.getElementById('phoneCreds');
-        const pcSection = document.getElementById('pcCreds');
-        
-        if (type === 'phone') {
-            phoneSection.classList.remove('hidden');
-            pcSection.classList.add('hidden');
-        } else {
-            phoneSection.classList.add('hidden');
-            pcSection.classList.remove('hidden');
-        }
+   function handleDeviceChange(type) {
+    const phoneSection = document.getElementById('phoneCreds');
+    const pcSection = document.getElementById('pcCreds');
+    
+    // Updated to match capitalized 'Phone'
+    if (type === 'Phone') {
+        phoneSection.classList.remove('hidden');
+        pcSection.classList.add('hidden');
+    } else {
+        phoneSection.classList.add('hidden');
+        pcSection.classList.remove('hidden');
     }
-
+}
     function togglePcInputs(method) {
         const userPassFields = document.getElementById('pcUserPassInputs');
         const codeField = document.getElementById('pcCodeInput');
@@ -375,55 +375,61 @@
         document.getElementById('vpnModal').classList.remove('hidden');
     }
 
-    function editVPN(id) {
-        const v = allVPNs.find(item => item._id === id);
-        if (!v) return;
+  function editVPN(id) {
+    const v = allVPNs.find(item => item._id === id);
+    if (!v) return;
 
-        document.getElementById('vpnId').value = v._id;
-        document.getElementById('name').value = v.name;
-        document.getElementById('image').value = v.image || '';
-        document.getElementById('provider').value = v.provider || '';
-        document.getElementById('region').value = v.region || '';
-        document.getElementById('stock').value = v.stock || 0;
-        document.getElementById('deviceLimit').value = v.deviceLimit || '';
-        
-        // Populate standard credentials
-        document.getElementById('username').value = v.username || '';
-        document.getElementById('password').value = v.password || '';
-        document.getElementById('instructions').value = v.instructions || '';
+    // Reset and populate basic fields
+    document.getElementById('vpnId').value = v._id;
+    document.getElementById('name').value = v.name;
+    document.getElementById('image').value = v.image || '';
+    document.getElementById('provider').value = v.provider || '';
+    document.getElementById('region').value = v.region || '';
+    document.getElementById('stock').value = v.stock || 0;
+    document.getElementById('deviceLimit').value = v.deviceLimit || '';
+    
+    document.getElementById('username').value = v.username || '';
+    document.getElementById('password').value = v.password || '';
+    document.getElementById('instructions').value = v.instructions || '';
 
-        // NEW: Populate Device Logic
-        if (v.deviceType) {
-            const radio = document.querySelector(`input[name="deviceType"][value="${v.deviceType}"]`);
-            if (radio) {
-                radio.checked = true;
-                handleDeviceChange(v.deviceType);
-            }
+    // POPULATE DEVICE LOGIC (Updated for Capitalization)
+    if (v.deviceType) {
+        // Normalize value in case database has 'phone' instead of 'Phone'
+        let normalizedType = v.deviceType;
+        if (normalizedType === 'phone') normalizedType = 'Phone';
+        if (normalizedType === 'pc') normalizedType = 'PC';
+
+        const radio = document.querySelector(`input[name="deviceType"][value="${normalizedType}"]`);
+        if (radio) {
+            radio.checked = true;
+            handleDeviceChange(normalizedType); // This triggers the show/hide logic
         }
-
-        // NEW: Populate PC Methods
-        if (v.pcMethod) {
-            document.getElementById('pcMethod').value = v.pcMethod;
-            togglePcInputs(v.pcMethod);
-        }
-        document.getElementById('pcUsername').value = v.pcUsername || '';
-        document.getElementById('pcPassword').value = v.pcPassword || '';
-        document.getElementById('activationCode').value = v.activationCode || '';
-
-        // Plans
-        const container = document.getElementById('pricingContainer');
-        container.innerHTML = '';
-        if (v.plans && v.plans.length > 0) {
-            v.plans.forEach(p => addPriceRow(p.duration, p.price));
-        } else {
-            addPriceRow();
-        }
-
-        if (v.image) previewImage(v.image);
-        document.getElementById('modalTitle').innerText = 'Update VPN Node';
-        document.getElementById('submitBtn').innerText = 'Save Changes';
-        document.getElementById('vpnModal').classList.remove('hidden');
     }
+
+    // POPULATE PC METHODS
+    if (v.pcMethod) {
+        document.getElementById('pcMethod').value = v.pcMethod;
+        togglePcInputs(v.pcMethod);
+    }
+    document.getElementById('pcUsername').value = v.pcUsername || '';
+    document.getElementById('pcPassword').value = v.pcPassword || '';
+    document.getElementById('activationCode').value = v.activationCode || '';
+
+    // Plans Management
+    const container = document.getElementById('pricingContainer');
+    container.innerHTML = '';
+    if (v.plans && v.plans.length > 0) {
+        v.plans.forEach(p => addPriceRow(p.duration, p.price));
+    } else {
+        addPriceRow();
+    }
+
+    // UI Updates
+    if (v.image) previewImage(v.image);
+    document.getElementById('modalTitle').innerText = 'Update VPN Node';
+    document.getElementById('submitBtn').innerText = 'Save Changes';
+    document.getElementById('vpnModal').classList.remove('hidden');
+}
 
     async function deleteVPN(id) {
         if (!confirm('Permanently delete this VPN node?')) return;
@@ -443,52 +449,62 @@
         document.getElementById('vpnModal').classList.add('hidden');
     }
 
-    document.getElementById('vpnForm').onsubmit = async (e) => {
-        e.preventDefault();
-        const token = localStorage.getItem('smsglobe_admin_token');
-        const id = document.getElementById('vpnId').value;
-        
-        const formData = new FormData(e.target);
-        const vpnData = Object.fromEntries(formData.entries());
+ document.getElementById('vpnForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const token = localStorage.getItem('smsglobe_admin_token');
+    const id = document.getElementById('vpnId').value;
+    
+    const formData = new FormData(e.target);
+    const vpnData = Object.fromEntries(formData.entries());
 
-        // Dynamic pricing plans parsing
-        const planRows = document.querySelectorAll('.pricing-row');
-        vpnData.plans = Array.from(planRows).map(row => ({
-            duration: row.querySelector('.plan-duration').value.trim(),
-            price: row.querySelector('.plan-price').value.trim()
-        })).filter(p => p.duration && p.price);
+    // 1. DATA NORMALIZATION (Critical for Schema Enum)
+    // Ensures 'phone' becomes 'Phone' and 'pc' becomes 'PC'
+    if (vpnData.deviceType) {
+        if (vpnData.deviceType.toLowerCase() === 'phone') vpnData.deviceType = 'Phone';
+        if (vpnData.deviceType.toLowerCase() === 'pc') vpnData.deviceType = 'PC';
+    }
 
-        vpnData.type = 'vpn';
+    // 2. DYNAMIC PRICING PLANS PARSING
+    const planRows = document.querySelectorAll('.pricing-row');
+    vpnData.plans = Array.from(planRows).map(row => ({
+        duration: row.querySelector('.plan-duration').value.trim(),
+        price: row.querySelector('.plan-price').value.trim()
+    })).filter(p => p.duration && p.price);
 
-        const method = id ? 'PATCH' : 'POST';
-        const btn = document.getElementById('submitBtn');
-        btn.disabled = true;
-        btn.innerText = 'Syncing...';
+    // 3. SET PRODUCT TYPE
+    vpnData.type = 'vpn';
 
-        try {
-            const res = await fetch('/api/products', {
-                method: method,
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(vpnData)
-            });
+    // 4. UI STATE UPDATE
+    const method = id ? 'PATCH' : 'POST';
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerText = 'Syncing...';
 
-            if (res.ok) {
-                closeModal();
-                fetchVPNs();
-            } else {
-                const errorData = await res.json();
-                alert('Sync failed: ' + (errorData.message || 'Unknown error'));
-            }
-        } catch (e) {
-            alert('Network error.');
-        } finally {
-            btn.disabled = false;
-            btn.innerText = id ? 'Save Changes' : 'Sync VPN Data';
+    try {
+        const res = await fetch('/api/products', {
+            method: method,
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(vpnData)
+        });
+
+        if (res.ok) {
+            closeModal();
+            fetchVPNs(); // Refresh the list to show new data
+        } else {
+            const errorData = await res.json();
+            alert('Sync failed: ' + (errorData.message || 'Check backend logs'));
         }
-    };
+    } catch (e) {
+        console.error("Submission error:", e);
+        alert('Network error. Is the server running?');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = id ? 'Save Changes' : 'Sync VPN Data';
+    }
+};
 
     function logout() {
         localStorage.removeItem('smsglobe_admin_token');

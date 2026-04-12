@@ -283,6 +283,7 @@
             </div>
         </button>
     </div>
+    
 <div id="proxyModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
     <div id="modalContent" class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl">
         
@@ -292,21 +293,21 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
             </div>
-            <h2 class="text-xl font-bold text-brand-darkText mb-2">Confirm Proxy Purchase</h2>
+            <h2 class="text-xl font-bold text-brand-darkText mb-2">Confirm Purchase</h2>
             
-            <div class="flex flex-col gap-3 mb-6">
+            <div class="space-y-3 mb-6">
                 <div class="py-2 px-4 bg-gray-50 rounded-xl border border-brand-border">
-                    <p class="text-[10px] font-bold text-brand-lightText uppercase tracking-tight">Current Balance</p>
+                    <p class="text-[10px] font-bold text-brand-lightText uppercase">Your Balance</p>
                     <p id="modalUserBalance" class="text-lg font-black text-brand-blue">$0.00</p>
                 </div>
                 <div class="py-2 px-4 bg-blue-50/50 rounded-xl border border-brand-blue/10">
-                    <p class="text-[10px] font-bold text-brand-blue uppercase tracking-tight">Amount to Deduct</p>
+                    <p class="text-[10px] font-bold text-brand-blue uppercase">Purchase Amount</p>
                     <p id="modalPurchaseAmount" class="text-lg font-black text-brand-darkText">$0.00</p>
                 </div>
             </div>
 
             <div class="flex gap-3">
-                <button onclick="closeModal()" class="flex-1 py-3 border border-brand-border rounded-xl font-bold text-xs uppercase text-brand-midText">Cancel</button>
+                <button onclick="closeModalOnly()" class="flex-1 py-3 border border-brand-border rounded-xl font-bold text-xs text-brand-midText uppercase">Cancel</button>
                 <button id="finalConfirmBtn" class="flex-1 py-3 bg-brand-blue text-white rounded-xl font-bold text-xs uppercase">Confirm & Pay</button>
             </div>
         </div>
@@ -493,8 +494,6 @@ function showCategories() {
 async function buyProxy(proxyId) {
     const planIndex = document.getElementById(`plan-${proxyId}`).value;
     const token = localStorage.getItem('userToken');
-    
-    // 1. Find the selected proxy and plan price
     const proxy = allProxies.find(p => p._id === proxyId);
     const selectedPlan = proxy.plans[planIndex];
 
@@ -505,35 +504,31 @@ async function buyProxy(proxyId) {
         const data = await res.json();
         
         if (data.success) {
-            // FIX: Check if balance is in data.balance or data.user.balance
             const balance = data.user ? data.user.balance : data.balance;
-            
-            // Update Modal UI
+            const priceUSD = selectedPlan.price / 1380; // Assuming 1380 rate
+
+            // 1. Update text values
             document.getElementById('modalUserBalance').innerText = `$${Number(balance).toFixed(2)}`;
+            document.getElementById('modalPurchaseAmount').innerText = `$${priceUSD.toFixed(2)}`;
             
-            // Calculate USD price (Cost in NGN / Rate)
-            const priceInUSD = selectedPlan.price / 1380;
-            document.getElementById('modalPurchaseAmount').innerText = `$${priceInUSD.toFixed(2)}`;
-            
-            // Show Modal and Confirmation State
+            // 2. FORCE correct view state
             document.getElementById('proxyModal').classList.remove('hidden');
-            document.getElementById('confirmState').classList.remove('hidden');
-            document.getElementById('successState').classList.add('hidden');
-
-            // Store info for the final step
+            document.getElementById('confirmState').classList.remove('hidden'); // SHOW confirm
+            document.getElementById('successState').classList.add('hidden');    // HIDE success
+            
+            // 3. Setup the confirm button
             currentPendingPurchase = { proxyId, planIndex };
-
-            // Attach final action to the button
             document.getElementById('finalConfirmBtn').onclick = executeFinalPurchase;
-        } else {
-            alert(data.message || "Session expired. Please login again.");
         }
     } catch (err) {
-        console.error("Balance Verification Error:", err);
-        alert("Connection error. Please check your internet and try again.");
+        alert("Verification failed. Please try again.");
     }
 }
 
+// Add this to close the modal without redirecting to dashboard immediately
+function closeModalOnly() {
+    document.getElementById('proxyModal').classList.add('hidden');
+}
 async function executeFinalPurchase() {
     if (!currentPendingPurchase) return;
 

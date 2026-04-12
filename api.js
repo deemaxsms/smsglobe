@@ -3168,20 +3168,19 @@ async function handleGetUserTransactions(req, res) {
             .limit(50)
             .lean();
 
-        // 4. Successful Response
-        return res.json({
-            success: true,
-            transactions: transactions.map(tx => ({
-                id: tx._id,
-                amountUSD: tx.amountUSD || 0,
-                amountNGN: tx.amountNGN || 0,
-                status: tx.status || 'pending',
-                reference: tx.reference || 'N/A',
-                purpose: tx.purpose,
-                createdAt: tx.createdAt
-            }))
-        });
-
+return res.json({
+    success: true,
+    transactions: transactions.map(tx => ({
+        id: tx._id,
+        amountUSD: tx.amountUSD,
+        amountNGN: tx.amountNGN,
+        status: tx.status,
+        reference: tx.reference,
+        purpose: tx.purpose,
+        createdAt: tx.createdAt,
+        paymentMethod: tx.metadata?.payment_type || 'Wallet' 
+    }))
+});
     } catch (error) {
         // This will now show the EXACT error in your terminal/Netlify logs
         console.error("CRITICAL_TRANSACTION_ERROR:", error.message);

@@ -224,8 +224,8 @@
                     <tr class="bg-gray-50/50 border-b border-brand-border">
                         <th class="px-6 py-4 text-[10px] font-bold text-brand-lightText uppercase tracking-wider">Date & Time</th>
                         <th class="px-6 py-4 text-[10px] font-bold text-brand-lightText uppercase tracking-wider">Amount</th>
-                        <th class="px-6 py-4 text-[10px] font-bold text-brand-lightText uppercase tracking-wider">Status</th>
-                    </tr>
+                    <th class="px-6 py-4 text-[10px] font-bold text-brand-lightText uppercase tracking-wider">Method</th> 
+            <th class="px-6 py-4 text-[10px] font-bold text-brand-lightText uppercase tracking-wider">Status</th>                    </tr>
                 </thead>
                 <tbody id="historyTableBody" class="divide-y divide-brand-border">
                     <tr>
@@ -432,8 +432,7 @@
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
 
-    // 3. Fetch Transaction History
-async function fetchTransactionHistory() {
+   async function fetchTransactionHistory() {
     const tableBody = document.getElementById('historyTableBody');
     
     try {
@@ -443,41 +442,45 @@ async function fetchTransactionHistory() {
         const data = await response.json();
 
         if (!data.success || !data.transactions || data.transactions.length === 0) {
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="3" class="px-6 py-12 text-center">
-                        <img src="https://i.imgur.com/G368osH.png" class="h-12 w-12 mx-auto mb-3 opacity-20" alt="No data">
-                        <p class="text-[11px] font-bold text-brand-lightText uppercase tracking-tight">No transactions found</p>
-                    </td>
-                </tr>`;
+            tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center">...No Transactions...</td></tr>`;
             return;
         }
 
-        tableBody.innerHTML = ''; // Clear loading state
+        tableBody.innerHTML = ''; 
 
         data.transactions.forEach(tx => {
             const date = new Date(tx.createdAt).toLocaleDateString('en-GB', {
                 day: '2-digit', month: 'short', year: 'numeric'
             });
-            const time = new Date(tx.createdAt).toLocaleTimeString('en-GB', {
-                hour: '2-digit', minute: '2-digit'
+            
+            // --- UPDATED FOR AM/PM ---
+            const time = new Date(tx.createdAt).toLocaleTimeString('en-US', {
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true 
             });
 
-            // Status Styling Logic
             let statusClass = "bg-gray-100 text-gray-600";
             if (tx.status === 'successful' || tx.status === 'completed') statusClass = "bg-green-100 text-green-700";
             if (tx.status === 'failed') statusClass = "bg-red-100 text-red-700";
             if (tx.status === 'cancelled' || tx.status === 'pending') statusClass = "bg-orange-100 text-orange-700";
 
+            // Format Payment Method display (e.g., "bank_transfer" -> "Bank Transfer")
+            const method = (tx.paymentMethod || 'Wallet').replace(/_/g, ' ');
+
             tableBody.innerHTML += `
                 <tr class="hover:bg-gray-50/50 transition-colors">
                     <td class="px-6 py-4">
                         <p class="text-[12px] font-bold text-brand-darkText">${date}</p>
-                        <p class="text-[10px] text-brand-lightText">${time}</p>
+                        <p class="text-[10px] text-brand-lightText uppercase">${time}</p>
                     </td>
                     <td class="px-6 py-4">
                         <p class="text-[12px] font-black text-brand-darkText">$${Number(tx.amountUSD).toFixed(2)}</p>
                         <p class="text-[9px] font-bold text-brand-blue uppercase">₦${Number(tx.amountNGN || 0).toLocaleString()}</p>
+                    </td>
+                    <td class="px-6 py-4">
+                        <p class="text-[11px] font-bold text-brand-darkText capitalize">${method}</p>
+                        <p class="text-[9px] text-brand-lightText font-mono">${tx.reference.split('-')[1] || ''}</p>
                     </td>
                     <td class="px-6 py-4">
                         <span class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${statusClass}">
@@ -487,10 +490,9 @@ async function fetchTransactionHistory() {
                 </tr>
             `;
         });
-
     } catch (err) {
         console.error("History Fetch Error:", err);
-        tableBody.innerHTML = `<tr><td colspan="3" class="px-6 py-8 text-center text-red-500 text-[11px]">Failed to load history.</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-red-500 text-[11px]">Failed to load history.</td></tr>`;
     }
 }
 

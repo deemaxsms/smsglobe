@@ -564,11 +564,13 @@ async function fetchUserProfile() {
 
 async function initiateRDPPayment() {
     const payBtn = document.getElementById('payBtn');
-    if (!payBtn) return;
+    const confirmBtn = document.getElementById('confirmPurchaseBtn');
+    if (!payBtn || !confirmBtn) return;
 
     payBtn.innerText = "Verifying Balance...";
     payBtn.disabled = true;
 
+    // Refresh user balance from server
     const success = await fetchUserProfile();    
     
     payBtn.innerText = "Pay Securely Now";
@@ -579,38 +581,56 @@ async function initiateRDPPayment() {
         return;
     }
 
-    // --- CORRECTION LOGIC START ---
-    const EXCHANGE_RATE = Number(userBalances.rate);     
-    
-    // Based on your console log, the 'ngn' key is actually holding the USD value
-    const actualUSD = Number(userBalances.ngn); 
-    const convertedNGN = actualUSD * EXCHANGE_RATE;
-    
+    // Logic: Convert USD Wallet (32) to NGN (44,160) using Admin Rate
+    const EXCHANGE_RATE = Number(userBalances.rate) || 1380; 
+    const usdValue = Number(userBalances.ngn); 
+    const nairaEquivalent = usdValue * EXCHANGE_RATE;
+
+    // UI: Update Balance Displays
     const modalBalanceNGN = document.getElementById('modalBalanceNGN');
     const modalBalanceUSD = document.getElementById('modalBalanceUSD');
     const modalTotalDisplay = document.getElementById('modalTotalDue');
 
-    // 1. Correct the Naira Display (The large bold text)
     if (modalBalanceNGN) {
-        modalBalanceNGN.innerText = '₦' + convertedNGN.toLocaleString('en-NG', {
+        modalBalanceNGN.innerText = '₦' + nairaEquivalent.toLocaleString('en-NG', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         });
     }
+
     if (modalBalanceUSD) {
-        modalBalanceUSD.innerText = '$' + actualUSD.toLocaleString('en-US', {
+        modalBalanceUSD.innerText = '$' + usdValue.toLocaleString('en-US', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         });
     }
+
+    // UI: Update Total Due
+    const totalRequiredText = document.getElementById('summaryTotal').innerText;
     if (modalTotalDisplay) {
-        const totalText = document.getElementById('summaryTotal').innerText;
-        modalTotalDisplay.innerText = totalText;
-    }    
+        modalTotalDisplay.innerText = totalRequiredText;
+    }
+
+    // Validation: Compare Wallet NGN vs Plan NGN
+    const numericPrice = parseFloat(totalRequiredText.replace(/[^\d.]/g, ''));
+    
+    if (nairaEquivalent < numericPrice) {
+        confirmBtn.innerText = "Insufficient Funds";
+        // Ensure it swaps colors correctly
+        confirmBtn.classList.remove('bg-brand-blue');
+        confirmBtn.classList.add('bg-red-500', 'cursor-not-allowed');
+        confirmBtn.disabled = true;
+    } else {
+        confirmBtn.innerText = "Confirm & Pay Now";
+        confirmBtn.classList.remove('bg-red-500', 'cursor-not-allowed');
+        confirmBtn.classList.add('bg-brand-blue');
+        confirmBtn.disabled = false;
+    }
 
     const modal = document.getElementById('paymentModal');
     if (modal) modal.classList.remove('hidden');
 }
+
 // 3. The Final Purchase API Call (Your provided function)
 async function purchaseRDPWithWallet() {
     const selectedRDP = window.currentSelectedRDP;

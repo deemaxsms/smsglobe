@@ -123,14 +123,14 @@
     </div>
     
     <div class="flex items-center space-x-2 md:space-x-3">
-        <div class="text-right">
-            <p id="userName" class="text-[9px] md:text-[10px] font-bold text-brand-darkText leading-tight truncate max-w-[70px] xs:max-w-none">User Account</p>
-            <p id="currentBalance" class="text-[10px] md:text-[11px] text-brand-blue font-black tracking-tighter">Bal: $0.00</p>
-        </div>
-        <div class="w-8 h-8 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center text-[11px] font-bold border border-brand-blue/20">
-            <span id="userInitials">U</span>
-        </div>
+    <div class="text-right">
+        <p id="userName" class="text-[9px] md:text-[10px] font-bold text-brand-darkText leading-tight truncate max-w-[70px] xs:max-w-none">User Account</p>
+        <p id="currentBalance" class="text-[10px] md:text-[11px] text-brand-blue font-black tracking-tighter">Bal: ₦0.00</p>
     </div>
+    <div class="w-8 h-8 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center text-[11px] font-bold border border-brand-blue/20">
+        <span id="userInitials">U</span>
+    </div>
+</div>
 </header>
 
         <main class="p-4 md:p-8 lg:p-10 max-w-4xl w-full mx-auto">
@@ -150,59 +150,58 @@
                 <div class="flex flex-col md:flex-row">
                     <div class="md:w-2/5 bg-brand-blue/5 p-6 md:p-8 border-b md:border-b-0 md:border-r border-brand-border">
                         <h2 class="text-sm font-black text-brand-darkText uppercase tracking-widest mb-4">How to Top-up</h2>
-                        <ul class="space-y-4">
-                            <li class="flex gap-3">
-                                <span class="flex-shrink-0 w-5 h-5 bg-brand-blue text-white text-[10px] font-bold rounded-full flex items-center justify-center">1</span>
-                                <p class="text-[11px] leading-relaxed">Enter the <b>USD amount</b> you wish to add to your SMSGlobe wallet.</p>
-                            </li>
-                            <li class="flex gap-3">
-                                <span class="flex-shrink-0 w-5 h-5 bg-brand-blue text-white text-[10px] font-bold rounded-full flex items-center justify-center">2</span>
-                                <p class="text-[11px] leading-relaxed">Review the <b>Naira (NGN)</b> equivalent calculated at the current rate.</p>
-                            </li>
-                            <li class="flex gap-3">
-                                <span class="flex-shrink-0 w-5 h-5 bg-brand-blue text-white text-[10px] font-bold rounded-full flex items-center justify-center">3</span>
-                                <p class="text-[11px] leading-relaxed">Complete payment via <b>Flutterwave</b> using Card, Bank Transfer, or USSD.</p>
-                            </li>
-                        </ul>
-                    </div>
+<ul class="space-y-4">
+    <li class="flex gap-3">
+        <span class="flex-shrink-0 w-5 h-5 bg-brand-blue text-white text-[10px] font-bold rounded-full flex items-center justify-center">1</span>
+        <p class="text-[11px] leading-relaxed">Enter the <b>Naira (NGN) amount</b> you wish to add to your wallet.</p>
+    </li>
+    <li class="flex gap-3">
+        <span class="flex-shrink-0 w-5 h-5 bg-brand-blue text-white text-[10px] font-bold rounded-full flex items-center justify-center">2</span>
+        <p class="text-[11px] leading-relaxed">Review the final amount and click "Pay Securely Now".</p>
+    </li>
+    <li class="flex gap-3">
+        <span class="flex-shrink-0 w-5 h-5 bg-brand-blue text-white text-[10px] font-bold rounded-full flex items-center justify-center">3</span>
+        <p class="text-[11px] leading-relaxed">Complete payment via <b>Flutterwave</b> using Card, Bank Transfer, or USSD.</p>
+    </li>
+</ul>
 
-                    <div class="flex-1 p-6 md:p-10">
-                        <div class="mb-6">
-                            <label class="text-[9px] font-black text-brand-lightText uppercase tracking-[0.15em] mb-3 block">Choose Amount</label>
-                            <div class="grid grid-cols-4 gap-2">
-                                <button onclick="setAmount(30, this)" class="quick-btn py-2.5 bg-white border border-brand-border rounded-xl text-[11px] font-bold hover:border-brand-blue hover:text-brand-blue transition-all active:scale-95">$30</button>
-                                <button onclick="setAmount(50, this)" class="quick-btn py-2.5 bg-white border border-brand-border rounded-xl text-[11px] font-bold hover:border-brand-blue hover:text-brand-blue transition-all active:scale-95">$50</button>
-                                <button onclick="setAmount(100, this)" class="quick-btn py-2.5 bg-white border border-brand-border rounded-xl text-[11px] font-bold hover:border-brand-blue hover:text-brand-blue transition-all active:scale-95">$100</button>
-                                <button onclick="setAmount(1000, this)" class="quick-btn py-2.5 bg-white border border-brand-border rounded-xl text-[11px] font-bold hover:border-brand-blue hover:text-brand-blue transition-all active:scale-95">$1k</button>
-                            </div>
-                        </div>
+<div class="flex-1 p-6 md:p-10">
+    <div class="mb-6">
+        <label class="text-[9px] font-black text-brand-lightText uppercase tracking-[0.15em] mb-3 block">Choose Amount</label>
+        <div class="grid grid-cols-4 gap-2">
+            <button onclick="setAmount(5000, this)" class="quick-btn py-2.5 bg-white border border-brand-border rounded-xl text-[11px] font-bold hover:border-brand-blue hover:text-brand-blue transition-all active:scale-95">₦5k</button>
+            <button onclick="setAmount(10000, this)" class="quick-btn py-2.5 bg-white border border-brand-border rounded-xl text-[11px] font-bold hover:border-brand-blue hover:text-brand-blue transition-all active:scale-95">₦10k</button>
+            <button onclick="setAmount(25000, this)" class="quick-btn py-2.5 bg-white border border-brand-border rounded-xl text-[11px] font-bold hover:border-brand-blue hover:text-brand-blue transition-all active:scale-95">₦25k</button>
+            <button onclick="setAmount(50000, this)" class="quick-btn py-2.5 bg-white border border-brand-border rounded-xl text-[11px] font-bold hover:border-brand-blue hover:text-brand-blue transition-all active:scale-95">₦50k</button>
+        </div>
+    </div>
 
-                        <div class="mb-6">
-                            <label class="text-[9px] font-black text-brand-lightText uppercase tracking-[0.15em] mb-2 block">Custom USD Amount</label>
-                            <div class="relative">
-                                <span class="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-brand-darkText text-lg">$</span>
-                                <input type="number" id="usdInput" placeholder="0.00" inputmode="decimal" class="w-full bg-gray-50 border border-brand-border rounded-2xl py-4 pl-10 pr-6 text-xl font-black text-brand-darkText focus:ring-4 focus:ring-brand-blue/5 outline-none transition-all">
-                            </div>
-                        </div>
+    <div class="mb-6">
+        <label class="text-[9px] font-black text-brand-lightText uppercase tracking-[0.15em] mb-2 block">Custom NGN Amount</label>
+        <div class="relative">
+            <span class="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-brand-darkText text-lg">₦</span>
+            <input type="number" id="ngnInput" placeholder="0.00" inputmode="decimal" class="w-full bg-gray-50 border border-brand-border rounded-2xl py-4 pl-10 pr-6 text-xl font-black text-brand-darkText focus:ring-4 focus:ring-brand-blue/5 outline-none transition-all">
+        </div>
+    </div>
 
-                        <div class="bg-brand-darkText rounded-[24px] p-6 mb-8 text-white shadow-xl shadow-brand-blue/20">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-[9px] font-bold text-white/40 uppercase tracking-[0.2em] mb-1">Payable Amount</p>
-                                    <h4 class="text-2xl md:text-3xl font-black tracking-tighter" id="ngnDisplay">₦0.00</h4>
-                                </div>
-                                <div class="text-right">
-                                     <img src="https://i.imgur.com/l5GcIDZ.png" alt="Flutterwave" class="h-4 object-contain ml-auto filter brightness-0 invert opacity-80">
-                                     <span class="text-[8px] text-white/30 mt-2 block font-bold uppercase tracking-widest">via Flutterwave</span>
-                                </div>
-                            </div>
-                        </div>
+    <div class="bg-brand-darkText rounded-[24px] p-6 mb-8 text-white shadow-xl shadow-brand-blue/20">
+        <div class="flex justify-between items-start">
+            <div>
+                <p class="text-[9px] font-bold text-white/40 uppercase tracking-[0.2em] mb-1">Payable Amount</p>
+                <h4 class="text-2xl md:text-3xl font-black tracking-tighter" id="ngnDisplay">₦0.00</h4>
+            </div>
+            <div class="text-right">
+                 <img src="https://i.imgur.com/l5GcIDZ.png" alt="Flutterwave" class="h-4 object-contain ml-auto filter brightness-0 invert opacity-80">
+                 <span class="text-[8px] text-white/30 mt-2 block font-bold uppercase tracking-widest">via Flutterwave</span>
+            </div>
+        </div>
+    </div>
 
-                        <button id="initiateBtn" class="w-full bg-brand-blue text-white py-4 md:py-5 rounded-2xl font-bold shadow-lg shadow-brand-blue/20 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-2">
-                            <span>Pay Securely Now</span>
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </button>
-                    </div>
+    <button id="initiateBtn" class="w-full bg-brand-blue text-white py-4 md:py-5 rounded-2xl font-bold shadow-lg shadow-brand-blue/20 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-2">
+        <span>Pay Securely Now</span>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+</div>
                 </div>
             </div>
 
@@ -246,12 +245,10 @@
     </div>
 
 <script>
-    let currentRate = 1380;
-    let currentMarkup = 0;
-    const token = localStorage.getItem('userToken'); 
+   const token = localStorage.getItem('userToken'); 
 
-    // 1. Payment Verification Logic
-    async function verifyPaymentOnLoad() {
+// 1. Payment Verification Logic
+async function verifyPaymentOnLoad() {
     const urlParams = new URLSearchParams(window.location.search);
     const transactionId = urlParams.get('transaction_id');
     const status = urlParams.get('status');
@@ -264,12 +261,9 @@
         const action = document.getElementById('statusAction');
 
         alertBox.classList.remove('hidden');
-        // Initial Loading State
         alertBox.className = "mb-6 p-5 rounded-[24px] border flex flex-col sm:flex-row items-center gap-4 bg-blue-50 border-blue-200 text-blue-800 animate-pulse";
         icon.className = "flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-blue-100 text-blue-600";
         title.innerText = "Verifying Payment...";
-        msg.innerText = "Confirming your transaction with Flutterwave. Please do not refresh.";
-        icon.innerHTML = `<svg class="w-6 h-6 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke-width="3" stroke-linecap="round"/></svg>`;
         
         try {
             const response = await fetch('/api/verify-topup', {
@@ -283,20 +277,18 @@
 
             const data = await response.json();
 
-            // 1. 🎉 SUCCESS STATE
             if (data.success && data.status !== 'pending') {
                 alertBox.className = "mb-6 p-6 rounded-[24px] border flex flex-col sm:flex-row items-center gap-5 bg-green-50 border-green-200 text-green-800 shadow-sm";
                 icon.className = "flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center bg-green-500 text-white shadow-lg";
                 title.innerText = "Congratulations! Wallet Funded";
                 
-                const ngnPaid = data.amountNGN ? `(₦${data.amountNGN.toLocaleString()})` : '';
-                msg.innerHTML = `You have topped up <b>$${(data.amountUSD || 0).toFixed(2)}</b> ${ngnPaid}. <br>New balance: <b>$${(data.newBalance || 0).toFixed(2)}</b>.`;
+                // Show Naira Amount Funded
+                msg.innerHTML = `You have topped up <b>₦${(data.amountNGN || 0).toLocaleString()}</b>. <br>New balance: <b>₦${(data.newBalance || 0).toLocaleString()}</b>.`;
                 icon.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>`;
                 
                 action.classList.remove('hidden');
-                document.getElementById('currentBalance').innerText = `Bal: $${(data.newBalance || 0).toFixed(2)}`;
+                document.getElementById('currentBalance').innerText = `Bal: ₦${(data.newBalance || 0).toLocaleString()}`;
 
-                // Countdown logic
                 let timeLeft = 8;
                 const timer = setInterval(() => {
                     timeLeft--;
@@ -308,138 +300,91 @@
                     }
                 }, 1000);
             } 
-                        else if (data.status === 'pending') {
+            else if (data.status === 'pending') {
                 alertBox.className = "mb-6 p-6 rounded-[24px] border flex flex-col sm:flex-row items-center gap-5 bg-orange-50 border-orange-200 text-orange-800";
                 icon.className = "flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center bg-orange-500 text-white animate-pulse";
                 title.innerText = "Payment Processing";
-                msg.innerHTML = `Your payment is awaiting confirmation from your bank. <br>It will reflect in your <b>Top-up History</b> once confirmed.`;
+                msg.innerHTML = `Your payment is awaiting confirmation from your bank.`;
                 icon.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
                 action.classList.remove('hidden');
-                // Refresh history table so they see the 'Pending' row
-                if(typeof fetchTransactionHistory === 'function') fetchTransactionHistory();
             }
-
-            else {
-                throw new Error(data.message);
-            }
-
-            // Clean URL
-            window.history.replaceState({}, document.title, window.location.pathname);
-
         } catch (err) {
-            alertBox.className = "mb-6 p-5 rounded-[24px] border flex flex-col sm:flex-row items-center gap-4 bg-red-50 border-red-200 text-red-800";
-            icon.className = "flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-red-100 text-red-600";
-            title.innerText = "Verification Failed";
-            msg.innerText = err.message || "We couldn't confirm your payment. If you were debited, please contact support.";
-            icon.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>`;
-            action.classList.remove('hidden');
+            console.error(err);
         }
     }
 }
 
-    // 2. Main Sync Function
-    async function syncWithBackend() {
-        if (!token) {
-            window.location.href = 'user_login.html';
-            return;
+async function syncWithBackend() {
+    if (!token) { window.location.href = 'user_login.html'; return; }
+
+    try {
+        const userRes = await fetch('/api/user-profile', { 
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const userData = await userRes.json();
+        if (userRes.ok && userData) {
+            document.getElementById('userName').innerText = userData.fullName || "User";
+            document.getElementById('currentBalance').innerText = `Bal: ₦${(userData.balance || 0).toLocaleString()}`;
+            document.getElementById('userInitials').innerText = userData.fullName?.charAt(0).toUpperCase() || "U";
         }
+        verifyPaymentOnLoad(); 
+    } catch (err) {
+        console.error("Sync Error:", err);
+    }
+}
 
-        try {
-            const [settingsRes, userRes] = await Promise.all([
-                fetch('/api/get-system-settings'),
-                fetch('/api/user-profile', { 
-                    headers: { 'Authorization': `Bearer ${token}` }
-                })
-            ]);
+function updateDisplay() {
+    const amount = parseFloat(document.getElementById('ngnInput').value) || 0;
+    const ngnDisplay = document.getElementById('ngnDisplay');
+    ngnDisplay.innerText = `₦${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
-            const userData = await userRes.json();
-            if (userRes.ok && userData) {
-                document.getElementById('userName').innerText = userData.fullName || "User";
-                document.getElementById('currentBalance').innerText = `Bal: $${(userData.balance || 0).toFixed(2)}`;
-                document.getElementById('userInitials').innerText = userData.fullName?.charAt(0).toUpperCase() || "U";
-            }
-
-            const settingsData = await settingsRes.json();
-            if (settingsData.success && settingsData.settings) {
-                currentRate = settingsData.settings.exchangeRate || 1380;
-                currentMarkup = settingsData.settings.globalMarkup || 0;
-            }
-            
-            calculateTotal();
-            verifyPaymentOnLoad(); 
-        } catch (err) {
-            console.error("Sync Error:", err);
-            calculateTotal();
-        }
+document.getElementById('initiateBtn').addEventListener('click', async function() {
+    const amountNGN = parseFloat(document.getElementById('ngnInput').value);
+    if (!amountNGN || amountNGN <= 0) {
+        alert("Please enter a valid amount.");
+        return;
     }
 
-    function calculateTotal() {
-        const usdAmount = parseFloat(document.getElementById('usdInput').value) || 0;
-        const ngnDisplay = document.getElementById('ngnDisplay');
-        if (usdAmount > 0) {
-            const finalNGN = (usdAmount + currentMarkup) * currentRate;
-            ngnDisplay.innerText = `₦${finalNGN.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    this.disabled = true;
+    this.innerHTML = `<span>Connecting to Gateway...</span>`;
+
+    try {
+        const response = await fetch('/api/initiate-topup', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${token}` 
+            },
+            // Sending NGN directly to your backend now
+            body: JSON.stringify({ amountNGN: amountNGN })
+        });
+
+        const data = await response.json();
+        if (data.success && data.link) {
+            window.location.href = data.link;
         } else {
-            ngnDisplay.innerText = "₦0.00";
-        }
-    }
-
-    document.getElementById('initiateBtn').addEventListener('click', async function() {
-        const usdAmount = parseFloat(document.getElementById('usdInput').value);
-        if (!usdAmount || usdAmount <= 0) {
-            alert("Please enter a valid amount.");
-            return;
-        }
-
-        this.disabled = true;
-        this.innerHTML = `<span>Connecting to Gateway...</span>`;
-
-        try {
-            const response = await fetch('/api/initiate-topup', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${token}` 
-                },
-                body: JSON.stringify({ amountUSD: usdAmount })
-            });
-
-            const data = await response.json();
-            if (data.success && data.link) {
-                window.location.href = data.link;
-            } else {
-                alert(data.message || "Failed to initialize payment.");
-                resetButton(this);
-            }
-        } catch (err) {
-            alert("Payment gateway unreachable. Try again later.");
+            alert(data.message || "Failed to initialize payment.");
             resetButton(this);
         }
-    });
-
-    function resetButton(btn) {
-        btn.disabled = false;
-        btn.innerHTML = `<span>Pay Securely Now</span><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    } catch (err) {
+        alert("Payment gateway unreachable.");
+        resetButton(this);
     }
+});
 
-    function setAmount(val, btn) {
-        document.getElementById('usdInput').value = val;
-        document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('btn-active'));
-        if(btn) btn.classList.add('btn-active');
-        calculateTotal();
-    }
+function setAmount(val, btn) {
+    document.getElementById('ngnInput').value = val;
+    document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('btn-active'));
+    if(btn) btn.classList.add('btn-active');
+    updateDisplay();
+}
 
-    document.getElementById('usdInput').addEventListener('input', () => {
-        document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('btn-active'));
-        calculateTotal();
-    });
-
-    function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        sidebar.classList.toggle('hidden-mobile');
-        sidebar.classList.toggle('open-mobile');
-        document.getElementById('sidebarOverlay').classList.toggle('hidden');
-    }
+document.getElementById('ngnInput').addEventListener('input', () => {
+    document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('btn-active'));
+    updateDisplay();
+});
 
 async function fetchTransactionHistory() {
     const tableBody = document.getElementById('historyTableBody');
@@ -452,59 +397,33 @@ async function fetchTransactionHistory() {
         const data = await response.json();
 
         if (!data.success || !data.transactions || data.transactions.length === 0) {
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="4" class="px-6 py-12 text-center">
-                        <img src="https://i.imgur.com/G368osH.png" class="h-12 w-12 mx-auto mb-3 opacity-20" alt="No data">
-                        <p class="text-[11px] font-bold text-brand-lightText uppercase tracking-tight">No transactions found</p>
-                    </td>
-                </tr>`;
+            tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center text-[11px] font-bold text-brand-lightText uppercase">No transactions found</td></tr>`;
             return;
         }
 
         tableBody.innerHTML = ''; 
-
         data.transactions.forEach(tx => {
-            // Formatting Date: 12 Apr 2026
-            const date = new Date(tx.createdAt).toLocaleDateString('en-GB', {
-                day: '2-digit', month: 'short', year: 'numeric'
-            });
-            
-            // Formatting Time: 02:30 PM
-            const time = new Date(tx.createdAt).toLocaleTimeString('en-US', {
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: true 
-            });
+            const date = new Date(tx.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+            const time = new Date(tx.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-            // Status Styling Logic
             let statusClass = "bg-gray-100 text-gray-600";
             if (tx.status === 'successful' || tx.status === 'completed') statusClass = "bg-green-100 text-green-700";
             if (tx.status === 'failed') statusClass = "bg-red-100 text-red-700";
-            if (tx.status === 'pending') statusClass = "bg-orange-100 text-orange-700";
-
-            // Format Payment Method: "bank_transfer" -> "Bank Transfer"
-            const rawMethod = tx.paymentMethod || 'Card'; 
-            const displayMethod = rawMethod.split('_').map(word => 
-                word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-            ).join(' ');
 
             tableBody.innerHTML += `
-                <tr class="hover:bg-gray-50/50 transition-colors">
+                <tr class="hover:bg-gray-50/50">
                     <td class="px-6 py-4">
                         <p class="text-[12px] font-bold text-brand-darkText">${date}</p>
                         <p class="text-[10px] text-brand-lightText uppercase font-medium">${time}</p>
                     </td>
                     <td class="px-6 py-4">
-                        <p class="text-[12px] font-black text-brand-darkText">$${Number(tx.amountUSD).toFixed(2)}</p>
-                        <p class="text-[9px] font-bold text-brand-blue uppercase">₦${Number(tx.amountNGN || 0).toLocaleString()}</p>
+                        <p class="text-[12px] font-black text-brand-darkText">₦${Number(tx.amountNGN || 0).toLocaleString()}</p>
                     </td>
                     <td class="px-6 py-4">
-                        <p class="text-[11px] font-bold text-brand-darkText">${displayMethod}</p>
-                        <p class="text-[9px] text-brand-lightText font-mono opacity-60">${tx.reference.split('-')[1] || ''}</p>
+                        <p class="text-[11px] font-bold text-brand-darkText">${tx.paymentMethod || 'Card'}</p>
                     </td>
-                    <td class="px-6 py-4">
-                        <span class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${statusClass}">
+                    <td class="px-6 py-4 text-right">
+                        <span class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase ${statusClass}">
                             ${tx.status}
                         </span>
                     </td>
@@ -512,8 +431,7 @@ async function fetchTransactionHistory() {
             `;
         });
     } catch (err) {
-        console.error("History Fetch Error:", err);
-        tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-red-500 text-[11px] font-bold">Failed to load history.</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-red-500 text-[11px]">Failed to load history.</td></tr>`;
     }
 }
 

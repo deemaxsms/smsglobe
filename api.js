@@ -45,24 +45,20 @@ app.get('/robots.txt', (req, res) => {
 const JWT_SECRET = process.env.JWT_SECRET;
 const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET_KEY;
 
+// --- ADMIN SCHEMA ---
 const adminSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true, index: true },
     password: { type: String, required: true },
-    
-    // Add these fields to handle the Admin forgot password flow
     resetPasswordToken: { type: String },
     resetPasswordExpires: { type: Date }
 }, { timestamps: true });
 
 const Admin = mongoose.models.Admin || mongoose.model('Admin', adminSchema);
 
+// --- USER SCHEMA ---
 const userSchema = new mongoose.Schema({
-    fullName: { 
-        type: String, 
-        required: [true, "Full name is required"], 
-        trim: true 
-    },
+    fullName: { type: String, required: [true, "Full name is required"], trim: true },
     email: { 
         type: String, 
         required: [true, "Email is required"], 
@@ -71,309 +67,113 @@ const userSchema = new mongoose.Schema({
         trim: true,
         match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please fill a valid email address']
     },
-    password: { 
-        type: String, 
-        required: [true, "Password is required"],
-        select: false // Automatically hide password from API queries for security
-    },
-    // Financial fields should always be Decimal128 or have careful rounding logic
-    balance: { 
-        type: Number, 
-        default: 0, 
-        min: [0, "Balance cannot be negative"] 
-    },
-    usd_balance: { 
-        type: Number, 
-        default: 0, 
-        min: [0, "USD Balance cannot be negative"] 
-    },
-    status: { 
-        type: String, 
-        enum: ['active', 'suspended'], 
-        default: 'active',
-        index: true // Faster filtering for admin dashboards
-    },
-    referralCode: { 
-        type: String, 
-        unique: true,
-        sparse: true,
-        uppercase: true, // Standardize codes to uppercase
-        trim: true
-    },
-    referredBy: { 
-        type: String, 
-        default: null,
-        index: true 
-    },
-    referralCount: { 
-        type: Number, 
-        default: 0 
-    },
+    password: { type: String, required: [true, "Password is required"], select: false },
+    // Primary balance in NGN
+    balance: { type: Number, default: 0, min: [0, "Balance cannot be negative"] },
+    status: { type: String, enum: ['active', 'suspended'], default: 'active', index: true },
+    referralCode: { type: String, unique: true, sparse: true, uppercase: true, trim: true },
+    referredBy: { type: String, default: null, index: true },
+    referralCount: { type: Number, default: 0 },
     resetPasswordToken: String,
     resetPasswordExpires: Date
-}, { 
-    timestamps: true,
-    toJSON: { virtuals: true }, // Important for the frontend to "see" NGN balance
-    toObject: { virtuals: true }
-});
+}, { timestamps: true });
 
 userSchema.index({ email: 1, referralCode: 1 });
-
-userSchema.virtual('balanceNGN').get(function() {
-    const FIXED_RATE = 1380; 
-    return (this.balance * FIXED_RATE).toFixed(2);
-});
-
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 
-
+// --- SYSTEM SETTINGS (Exchange Rate Removed) ---
 const systemSettingsSchema = new mongoose.Schema({
     maintenanceMode: { type: Boolean, default: false },
-    
     allowSignups: { type: Boolean, default: true },    
-    globalMarkup: { type: Number, default: 0 }, // e.g., 10 for 10%
-    exchangeRate: { type: Number, default: 1380 }, // NGN per USD
-    
-    // Dynamic Content
+    globalMarkup: { type: Number, default: 0 }, 
     noticeBarText: { type: String, default: "Welcome to SMSGlobe!" },
     supportWhatsapp: { type: String, default: "" }
 }, { timestamps: true });
 
 const SystemSettings = mongoose.models.SystemSettings || mongoose.model('SystemSettings', systemSettingsSchema, 'system_settings');
 
+// --- PRODUCT SCHEMAS (NGN Prices) ---
 const vpnSchema = new mongoose.Schema({
-    // Product identification
     name: { type: String, required: true },
-    type: { type: String, default: 'vpn' }, 
     provider: { type: String, required: true },
     region: { type: String, required: true },
     image: { type: String },     
-    deviceType: { 
-        type: String, 
-        enum: ['Phone', 'PC', 'Both'], 
-        default: 'Both' 
-    },
+    deviceType: { type: String, enum: ['Phone', 'PC', 'Both'], default: 'Both' },
     stock: { type: Number, default: 0 },
-    deviceLimit: { type: Number, default: 0 },    
     plans: [{
         duration: { type: String, required: true },
-        price: { type: Number, required: true }
+        price: { type: Number, required: true } // Price in NGN
     }],    
     username: { type: String },
     password: { type: String, select: false },    
-    activationCode: { type: String, select: false },
-    pcUsername: { type: String },
-    pcPassword: { type: String, select: false },
-    pcMethod: { type: String, enum: ['userpass', 'code'], default: 'userpass' },
-    instructions: { type: String },
-    
-    price: { type: Number } 
-}, { 
-    timestamps: true 
-});
+    instructions: { type: String }
+}, { timestamps: true });
 
-vpnSchema.index({ region: 1, provider: 1, deviceType: 1 });
 const VPN = mongoose.models.VPN || mongoose.model('VPN', vpnSchema);
 
 const ProxySchema = new mongoose.Schema({
     name: { type: String, required: true },
     category: { type: String, default: 'Standard' },
-    imageUrl: { type: String },
-    activationCode: { type: String },
-    instructions: { type: String },
-    stock: { type: Number, default: 0 }, // Added Stock field
+    stock: { type: Number, default: 0 },
     plans: [{
         ip_count: { type: Number, required: true },
-        price: { type: Number, required: true }
+        price: { type: Number, required: true } // Price in NGN
     }],
-    createdAt: { type: Date, default: Date.now }
-});
+    activationCode: String
+}, { timestamps: true });
 
 const Proxy = mongoose.models.Proxy || mongoose.model('Proxy', ProxySchema);
 
-const esimRefillSchema = new mongoose.Schema({
-    nodeName: { type: String, required: true },    // Changed from carrierName
-    targetNumber: { type: String, required: true }, // Changed from mobileNumber
-    planName: { type: String, required: true },    // Changed from planAmount
-    userEmail: { type: String, required: true, index: true },
-    fullName: { type: String },                    // Added based on your DB output
-    paymentReference: { type: String, unique: true }, // Changed from refId to match your DB
-    confirmationNumber: { type: String }, 
-    status: { 
-        type: String, 
-        enum: ['pending', 'processing', 'completed', 'failed', 'successful', 'Completed'], // Added 'Completed' with capital C
-        default: 'pending' 
-    },    
-    adminUpdatedBy: { type: String } 
-}, { timestamps: true });
-
-const EsimRefill = mongoose.models.EsimRefill || mongoose.model('EsimRefill', esimRefillSchema);
-
-const esimActivationSchema = new mongoose.Schema({
-    userEmail: { type: String, required: true, index: true },
-    email: { type: String, required: true,   lowercase: true,  trim: true}, 
-    fullName: { type: String },
-    nodeName: { type: String, required: true }, // The carrier/provider name
-    planName: { type: String, required: true }, // e.g., "10GB - 30 Days"
-    confirmationNumber: { type: String },       // Added for tracking activation status
-    amount: { type: Number, required: true },
-    address: { type: String }, // Add this
-    zip: { type: String },     // Add this
-    deviceModel: { type: String },
-    paymentReference: { type: String, unique: true },
-    status: { 
-        type: String, 
-        enum: ['pending', 'processing', 'completed', 'failed', 'successful'], 
-        default: 'pending' 
-    },
-    adminUpdatedBy: { type: String }
-}, { timestamps: true });
-
-const EsimActivation = mongoose.models.EsimActivation || mongoose.model('EsimActivation', esimActivationSchema);
-
 const rdpSchema = new mongoose.Schema({
     name: { type: String, required: true },
-    category: { type: String, enum: ['Windows', 'Linux', 'Server', 'All RDP'], default: 'Windows' },
     ram: { type: String, required: true }, 
     cpu: { type: String, required: true }, 
     storage: { type: String, required: true }, 
-    network: { type: String, default: "100Mbps" },
-    // Optional Customization
-    extraCPU: { type: Number, default: 0 },
-    extraStorage: { type: Number, default: 0 },
-    
-    os: { type: String, default: "Windows Server 2022/2025" },
-    price: { type: Number, required: true },
-    isInstant: { type: Boolean, default: true },
-    instructions: { type: String, default: "General setup instructions will be provided after purchase." },
-    adminUpdatedBy: String
+    price: { type: Number, required: true }, // Price in NGN
+    os: { type: String, default: "Windows Server 2022" }
 }, { timestamps: true });
 
 const RDP = mongoose.models.RDP || mongoose.model('RDP', rdpSchema);
 
-const rentedNumberSchema = new mongoose.Schema({
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    externalId: { type: String, required: true, unique: true }, // Textverified's Verification ID or Rental ID
-    phoneNumber: { type: String, required: true },    
-    activationType: { 
-        type: String, 
-        enum: ['activation', 'rent'], 
-        required: true 
-    },
-    service: { 
-        type: String, 
-        required: true, 
-        // Removed enum to allow dynamic Textverified target names
-    },
-    serviceName: { type: String }, 
-    targetId: { type: String }, // Store Textverified's internal Target ID
-    country: { 
-        name: String, 
-        code: String, 
-        prefix: String 
-    },
-    price: { type: Number, required: true },
-    currency: { type: String, default: 'NGN' },
-
-    // --- Status ---
-    status: { 
-        type: String, 
-        enum: ['pending', 'active', 'completed', 'expired', 'canceled'], 
-        default: 'pending' 
-    },
-
-    // --- SMS Data ---
-    otpReceived: [{ 
-        code: String, 
-        sender: String, 
-        fullText: String, 
-        timestamp: { type: Date, default: Date.now } 
-    }],
-
-    // --- Timing ---
-    expiresAt: { 
-        type: Date, 
-        required: true, 
-        // Default to 15 mins for activations, can be overridden for rentals
-        default: () => new Date(Date.now() + 15 * 60000) 
-    }
-}, { timestamps: true });
-
-// Index for performance and auto-expiry cleanup
-rentedNumberSchema.index({ user: 1, createdAt: -1 });
-rentedNumberSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); 
-
-const RentedNumber = mongoose.models.RentedNumber || mongoose.model('RentedNumber', rentedNumberSchema);
-
+// --- TRANSACTION SCHEMA (USD fields removed) ---
 const transactionSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     type: { type: String, enum: ['credit', 'debit'], required: true },
     purpose: { type: String, enum: ['deposit', 'purchase', 'refund', 'referral_bonus'], required: true },
     
-    // Monetary fields with rounding logic
-    amountUSD: { type: Number, required: true, set: v => Math.round(v * 100) / 100 },
-    amountNGN: { type: Number, set: v => Math.round(v * 100) / 100 },
-    exchangeRate: { type: Number },
+    amountNGN: { type: Number, required: true, set: v => Math.round(v * 100) / 100 },
     
     status: { type: String, enum: ['pending', 'successful', 'failed'], default: 'pending', index: true },
     reference: { type: String, unique: true, required: true, trim: true },
-    paymentMethod: { type: String, default: 'card' }, // NEW: As requested
+    paymentMethod: { type: String, default: 'wallet' }, 
     
     balanceBefore: { type: Number, default: 0 },
     balanceAfter: { type: Number, default: 0 },
     metadata: { type: mongoose.Schema.Types.Mixed } 
 }, { timestamps: true });
 
-// Performance Indexes
-transactionSchema.index({ userId: 1, createdAt: -1 });
-
 const Transaction = mongoose.models.Transaction || mongoose.model('Transaction', transactionSchema);
 
+// --- ORDER SCHEMA ---
 const orderSchema = new mongoose.Schema({
     userEmail: { type: String, required: true, index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     fullName: { type: String },         
     productType: { 
         type: String, 
-        enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill', 'eSIM_Activation', 'RDP', 'RentedNumber',], 
+        enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill', 'eSIM_Activation', 'RDP', 'RentedNumber'], 
         required: true 
     },
-    planName: { type: String }, 
-    nodeName: { type: String }, 
-    productImage: { type: String },
-    targetNumber: { type: String }, 
-    confirmationNumber: String,
-    amount: { type: Number, required: true },
-    currency: { type: String, default: 'USD' }, 
-    paymentGateway: { type: String }, 
-    status: { 
-        type: String, 
-        enum: ['pending', 'successful', 'failed', 'completed'], 
-        default: 'pending' 
-    }, 
-   metadata: {
-        address: String,
-        zip: String,
-        firstName: String,
-        lastName: String,
-        email: String,
-        extraCPU: { type: Number, default: 0 },
-        extraStorage: { type: Number, default: 0 },
-        osChoice: String
-    },
+    planName: String, 
+    nodeName: String, 
+    amount: { type: Number, required: true }, // Amount in NGN
+    currency: { type: String, default: 'NGN' }, 
+    status: { type: String, enum: ['pending', 'successful', 'failed', 'completed'], default: 'pending' }, 
     paymentReference: { type: String, unique: true },
     activationCode: String, 
-    vpnCredentials: {
-        username: String,
-        password: { type: String }
-    },
-    rdpDetails: {
-        os: String,
-        specs: String
-    }
+    vpnCredentials: { username: String, password: { type: String } },
+    rdpDetails: { os: String, specs: String }
 }, { timestamps: true });
-
-orderSchema.index({ createdAt: -1 });
 
 const Order = mongoose.models.Order || mongoose.model('Order', orderSchema);
 
@@ -1167,8 +967,7 @@ async function handleUserRegister(req, res) {
         return res.status(500).json({ success: false, message: "Failed to create account. Please try again." });
     }
 }
-
-// Fetch profile for the logged-in user
+// Fetch profile for the logged-in user (NGN Only)
 async function handleGetUserProfile(req, res) {
     // 1. Verify token
     const authHeader = req.headers['authorization'];
@@ -1179,8 +978,7 @@ async function handleGetUserProfile(req, res) {
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         
-        // Include referral fields in the selection
-        // We select '-password' to keep it secure, but ensure referralCode and referralCount are present
+        // Select all fields except password
         const user = await User.findById(decoded.id).select('-password');
         
         if (!user) {
@@ -1196,15 +994,14 @@ async function handleGetUserProfile(req, res) {
             });
         }
         
-        // 3. Return user data including referral information
+        // 3. Return user data (Removed USD fields)
         return res.json({ 
             success: true, 
             _id: user._id,
             fullName: user.fullName,
             email: user.email, 
             status: user.status || 'active',
-            balance: user.balance || 0,
-            usd_balance: user.usd_balance || 0,
+            balance: user.balance || 0, // This is now strictly NGN
             referralCode: user.referralCode || "", 
             referralCount: user.referralCount || 0 
         });
@@ -1306,31 +1103,26 @@ async function handlePurchaseVPN(req, res) {
         return res.status(401).json({ success: false, message: "Unauthorized or Session Expired" });
     }
 }
-
-// --- 1. Initiate Topup ---
+// --- 1. Initiate Topup (NGN Only) ---
 async function handleInitiateTopup(req, res) {
-    const { amountUSD } = req.body; 
+    const { amountNGN } = req.body; // Changed from amountUSD
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
-    if (!token || !amountUSD) {
+    if (!token || !amountNGN) {
         return res.status(400).json({ success: false, message: "Missing required data" });
     }
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         
-        // Fetch Live settings
-        const settings = await SystemSettings.findOne();
-        const LIVE_RATE = settings?.exchangeRate || 1380;
-        const MARKUP = settings?.globalMarkup || 0;
-
         const user = await User.findById(decoded.id);
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-        // Calculate NGN: ($Requested + Markup) * Rate
-        const totalUSD = parseFloat(amountUSD) + MARKUP;
-        const finalAmountNGN = Math.round(totalUSD * LIVE_RATE);
+        // Calculate Final Amount: amount + globalMarkup (if markup is still NGN based)
+        const settings = await SystemSettings.findOne();
+        const MARKUP = Number(settings?.globalMarkup || 0);
+        const finalAmountNGN = Math.round(Number(amountNGN) + MARKUP);
 
         const tx_ref = `TOPUP-${Date.now()}-${decoded.id.slice(-4)}`;
 
@@ -1350,11 +1142,9 @@ async function handleInitiateTopup(req, res) {
                     email: user.email, 
                     name: user.fullName 
                 },
-                // CRITICAL: We pass amountUSD here so we know exactly how much to credit later
                 meta: { 
                     userId: user._id.toString(), 
                     type: "WALLET_TOPUP", 
-                    usdAmount: amountUSD,
                     amountNGN: finalAmountNGN
                 },
                 customizations: { 
@@ -1375,6 +1165,7 @@ async function handleInitiateTopup(req, res) {
     }
 }
 
+// --- 2. Verify Topup (NGN Only) ---
 async function handleVerifyTopup(req, res) {
     const { transactionId } = req.body;
 
@@ -1383,7 +1174,6 @@ async function handleVerifyTopup(req, res) {
     }
 
     try {
-        // 1. Verify with Flutterwave
         const response = await fetch(`https://api.flutterwave.com/v3/transactions/${transactionId}/verify`, {
             method: "GET",
             headers: { 
@@ -1394,15 +1184,14 @@ async function handleVerifyTopup(req, res) {
 
         const flwData = await response.json();
 
-        // 2. Handle Case: Gateway/Network Error
         if (!flwData || flwData.status !== "success") {
             return res.status(400).json({ success: false, message: "Could not verify payment with Gateway" });
         }
 
-        const flwStatus = flwData.data.status; // 'successful', 'failed', or 'pending'
+        const flwStatus = flwData.data.status; 
         const txRef = flwData.data.tx_ref;
 
-        // 3. Check if transaction was already processed (to prevent double-funding)
+        // Check if already processed
         const existingTx = await Transaction.findOne({ reference: txRef });
         if (existingTx && existingTx.status === 'successful') {
             return res.json({ 
@@ -1411,59 +1200,47 @@ async function handleVerifyTopup(req, res) {
                 message: "Transaction already processed." 
             });
         }
-// --- UPDATED BACKEND SECTION ---
-if (flwStatus === "successful") {
-    const { userId, usdAmount } = flwData.data.meta;
-    const flwAmountNGN = flwData.data.amount;
 
-    let amountCreditUSD = parseFloat(usdAmount);
-    if (isNaN(amountCreditUSD)) {
-        const settings = await SystemSettings.findOne();
-        const rate = settings?.exchangeRate || 1380;
-        amountCreditUSD = flwAmountNGN / rate;
-    }
+        if (flwStatus === "successful") {
+            const { userId } = flwData.data.meta;
+            const flwAmountNGN = flwData.data.amount;
 
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+            const user = await User.findById(userId);
+            if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    const balanceBefore = user.balance;
-    const balanceAfter = balanceBefore + amountCreditUSD;
+            const balanceBefore = Number(user.balance);
+            const balanceAfter = balanceBefore + Number(flwAmountNGN);
 
-    // Fixed Mongoose Warning: Added returnDocument: 'after' instead of new: true
-    await Transaction.findOneAndUpdate(
-        { reference: txRef },
-        {
-            userId: user._id,
-            type: 'credit',
-            purpose: 'deposit',
-            amountUSD: amountCreditUSD,
-            amountNGN: flwAmountNGN,
-            exchangeRate: flwAmountNGN / amountCreditUSD,
-            status: 'successful',
-            paymentMethod: flwData.data.payment_type || 'card',
-            balanceBefore,
-            balanceAfter,
-            metadata: flwData.data
-        },
-        { upsert: true, returnDocument: 'after' } 
-    );
+            // Update Transaction Record
+            await Transaction.findOneAndUpdate(
+                { reference: txRef },
+                {
+                    userId: user._id,
+                    type: 'credit',
+                    purpose: 'deposit',
+                    amountNGN: flwAmountNGN,
+                    status: 'successful',
+                    paymentMethod: flwData.data.payment_type || 'card',
+                    balanceBefore,
+                    balanceAfter,
+                    metadata: flwData.data
+                },
+                { upsert: true, returnDocument: 'after' } 
+            );
 
-    user.balance = balanceAfter;
-    await user.save();
+            // Update User Balance
+            user.balance = balanceAfter;
+            await user.save();
 
-    // FIXED: Now returning all fields the frontend expects
-    return res.json({ 
-        success: true, 
-        amountUSD: amountCreditUSD, 
-        amountNGN: flwAmountNGN,
-        newBalance: user.balance, 
-        message: "Wallet funded successfully!" 
-    });
-}
+            return res.json({ 
+                success: true, 
+                amountNGN: flwAmountNGN,
+                newBalance: user.balance, 
+                message: "Wallet funded successfully!" 
+            });
+        }
 
-        // 5. SCENARIO B: PAYMENT PENDING (Network/Bank Delay)
         if (flwStatus === "pending") {
-            // Log as pending so user sees it in history
             await Transaction.findOneAndUpdate(
                 { reference: txRef },
                 { status: 'pending', metadata: flwData.data },
@@ -1472,21 +1249,21 @@ if (flwStatus === "successful") {
             return res.json({ 
                 success: true, 
                 status: 'pending', 
-                message: "Payment is pending bank confirmation. Please refresh in a few minutes." 
+                message: "Payment is pending confirmation." 
             });
         }
 
-        // 6. SCENARIO C: PAYMENT FAILED
+        // Handle Failure
         await Transaction.findOneAndUpdate(
             { reference: txRef },
             { status: 'failed', metadata: flwData.data },
             { upsert: true }
         );
-        return res.status(400).json({ success: false, message: "Payment failed or was cancelled by user." });
+        return res.status(400).json({ success: false, message: "Payment failed." });
 
     } catch (err) {
         console.error("CRITICAL TOPUP ERROR:", err);
-        return res.status(500).json({ success: false, message: "Internal server error during verification" });
+        return res.status(500).json({ success: false, message: "Internal server error" });
     }
 }
 

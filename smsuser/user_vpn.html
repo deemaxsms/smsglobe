@@ -301,8 +301,8 @@ async function fetchUserProfile() {
                                 ${isOutOfStock ? 'Out of Stock' : `In Stock: ${vpn.stock}`}
                             </span>
                         </div>
-                        <div class="bg-brand-background rounded-lg p-1.5 mb-3 border border-brand-border/50">
-                            <select id="plan-${vpn._id}" ${isOutOfStock ? 'disabled' : ''} class="w-full bg-transparent text-[8px] font-bold outline-none cursor-pointer">
+                        <div class="bg-brand-background rounded-lg p-1.1 mb-3 border border-brand-border/50">
+                            <select id="plan-${vpn._id}" ${isOutOfStock ? 'disabled' : ''} class="w-full bg-transparent text-[6px] font-bold outline-none cursor-pointer">
                                 ${vpn.plans.map((p, i) => `<option value="${i}">${p.duration || 'Plan'} - #${parseFloat(p.price).toFixed(2)}</option>`).join('')}
                             </select>
                         </div>

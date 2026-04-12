@@ -219,13 +219,13 @@
 
 async function fetchUserProfile() {
     try {
-        const res = await fetch(`${API_BASE_URL}/user/profile`, {
+        const res = await fetch(`${API_BASE_URL}/user-profile`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
         });
         const data = await res.json();
         if (data.success) {
-            userBalance = data.user.walletBalance; // Assuming your API returns this
-        }
+        userBalance = data.balance;     
+       }
     } catch (err) {
         console.error("Failed to fetch balance", err);
     }

@@ -298,11 +298,27 @@
     const API_BASE_URL = '/api';
     const CAT_IMAGE_URL = 'https://i.imgur.com/n5ZZeLf.png';
     let allProxies = [];
+    let userBalance = 0;
+
 
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('-translate-x-full');
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
+
+    async function fetchUserProfile() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/user-profile`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+        userBalance = data.balance;     
+       }
+    } catch (err) {
+        console.error("Failed to fetch balance", err);
+    }
+}
 
     async function refreshProxyData() {
         try {
@@ -320,26 +336,6 @@
         } catch (err) { console.error("Stock refresh failed:", err); }
     }
 
-    async function checkPaymentStatus() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const transactionId = urlParams.get('transaction_id');
-        const status = urlParams.get('status');
-        if (transactionId && (status === 'successful' || status === 'completed')) {
-            try {
-                const res = await fetch(`${API_BASE_URL}/verify-payment`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ transactionId })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                    await refreshProxyData(); 
-                    showSuccessModal(data.credentials);
-                } else { alert("Payment verification failed: " + data.message); }
-            } catch (err) { console.error("Verification Error:", err); }
-        }
-    }
 
     async function initPage() {
         const token = localStorage.getItem('userToken');
@@ -462,35 +458,74 @@ function showCategories() {
     `}).join('');
 }
     
-    async function buyProxy(proxyId) {
-        const planIndex = document.getElementById(`plan-${proxyId}`).value;
-        const token = localStorage.getItem('userToken');
-        const btn = document.getElementById(`btn-${proxyId}`);
-        btn.disabled = true;
-        btn.innerHTML = '<span class="flex items-center justify-center gap-2"><svg class="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing</span>';
-        try {
-            const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ proxyId, planIndex, type: 'proxy' })
-            });
-            const data = await res.json();
-            if (data.link) window.location.href = data.link;
-            else alert(data.message || "Failed to initiate");
-        } catch (err) { alert("Network error"); }
+ 
+   /* --- UPDATED JAVASCRIPT FOR PROXY PAGE --- */
+
+async function buyProxy(proxyId) {
+    const planIndex = document.getElementById(`plan-${proxyId}`).value;
+    const token = localStorage.getItem('userToken');
+    const btn = document.getElementById(`btn-${proxyId}`);
+
+    // UI Feedback: Loading state
+    const originalText = btn.innerText;
+    btn.disabled = true;
+    btn.innerHTML = `
+        <span class="flex items-center justify-center gap-2">
+            <svg class="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg> 
+            Processing...
+        </span>`;
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({ 
+                proxyId, 
+                planIndex 
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            // Show Success Modal with the Activation Code
+            showSuccessModal(data.credentials);
+            // Refresh stock in background
+            refreshProxyData();
+        } else {
+            // Check if it's an insufficient balance error
+            if (data.message.includes("Insufficient Balance")) {
+                alert(data.message);
+            } else {
+                alert("Error: " + data.message);
+            }
+        }
+    } catch (err) {
+        console.error("Purchase Error:", err);
+        alert("Network error. Please check your connection.");
+    } finally {
         btn.disabled = false;
-        btn.innerText = "Purchase Access";
+        btn.innerText = originalText;
     }
+}
 
-    function showSuccessModal(credentials) {
-        const modal = document.getElementById('proxyModal');
-        const modalCode = document.getElementById('modalCode');
-        const modalInstructions = document.getElementById('modalInstructions');
-        modalCode.innerText = credentials.activationCode || "N/A";
-        modalInstructions.innerText = credentials.instructions || "Your proxy is ready. Check your email for full setup details.";
-        modal.classList.remove('hidden');
-    }
-
+function showSuccessModal(credentials) {
+    const modal = document.getElementById('proxyModal');
+    const modalCode = document.getElementById('modalCode');
+    const modalInstructions = document.getElementById('modalInstructions');
+    
+    // Display the code and instructions from the backend
+    modalCode.innerText = credentials.activationCode || "PROVISIONING...";
+    modalInstructions.innerText = credentials.instructions || "Your proxy is ready. Check your email for full setup details.";
+    
+    modal.classList.remove('hidden');
+}
     function closeModal() {
         document.getElementById('proxyModal').classList.add('hidden');
         window.location.href = 'user_dashboard.html';

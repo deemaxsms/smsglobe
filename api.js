@@ -1677,6 +1677,12 @@ async function handlePurchaseWithWallet(req, res) {
             };
         }
 
+        if (itemType === "Proxy") {
+            orderData.proxyDetails = { 
+                activationCode: credentials.activationCode,
+                instructions: credentials.instructions
+            };
+        }
         const newOrder = await Order.create(orderData);
 
         // 7. CREATE TRANSACTION LOG (For History Table)

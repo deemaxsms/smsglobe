@@ -206,39 +206,40 @@
                 </div>
             </div>
 
-             <div class="mt-10">
-    <div class="flex items-center justify-between mb-5 px-2">
+            <div class="mt-8 px-1">
+    <div class="flex items-center justify-between mb-4 px-1">
         <div>
-            <h3 class="text-sm font-black text-brand-darkText uppercase tracking-widest">Top-up History</h3>
-            <p class="text-[11px] text-brand-lightText">View your recent wallet funding activities</p>
+            <h3 class="text-[11px] sm:text-xs font-black text-brand-darkText uppercase tracking-widest">Top-up History</h3>
+            <p class="text-[9px] sm:text-[10px] text-brand-lightText">Recent wallet funding activities</p>
         </div>
-        <button onclick="fetchTransactionHistory()" class="p-2 text-brand-blue hover:bg-brand-blue/5 rounded-lg transition-all">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <button onclick="fetchTransactionHistory()" class="p-1.5 text-brand-blue hover:bg-brand-blue/5 rounded-lg transition-all">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
         </button>
     </div>
 
-    <div class="bg-white rounded-[24px] border border-brand-border shadow-sm overflow-hidden">
-        <div class="overflow-x-auto no-scrollbar">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-gray-50/50 border-b border-brand-border">
-                        <th class="px-6 py-4 text-[10px] font-bold text-brand-lightText uppercase tracking-wider">Date & Time</th>
-                        <th class="px-6 py-4 text-[10px] font-bold text-brand-lightText uppercase tracking-wider">Amount</th>
-                    <th class="px-6 py-4 text-[10px] font-bold text-brand-lightText uppercase tracking-wider">Method</th> 
-            <th class="px-6 py-4 text-[10px] font-bold text-brand-lightText uppercase tracking-wider">Status</th>                    </tr>
-                </thead>
-                <tbody id="historyTableBody" class="divide-y divide-brand-border">
-                    <tr>
-                        <td colspan="3" class="px-6 py-10 text-center">
-                            <div class="flex flex-col items-center gap-2">
-                                <div class="w-5 h-5 border-2 border-brand-blue/30 border-t-brand-blue rounded-full animate-spin"></div>
-                                <span class="text-[11px] font-medium text-brand-lightText">Loading history...</span>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+    <div class="overflow-x-auto no-scrollbar -mx-1">
+        <table class="w-full text-left border-collapse min-w-[320px]">
+            <thead>
+                <tr class="border-b border-brand-border/50">
+                    <th class="px-3 py-3 text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Date</th>
+                    <th class="px-3 py-3 text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Amount</th>
+                    <th class="px-3 py-3 text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Method</th> 
+                    <th class="px-3 py-3 text-[9px] font-bold text-brand-lightText uppercase tracking-wider text-right">Status</th>
+                </tr>
+            </thead>
+            <tbody id="historyTableBody" class="divide-y divide-brand-border/30">
+                <tr>
+                    <td colspan="4" class="px-3 py-10 text-center">
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="w-4 h-4 border-2 border-brand-blue/20 border-t-brand-blue rounded-full animate-spin"></div>
+                            <span class="text-[9px] font-bold text-brand-lightText uppercase">Loading...</span>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </div>
         </main>

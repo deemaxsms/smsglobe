@@ -657,20 +657,26 @@ async function initiateRDPPayment() {
     if (modal) modal.classList.remove('hidden');
 }
 
-// 3. The Final Purchase API Call (Your provided function)
 async function purchaseRDPWithWallet() {
     const selectedRDP = window.currentSelectedRDP;
     if (!selectedRDP) return alert("Select a plan first");
 
-    const cpuExtra = parseInt(document.getElementById('extraCPU')?.value) || 0;
-    const storageExtra = parseInt(document.getElementById('extraStorage')?.value) || 0;
-    const selectedOS = document.getElementById('osSelector')?.value || "Windows Server";
-
     const confirmBtn = document.getElementById('confirmPurchaseBtn');
+    
+    // 1. Prevent multiple clicks immediately
+    if (confirmBtn.disabled) return;
+    
     confirmBtn.disabled = true;
-    confirmBtn.innerText = "Processing...";
+    confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    confirmBtn.innerHTML = `
+        <div class="flex items-center justify-center gap-2">
+            <div class="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+            <span>Securing Node...</span>
+        </div>
+    `;
 
     try {
+        // 2. We trigger the API call
         const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
             method: 'POST',
             headers: {
@@ -683,30 +689,42 @@ async function purchaseRDPWithWallet() {
                     baseRAM: selectedRDP.ram,
                     baseCPU: selectedRDP.cpu,
                     baseStorage: selectedRDP.storage,
-                    extraCPU: cpuExtra,
-                    extraStorage: storageExtra,
-                    osChoice: selectedOS
+                    extraCPU: parseInt(document.getElementById('extraCPU')?.value) || 0,
+                    extraStorage: parseInt(document.getElementById('extraStorage')?.value) || 0,
+                    osChoice: document.getElementById('osSelector')?.value || "Windows Server"
                 }
             })
         });
 
         const data = await res.json();
-        if (data.success) {
-            document.getElementById('paymentModal').classList.add('hidden');
-            document.getElementById('selectionView').classList.add('hidden');
-            document.getElementById('checkoutView').classList.add('hidden');
-            showReceipt(data.order);
-        } else {
-            alert(data.message || "Purchase failed");
-            confirmBtn.disabled = false;
-            confirmBtn.innerText = "Confirm & Pay";
-        }
+
+        // 3. Forced 3-second delay for UX/Processing feel
+        setTimeout(() => {
+            if (data.success) {
+                // Success State
+                document.getElementById('paymentModal').classList.add('hidden');
+                document.getElementById('selectionView').classList.add('hidden');
+                document.getElementById('checkoutView').classList.add('hidden');
+                showReceipt(data.order);
+            } else {
+                // Handle Error (Insufficient balance, etc.)
+                alert(data.message || "Purchase failed");
+                resetPurchaseButton(confirmBtn);
+            }
+        }, 3000);
+
     } catch (err) {
-        console.error(err);
-        alert("Error connecting to server");
-        confirmBtn.disabled = false;
-        confirmBtn.innerText = "Confirm & Pay";
+        // 4. HANDLING NETWORK ISSUE DURING API CALL
+        console.error("Network Error during purchase:", err);
+        alert("Network timeout. Please check your 'My Services' tab to see if the RDP was activated before trying again.");
+        resetPurchaseButton(confirmBtn);
     }
+}
+
+function resetPurchaseButton(btn) {
+    btn.disabled = false;
+    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    btn.innerText = "Confirm & Pay";
 }
 
 function closePaymentModal() {

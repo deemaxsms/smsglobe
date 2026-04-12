@@ -1497,17 +1497,30 @@ async function handlePurchaseWithWallet(req, res) {
     const token = authHeader && authHeader.split(' ')[1];
 
     try {
+        if (!token) return res.status(401).json({ success: false, message: "Unauthorized" });
+        
         const decoded = jwt.verify(token, JWT_SECRET);
         const user = await User.findById(decoded.id);
         
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
+        // 1. PREVENT DOUBLE-CHARGING (Idempotency Check)
+        // Checks if the user made an identical purchase in the last 20 seconds
+        const recentOrder = await Order.findOne({
+            userId: user._id,
+            createdAt: { $gt: new Date(Date.now() - 20000) } 
+        });
+        if (recentOrder) {
+            return res.status(429).json({ success: false, message: "Duplicate request detected. Please wait 20 seconds." });
+        }
+
         let itemType;
-        let cost = 0;
+        let costNGN = 0;
         let credentials = {};
         let productDetails = { name: "", plan: "" };
         let targetNum = mobileNumber || null;
 
+        // 2. PRODUCT LOGIC & COST CALCULATION (In NGN)
         if (vpnId) {
             const item = await VPN.findOneAndUpdate(
                 { _id: vpnId, stock: { $gt: 0 } },
@@ -1520,7 +1533,7 @@ async function handlePurchaseWithWallet(req, res) {
             }
 
             itemType = "VPN";
-            cost = item.plans[planIndex].price;
+            costNGN = item.plans[planIndex].price;
             productDetails.name = item.name;
             productDetails.plan = item.plans[planIndex].duration;
             credentials = {
@@ -1546,7 +1559,7 @@ async function handlePurchaseWithWallet(req, res) {
             }
             
             itemType = "Proxy";
-            cost = item.plans[planIndex].price;
+            costNGN = item.plans[planIndex].price;
             productDetails.name = item.name;
             productDetails.plan = `${item.plans[planIndex].ip_count} IPs`;
             credentials = {
@@ -1558,7 +1571,7 @@ async function handlePurchaseWithWallet(req, res) {
         else if (carrierName) {
             itemType = metadata ? "eSIM_Activation" : "eSIM";
             const priceMatch = String(planAmount || "").match(/(\d+\.?\d*)/);
-            cost = priceMatch ? parseFloat(priceMatch[0]) : 0;
+            costNGN = priceMatch ? parseFloat(priceMatch[0]) : 0;
             
             productDetails.name = carrierName;
             productDetails.plan = planAmount;
@@ -1591,7 +1604,7 @@ async function handlePurchaseWithWallet(req, res) {
             const selectedTier = rdpPlans[rdpId];
             if (!selectedTier) return res.status(404).json({ success: false, message: "RDP Plan not found" });
 
-            cost = selectedTier.price + (extraCPU * 5000) + (extraStorage * 200);
+            costNGN = selectedTier.price + (extraCPU * 5000) + (extraStorage * 200);
             productDetails.name = selectedTier.name;
             productDetails.plan = `${selectedTier.ram} RAM | ${metadata?.osChoice || 'Windows'}`;
             credentials = {
@@ -1602,19 +1615,28 @@ async function handlePurchaseWithWallet(req, res) {
             };
         }
 
-if (user.balance < cost) {
-    const settings = await SystemSettings.findOne().lean();    
-    const adminRate = Number(settings?.exchangeRate || 1380);     
-    const walletInNGN = user.balance * adminRate;
+        // 3. CURRENCY CONVERSION (Convert NGN Cost to USD Wallet Amount)
+        const settings = await SystemSettings.findOne().lean();     
+        const adminRate = Number(settings?.exchangeRate || 1380);     
+        const costUSD = costNGN / adminRate;
 
-    return res.status(400).json({ 
-        success: false, 
-        message: `Insufficient Balance.\n\nRequired: ₦${cost.toLocaleString()}\nYour Wallet: $${user.balance.toLocaleString()} (≈ ₦${walletInNGN.toLocaleString()})` 
-    });
-}
-        user.balance -= cost;
+        // 4. BALANCE VALIDATION
+        if (user.balance < costUSD) {
+            const walletInNGN = user.balance * adminRate;
+            return res.status(400).json({ 
+                success: false, 
+                message: `Insufficient Balance.\n\nRequired: ₦${costNGN.toLocaleString()} ($${costUSD.toFixed(2)})\nYour Wallet: $${user.balance.toFixed(2)} (≈ ₦${walletInNGN.toLocaleString()})` 
+            });
+        }
+
+        // 5. ATOMIC UPDATES (Debit Balance)
+        const balanceBefore = user.balance;
+        const balanceAfter = balanceBefore - costUSD;
+
+        user.balance = balanceAfter;
         await user.save();
 
+        // 6. CREATE ORDER RECORD
         const orderData = {
             userId: user._id,
             userEmail: user.email,
@@ -1623,7 +1645,7 @@ if (user.balance < cost) {
             planName: productDetails.plan,
             nodeName: productDetails.name,
             targetNumber: targetNum,
-            amount: cost,
+            amount: costNGN, // We store NGN cost in Order history
             currency: "NGN",
             status: "successful",
             paymentReference: `WAL-${Date.now()}-${user._id.toString().slice(-4)}`,
@@ -1652,11 +1674,25 @@ if (user.balance < cost) {
 
         const newOrder = await Order.create(orderData);
 
-        try {
-            await sendDeliveryEmail(user.email, { ...credentials, amount: `₦${cost.toLocaleString()}` }, newOrder);
-        } catch (emailErr) {
-            console.error("Email Error:", emailErr.message);
-        }
+        // 7. CREATE TRANSACTION LOG (For History Table)
+        await Transaction.create({
+            userId: user._id,
+            type: 'debit',
+            purpose: 'purchase',
+            amountUSD: costUSD,
+            amountNGN: costNGN,
+            exchangeRate: adminRate,
+            reference: orderData.paymentReference,
+            status: 'successful',
+            paymentMethod: 'wallet',
+            balanceBefore: balanceBefore,
+            balanceAfter: balanceAfter,
+            metadata: { orderId: newOrder._id, product: productDetails.name }
+        });
+
+        // 8. SEND DELIVERY EMAIL (Background process)
+        sendDeliveryEmail(user.email, { ...credentials, amount: `₦${costNGN.toLocaleString()}` }, newOrder)
+            .catch(emailErr => console.error("Email Error (Handled):", emailErr.message));
 
         return res.json({ 
             success: true, 
@@ -1668,9 +1704,10 @@ if (user.balance < cost) {
 
     } catch (err) {
         console.error("Wallet Purchase Error:", err);
-        return res.status(500).json({ success: false, message: err.message });
+        return res.status(500).json({ success: false, message: "Internal server error. Purchase could not be completed." });
     }
 }
+
 
 const sendDeliveryEmail = async (userEmail, credentials) => {
     const transporter = nodemailer.createTransport({

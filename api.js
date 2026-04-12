@@ -1587,13 +1587,16 @@ async function handlePurchaseWithWallet(req, res) {
             };
         }
 
-        if (user.balance < cost) {
-            return res.status(400).json({ 
-                success: false, 
-                message: `Insufficient Balance. Required: ₦${cost.toLocaleString()}, Wallet: ₦${user.balance.toLocaleString()}` 
-            });
-        }
+if (user.balance < cost) {
+    const settings = await SystemSettings.findOne().lean();    
+    const adminRate = Number(settings?.exchangeRate || 1380);     
+    const walletInNGN = user.balance * adminRate;
 
+    return res.status(400).json({ 
+        success: false, 
+        message: `Insufficient Balance.\n\nRequired: ₦${cost.toLocaleString()}\nYour Wallet: $${user.balance.toLocaleString()} (≈ ₦${walletInNGN.toLocaleString()})` 
+    });
+}
         user.balance -= cost;
         await user.save();
 

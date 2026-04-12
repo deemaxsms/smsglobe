@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover">
         <title>High-Performance Remote Desktop (RDP) & VPS | SMSGlobe</title>
     <meta name="description" content="Get high-speed, dedicated RDP and Windows VPS instances. Secure remote access with admin privileges, SSD storage, and 99.9% uptime for global workflows.">
     <meta name="keywords" content="buy RDP, remote desktop, admin rdp, windows vps, cloud workstation, residential rdp, SMSGlobe rdp">
@@ -31,26 +31,32 @@
         }
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
+   <style>
+        /* Prevents horizontal overflow "bounce" on mobile */
+        html, body {
+            overflow-x: hidden;
+            width: 100%;
+            touch-action: manipulation; /* Improves tap response time */
+        }
+
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .active-scale:active { transform: scale(0.98); }
+        
+        /* Forces iOS to not zoom on focus */
+        input, select, textarea {
+            font-size: 16px !important;
+        }
+
+        /* Rest of your animations... */
         @keyframes marquee {
             0% { transform: translateX(100%); }
             100% { transform: translateX(-100%); }
         }
         .animate-marquee { animation: marquee 20s linear infinite; }
-        .fade-in { animation: fadeIn 0.3s ease-out; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        input, select, textarea {
-        font-size: 16px !important;
-        }
     </style>
 </head>
-<body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
+<body class="bg-brand-background min-h-screen flex font-sans text-brand-midText overflow-x-hidden">
 
     <div id="sidebarOverlay" class="fixed inset-0 bg-black/20 z-40 hidden lg:hidden"></div>
 
@@ -423,6 +429,7 @@
 
 <script>
     const API_BASE_URL = '/api';
+    let userBalance = 0; // Global variable to store balance
 
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
@@ -447,22 +454,25 @@
         renderPlans();
     };
 
-    async function fetchUserProfile() {
+   async function fetchUserProfile() {
     try {
+        const token = localStorage.getItem('userToken');
+        if (!token) return false;
+
         const res = await fetch(`${API_BASE_URL}/user-profile`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
+            headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
+        
         if (data.success) {
-            userBalance = data.user.balance; // Adjust based on your API structure (data.balance or data.user.balance)
+            userBalance = (data.user ? data.user.balance : data.balance) ?? 0;
             return true;
         }
     } catch (err) {
-        console.error("Failed to fetch balance", err);
+        console.error("Failed to fetch balance:", err);
     }
     return false;
 }
-
     function renderPlans() {
         if(!tableBody) return;
         tableBody.innerHTML = Object.values(plans).map(plan => `
@@ -549,31 +559,44 @@
     }
 
   async function initiateRDPPayment() {
-    // Show a small loader or disable button while fetching live balance
     const payBtn = document.getElementById('payBtn');
+    if (!payBtn) return;
+
+    // 1. UI Loading State
     const originalText = payBtn.innerText;
-    payBtn.innerText = "Checking Balance...";
+    payBtn.innerText = "Verifying Balance...";
     payBtn.disabled = true;
 
-    const success = await fetchUserProfile();
-    
+    // 2. Fetch Fresh Data
+    const success = await fetchUserProfile();    
     payBtn.innerText = originalText;
     payBtn.disabled = false;
 
-    if (!success) return alert("Could not verify balance. Please check your connection.");
+    if (!success) {
+        alert("Could not verify your wallet balance. Please log in again or check your connection.");
+        return;
+    }
+    const totalElement = document.getElementById('summaryTotal');
+    if (!totalElement) return;    
+    const totalText = totalElement.innerText;
+    const currentTotal = parseInt(totalText.replace(/\D/g, '')) || 0;
+    const modalBalanceDisplay = document.getElementById('modalUserBalance');
+    const modalTotalDisplay = document.getElementById('modalTotalDue');
 
-    // Calculate Total from the UI summary
-    const totalText = document.getElementById('summaryTotal').innerText;
-    const currentTotal = parseInt(totalText.replace(/[^\d]/g, ''));
-
-    // Update Modal UI
-    document.getElementById('modalUserBalance').innerText = '₦' + userBalance.toLocaleString();
-    document.getElementById('modalTotalDue').innerText = '₦' + currentTotal.toLocaleString();
+    if (modalBalanceDisplay) {
+        modalBalanceDisplay.innerText = '₦' + userBalance.toLocaleString();
+    }
     
-    // Toggle Modal Visibility
-    document.getElementById('paymentModal').classList.remove('hidden');
+    if (modalTotalDisplay) {
+        modalTotalDisplay.innerText = '₦' + currentTotal.toLocaleString();
+    }    
+    const modal = document.getElementById('paymentModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    } else {
+        console.error("Payment modal element not found in DOM");
+    }
 }
-
 // 3. The Final Purchase API Call (Your provided function)
 async function purchaseRDPWithWallet() {
     const selectedRDP = window.currentSelectedRDP;

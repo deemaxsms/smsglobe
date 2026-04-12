@@ -251,82 +251,90 @@
 
     // 1. Payment Verification Logic
     async function verifyPaymentOnLoad() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const transactionId = urlParams.get('transaction_id');
-        const status = urlParams.get('status');
+    const urlParams = new URLSearchParams(window.location.search);
+    const transactionId = urlParams.get('transaction_id');
+    const status = urlParams.get('status');
 
-        if (transactionId && (status === 'successful' || status === 'completed')) {
-            const alertBox = document.getElementById('statusAlert');
-            const title = document.getElementById('statusTitle');
-            const msg = document.getElementById('statusMessage');
-            const icon = document.getElementById('statusIcon');
-            const action = document.getElementById('statusAction');
+    if (transactionId && (status === 'successful' || status === 'completed')) {
+        const alertBox = document.getElementById('statusAlert');
+        const title = document.getElementById('statusTitle');
+        const msg = document.getElementById('statusMessage');
+        const icon = document.getElementById('statusIcon');
+        const action = document.getElementById('statusAction');
 
-            alertBox.classList.remove('hidden');
-            alertBox.className = "mb-6 p-5 rounded-[24px] border flex flex-col sm:flex-row items-center gap-4 bg-blue-50 border-blue-200 text-blue-800 animate-pulse";
-            icon.className = "flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-blue-100 text-blue-600";
-            title.innerText = "Verifying Payment...";
-            msg.innerText = "Please wait while we confirm your transaction with Flutterwave. Do not close this page.";
-            icon.innerHTML = `<svg class="w-6 h-6 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke-width="3" stroke-linecap="round"/></svg>`;
-            
-            try {
-                const response = await fetch('/api/verify-topup', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ transactionId })
-                });
+        alertBox.classList.remove('hidden');
+        // Initial Loading State
+        alertBox.className = "mb-6 p-5 rounded-[24px] border flex flex-col sm:flex-row items-center gap-4 bg-blue-50 border-blue-200 text-blue-800 animate-pulse";
+        icon.className = "flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-blue-100 text-blue-600";
+        title.innerText = "Verifying Payment...";
+        msg.innerText = "Confirming your transaction with Flutterwave. Please do not refresh.";
+        icon.innerHTML = `<svg class="w-6 h-6 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" stroke-width="3" stroke-linecap="round"/></svg>`;
+        
+        try {
+            const response = await fetch('/api/verify-topup', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ transactionId })
+            });
 
-                const data = await response.json();
+            const data = await response.json();
 
-                if (data.success) {
-                    // 🎉 CONGRATULATIONS STATE
-                    alertBox.className = "mb-6 p-6 rounded-[24px] border flex flex-col sm:flex-row items-center gap-5 bg-green-50 border-green-200 text-green-800 confetti-glow";
-                    icon.className = "flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center bg-green-500 text-white shadow-lg";
-                    title.innerText = "Congratulations! Wallet Funded";
-                    
-                    // Show both USD and NGN (if available in data)
-                    const ngnPaid = data.amountNGN ? `(₦${data.amountNGN.toLocaleString()})` : '';
-                    msg.innerHTML = `You have successfully topped up <b>$${data.amountUSD.toFixed(2)}</b> ${ngnPaid}. <br>Your new balance is <b>$${data.newBalance.toFixed(2)}</b>.`;
-                    
-                    icon.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>`;
-                    
-                    // Show Button and Redirect Counter
-                    action.classList.remove('hidden');
-                    const counter = document.getElementById('redirectCounter');
-                    counter.classList.remove('hidden');
-                    
-                    // Update header balance
-                    document.getElementById('currentBalance').innerText = `Bal: $${data.newBalance.toFixed(2)}`;
-                    
-                    // Start Countdown
-                    let timeLeft = 8;
-                    const timer = setInterval(() => {
-                        timeLeft--;
-                        document.getElementById('seconds').innerText = timeLeft;
-                        if (timeLeft <= 0) {
-                            clearInterval(timer);
-                            window.location.href = 'user_dashboard.html';
-                        }
-                    }, 1000);
-
-                    // Clean URL
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                } else {
-                    throw new Error(data.message);
-                }
-            } catch (err) {
-                alertBox.className = "mb-6 p-5 rounded-[24px] border flex flex-col sm:flex-row items-center gap-4 bg-red-50 border-red-200 text-red-800";
-                icon.className = "flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-red-100 text-red-600";
-                title.innerText = "Verification Failed";
-                msg.innerText = err.message || "We couldn't confirm your payment. If you were debited, please contact support.";
-                icon.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>`;
+            // 1. 🎉 SUCCESS STATE
+            if (data.success && data.status !== 'pending') {
+                alertBox.className = "mb-6 p-6 rounded-[24px] border flex flex-col sm:flex-row items-center gap-5 bg-green-50 border-green-200 text-green-800 shadow-sm";
+                icon.className = "flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center bg-green-500 text-white shadow-lg";
+                title.innerText = "Congratulations! Wallet Funded";
+                
+                const ngnPaid = data.amountNGN ? `(₦${data.amountNGN.toLocaleString()})` : '';
+                msg.innerHTML = `You have topped up <b>$${data.amountUSD.toFixed(2)}</b> ${ngnPaid}. <br>New balance: <b>$${data.newBalance.toFixed(2)}</b>.`;
+                icon.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>`;
+                
                 action.classList.remove('hidden');
+                document.getElementById('currentBalance').innerText = `Bal: $${data.newBalance.toFixed(2)}`;
+                
+                // Countdown logic
+                let timeLeft = 8;
+                const timer = setInterval(() => {
+                    timeLeft--;
+                    const counter = document.getElementById('seconds');
+                    if(counter) counter.innerText = timeLeft;
+                    if (timeLeft <= 0) {
+                        clearInterval(timer);
+                        window.location.href = 'user_dashboard.html';
+                    }
+                }, 1000);
+            } 
+                        else if (data.status === 'pending') {
+                alertBox.className = "mb-6 p-6 rounded-[24px] border flex flex-col sm:flex-row items-center gap-5 bg-orange-50 border-orange-200 text-orange-800";
+                icon.className = "flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center bg-orange-500 text-white animate-pulse";
+                title.innerText = "Payment Processing";
+                msg.innerHTML = `Your payment is awaiting confirmation from your bank. <br>It will reflect in your <b>Top-up History</b> once confirmed.`;
+                icon.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+                action.classList.remove('hidden');
+                // Refresh history table so they see the 'Pending' row
+                if(typeof fetchTransactionHistory === 'function') fetchTransactionHistory();
             }
+
+            else {
+                throw new Error(data.message);
+            }
+
+            // Clean URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+
+        } catch (err) {
+            alertBox.className = "mb-6 p-5 rounded-[24px] border flex flex-col sm:flex-row items-center gap-4 bg-red-50 border-red-200 text-red-800";
+            icon.className = "flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center bg-red-100 text-red-600";
+            title.innerText = "Verification Failed";
+            msg.innerText = err.message || "We couldn't confirm your payment. If you were debited, please contact support.";
+            icon.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>`;
+            action.classList.remove('hidden');
         }
     }
+}
 
     // 2. Main Sync Function
     async function syncWithBackend() {

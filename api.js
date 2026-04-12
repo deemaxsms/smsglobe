@@ -1395,26 +1395,30 @@ async function handleVerifyTopup(req, res) {
 
         const flwData = await response.json();
 
-        if (flwData.status === "success" && flwData.data.status === "successful") {
+        // 2. Handle Case: Gateway/Network Error
+        if (!flwData || flwData.status !== "success") {
+            return res.status(400).json({ success: false, message: "Could not verify payment with Gateway" });
+        }
+
+        const flwStatus = flwData.data.status; // 'successful', 'failed', or 'pending'
+        const txRef = flwData.data.tx_ref;
+
+        // 3. Check if transaction was already processed (to prevent double-funding)
+        const existingTx = await Transaction.findOne({ reference: txRef });
+        if (existingTx && existingTx.status === 'successful') {
+            return res.json({ 
+                success: true, 
+                newBalance: existingTx.balanceAfter,
+                message: "Transaction already processed." 
+            });
+        }
+
+        // 4. SCENARIO A: PAYMENT SUCCESSFUL
+        if (flwStatus === "successful") {
             const { userId, usdAmount } = flwData.data.meta;
-            const txRef = flwData.data.tx_ref;
             const flwAmountNGN = flwData.data.amount;
 
-            // 2. CRITICAL: Check if this transaction has already been processed
-            const existingTx = await Transaction.findOne({ reference: txRef });
-            
-            if (existingTx) {
-                // Return success immediately without incrementing balance again
-                return res.json({ 
-                    success: true, 
-                    amountUSD: existingTx.amountUSD,
-                    amountNGN: existingTx.amountNGN,
-                    newBalance: existingTx.balanceAfter,
-                    message: "Transaction already processed." 
-                });
-            }
-
-            // 3. Logic to determine USD amount to credit
+            // Determine credit amount
             let amountCreditUSD = parseFloat(usdAmount);
             if (isNaN(amountCreditUSD)) {
                 const settings = await SystemSettings.findOne();
@@ -1422,44 +1426,59 @@ async function handleVerifyTopup(req, res) {
                 amountCreditUSD = flwAmountNGN / rate;
             }
 
-            // 4. Atomic Update: Increment balance and record transaction
-            // We find the user first to get 'balanceBefore' accurately
             const user = await User.findById(userId);
             if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
             const balanceBefore = user.balance;
             const balanceAfter = balanceBefore + amountCreditUSD;
 
-            // Save the transaction record
-           await Transaction.create({
-    userId: user._id,
-    type: 'credit',
-    purpose: 'deposit',
-    amountUSD: amountCreditUSD,
-    amountNGN: flwAmountNGN,
-    exchangeRate: flwAmountNGN / amountCreditUSD,
-    status: 'successful',
-    reference: txRef,
-    paymentMethod: flwData.data.payment_type || 'card', 
-    balanceBefore: balanceBefore,
-    balanceAfter: balanceAfter,
-    metadata: flwData.data 
-});
+            // Create or Update Transaction to Successful
+            await Transaction.findOneAndUpdate(
+                { reference: txRef },
+                {
+                    userId: user._id,
+                    type: 'credit',
+                    purpose: 'deposit',
+                    amountUSD: amountCreditUSD,
+                    amountNGN: flwAmountNGN,
+                    exchangeRate: flwAmountNGN / amountCreditUSD,
+                    status: 'successful',
+                    paymentMethod: flwData.data.payment_type || 'card',
+                    balanceBefore,
+                    balanceAfter,
+                    metadata: flwData.data
+                },
+                { upsert: true, new: true }
+            );
 
-            // Update user balance
             user.balance = balanceAfter;
             await user.save();
 
+            return res.json({ success: true, newBalance: user.balance, message: "Wallet funded successfully!" });
+        }
+
+        // 5. SCENARIO B: PAYMENT PENDING (Network/Bank Delay)
+        if (flwStatus === "pending") {
+            // Log as pending so user sees it in history
+            await Transaction.findOneAndUpdate(
+                { reference: txRef },
+                { status: 'pending', metadata: flwData.data },
+                { upsert: true }
+            );
             return res.json({ 
                 success: true, 
-                amountUSD: amountCreditUSD,
-                amountNGN: flwAmountNGN,
-                newBalance: user.balance,
-                message: "Wallet funded successfully!" 
+                status: 'pending', 
+                message: "Payment is pending bank confirmation. Please refresh in a few minutes." 
             });
         }
 
-        return res.status(400).json({ success: false, message: "Payment verification failed at gateway" });
+        // 6. SCENARIO C: PAYMENT FAILED
+        await Transaction.findOneAndUpdate(
+            { reference: txRef },
+            { status: 'failed', metadata: flwData.data },
+            { upsert: true }
+        );
+        return res.status(400).json({ success: false, message: "Payment failed or was cancelled by user." });
 
     } catch (err) {
         console.error("CRITICAL TOPUP ERROR:", err);

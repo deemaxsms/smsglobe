@@ -490,54 +490,70 @@ function showCategories() {
         </div>
     `}).join('');
 }
-    
- 
-async function buyProxy(proxyId) {
+
+
+    async function buyProxy(proxyId) {
     const planIndex = document.getElementById(`plan-${proxyId}`).value;
     const token = localStorage.getItem('userToken');
     const proxy = allProxies.find(p => p._id === proxyId);
     const selectedPlan = proxy.plans[planIndex];
-    const RATE = 1380; // Your exchange rate
 
     try {
-        // Fetch fresh balance from Vercel backend
+        // Fetch fresh balance from backend
         const res = await fetch(`${API_BASE_URL}/user-profile`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
         
         if (data.success) {
-            const balanceUSD = data.user ? data.user.balance : data.balance;
-            const balanceNGN = balanceUSD * RATE;
-            
-            // Assuming selectedPlan.price is the USD value
-            const priceUSD = Number(selectedPlan.price); 
-            const priceNGN = priceUSD * RATE;
+            // Treat backend 'balance' as pure NGN
+            const balanceNGN = data.user ? data.user.balance : data.balance;
+            const priceNGN = Number(selectedPlan.price); 
 
-            // 1. Update Balance Displays (USD & NGN)
-            document.getElementById('modalUserBalance').innerText = `$${Number(balanceUSD).toFixed(2)}`;
+            // 1. Update Balance Display (Naira Only)
             if (document.getElementById('modalUserBalanceNGN')) {
-                document.getElementById('modalUserBalanceNGN').innerText = `₦${balanceNGN.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                document.getElementById('modalUserBalanceNGN').innerText = `₦${Number(balanceNGN).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                })}`;
             }
 
-            // 2. Update Purchase Amount Displays (USD & NGN)
-            document.getElementById('modalPurchaseAmount').innerText = `$${priceUSD.toFixed(2)}`;
+            // 2. Update Purchase Amount Display (Naira Only)
             if (document.getElementById('modalPurchaseAmountNGN')) {
-                document.getElementById('modalPurchaseAmountNGN').innerText = `₦${priceNGN.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                document.getElementById('modalPurchaseAmountNGN').innerText = `₦${Number(priceNGN).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                })}`;
             }
             
-            // 3. Reset Modal State to "Confirm"
+            // 3. UI State Handling
+            const finalBtn = document.getElementById('finalConfirmBtn');
+            
+            // Check for Insufficient Funds
+            if (balanceNGN < priceNGN) {
+                finalBtn.innerText = "Insufficient Funds";
+                finalBtn.disabled = true;
+                finalBtn.classList.add('bg-red-500', 'opacity-70');
+            } else {
+                finalBtn.innerText = "Confirm & Pay Now";
+                finalBtn.disabled = false;
+                finalBtn.classList.remove('bg-red-500', 'opacity-70');
+                finalBtn.classList.add('bg-brand-blue');
+            }
+
             document.getElementById('proxyModal').classList.remove('hidden');
             document.getElementById('confirmState').classList.remove('hidden'); 
-            document.getElementById('successState').classList.add('hidden'); 
+            if(document.getElementById('successState')) {
+                document.getElementById('successState').classList.add('hidden'); 
+            }
             
             // 4. Set up the final click handler
             currentPendingPurchase = { proxyId, planIndex };
-            document.getElementById('finalConfirmBtn').onclick = executeFinalPurchase;
+            finalBtn.onclick = executeFinalPurchase;
         }
     } catch (err) {
-        console.error("Balance Verification Error:", err);
-        alert("Verification failed. Please check your connection and try again.");
+        console.error("Verification Error:", err);
+        alert("Verification failed. Please check your connection.");
     }
 }
 
@@ -548,7 +564,6 @@ async function executeFinalPurchase() {
     const token = localStorage.getItem('userToken');
     const btn = document.getElementById('finalConfirmBtn');
 
-    // Prevent multiple clicks
     btn.disabled = true;
     btn.innerText = "Processing...";
 
@@ -559,19 +574,22 @@ async function executeFinalPurchase() {
                 'Content-Type': 'application/json', 
                 'Authorization': `Bearer ${token}` 
             },
-            body: JSON.stringify({ proxyId, planIndex })
+            body: JSON.stringify({ 
+                proxyId, 
+                planIndex,
+                currency: 'NGN' // Explicitly tell backend we are using Naira
+            })
         });
 
         const data = await res.json();
 
         if (data.success) {
-            // Switch UI to Success State
             document.getElementById('confirmState').classList.add('hidden');
-            document.getElementById('successState').classList.remove('hidden');
+            const successView = document.getElementById('successState');
+            if(successView) successView.classList.remove('hidden');
             
-            // Inject dynamic credentials from Vercel response
-            document.getElementById('modalCode').innerText = data.credentials.activationCode || "PROVISIONED";
-            if (data.credentials.instructions) {
+            document.getElementById('modalCode').innerText = data.credentials?.activationCode || "PROVISIONED";
+            if (data.credentials?.instructions) {
                 document.getElementById('modalInstructions').innerText = data.credentials.instructions;
             }
         } else {

@@ -2326,10 +2326,10 @@ async function handleGetRdpRequests(req, res) {
             .limit(100);
 
         const formattedRequests = requests.map(order => {
+            // Since the frontend is now strictly Naira, we treat the stored amount 
+            // as the final Naira value without checking for conversion rates.
             const nairaAmount = parseFloat(order.amount) || 0;
             
-            // 1. DATA EXTRACTION LOGIC
-            // Check if specs exist in rdpDetails (as seen in your screenshot)
             const specsString = order.rdpDetails?.specs || "";
             const specParts = specsString.split(',').map(s => s.trim());
             const ram = order.metadata?.ram || specParts[0] || 'N/A';
@@ -2345,17 +2345,13 @@ async function handleGetRdpRequests(req, res) {
                 nodeName: order.nodeName || 'USA Tier 1',
                 planName: order.planName || 'RDP Server',
                 osChoice: order.metadata?.osChoice || order.rdpDetails?.os || 'Windows',
-                
-                // Hardware specs with parsed fallbacks
                 ram: ram,
                 cpu: cpu,
                 storage: storage,
-                
-                // Addons
                 extraCPU: order.metadata?.extraCPU || 0,
                 extraStorage: order.metadata?.extraStorage || 0,
                 
-                // Amount & Status
+                // Clean formatting: strictly Naira
                 amount: nairaAmount.toLocaleString('en-NG', { 
                     style: 'currency', 
                     currency: 'NGN', 
@@ -2375,8 +2371,7 @@ async function handleGetRdpRequests(req, res) {
         console.error("❌ RDP Fetch Error:", error);
         return res.status(500).json({ success: false, message: "Failed to fetch RDP requests" });
     }
-}
-
+} 
 async function getTextverifiedToken() {
     try {
         const response = await axios.post(

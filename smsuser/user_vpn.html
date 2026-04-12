@@ -335,8 +335,6 @@
         }
 
       function showSuccessDetails(creds, vpnData) {
-    console.log("Credentials received from server:", creds); // CHECK THIS IN CONSOLE
-    
     document.getElementById('confirmState').classList.add('hidden');
     document.getElementById('successState').classList.remove('hidden');
 
@@ -349,29 +347,35 @@
     passWrap.classList.add('hidden');
     codeWrap.classList.add('hidden');
 
-    // 1. Username
-    if (creds.username && creds.username.trim() !== "") {
+    // 1. Handle Username
+    if (creds.username) {
         document.getElementById('resUser').innerText = creds.username;
         userWrap.classList.remove('hidden');
     }
-    
-    // 2. Password
-    if (creds.password && creds.password.trim() !== "") {
+
+    // 2. Handle Password
+    if (creds.password) {
         document.getElementById('resPass').innerText = creds.password;
         passWrap.classList.remove('hidden');
     }
+
+    // 3. Handle Activation Code (The fix for your specific data structure)
+    // Check if it's at the top level OR inside the first plan object
+    const actCode = creds.activationCode || (creds.plans && creds.plans[0] ? creds.plans[0].activationCode : null);
     
-    // 3. Activation Code (THIS IS THE FIX)
-    // We check for activationCode or activation_code depending on your backend naming
-    const actCode = creds.activationCode || creds.activation_code;
-    if (actCode && actCode.trim() !== "") {
+    if (actCode) {
         document.getElementById('resCode').innerText = actCode;
         codeWrap.classList.remove('hidden');
     }
 
+    // 4. Handle Instructions and Limits
+    // Also check inside the plan for instructions if the top level is empty
+    const finalInstructions = creds.instructions || (creds.plans && creds.plans[0] ? creds.plans[0].instructions : "Install the app and login with credentials.");
+    
     document.getElementById('resLimit').innerText = `${vpnData.deviceLimit || 1} Device(s)`;
-    document.getElementById('resInstructions').innerText = creds.instructions || "Install the app and login with credentials.";
+    document.getElementById('resInstructions').innerText = finalInstructions;
 }
+
         function copyText(id) {
             const text = document.getElementById(id).innerText;
             navigator.clipboard.writeText(text);

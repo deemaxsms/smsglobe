@@ -322,6 +322,7 @@ async function fetchUserProfile() {
             });
             renderVPNs();
         }
+
 async function buyVPN(vpnId) {
     const planIndex = document.getElementById(`plan-${vpnId}`).value;
     const vpnData = allVPNs.find(v => v._id === vpnId);
@@ -373,7 +374,7 @@ async function buyVPN(vpnId) {
                     'Content-Type': 'application/json', 
                     'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
                 },
-                body: JSON.stringify({ vpnId, planIndex: parseInt(planIndex) })
+            body: JSON.stringify({ vpnId, planIndex: parseInt(planIndex, 10) })
             });
 
             const data = await res.json();

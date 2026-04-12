@@ -1404,7 +1404,6 @@ async function handleVerifyTopup(req, res) {
     if (!transactionId) {
         return res.status(400).json({ success: false, message: "Transaction ID is required" });
     }
-
     try {
         const response = await fetch(`https://api.flutterwave.com/v3/transactions/${transactionId}/verify`, {
             method: "GET",
@@ -1413,20 +1412,16 @@ async function handleVerifyTopup(req, res) {
                 "Content-Type": "application/json"
             },
         });
-
         const flwData = await response.json();
-
         if (flwData.status === "success" && flwData.data.status === "successful") {
             const { userId, usdAmount } = flwData.data.meta;
             const txRef = flwData.data.tx_ref;
-            
             let amountCreditUSD = parseFloat(usdAmount);
             if (isNaN(amountCreditUSD)) {
                 const settings = await SystemSettings.findOne();
                 const rate = settings?.exchangeRate || 1380;
                 amountCreditUSD = flwData.data.amount / rate;
             }
-
             const existingTx = await Transaction.findOne({ reference: txRef });
             if (existingTx) {
                 return res.json({ 
@@ -1437,13 +1432,11 @@ async function handleVerifyTopup(req, res) {
                     message: "Already credited" 
                 });
             }
-
             const updatedUser = await User.findByIdAndUpdate(
                 userId,
                 { $inc: { balance: amountCreditUSD } },
                 { new: true, runValidators: true }
             );
-
             await Transaction.create({
                 userId: updatedUser._id,
                 type: 'credit',
@@ -1456,8 +1449,6 @@ async function handleVerifyTopup(req, res) {
                 balanceBefore: updatedUser.balance - amountCreditUSD,
                 balanceAfter: updatedUser.balance
             });
-
-            // Return all data needed for the Congratulations UI
             return res.json({ 
                 success: true, 
                 amountUSD: amountCreditUSD,
@@ -1466,7 +1457,6 @@ async function handleVerifyTopup(req, res) {
                 message: "Wallet funded successfully!" 
             });
         }
-        
         return res.status(400).json({ success: false, message: "Verification failed" });
 
     } catch (err) {
@@ -1488,54 +1478,54 @@ async function handlePurchaseWithWallet(req, res) {
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         const user = await User.findById(decoded.id);
+        
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-        let item;
         let itemType;
-        let title;
-        let costInUSD = 0;
+        let cost = 0;
         let credentials = {};
         let productDetails = { name: "", plan: "" };
         let targetNum = mobileNumber || null;
 
         if (vpnId) {
-            // UPDATED: Added +pcPassword and +activationCode to selection since they are 'select: false' in schema
-            item = await VPN.findOneAndUpdate(
+            const item = await VPN.findOneAndUpdate(
                 { _id: vpnId, stock: { $gt: 0 } },
                 { $inc: { stock: -1 } },
                 { new: true, select: '+password +pcPassword +activationCode' }
             );
-            if (!item || !item.plans[planIndex]) return res.status(404).json({ success: false, message: "VPN unavailable or out of stock" });
             
+            if (!item || !item.plans[planIndex]) {
+                return res.status(404).json({ success: false, message: "VPN unavailable or out of stock" });
+            }
+
             itemType = "VPN";
-            title = "SMSGlobe VPN";
-            costInUSD = item.plans[planIndex].price;
+            cost = item.plans[planIndex].price;
             productDetails.name = item.name;
             productDetails.plan = item.plans[planIndex].duration;
-
-            // UPDATED: Including PC-specific keys so the frontend can display them
             credentials = {
                 type: "VPN",
                 username: item.username,
                 password: item.password,
-                pcUsername: item.pcUsername,   // Added
-                pcPassword: item.pcPassword,   // Added
-                pcMethod: item.pcMethod,       // Added
+                pcUsername: item.pcUsername,
+                pcPassword: item.pcPassword,
+                pcMethod: item.pcMethod,
                 activationCode: item.activationCode,
                 instructions: item.instructions || "Check dashboard."
             };
         } 
         else if (proxyId) {
-            item = await Proxy.findOneAndUpdate(
+            const item = await Proxy.findOneAndUpdate(
                 { _id: proxyId, stock: { $gt: 0 } },
                 { $inc: { stock: -1 } },
                 { new: true, select: '+activationCode' }
             );
-            if (!item || !item.plans[planIndex]) return res.status(404).json({ success: false, message: "Proxy unavailable or out of stock" });
+
+            if (!item || !item.plans[planIndex]) {
+                return res.status(404).json({ success: false, message: "Proxy unavailable or out of stock" });
+            }
             
             itemType = "Proxy";
-            title = "SMSGlobe Proxy";
-            costInUSD = item.plans[planIndex].price;
+            cost = item.plans[planIndex].price;
             productDetails.name = item.name;
             productDetails.plan = `${item.plans[planIndex].ip_count} IPs`;
             credentials = {
@@ -1546,9 +1536,8 @@ async function handlePurchaseWithWallet(req, res) {
         } 
         else if (carrierName) {
             itemType = metadata ? "eSIM_Activation" : "eSIM";
-            title = carrierName;
             const priceMatch = String(planAmount || "").match(/(\d+\.?\d*)/);
-            costInUSD = priceMatch ? parseFloat(priceMatch[0]) : 0;
+            cost = priceMatch ? parseFloat(priceMatch[0]) : 0;
             
             productDetails.name = carrierName;
             productDetails.plan = planAmount;
@@ -1566,41 +1555,40 @@ async function handlePurchaseWithWallet(req, res) {
         } 
         else if (rdpId) {
             itemType = "RDP";
-            const extraCPU = metadata?.extraCPU || 0;
-            const extraStorage = metadata?.extraStorage || 0;
+            const extraCPU = parseInt(metadata?.extraCPU) || 0;
+            const extraStorage = parseInt(metadata?.extraStorage) || 0;
             
-          const plans = {
-        tier1: { id: "tier1", name: "USA Tier 1", price: 45000, hardware: "4GB RAM | 2 CPU Cores", storage: "60GB SSD", net: "100Mbps" },
-        tier2: { id: "tier2", name: "USA Tier 2", price: 55000, hardware: "6GB RAM | 3 CPU Cores", storage: "100GB SSD", net: "100Mbps" },
-        tier3: { id: "tier3", name: "USA Tier 3", price: 65000, hardware: "8GB RAM | 4 CPU Cores", storage: "140GB SSD", net: "200Mbps" },
-        tier4: { id: "tier4", name: "USA Tier 4", price: 80000, hardware: "12GB RAM | 6 CPU Cores", storage: "180GB SSD", net: "200Mbps" },
-        tier5: { id: "tier5", name: "USA Tier 5", price: 90000, hardware: "18GB RAM | 8 CPU Cores", storage: "240GB SSD", net: "300Mbps" },
-        tier6: { id: "tier6", name: "USA Tier 6", price: 130000, hardware: "24GB RAM | 8 CPU Cores", storage: "280GB SSD", net: "300Mbps" }
-    };
-
+            const rdpPlans = {
+                tier1: { name: "USA Tier 1", price: 45000, ram: "4GB", cpu: "2 Cores", storage: "60GB SSD" },
+                tier2: { name: "USA Tier 2", price: 55000, ram: "6GB", cpu: "3 Cores", storage: "100GB SSD" },
+                tier3: { name: "USA Tier 3", price: 65000, ram: "8GB", cpu: "4 Cores", storage: "140GB SSD" },
+                tier4: { name: "USA Tier 4", price: 80000, ram: "12GB", cpu: "6 Cores", storage: "180GB SSD" },
+                tier5: { name: "USA Tier 5", price: 90000, ram: "18GB", cpu: "8 Cores", storage: "240GB SSD" },
+                tier6: { name: "USA Tier 6", price: 130000, ram: "24GB", cpu: "8 Cores", storage: "280GB SSD" }
+            };
 
             const selectedTier = rdpPlans[rdpId];
             if (!selectedTier) return res.status(404).json({ success: false, message: "RDP Plan not found" });
 
-            costInUSD = selectedTier.price + (extraCPU * 5) + (extraStorage * 0.5);
+            cost = selectedTier.price + (extraCPU * 5000) + (extraStorage * 200);
             productDetails.name = selectedTier.name;
             productDetails.plan = `${selectedTier.ram} RAM | ${metadata?.osChoice || 'Windows'}`;
             credentials = {
                 type: "RDP",
                 os: metadata?.osChoice || "Windows Server",
-                specs: `${selectedTier.ram} RAM, ${selectedTier.cpu}, ${selectedTier.storage}`,
+                specs: `${selectedTier.ram} RAM, ${selectedTier.cpu} (+${extraCPU} Cores), ${selectedTier.storage} (+${extraStorage}GB)`,
                 instructions: "Credentials will be sent to your email within 1-6 hours."
             };
         }
 
-        if (user.balance < costInUSD) {
+        if (user.balance < cost) {
             return res.status(400).json({ 
                 success: false, 
-                message: `Insufficient Balance. Required: $${costInUSD.toFixed(2)}, Wallet: $${user.balance.toFixed(2)}` 
+                message: `Insufficient Balance. Required: ₦${cost.toLocaleString()}, Wallet: ₦${user.balance.toLocaleString()}` 
             });
         }
 
-        user.balance -= costInUSD;
+        user.balance -= cost;
         await user.save();
 
         const orderData = {
@@ -1611,8 +1599,8 @@ async function handlePurchaseWithWallet(req, res) {
             planName: productDetails.plan,
             nodeName: productDetails.name,
             targetNumber: targetNum,
-            amount: costInUSD,
-            currency: "USD",
+            amount: cost,
+            currency: "NGN",
             status: "successful",
             paymentReference: `WAL-${Date.now()}-${user._id.toString().slice(-4)}`,
             metadata: {
@@ -1621,7 +1609,6 @@ async function handlePurchaseWithWallet(req, res) {
             }
         };
 
-        // UPDATED: Storing both Phone and PC credentials in the Order history
         if (itemType === "VPN") {
             orderData.vpnCredentials = { 
                 username: credentials.username, 
@@ -1631,12 +1618,18 @@ async function handlePurchaseWithWallet(req, res) {
                 activationCode: credentials.activationCode
             };
         }
-        if (itemType === "RDP") orderData.rdpDetails = { os: credentials.os, specs: credentials.specs };
+        
+        if (itemType === "RDP") {
+            orderData.rdpDetails = { 
+                os: credentials.os, 
+                specs: credentials.specs 
+            };
+        }
 
         const newOrder = await Order.create(orderData);
 
         try {
-            await sendDeliveryEmail(user.email, { ...credentials, amount: `$${costInUSD}` }, newOrder);
+            await sendDeliveryEmail(user.email, { ...credentials, amount: `₦${cost.toLocaleString()}` }, newOrder);
         } catch (emailErr) {
             console.error("Email Error:", emailErr.message);
         }
@@ -1645,7 +1638,8 @@ async function handlePurchaseWithWallet(req, res) {
             success: true, 
             message: "Purchase successful!", 
             balance: user.balance,
-            credentials // This now contains all necessary PC fields
+            order: newOrder,
+            credentials 
         });
 
     } catch (err) {
@@ -1662,8 +1656,6 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
             pass: process.env.EMAIL_PASS
         }
     });
-
-    // 1. DYNAMIC CONTENT CONFIGURATION
     const isVPN = credentials.type === "VPN";
     const isRDP = credentials.type === "RDP";
     const isESIM_Refill = credentials.type === "eSIM";
@@ -1678,7 +1670,7 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
         subHeader = "Your high-performance RDP access details are below.";
     } else if (isVPN) {
         subject = "🔑 Your VPN Access Credentials";
-        headerTitle = "Node Activated!";
+        headerTitle = "VPN Activated!";
         subHeader = "Your Premium VPN Access is ready.";
     } else if (isESIM_Activation) {
         subject = "📶 eSIM Activation Request Received";

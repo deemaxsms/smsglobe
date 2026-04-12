@@ -380,6 +380,36 @@
         </button>
     </div>
 
+<div id="paymentModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4">
+    <div class="fixed inset-0 bg-brand-darkText/60 backdrop-blur-sm" onclick="closePaymentModal()"></div>
+    <div class="bg-white rounded-3xl p-8 max-w-sm w-full relative z-10 shadow-2xl scale-up">
+        <div class="text-center mb-6">
+            <h3 class="text-xl font-black text-brand-darkText">Confirm Purchase</h3>
+            <p class="text-xs text-brand-lightText mt-1">Funds will be deducted from your SMSGlobe wallet.</p>
+        </div>
+
+        <div class="space-y-3 mb-8">
+            <div class="flex justify-between items-center p-4 bg-gray-50 rounded-2xl border border-brand-border">
+                <span class="text-[10px] font-bold text-brand-lightText uppercase">Your Wallet</span>
+                <span id="modalUserBalance" class="text-sm font-black text-brand-darkText">₦0.00</span>
+            </div>
+            <div class="flex justify-between items-center p-4 bg-brand-blue/5 rounded-2xl border border-brand-blue/10">
+                <span class="text-[10px] font-bold text-brand-blue uppercase">Order Amount</span>
+                <span id="modalTotalDue" class="text-sm font-black text-brand-blue">₦0.00</span>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-3">
+            <button id="confirmPurchaseBtn" onclick="purchaseRDPWithWallet()" class="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold active-scale">
+                Confirm & Pay Now
+            </button>
+            <button onclick="closePaymentModal()" class="w-full py-2 text-xs font-bold text-brand-lightText hover:text-brand-darkText">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
   <button onclick="toggleSupportMenu()" 
         id="supportTrigger"
         class="w-14 h-14 bg-white rounded-full shadow-2xl flex flex-col items-center justify-center border-2 border-brand-blue transition-all hover:scale-105 active:scale-90 overflow-hidden">
@@ -398,7 +428,7 @@
     const overlay = document.getElementById('sidebarOverlay');
     const selectionView = document.getElementById('selectionView');
     const checkoutView = document.getElementById('checkoutView');
-    const receiptView = document.getElementById('receiptView'); // Ensure this ID exists in your HTML
+    const receiptView = document.getElementById('receiptView');
     const headerTitle = document.getElementById('headerTitle');
     const tableBody = document.getElementById('plansTableBody');
 
@@ -413,23 +443,25 @@
 
     let activePlan = null;
 
-    // Initialize page: Check if we are returning from a payment
     window.onload = () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const transactionId = urlParams.get('transaction_id');
-        const txRef = urlParams.get('tx_ref');
-        const status = urlParams.get('status');
-
-        if ((transactionId || txRef) && status !== 'cancelled') {
-            verifyRDPPayment(transactionId, txRef);
-
-            // Cleanup URL to prevent duplicate verification on refresh
-            const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-            window.history.replaceState({}, document.title, cleanUrl);
-        }
-        
         renderPlans();
     };
+
+    async function fetchUserProfile() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/user-profile`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+            userBalance = data.user.balance; // Adjust based on your API structure (data.balance or data.user.balance)
+            return true;
+        }
+    } catch (err) {
+        console.error("Failed to fetch balance", err);
+    }
+    return false;
+}
 
     function renderPlans() {
         if(!tableBody) return;
@@ -513,127 +545,113 @@
                 storageRow.classList.add('hidden');
             }
         }
+        return total;
     }
 
-    async function initiateRDPPayment() {
-        const selectedRDP = window.currentSelectedRDP; 
-        if (!selectedRDP) return alert("Please select an RDP plan first.");
+  async function initiateRDPPayment() {
+    // Show a small loader or disable button while fetching live balance
+    const payBtn = document.getElementById('payBtn');
+    const originalText = payBtn.innerText;
+    payBtn.innerText = "Checking Balance...";
+    payBtn.disabled = true;
 
-        const cpuExtra = parseInt(document.getElementById('extraCPU')?.value) || 0;
-        const storageExtra = parseInt(document.getElementById('extraStorage')?.value) || 0;
-        const selectedOS = document.getElementById('osSelector')?.value || "Windows Server (Default)";
-        
-        const btn = document.getElementById('payBtn');
-        const originalText = btn.innerText;
-        
-        btn.disabled = true;
-        btn.innerText = "Generating Secure Link...";
+    const success = await fetchUserProfile();
+    
+    payBtn.innerText = originalText;
+    payBtn.disabled = false;
 
-        try {
-            const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
-                },
-                body: JSON.stringify({
-                    productType: 'RDP',
-                    rdpId: selectedRDP._id,
-                    planName: selectedRDP.name,
-                    metadata: {
-                        baseRAM: selectedRDP.ram,
-                        baseCPU: selectedRDP.cpu,
-                        baseStorage: selectedRDP.storage,
-                        extraCPU: cpuExtra,
-                        extraStorage: storageExtra,
-                        osChoice: selectedOS,
-                        category: selectedRDP.category
-                    }
-                })
-            });
+    if (!success) return alert("Could not verify balance. Please check your connection.");
 
-            const data = await res.json();
-            if(data.success && data.link) {
-                window.location.href = data.link; 
-            } else {
-                alert(data.message || "Initialization failed");
-                btn.disabled = false;
-                btn.innerText = originalText;
-            }
-        } catch (err) {
-            console.error(err);
-            alert("Connection error. Please try again.");
-            btn.disabled = false;
-            btn.innerText = originalText;
+    // Calculate Total from the UI summary
+    const totalText = document.getElementById('summaryTotal').innerText;
+    const currentTotal = parseInt(totalText.replace(/[^\d]/g, ''));
+
+    // Update Modal UI
+    document.getElementById('modalUserBalance').innerText = '₦' + userBalance.toLocaleString();
+    document.getElementById('modalTotalDue').innerText = '₦' + currentTotal.toLocaleString();
+    
+    // Toggle Modal Visibility
+    document.getElementById('paymentModal').classList.remove('hidden');
+}
+
+// 3. The Final Purchase API Call (Your provided function)
+async function purchaseRDPWithWallet() {
+    const selectedRDP = window.currentSelectedRDP;
+    if (!selectedRDP) return alert("Select a plan first");
+
+    const cpuExtra = parseInt(document.getElementById('extraCPU')?.value) || 0;
+    const storageExtra = parseInt(document.getElementById('extraStorage')?.value) || 0;
+    const selectedOS = document.getElementById('osSelector')?.value || "Windows Server";
+
+    const confirmBtn = document.getElementById('confirmPurchaseBtn');
+    confirmBtn.disabled = true;
+    confirmBtn.innerText = "Processing...";
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+            },
+            body: JSON.stringify({
+                rdpId: selectedRDP._id,
+                metadata: {
+                    baseRAM: selectedRDP.ram,
+                    baseCPU: selectedRDP.cpu,
+                    baseStorage: selectedRDP.storage,
+                    extraCPU: cpuExtra,
+                    extraStorage: storageExtra,
+                    osChoice: selectedOS
+                }
+            })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('paymentModal').classList.add('hidden');
+            document.getElementById('selectionView').classList.add('hidden');
+            document.getElementById('checkoutView').classList.add('hidden');
+            showReceipt(data.order);
+        } else {
+            alert(data.message || "Purchase failed");
+            confirmBtn.disabled = false;
+            confirmBtn.innerText = "Confirm & Pay";
         }
+    } catch (err) {
+        console.error(err);
+        alert("Error connecting to server");
+        confirmBtn.disabled = false;
+        confirmBtn.innerText = "Confirm & Pay";
     }
+}
 
-    async function verifyRDPPayment(tid, txRef) {
-        try {
-            const payBtn = document.getElementById('payBtn');
-            if (payBtn) {
-                payBtn.disabled = true;
-                payBtn.innerText = "Verifying Payment...";
-            }
+function closePaymentModal() {
+    document.getElementById('paymentModal').classList.add('hidden');
+}
+    function showReceipt(order) {
+        selectionView?.classList.add('hidden');
+        checkoutView?.classList.add('hidden');
+        receiptView?.classList.remove('hidden');
+        headerTitle.innerText = "Order Confirmed";
 
-            const res = await fetch(`${API_BASE_URL}/verify-payment`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
-                },
-                body: JSON.stringify({ transactionId: tid, txRef: txRef })
-            });
-            
-            const data = await res.json();
+        const meta = order.metadata || {};
+        const setField = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = value;
+        };
 
-            if (data.success) {
-                // Switch Views
-                selectionView?.classList.add('hidden');
-                checkoutView?.classList.add('hidden');
-                receiptView?.classList.remove('hidden');
+        const cpuDisplay = meta.extraCPU > 0 ? `${meta.baseCPU || "2 Cores"} (+${meta.extraCPU} Cores)` : (meta.baseCPU || "Standard");
+        const storageDisplay = meta.extraStorage > 0 ? `${meta.baseStorage || "60GB"} (+${meta.extraStorage}GB)` : (meta.baseStorage || "Standard");
 
-                const order = data.order || {};
-                const meta = order.metadata || {};
-                
-                // POPULATE RECEIPT FIELDS
-                const setField = (id, value) => {
-                    const el = document.getElementById(id);
-                    if (el) el.innerText = value;
-                };
-
-                setField('rPlan', order.planName || "USA Tier RDP");
-                setField('rOS', meta.osChoice || "Windows Server (Default)");
-                
-                // Logical hardware formatting
-                const ramDisplay = meta.baseRAM || "Standard";
-                const cpuDisplay = meta.extraCPU > 0 ? `${meta.baseCPU || "2 Cores"} (+${meta.extraCPU} Extra)` : (meta.baseCPU || "Standard");
-                const storageDisplay = meta.extraStorage > 0 ? `${meta.baseStorage || "60GB"} (+${meta.extraStorage}GB Extra)` : (meta.baseStorage || "Standard");
-
-                setField('rRAM', ramDisplay);
-                setField('rCPU', cpuDisplay);
-                setField('rStorage', storageDisplay);
-                setField('rID', order.paymentReference || tid);
-
-                if (headerTitle) headerTitle.innerText = "Order Confirmed";
-                
-                setTimeout(() => {
-                    alert("Payment successful! Please click 'Notify Admin' to complete setup.");
-                }, 500);
-
-            } else {
-                alert("Verification failed: " + (data.message || "Unknown error"));
-            }
-        } catch (e) { 
-            console.error("Frontend Verification Error:", e);
-            alert("An error occurred during verification.");
-        } finally {
-            const payBtn = document.getElementById('payBtn');
-            if (payBtn) {
-                payBtn.disabled = false;
-                payBtn.innerText = "Pay Securely Now";
-            }
-        }
+        setField('rPlan', order.planName || "USA Tier RDP");
+        setField('rOS', meta.osChoice || "Windows Server");
+        setField('rRAM', meta.baseRAM || "Standard");
+        setField('rCPU', cpuDisplay);
+        setField('rStorage', storageDisplay);
+        setField('rID', order.paymentReference || "N/A");
+        
+        window.scrollTo(0, 0);
     }
 
     function contactRDPAdmin() {
@@ -656,8 +674,7 @@
                     `⚡ *CPU:* ${cpu}\n` +
                     `💾 *STORAGE:* ${storage}\n` +
                     `━━━━━━━━━━━━━━━━━━\n\n` +
-                    `⚡ *ACTION REQUIRED:*\n` +
-                    `We will notify you immediately your RDP Activation is complete.`;
+                    `⚡ We will notify you immediately your RDP Activation is complete.`;
 
         window.open(`https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`, '_blank');
     }
@@ -676,19 +693,12 @@
 
     function toggleSupportMenu() {
         const menu = document.getElementById('supportMenu');
-        const isHidden = menu.classList.contains('hidden');
-        
-        if (isHidden) {
+        if (menu.classList.contains('hidden')) {
             menu.classList.remove('hidden');
-            // Small timeout to allow transition to trigger
-            setTimeout(() => {
-                menu.classList.remove('translate-y-10', 'opacity-0', 'scale-95');
-            }, 10);
+            setTimeout(() => menu.classList.remove('translate-y-10', 'opacity-0', 'scale-95'), 10);
         } else {
             menu.classList.add('translate-y-10', 'opacity-0', 'scale-95');
-            setTimeout(() => {
-                menu.classList.add('hidden');
-            }, 300);
+            setTimeout(() => menu.classList.add('hidden'), 300);
         }
     }
 

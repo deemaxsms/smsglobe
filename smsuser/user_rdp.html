@@ -404,9 +404,14 @@
         </div>
 
         <div class="flex flex-col gap-3">
-            <button id="confirmPurchaseBtn" onclick="purchaseRDPWithWallet()" class="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold active-scale">
+            <button id="confirmPurchaseBtn" onclick="purchaseRDPWithWallet()" class="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold active-scale transition-all duration-200">
                 Confirm & Pay Now
             </button>
+
+            <a href="topup.html" id="topupBtn" class="hidden w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold text-center active-scale hover:bg-emerald-700 transition-all duration-200">
+                Topup Wallet Balance
+            </a>
+
             <button onclick="closePaymentModal()" class="w-full py-2 text-xs font-bold text-brand-lightText hover:text-brand-darkText">
                 Cancel
             </button>
@@ -565,7 +570,16 @@ async function fetchUserProfile() {
 async function initiateRDPPayment() {
     const payBtn = document.getElementById('payBtn');
     const confirmBtn = document.getElementById('confirmPurchaseBtn');
+    const topupBtn = document.getElementById('topupBtn'); // Get the topup button
+    
     if (!payBtn || !confirmBtn) return;
+
+    // Reset UI state before processing
+    if (topupBtn) topupBtn.classList.add('hidden');
+    confirmBtn.innerText = "Confirm & Pay Now";
+    confirmBtn.classList.remove('bg-red-500', 'cursor-not-allowed');
+    confirmBtn.classList.add('bg-brand-blue');
+    confirmBtn.disabled = false;
 
     payBtn.innerText = "Verifying Balance...";
     payBtn.disabled = true;
@@ -581,7 +595,7 @@ async function initiateRDPPayment() {
         return;
     }
 
-    // Logic: Convert USD Wallet (32) to NGN (44,160) using Admin Rate
+    // Logic: Convert USD Wallet (e.g. 32) to NGN using Admin Rate
     const EXCHANGE_RATE = Number(userBalances.rate) || 1380; 
     const usdValue = Number(userBalances.ngn); 
     const nairaEquivalent = usdValue * EXCHANGE_RATE;
@@ -614,17 +628,29 @@ async function initiateRDPPayment() {
     // Validation: Compare Wallet NGN vs Plan NGN
     const numericPrice = parseFloat(totalRequiredText.replace(/[^\d.]/g, ''));
     
+    // Check if user has enough funds
     if (nairaEquivalent < numericPrice) {
+        // 1. Update Pay Button to Error State
         confirmBtn.innerText = "Insufficient Funds";
-        // Ensure it swaps colors correctly
         confirmBtn.classList.remove('bg-brand-blue');
         confirmBtn.classList.add('bg-red-500', 'cursor-not-allowed');
         confirmBtn.disabled = true;
+
+        // 2. Show the Topup Button
+        if (topupBtn) {
+            topupBtn.classList.remove('hidden');
+        }
     } else {
+        // Ensure buttons are in correct state for successful purchase
         confirmBtn.innerText = "Confirm & Pay Now";
         confirmBtn.classList.remove('bg-red-500', 'cursor-not-allowed');
         confirmBtn.classList.add('bg-brand-blue');
         confirmBtn.disabled = false;
+
+        // Hide Topup Button if balance is sufficient
+        if (topupBtn) {
+            topupBtn.classList.add('hidden');
+        }
     }
 
     const modal = document.getElementById('paymentModal');

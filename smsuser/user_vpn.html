@@ -334,35 +334,44 @@
             };
         }
 
-        function showSuccessDetails(creds, vpnData) {
-            document.getElementById('confirmState').classList.add('hidden');
-            document.getElementById('successState').classList.remove('hidden');
+      function showSuccessDetails(creds, vpnData) {
+    console.log("Credentials received from server:", creds); // CHECK THIS IN CONSOLE
+    
+    document.getElementById('confirmState').classList.add('hidden');
+    document.getElementById('successState').classList.remove('hidden');
 
-            const userWrap = document.getElementById('wrapUser');
-            const passWrap = document.getElementById('wrapPass');
-            const codeWrap = document.getElementById('wrapCode');
+    const userWrap = document.getElementById('wrapUser');
+    const passWrap = document.getElementById('wrapPass');
+    const codeWrap = document.getElementById('wrapCode');
 
-            userWrap.classList.add('hidden');
-            passWrap.classList.add('hidden');
-            codeWrap.classList.add('hidden');
+    // Reset visibility
+    userWrap.classList.add('hidden');
+    passWrap.classList.add('hidden');
+    codeWrap.classList.add('hidden');
 
-            if (creds.username) {
-                document.getElementById('resUser').innerText = creds.username;
-                userWrap.classList.remove('hidden');
-            }
-            if (creds.password) {
-                document.getElementById('resPass').innerText = creds.password;
-                passWrap.classList.remove('hidden');
-            }
-            if (creds.activationCode) {
-                document.getElementById('resCode').innerText = creds.activationCode;
-                codeWrap.classList.remove('hidden');
-            }
+    // 1. Username
+    if (creds.username && creds.username.trim() !== "") {
+        document.getElementById('resUser').innerText = creds.username;
+        userWrap.classList.remove('hidden');
+    }
+    
+    // 2. Password
+    if (creds.password && creds.password.trim() !== "") {
+        document.getElementById('resPass').innerText = creds.password;
+        passWrap.classList.remove('hidden');
+    }
+    
+    // 3. Activation Code (THIS IS THE FIX)
+    // We check for activationCode or activation_code depending on your backend naming
+    const actCode = creds.activationCode || creds.activation_code;
+    if (actCode && actCode.trim() !== "") {
+        document.getElementById('resCode').innerText = actCode;
+        codeWrap.classList.remove('hidden');
+    }
 
-            document.getElementById('resLimit').innerText = `${vpnData.deviceLimit || 1} Device(s)`;
-            document.getElementById('resInstructions').innerText = creds.instructions || "Install the app and login with credentials.";
-        }
-
+    document.getElementById('resLimit').innerText = `${vpnData.deviceLimit || 1} Device(s)`;
+    document.getElementById('resInstructions').innerText = creds.instructions || "Install the app and login with credentials.";
+}
         function copyText(id) {
             const text = document.getElementById(id).innerText;
             navigator.clipboard.writeText(text);

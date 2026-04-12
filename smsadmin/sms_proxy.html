@@ -185,78 +185,83 @@
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
 
-    function addPriceRow(ipCount = '', price = '') {
-        const container = document.getElementById('pricingContainer');
-        const row = document.createElement('div');
-        row.className = 'pricing-row flex gap-3 items-center animate-in fade-in duration-300';
-        row.innerHTML = `
-            <div class="flex-1">
-                <input type="number" placeholder="No. of IPs" value="${ipCount}" class="plan-ips w-full bg-white border border-brand-border px-3 py-2.5 rounded-lg text-sm" required>
-            </div>
-            <div class="relative flex-1">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-brand-lightText">$</span>
-                <input type="number" step="0.01" placeholder="Price" value="${price}" class="plan-price w-full bg-white border border-brand-border pl-7 pr-3 py-2.5 rounded-lg text-sm" required>
-            </div>
-            <button type="button" onclick="this.parentElement.remove()" class="p-2 text-red-400 hover:text-red-600">✕</button>
-        `;
-        container.appendChild(row);
-    }
+    // Locate the addPriceRow function in your file and replace it with this version:
+function addPriceRow(ipCount = '', price = '') {
+    const container = document.getElementById('pricingContainer');
+    const row = document.createElement('div');
+    row.className = 'pricing-row flex gap-3 items-center animate-in fade-in duration-300';
+    row.innerHTML = `
+        <div class="flex-1">
+            <input type="number" placeholder="No. of IPs" value="${ipCount}" class="plan-ips w-full bg-white border border-brand-border px-3 py-2.5 rounded-lg text-sm" required>
+        </div>
+        <div class="relative flex-1">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-brand-lightText font-bold">₦</span>
+            <input type="number" step="1" placeholder="Price (NGN)" value="${price}" class="plan-price w-full bg-white border border-brand-border pl-7 pr-3 py-2.5 rounded-lg text-sm" required>
+        </div>
+        <button type="button" onclick="this.parentElement.remove()" class="p-2 text-red-400 hover:text-red-600">✕</button>
+    `;
+    container.appendChild(row);
+}
 
-    async function fetchProxies() {
-        const token = localStorage.getItem('smsglobe_admin_token');
-        const list = document.getElementById('proxy-list');
-        try {
-            const res = await fetch('/api/proxies', { 
-                headers: { 'Authorization': `Bearer ${token}` } 
-            });
-            const data = await res.json();
-            allProxies = data.proxies || [];
-            
-            if (allProxies.length === 0) {
-                list.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-brand-lightText">No proxy packages found.</td></tr>';
-                return;
-            }
-
-            list.innerHTML = allProxies.map(p => {
-                const plans = p.plans || [];
-                const stockStatus = p.stock > 0 ? `${p.stock} units` : 'Out of Stock';
-                const stockColor = p.stock > 10 ? 'text-brand-midText' : 'text-red-500 font-bold';
-                
-                return `
-                    <tr class="hover:bg-brand-background/30 transition-colors">
-                        <td class="px-6 py-5">
-                            <div class="flex items-center gap-3">
-                                <img src="${p.imageUrl || 'https://via.placeholder.com/40'}" class="w-10 h-10 rounded-lg object-cover bg-gray-100">
-                                <div>
-                                    <div class="font-bold text-brand-darkText">${p.name}</div>
-                                    <div class="text-[10px] text-brand-lightText font-mono">Code: ${p.activationCode || 'N/A'}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-5">
-                            <span class="bg-brand-background text-brand-blue px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border border-blue-100">
-                                ${p.category || 'Standard'}
-                            </span>
-                        </td>
-                        <td class="px-6 py-5">
-                            <div class="text-xs font-bold text-brand-midText">${plans.length} Pricing Plans</div>
-                            <div class="text-[10px] ${stockColor}">${stockStatus}</div>
-                        </td>
-                        <td class="px-6 py-5 text-center">
-                            <span class="px-2.5 py-1 rounded-full font-bold text-[10px] ${p.activationCode ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'} uppercase">
-                                ${p.activationCode ? 'Ready' : 'No Code'}
-                            </span>
-                        </td>
-                        <td class="px-6 py-5 text-right flex justify-end gap-3">
-                            <button onclick="editProxy('${p._id}')" class="text-brand-blue font-bold text-[10px] hover:underline">EDIT</button>
-                            <button onclick="deleteProxy('${p._id}')" class="text-red-500 font-bold text-[10px] hover:underline">DEL</button>
-                        </td>
-                    </tr>`;
-            }).join('');
-        } catch (err) { 
-            list.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-red-500">Error connecting to API.</td></tr>'; 
+// Locate the HTML table rendering inside fetchProxies and ensure currency labels are removed or updated
+async function fetchProxies() {
+    const token = localStorage.getItem('smsglobe_admin_token');
+    const list = document.getElementById('proxy-list');
+    try {
+        const res = await fetch('/api/proxies', { 
+            headers: { 'Authorization': `Bearer ${token}` } 
+        });
+        const data = await res.json();
+        allProxies = data.proxies || [];
+        
+        if (allProxies.length === 0) {
+            list.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-brand-lightText">No proxy packages found.</td></tr>';
+            return;
         }
+
+        list.innerHTML = allProxies.map(p => {
+            const plans = p.plans || [];
+            const stockStatus = p.stock > 0 ? `${p.stock} units` : 'Out of Stock';
+            const stockColor = p.stock > 10 ? 'text-brand-midText' : 'text-red-500 font-bold';
+            
+            // Format price for display in the row (Optional: shows the first plan's price)
+            const startingPrice = plans.length > 0 ? `₦${parseFloat(plans[0].price).toLocaleString()}` : 'N/A';
+
+            return `
+                <tr class="hover:bg-brand-background/30 transition-colors">
+                    <td class="px-6 py-5">
+                        <div class="flex items-center gap-3">
+                            <img src="${p.imageUrl || 'https://via.placeholder.com/40'}" class="w-10 h-10 rounded-lg object-cover bg-gray-100">
+                            <div>
+                                <div class="font-bold text-brand-darkText">${p.name}</div>
+                                <div class="text-[10px] text-brand-lightText font-mono">Code: ${p.activationCode || 'N/A'}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-5">
+                        <span class="bg-brand-background text-brand-blue px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border border-blue-100">
+                            ${p.category || 'Standard'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-5">
+                        <div class="text-xs font-bold text-brand-midText">${plans.length} Tiers (Starts ${startingPrice})</div>
+                        <div class="text-[10px] ${stockColor}">${stockStatus}</div>
+                    </td>
+                    <td class="px-6 py-5 text-center">
+                        <span class="px-2.5 py-1 rounded-full font-bold text-[10px] ${p.activationCode ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'} uppercase">
+                            ${p.activationCode ? 'Ready' : 'No Code'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-5 text-right flex justify-end gap-3">
+                        <button onclick="editProxy('${p._id}')" class="text-brand-blue font-bold text-[10px] hover:underline">EDIT</button>
+                        <button onclick="deleteProxy('${p._id}')" class="text-red-500 font-bold text-[10px] hover:underline">DEL</button>
+                    </td>
+                </tr>`;
+        }).join('');
+    } catch (err) { 
+        list.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-red-500">Error connecting to API.</td></tr>'; 
     }
+}
 
     function editProxy(id) {
         const proxy = allProxies.find(p => p._id === id);

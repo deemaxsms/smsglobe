@@ -1281,7 +1281,6 @@ async function handleVerifyTopup(req, res) {
         return res.status(500).json({ success: false, message: err.message || "Internal server error" });
     }
 }
-
 async function handlePurchaseWithWallet(req, res) {
     const { 
         vpnId, proxyId, rdpId, carrierName, 
@@ -1313,7 +1312,7 @@ async function handlePurchaseWithWallet(req, res) {
         let itemType;
         let costNGN = 0;
         let productDetails = { name: "", plan: "" };
-        let orderSpecifics = {}; // Holds credentials/details for OrderSchema
+        let orderSpecifics = {};
 
         // 3. PRODUCT LOGIC & STOCK MANAGEMENT
         if (vpnId) {
@@ -1328,7 +1327,7 @@ async function handlePurchaseWithWallet(req, res) {
             }
 
             itemType = "VPN";
-            costNGN = Number(item.plans[planIndex].price);
+            costNGN = Math.round(Number(item.plans[planIndex].price));
             productDetails.name = item.name;
             productDetails.plan = item.plans[planIndex].duration;
             
@@ -1349,7 +1348,7 @@ async function handlePurchaseWithWallet(req, res) {
             }
             
             itemType = "Proxy";
-            costNGN = Number(item.plans[planIndex].price);
+            costNGN = Math.round(Number(item.plans[planIndex].price));
             productDetails.name = item.name;
             productDetails.plan = `${item.plans[planIndex].ip_count} IPs`;
             
@@ -1358,7 +1357,7 @@ async function handlePurchaseWithWallet(req, res) {
         else if (carrierName) {
             itemType = metadata ? "eSIM_Activation" : "eSIM";
             const priceMatch = String(planAmount || "").match(/(\d+\.?\d*)/);
-            costNGN = priceMatch ? parseFloat(priceMatch[0]) : 0;
+            costNGN = priceMatch ? Math.round(parseFloat(priceMatch[0])) : 0;
             
             productDetails.name = carrierName;
             productDetails.plan = planAmount;
@@ -1377,7 +1376,7 @@ async function handlePurchaseWithWallet(req, res) {
             const selectedTier = rdpPlans[rdpId];
             if (!selectedTier) return res.status(404).json({ success: false, message: "RDP Plan not found" });
 
-            costNGN = Number(selectedTier.price) + (parseInt(metadata?.extraCPU || 0) * 5000) + (parseInt(metadata?.extraStorage || 0) * 200);
+            costNGN = Math.round(Number(selectedTier.price) + (parseInt(metadata?.extraCPU || 0) * 5000) + (parseInt(metadata?.extraStorage || 0) * 200));
             productDetails.name = selectedTier.name;
             productDetails.plan = `${selectedTier.ram} RAM | ${metadata?.osChoice || 'Windows'}`;
             
@@ -1387,38 +1386,28 @@ async function handlePurchaseWithWallet(req, res) {
             };
         }
 
-        // 4. CURRENCY CONVERSION & PRECISION FIX
-        const settings = await SystemSettings.findOne().lean();     
-        const adminRate = Number(settings?.exchangeRate || 1380);     
-        
-        // Round to 2 decimal places to prevent floating point comparison errors
-        const costUSD = Math.round((costNGN / adminRate) * 100) / 100;
-
-        // 5. BALANCE VALIDATION
-        if (user.balance < costUSD) {
+        // 4. BALANCE VALIDATION (NGN ONLY)
+        if (user.balance < costNGN) {
             // Revert stock if validation fails
             if (vpnId) await VPN.findByIdAndUpdate(vpnId, { $inc: { stock: 1 } });
             if (proxyId) await Proxy.findByIdAndUpdate(proxyId, { $inc: { stock: 1 } });
 
-            const walletInNGN = user.balance * adminRate;
             return res.status(400).json({ 
                 success: false, 
-                message: `Insufficient Balance. Required: ₦${costNGN.toLocaleString()} ($${costUSD}). Your Wallet: ₦${walletInNGN.toLocaleString()}` 
+                message: `Insufficient Balance. Required: ₦${costNGN.toLocaleString()}. Your Wallet: ₦${user.balance.toLocaleString()}` 
             });
         }
 
-        // 6. ATOMIC BALANCE DEBIT
+        // 5. ATOMIC BALANCE DEBIT
         const balanceBefore = Number(user.balance);
         
-        // We use $gte with a tiny epsilon (0.001) to handle binary rounding differences
         const updatedUser = await User.findOneAndUpdate(
-            { _id: user._id, balance: { $gte: costUSD - 0.001 } },
-            { $inc: { balance: -costUSD } },
+            { _id: user._id, balance: { $gte: costNGN } },
+            { $inc: { balance: -costNGN } },
             { new: true }
         );
 
         if (!updatedUser) {
-            console.error(`Atomic Debit Failure: User ${user._id} | Cost ${costUSD} | Balance ${user.balance}`);
             if (vpnId) await VPN.findByIdAndUpdate(vpnId, { $inc: { stock: 1 } });
             if (proxyId) await Proxy.findByIdAndUpdate(proxyId, { $inc: { stock: 1 } });
             return res.status(400).json({ success: false, message: "Transaction failed. Please contact support." });
@@ -1427,7 +1416,7 @@ async function handlePurchaseWithWallet(req, res) {
         const balanceAfter = updatedUser.balance;
         const paymentReference = `WAL-${Date.now()}-${user._id.toString().slice(-4)}`;
 
-        // 7. CREATE ORDER RECORD (OrderSchema)
+        // 6. CREATE ORDER RECORD
         const newOrder = await Order.create({
             userId: user._id,
             userEmail: user.email,
@@ -1441,17 +1430,15 @@ async function handlePurchaseWithWallet(req, res) {
             status: "successful",
             paymentReference: paymentReference,
             metadata: metadata,
-            ...orderSpecifics // Merges activationCode, vpnCredentials, or rdpDetails
+            ...orderSpecifics 
         });
 
-        // 8. CREATE TRANSACTION LOG (TransactionSchema)
+        // 7. CREATE TRANSACTION LOG
         await Transaction.create({
             userId: user._id,
             type: 'debit',
             purpose: 'purchase',
-            amountUSD: costUSD,
             amountNGN: costNGN,
-            exchangeRate: adminRate,
             status: 'successful',
             reference: paymentReference,
             paymentMethod: 'wallet',
@@ -1460,7 +1447,7 @@ async function handlePurchaseWithWallet(req, res) {
             metadata: { orderId: newOrder._id, product: productDetails.name }
         });
 
-        // 9. SEND DELIVERY EMAIL
+        // 8. SEND DELIVERY EMAIL
         sendDeliveryEmail(user.email, { ...orderSpecifics, amount: `₦${costNGN.toLocaleString()}` }, newOrder)
             .catch(err => console.error("Email Error:", err.message));
 
@@ -1476,7 +1463,6 @@ async function handlePurchaseWithWallet(req, res) {
         return res.status(500).json({ success: false, message: "Internal server error." });
     }
 }
-
 const sendDeliveryEmail = async (userEmail, credentials) => {
     const transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -1808,28 +1794,29 @@ const sendResetPasswordEmail = async (userEmail, resetLink, isAdmin = false) => 
         html: htmlContent
     });
 };
-
 // 2. GET ALL Proxies (Sorted by Newest)
 async function handleGetProxies(req, res) {
     try {
         const proxies = await Proxy.find({}).sort({ createdAt: -1 });
+        // Returns the list directly with NGN prices as stored in DB
         return res.json({ success: true, proxies });
     } catch (err) {
         return res.status(500).json({ success: false, message: "Fetch failed" });
     }
 }
 
-// 3. ADD Proxy (Includes category and stock parsing)
+// 3. ADD Proxy (Cleaned for NGN)
 async function handleAddProxy(req, res) {
     try {
         const { name, category, imageUrl, activationCode, instructions, plans, stock } = req.body;
 
-        // Clean and parse the plans
+        // Clean and parse the plans - Ensuring prices are rounded NGN
         let formattedPlans = [];
         if (plans && Array.isArray(plans)) {
             formattedPlans = plans.map(p => ({
                 ip_count: parseInt(p.ip_count) || 0,
-                price: parseFloat(p.price) || 0
+                // Math.round ensures we don't store weird floating point decimals
+                price: Math.round(parseFloat(p.price)) || 0 
             }));
         }
 
@@ -1839,33 +1826,33 @@ async function handleAddProxy(req, res) {
             imageUrl,
             activationCode,
             instructions,
-            stock: parseInt(stock) || 0, // Ensure stock is stored as a number
+            stock: parseInt(stock) || 0,
             plans: formattedPlans
         });
 
         await newProxy.save();
-        return res.json({ success: true, message: "Proxy Package Deployed Successfully" });
+        return res.json({ success: true, message: "Proxy Package Deployed Successfully in NGN" });
     } catch (err) {
         console.error("Add Proxy Error:", err);
         return res.status(500).json({ success: false, message: "Deployment failed" });
     }
 }
 
-// 4. UPDATE Proxy (Includes category, stock, and plans update)
+// 4. UPDATE Proxy (Cleaned for NGN)
 async function handleUpdateProxy(req, res) {
     try {
         const { proxyId, plans, stock, ...restOfData } = req.body;
 
         const updatePayload = { 
             ...restOfData,
-            stock: parseInt(stock) || 0 // Parse stock for updates
+            stock: parseInt(stock) || 0 
         };
 
-        // Handle plans parsing specifically
+        // Handle plans parsing specifically for NGN
         if (plans && Array.isArray(plans)) {
             updatePayload.plans = plans.map(p => ({
                 ip_count: parseInt(p.ip_count) || 0,
-                price: parseFloat(p.price) || 0
+                price: Math.round(parseFloat(p.price)) || 0 
             }));
         }
 
@@ -1877,7 +1864,7 @@ async function handleUpdateProxy(req, res) {
         
         if (!updated) return res.status(404).json({ success: false, message: "Proxy not found" });
 
-        return res.json({ success: true, message: "Proxy Package Updated" });
+        return res.json({ success: true, message: "Proxy Package Updated (NGN)" });
     } catch (err) {
         console.error("Update Proxy Error:", err);
         return res.status(500).json({ success: false, message: "Update failed" });

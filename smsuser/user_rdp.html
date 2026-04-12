@@ -427,7 +427,7 @@
 
 <script>
     const API_BASE_URL = '/api';
-let userBalances = { ngn: 0, usd: 0, rate: 1380 };
+    let userBalances = { ngn: 0, usd: 0, rate: 1380 };
 
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
@@ -464,9 +464,11 @@ async function fetchUserProfile() {
         const data = await res.json();
         
         if (data.success) {
-            userBalances.ngn = data.balance ?? 0; 
-            userBalances.usd = data.usd_balance ?? 0;
-            userBalances.rate = data.exchangeRate || data.rate; 
+            userBalances.ngn = Number(data.balance) || 0; 
+            userBalances.usd = Number(data.usd_balance) || 0;            
+            userBalances.rate = Number(data.exchangeRate || data.rate) || 1380; 
+            
+            console.log("Balance Sync:", userBalances);
             return true;
         }
     } catch (err) {
@@ -474,7 +476,6 @@ async function fetchUserProfile() {
     }
     return false;
 }
-
 
     function renderPlans() {
         if(!tableBody) return;
@@ -578,24 +579,24 @@ async function initiateRDPPayment() {
         return;
     }
 
-    // --- DYNAMIC RATE FIX ---
-    // Use the rate fetched from the Admin settings in the DB
-    const EXCHANGE_RATE = userBalances.rate; 
-    
-    // MAP THE DATA CORRECTLY
-    const actualUSD = userBalances.ngn; // This is the '32' seen in your DB
+    const EXCHANGE_RATE = Number(userBalances.rate);     
+    const actualUSD = Number(userBalances.ngn); 
     const convertedNGN = actualUSD * EXCHANGE_RATE;
-
     const modalBalanceNGN = document.getElementById('modalBalanceNGN');
     const modalBalanceUSD = document.getElementById('modalBalanceUSD');
     const modalTotalDisplay = document.getElementById('modalTotalDue');
 
     if (modalBalanceNGN) {
-        modalBalanceNGN.innerText = '₦' + convertedNGN.toLocaleString(undefined, {minimumFractionDigits: 2});
+        modalBalanceNGN.innerText = '₦' + convertedNGN.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
     }
     
     if (modalBalanceUSD) {
-        modalBalanceUSD.innerText = '$' + actualUSD.toLocaleString(undefined, {minimumFractionDigits: 2});
+        modalBalanceUSD.innerText = '$' + actualUSD.toLocaleString(undefined, {
+            minimumFractionDigits: 2
+        });
     }
     
     if (modalTotalDisplay) {

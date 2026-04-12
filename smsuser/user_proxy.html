@@ -340,7 +340,6 @@
     async function initPage() {
         const token = localStorage.getItem('userToken');
         if (!token) { window.location.href = 'user_login.html'; return; }
-        await checkPaymentStatus();
         try {
             const res = await fetch(`${API_BASE_URL}/proxies`);
             const data = await res.json();

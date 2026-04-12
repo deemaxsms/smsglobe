@@ -92,7 +92,6 @@ const systemSettingsSchema = new mongoose.Schema({
 
 const SystemSettings = mongoose.models.SystemSettings || mongoose.model('SystemSettings', systemSettingsSchema, 'system_settings');
 
-// --- PRODUCT SCHEMAS (NGN Prices) ---
 const vpnSchema = new mongoose.Schema({
     name: { type: String, required: true },
     provider: { type: String, required: true },
@@ -104,13 +103,9 @@ const vpnSchema = new mongoose.Schema({
     plans: [{
         duration: { type: String, required: true },
         price: { type: Number, required: true } // Price in NGN
-    }],    
-    
-    // Mobile / Standard Credentials
+    }],        
     username: { type: String },
-    password: { type: String, select: false }, 
-    
-    // PC Specific Credentials (Added these)
+    password: { type: String, select: false },     
     pcMethod: { type: String }, // e.g., 'User/Pass' or 'Activation Code'
     pcUsername: { type: String },
     pcPassword: { type: String, select: false },
@@ -1495,57 +1490,61 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
                     <strong style="font-size: 12px; color: #101828;">${storageValue}</strong>
                 </td>
             </tr>`;
-    } else if (isVPN) {
-        const hasMobile = !!credentials.username;
-        const hasPC = !!credentials.pcUsername;
-        const hasCode = !!credentials.activationCode;
+  } else if (productType === "VPN") { // Using your productType variable
+    const hasMobile = !!credentials.username;
+    const hasPC = !!credentials.pcUsername;
+    const hasCode = !!credentials.activationCode;
 
-        dataTableHtml = `
-            <tr>
-                <td class="mobile-full" width="100%" valign="top" style="padding-bottom: 20px;">
-                    <div style="background: #ffffff; border: 1px dashed #D1E0FF; padding: 15px; border-radius: 10px;">
-                        <span style="font-size: 10px; color: #667085; text-transform: uppercase; font-weight: 800;">Plan Info</span><br>
-                        <strong style="font-size: 14px; color: #101828;">${credentials.deviceLimit || 1} Device Connection(s)</strong>
-                    </div>
-                </td>
-            </tr>
-            ${hasMobile ? `
-            <tr>
-                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Username</span><br>
-                    <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #101828;">${credentials.username}</strong>
-                </td>
-                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Password</span><br>
-                    <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.password}</strong>
-                </td>
-            </tr>` : ''}
-            ${hasPC ? `
-            <tr>
-                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px; border-top: 1px solid #f0f0f0; padding-top: 10px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">PC Username</span><br>
-                    <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #101828;">${credentials.pcUsername}</strong>
-                </td>
-                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px; border-top: 1px solid #f0f0f0; padding-top: 10px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">PC Password</span><br>
-                    <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.pcPassword}</strong>
-                </td>
-            </tr>` : ''}
-            ${hasCode ? `
-            <tr>
-                <td colspan="2" valign="top" style="padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation Code / Method</span><br>
-                    <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.activationCode} ${credentials.pcMethod ? `(${credentials.pcMethod})` : ''}</strong>
-                </td>
-            </tr>` : ''}
-            <tr>
-                <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Setup Guide</span><br>
-                    <p style="font-size: 12px; color: #344054; line-height: 1.6; margin: 5px 0;">
-                        ${credentials.instructions || 'Check the dashboard for setup apps.'}
-                    </p>
-                </td>
-            </tr>`;
+    dataTableHtml = `
+        <tr>
+            <td colspan="2" valign="top" style="padding-bottom: 20px;">
+                <div style="background: #f9fafb; border: 1px solid #eaecf0; padding: 12px; border-radius: 8px; text-align: center;">
+                    <span style="font-size: 10px; color: #667085; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;">Connection Limit</span><br>
+                    <strong style="font-size: 15px; color: #0F54C6;">${credentials.deviceLimit || 1} Device(s) Allowed</strong>
+                </div>
+            </td>
+        </tr>
+
+        ${hasMobile ? `
+        <tr>
+            <td width="50%" valign="top" style="padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile/Email User</span><br>
+                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #101828;">${credentials.username}</strong>
+            </td>
+            <td width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Password</span><br>
+                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.password}</strong>
+            </td>
+        </tr>` : ''}
+
+        ${hasPC ? `
+        <tr>
+            <td width="50%" valign="top" style="padding-bottom: 15px; border-top: 1px solid #f2f4f7; padding-top: 10px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">PC Username</span><br>
+                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #101828;">${credentials.pcUsername}</strong>
+            </td>
+            <td width="50%" valign="top" style="text-align: right; padding-bottom: 15px; border-top: 1px solid #f2f4f7; padding-top: 10px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">PC Password</span><br>
+                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.pcPassword}</strong>
+            </td>
+        </tr>` : ''}
+
+        ${hasCode ? `
+        <tr>
+            <td colspan="2" valign="top" style="padding: 15px; background-color: #f0f5ff; border-radius: 8px; margin-bottom: 15px;">
+                <span style="font-size: 9px; color: #0F54C6; text-transform: uppercase; font-weight: bold;">Activation Code ${credentials.pcMethod ? `(${credentials.pcMethod})` : ''}</span><br>
+                <strong style="font-size: 16px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${credentials.activationCode}</strong>
+            </td>
+        </tr>` : ''}
+
+        <tr>
+            <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">How to Setup</span><br>
+                <p style="font-size: 12px; color: #344054; line-height: 1.6; margin: 5px 0;">
+                    ${credentials.instructions || 'Login to your SMSGlobe dashboard to download the specific apps for your device.'}
+                </p>
+            </td>
+        </tr>`;
     } else if (isESIM_Activation) {
         dataTableHtml = `
             <tr>

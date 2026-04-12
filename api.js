@@ -1103,6 +1103,7 @@ async function handlePurchaseVPN(req, res) {
         return res.status(401).json({ success: false, message: "Unauthorized or Session Expired" });
     }
 }
+
 // --- 1. Initiate Topup (NGN Only) ---
 async function handleInitiateTopup(req, res) {
     const { amountNGN } = req.body; // Changed from amountUSD
@@ -1164,14 +1165,17 @@ async function handleInitiateTopup(req, res) {
         return res.status(500).json({ success: false, message: "Could not initiate payment" });
     }
 }
-
-// --- 2. Verify Topup (NGN Only) ---
+// --- Updated Verify Topup (NGN Only) ---
 async function handleVerifyTopup(req, res) {
     const { transactionId } = req.body;
 
     if (!transactionId) {
         return res.status(400).json({ success: false, message: "Transaction ID is required" });
     }
+
+    // Use a session to ensure Atomic updates (Both balance and transaction record must save)
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
     try {
         const response = await fetch(`https://api.flutterwave.com/v3/transactions/${transactionId}/verify`, {
@@ -1185,15 +1189,18 @@ async function handleVerifyTopup(req, res) {
         const flwData = await response.json();
 
         if (!flwData || flwData.status !== "success") {
-            return res.status(400).json({ success: false, message: "Could not verify payment with Gateway" });
+            await session.abortTransaction();
+            return res.status(400).json({ success: false, message: "Gateway verification failed" });
         }
 
         const flwStatus = flwData.data.status; 
         const txRef = flwData.data.tx_ref;
+        const flwAmountNGN = Number(flwData.data.amount);
 
-        // Check if already processed
+        // 1. Check if this reference has already been successfully processed
         const existingTx = await Transaction.findOne({ reference: txRef });
         if (existingTx && existingTx.status === 'successful') {
+            await session.abortTransaction();
             return res.json({ 
                 success: true, 
                 newBalance: existingTx.balanceAfter,
@@ -1202,16 +1209,20 @@ async function handleVerifyTopup(req, res) {
         }
 
         if (flwStatus === "successful") {
-            const { userId } = flwData.data.meta;
-            const flwAmountNGN = flwData.data.amount;
+            // CRITICAL: Extract userId from meta. Use flwData.data.meta.userId 
+            const userId = flwData.data.meta?.userId;
+            
+            if (!userId) {
+                throw new Error("User ID missing from transaction metadata");
+            }
 
-            const user = await User.findById(userId);
-            if (!user) return res.status(404).json({ success: false, message: "User not found" });
+            const user = await User.findById(userId).session(session);
+            if (!user) throw new Error("User record not found");
 
-            const balanceBefore = Number(user.balance);
-            const balanceAfter = balanceBefore + Number(flwAmountNGN);
+            const balanceBefore = Number(user.balance || 0);
+            const balanceAfter = balanceBefore + flwAmountNGN;
 
-            // Update Transaction Record
+            // 2. Update/Create Transaction Record
             await Transaction.findOneAndUpdate(
                 { reference: txRef },
                 {
@@ -1225,45 +1236,47 @@ async function handleVerifyTopup(req, res) {
                     balanceAfter,
                     metadata: flwData.data
                 },
-                { upsert: true, returnDocument: 'after' } 
+                { upsert: true, session }
             );
 
-            // Update User Balance
+            // 3. Update User Balance
             user.balance = balanceAfter;
-            await user.save();
+            await user.save({ session });
+
+            // Commit the changes to DB
+            await session.commitTransaction();
+            session.endSession();
 
             return res.json({ 
                 success: true, 
                 amountNGN: flwAmountNGN,
-                newBalance: user.balance, 
+                newBalance: balanceAfter, 
                 message: "Wallet funded successfully!" 
             });
         }
 
-        if (flwStatus === "pending") {
-            await Transaction.findOneAndUpdate(
-                { reference: txRef },
-                { status: 'pending', metadata: flwData.data },
-                { upsert: true }
-            );
-            return res.json({ 
-                success: true, 
-                status: 'pending', 
-                message: "Payment is pending confirmation." 
-            });
-        }
-
-        // Handle Failure
+        // Handle Pending/Failed statuses
+        const finalStatus = flwStatus === "pending" ? "pending" : "failed";
         await Transaction.findOneAndUpdate(
             { reference: txRef },
-            { status: 'failed', metadata: flwData.data },
-            { upsert: true }
+            { status: finalStatus, metadata: flwData.data },
+            { upsert: true, session }
         );
-        return res.status(400).json({ success: false, message: "Payment failed." });
+
+        await session.commitTransaction();
+        session.endSession();
+
+        return res.json({ 
+            success: (finalStatus === 'pending'), 
+            status: finalStatus, 
+            message: `Transaction ${finalStatus}.` 
+        });
 
     } catch (err) {
-        console.error("CRITICAL TOPUP ERROR:", err);
-        return res.status(500).json({ success: false, message: "Internal server error" });
+        await session.abortTransaction();
+        session.endSession();
+        console.error("VERIFICATION ERROR:", err.message);
+        return res.status(500).json({ success: false, message: err.message || "Internal server error" });
     }
 }
 

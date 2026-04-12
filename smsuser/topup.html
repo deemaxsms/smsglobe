@@ -305,18 +305,45 @@
             });
         } catch (err) { tableBody.innerHTML = `<tr><td colspan="4" class="py-12 text-center text-red-500">Error loading data.</td></tr>`; }
     }
+async function verifyPaymentOnLoad() {
+    const params = new URLSearchParams(window.location.search);
+    const transactionId = params.get('transaction_id');
+    const status = params.get('status');
 
-    async function verifyPaymentOnLoad() {
-        const params = new URLSearchParams(window.location.search);
-        const txId = params.get('transaction_id');
-        if (txId) {
-            const alertBox = document.getElementById('statusAlert');
-            alertBox.classList.remove('hidden');
-            document.getElementById('statusTitle').innerText = "Verifying Transaction...";
-            // Logic for verification is similar to previous code block
+    if (transactionId && (status === 'successful' || status === 'completed')) {
+        const alertBox = document.getElementById('statusAlert');
+        const title = document.getElementById('statusTitle');
+        const msg = document.getElementById('statusMessage');
+
+        alertBox.classList.remove('hidden');
+        title.innerText = "Verifying Transaction...";
+
+        try {
+            const response = await fetch('/api/verify-topup', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ transactionId })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                title.innerText = "Wallet Funded!";
+                msg.innerHTML = `Success! New Balance: ₦${data.newBalance.toLocaleString()}`;
+                // Refresh balance in header
+                document.getElementById('currentBalance').innerText = `Bal: ₦${data.newBalance.toLocaleString()}`;
+            } else {
+                title.innerText = "Verification Failed";
+                msg.innerText = data.message || "Please contact support.";
+            }
+        } catch (err) {
+            console.error("Verification Error:", err);
         }
     }
-
+}
     window.onload = () => {
         syncWithBackend();
         fetchTransactionHistory();

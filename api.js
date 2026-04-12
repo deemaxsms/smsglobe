@@ -1279,24 +1279,28 @@ async function handlePurchaseWithWallet(req, res) {
                 instructions: item.instructions || "Follow the setup guide provided in your dashboard."
             };
         } 
-        else if (proxyId) {
-            const item = await Proxy.findOneAndUpdate(
-                { _id: proxyId, stock: { $gt: 0 } },
-                { $inc: { stock: -1 } },
-                { new: true, select: '+activationCode' }
-            );
+      else if (proxyId) {
+    const item = await Proxy.findOneAndUpdate(
+        { _id: proxyId, stock: { $gt: 0 } },
+        { $inc: { stock: -1 } },
+        // Add instructions to the select string
+        { new: true, select: '+activationCode +instructions' } 
+    );
 
-            if (!item || !item.plans[planIndex]) {
-                return res.status(404).json({ success: false, message: "Proxy unavailable or out of stock" });
-            }
-            
-            itemType = "Proxy";
-            costNGN = Math.round(Number(item.plans[planIndex].price));
-            productDetails.name = item.name;
-            productDetails.plan = `${item.plans[planIndex].ip_count} IPs`;
-            
-            orderSpecifics.activationCode = item.activationCode;
-        } 
+    if (!item || !item.plans[planIndex]) {
+        return res.status(404).json({ success: false, message: "Proxy unavailable or out of stock" });
+    }
+    
+    itemType = "Proxy";
+    costNGN = Math.round(Number(item.plans[planIndex].price));
+    productDetails.name = item.name;
+    productDetails.plan = `${item.plans[planIndex].ip_count} IPs`;
+    
+    // Attach the instructions here so they are available for the response
+    orderSpecifics.activationCode = item.activationCode;
+    orderSpecifics.instructions = item.instructions; // ADD THIS LINE
+}
+
         else if (carrierName) {
             itemType = metadata ? "eSIM_Activation" : "eSIM";
             const priceMatch = String(planAmount || "").match(/(\d+\.?\d*)/);

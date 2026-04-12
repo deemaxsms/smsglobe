@@ -385,14 +385,18 @@
     <div class="bg-white rounded-3xl p-8 max-w-sm w-full relative z-10 shadow-2xl scale-up">
         <div class="text-center mb-6">
             <h3 class="text-xl font-black text-brand-darkText">Confirm Purchase</h3>
-            <p class="text-xs text-brand-lightText mt-1">Funds will be deducted from your SMSGlobe wallet.</p>
+            <p class="text-xs text-brand-lightText mt-1">Funds will be deducted from your wallet balance.</p>
         </div>
 
         <div class="space-y-3 mb-8">
-            <div class="flex justify-between items-center p-4 bg-gray-50 rounded-2xl border border-brand-border">
-                <span class="text-[10px] font-bold text-brand-lightText uppercase">Your Wallet</span>
-                <span id="modalUserBalance" class="text-sm font-black text-brand-darkText">₦0.00</span>
+            <div class="p-4 bg-gray-50 rounded-2xl border border-brand-border">
+                <span class="text-[10px] font-bold text-brand-lightText uppercase block mb-2">Available Balance</span>
+                <div class="flex justify-between items-center">
+                    <span id="modalBalanceNGN" class="text-sm font-black text-brand-darkText">₦0.00</span>
+                    <span id="modalBalanceUSD" class="text-xs font-bold text-brand-blue bg-brand-blue/10 px-2 py-1 rounded-lg">$0.00</span>
+                </div>
             </div>
+
             <div class="flex justify-between items-center p-4 bg-brand-blue/5 rounded-2xl border border-brand-blue/10">
                 <span class="text-[10px] font-bold text-brand-blue uppercase">Order Amount</span>
                 <span id="modalTotalDue" class="text-sm font-black text-brand-blue">₦0.00</span>
@@ -423,7 +427,7 @@
 
 <script>
     const API_BASE_URL = '/api';
-    let userBalance = 0; // Global variable to store balance
+    let userBalances = { ngn: 0, usd: 0 };
 
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
@@ -448,25 +452,25 @@
         renderPlans();
     };
 
-   async function fetchUserProfile() {
+  async function fetchUserProfile() {
     try {
-        const token = localStorage.getItem('userToken');
-        if (!token) return false;
-
         const res = await fetch(`${API_BASE_URL}/user-profile`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
         });
         const data = await res.json();
         
         if (data.success) {
-            userBalance = (data.user ? data.user.balance : data.balance) ?? 0;
+            // Mapping both balances from your API
+            userBalances.ngn = data.user?.balance || 0;
+            userBalances.usd = data.user?.usd_balance || 0; 
             return true;
         }
     } catch (err) {
-        console.error("Failed to fetch balance:", err);
+        console.error("Failed to fetch balance", err);
     }
     return false;
 }
+
     function renderPlans() {
         if(!tableBody) return;
         tableBody.innerHTML = Object.values(plans).map(plan => `
@@ -552,7 +556,7 @@
         return total;
     }
 
-  async function initiateRDPPayment() {
+async function initiateRDPPayment() {
     const payBtn = document.getElementById('payBtn');
     if (!payBtn) return;
 
@@ -561,7 +565,7 @@
     payBtn.innerText = "Verifying Balance...";
     payBtn.disabled = true;
 
-    // 2. Fetch Fresh Data
+    // 2. Fetch Fresh Data (Ensure fetchUserProfile updates a global object like userBalances)
     const success = await fetchUserProfile();    
     payBtn.innerText = originalText;
     payBtn.disabled = false;
@@ -570,20 +574,32 @@
         alert("Could not verify your wallet balance. Please log in again or check your connection.");
         return;
     }
+
+    // 3. Get Total Amount from the Summary UI
     const totalElement = document.getElementById('summaryTotal');
     if (!totalElement) return;    
     const totalText = totalElement.innerText;
     const currentTotal = parseInt(totalText.replace(/\D/g, '')) || 0;
-    const modalBalanceDisplay = document.getElementById('modalUserBalance');
+
+    // 4. Update the Dual Balance Display
+    // Using userBalances object (e.g., { ngn: 5000, usd: 10 })
+    const modalBalanceNGN = document.getElementById('modalBalanceNGN');
+    const modalBalanceUSD = document.getElementById('modalBalanceUSD');
     const modalTotalDisplay = document.getElementById('modalTotalDue');
 
-    if (modalBalanceDisplay) {
-        modalBalanceDisplay.innerText = '₦' + userBalance.toLocaleString();
+    if (modalBalanceNGN) {
+        modalBalanceNGN.innerText = '₦' + userBalances.ngn.toLocaleString();
+    }
+    
+    if (modalBalanceUSD) {
+        modalBalanceUSD.innerText = '$' + userBalances.usd.toLocaleString();
     }
     
     if (modalTotalDisplay) {
         modalTotalDisplay.innerText = '₦' + currentTotal.toLocaleString();
     }    
+
+    // 5. Toggle Modal
     const modal = document.getElementById('paymentModal');
     if (modal) {
         modal.classList.remove('hidden');

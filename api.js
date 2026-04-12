@@ -82,6 +82,11 @@ const userSchema = new mongoose.Schema({
         default: 0, 
         min: [0, "Balance cannot be negative"] 
     },
+    usd_balance: { 
+        type: Number, 
+        default: 0, 
+        min: [0, "USD Balance cannot be negative"] 
+    },
     status: { 
         type: String, 
         enum: ['active', 'suspended'], 
@@ -1228,6 +1233,7 @@ async function handleGetUserProfile(req, res) {
             email: user.email, 
             status: user.status || 'active',
             balance: user.balance || 0,
+            usd_balance: user.usd_balance || 0,
             referralCode: user.referralCode || "", 
             referralCount: user.referralCount || 0 
         });

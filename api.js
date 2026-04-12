@@ -1101,6 +1101,7 @@ async function handleInitiateTopup(req, res) {
         return res.status(500).json({ success: false, message: "Could not initiate payment" });
     }
 }
+
 // --- Updated Verify Topup (NGN Only) ---
 async function handleVerifyTopup(req, res) {
     const { transactionId } = req.body;

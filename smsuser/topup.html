@@ -375,10 +375,13 @@
     }
 
 
-    async function verifyPaymentOnLoad() {
+  async function verifyPaymentOnLoad() {
     const params = new URLSearchParams(window.location.search);
     const transactionId = params.get('transaction_id');
     const status = params.get('status');
+    
+    // Ensure token is retrieved from storage
+    const token = localStorage.getItem('userToken');
 
     if (transactionId && (status === 'successful' || status === 'completed')) {
         const alertBox = document.getElementById('statusAlert');
@@ -390,7 +393,6 @@
         title.innerText = "Verifying with Bank...";
 
         try {
-            // Check if token exists before fetching to avoid immediate catch
             if (!token) throw new Error("Authentication missing. Please login again.");
 
             const response = await fetch('/api/verify-topup', {
@@ -402,48 +404,52 @@
                 body: JSON.stringify({ transactionId })
             });
 
-            // CHECK: If server dies or route is wrong, this prevents the "Network Error" catch-all
-if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `Server Error: ${response.status}`);
-}
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Server Error: ${response.status}`);
+            }
 
-const data = await response.json();
+            const data = await response.json();
 
-           if (data.success) {
-    // SUCCESS STATE
-    alertBox.className = "p-5 md:p-8 rounded-[2rem] bg-emerald-50 border border-emerald-100 text-center shadow-xl animate-in zoom-in duration-300 max-w-[320px] md:max-w-sm mx-auto";
-    title.className = "text-base md:text-lg font-black text-emerald-800 uppercase tracking-tight mb-2";
-    title.innerText = "Deposit Confirmed!";
-    
-    // SAFE ACCESS: Use (data.amount || 0) to prevent the toLocaleString crash
-    const displayAmount = (data.amount || 0).toLocaleString();
-    const displayBalance = (data.newBalance || 0).toLocaleString();
+            if (data.success) {
+                // SUCCESS STATE UI
+                alertBox.className = "p-5 md:p-8 rounded-[2rem] bg-emerald-50 border border-emerald-100 text-center shadow-xl animate-in zoom-in duration-300 max-w-[320px] md:max-w-sm mx-auto";
+                title.className = "text-base md:text-lg font-black text-emerald-800 uppercase tracking-tight mb-2";
+                title.innerText = "Deposit Confirmed!";
+                
+                /**
+                 * FIX: Your backend sends 'amountNGN'. 
+                 * We use Number() and a fallback to 0 to prevent toLocaleString() from crashing.
+                 */
+                const displayAmount = Number(data.amountNGN || data.amount || 0).toLocaleString();
+                const displayBalance = Number(data.newBalance || 0).toLocaleString();
 
-    msg.className = "text-emerald-700 text-[10px] md:text-xs leading-tight";
-    msg.innerHTML = `
-        <div class="mb-4">
-            <p class="text-[9px] uppercase font-bold opacity-70 mb-1">Amount Credited</p>
-            <p class="font-black text-3xl text-emerald-900">₦${displayAmount}</p>
-        </div>
-        <div class="bg-white/60 py-2 px-4 rounded-2xl border border-emerald-100 inline-block mb-4">
-            <p class="text-[8px] uppercase font-bold opacity-60">Total Wallet Balance</p>
-            <p class="font-bold text-sm text-emerald-800">₦${displayBalance}</p>
-        </div>
-        <p class="text-[9px] font-bold opacity-60 italic">Redirecting to dashboard in <span id="countdown">3</span>s...</p>
-    `;
+                msg.className = "text-emerald-700 text-[10px] md:text-xs leading-tight";
+                msg.innerHTML = `
+                    <div class="mb-4">
+                        <p class="text-[9px] uppercase font-bold opacity-70 mb-1">Amount Credited</p>
+                        <p class="font-black text-3xl text-emerald-900">₦${displayAmount}</p>
+                    </div>
+                    <div class="bg-white/60 py-2 px-4 rounded-2xl border border-emerald-100 inline-block mb-4">
+                        <p class="text-[8px] uppercase font-bold opacity-60">Total Wallet Balance</p>
+                        <p class="font-bold text-sm text-emerald-800">₦${displayBalance}</p>
+                    </div>
+                    <p class="text-[9px] font-bold opacity-60 italic">Redirecting to dashboard in <span id="countdown">3</span>s...</p>
+                `;
 
-    // Update Header
-    const balanceEl = document.getElementById('currentBalance');
-    if(balanceEl) balanceEl.innerText = `Bal: ₦${displayBalance}`;
+                // Update Header balance if element exists
+                const balanceEl = document.getElementById('currentBalance');
+                if(balanceEl) balanceEl.innerText = `Bal: ₦${displayBalance}`;
 
                 redirectBtn.classList.remove('hidden');
                 redirectBtn.className = "w-full py-3 bg-emerald-600 text-white rounded-xl font-bold text-[10px] uppercase mt-2 active-scale";
+                redirectBtn.onclick = () => window.location.href = 'user_dashboard.html';
 
                 let timeLeft = 3;
                 const timer = setInterval(() => {
                     timeLeft--;
-                    if(document.getElementById('countdown')) document.getElementById('countdown').innerText = timeLeft;
+                    const countdownEl = document.getElementById('countdown');
+                    if(countdownEl) countdownEl.innerText = timeLeft;
                     if (timeLeft <= 0) {
                         clearInterval(timer);
                         window.location.href = 'user_dashboard.html';
@@ -451,22 +457,22 @@ const data = await response.json();
                 }, 1000);
 
             } else {
-                // API RETURNED ERROR (e.g. Transaction already used)
+                // API RETURNED ERROR
                 alertBox.className = "p-6 rounded-3xl bg-rose-50 border border-rose-100 text-center max-w-[320px] mx-auto";
                 title.className = "text-base font-black text-rose-700 uppercase";
                 title.innerText = "Verification Declined";
                 msg.innerText = data.message || "The payment provider could not confirm this transaction.";
                 redirectBtn.classList.remove('hidden');
+                redirectBtn.onclick = () => window.location.href = 'user_dashboard.html';
             }
         } catch (err) {
-            // THIS IS WHERE YOUR "NETWORK ERROR" WAS COMING FROM
             console.error("Critical Error:", err);
             alertBox.className = "p-6 rounded-3xl bg-amber-50 border border-amber-100 text-center max-w-[320px] mx-auto";
             title.className = "text-base font-black text-amber-800 uppercase";
             title.innerText = "Syncing Issue";
             msg.innerHTML = `
                 <p class="mb-2">Your payment was successful on Flutterwave, but we are having trouble updating your dashboard.</p>
-                <p class="font-bold">Transaction ID: ${transactionId}</p>
+                <p class="font-bold text-xs">Transaction ID: ${transactionId}</p>
                 <p class="mt-2 text-[9px]">Please refresh this page or contact support.</p>
             `;
             redirectBtn.classList.remove('hidden');

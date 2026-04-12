@@ -418,6 +418,7 @@ async function buyVPN(vpnId) {
     const confirmBtn = document.getElementById('finalConfirmBtn');
     const topupBtn = document.getElementById('modalTopupBtn');
     const btnLoader = document.getElementById('btnLoader');
+    const btnText = document.getElementById('btnText'); // Get reference here
 
     const formatNaira = (amt) => {
         return '₦' + parseFloat(amt).toLocaleString('en-NG', {
@@ -427,7 +428,6 @@ async function buyVPN(vpnId) {
     };
 
     try {
-        // Fetch fresh balance to be certain
         const res = await fetch(`${API_BASE_URL}/user-profile`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -436,20 +436,18 @@ async function buyVPN(vpnId) {
         if (data.success) {
             const currentBalance = data.user ? data.user.balance : data.balance;
 
-            // UI Updates for Modal
             document.getElementById('modalUserBalance').innerText = formatNaira(currentBalance);
             document.getElementById('modalPurchaseAmount').innerText = formatNaira(price);
 
-            // Handle Insufficient Funds State
             if (currentBalance < price) {
                 confirmBtn.classList.add('hidden');
                 topupBtn.classList.remove('hidden');
             } else {
                 confirmBtn.classList.remove('hidden');
                 topupBtn.classList.add('hidden');
-                
                 confirmBtn.disabled = false;
-                confirmBtn.innerHTML = `<span>Confirm & Pay</span>`; 
+                // FIX: Update the span text instead of overwriting innerHTML
+                if (btnText) btnText.innerText = "Confirm & Pay"; 
             }
 
             if (successState) successState.classList.add('hidden');
@@ -459,7 +457,8 @@ async function buyVPN(vpnId) {
             confirmBtn.onclick = async () => {
                 confirmBtn.disabled = true;
                 if (btnLoader) btnLoader.classList.remove('hidden');
-                document.getElementById('btnText').innerText = "Processing...";
+                // FIX: Accessing btnText safely
+                if (btnText) btnText.innerText = "Processing...";
                 
                 try {
                     const purchaseRes = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
@@ -494,7 +493,7 @@ async function buyVPN(vpnId) {
                 } finally {
                     confirmBtn.disabled = false;
                     if (btnLoader) btnLoader.classList.add('hidden');
-                    document.getElementById('btnText').innerText = "Confirm & Pay";
+                    if (btnText) btnText.innerText = "Confirm & Pay";
                 }
             };
         }
@@ -502,7 +501,6 @@ async function buyVPN(vpnId) {
         console.error("Verification Error:", err);
     }
 }
-
 function showSuccessDetails(creds, vpnData) {
     // 1. Switch UI States
     document.getElementById('confirmState').classList.add('hidden');

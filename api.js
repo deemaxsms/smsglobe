@@ -173,7 +173,6 @@ const vpnSchema = new mongoose.Schema({
 });
 
 vpnSchema.index({ region: 1, provider: 1, deviceType: 1 });
-
 const VPN = mongoose.models.VPN || mongoose.model('VPN', vpnSchema);
 
 const ProxySchema = new mongoose.Schema({
@@ -1505,12 +1504,12 @@ async function handlePurchaseWithWallet(req, res) {
         if (!token) return res.status(401).json({ success: false, message: "Unauthorized" });
         
         const decoded = jwt.verify(token, JWT_SECRET);
-        const user = await User.findById(decoded.id);
         
+        // Fetch fresh user data to ensure we have the latest balance
+        const user = await User.findById(decoded.id);
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
         // 1. PREVENT DOUBLE-CHARGING (Idempotency Check)
-        // Checks if the user made an identical purchase in the last 20 seconds
         const recentOrder = await Order.findOne({
             userId: user._id,
             createdAt: { $gt: new Date(Date.now() - 20000) } 
@@ -1525,7 +1524,7 @@ async function handlePurchaseWithWallet(req, res) {
         let productDetails = { name: "", plan: "" };
         let targetNum = mobileNumber || null;
 
-        // 2. PRODUCT LOGIC & COST CALCULATION (In NGN)
+        // 2. PRODUCT LOGIC & STOCK MANAGEMENT
         if (vpnId) {
             const item = await VPN.findOneAndUpdate(
                 { _id: vpnId, stock: { $gt: 0 } },
@@ -1620,7 +1619,7 @@ async function handlePurchaseWithWallet(req, res) {
             };
         }
 
-        // 3. CURRENCY CONVERSION (Convert NGN Cost to USD Wallet Amount)
+        // 3. CURRENCY CONVERSION
         const settings = await SystemSettings.findOne().lean();     
         const adminRate = Number(settings?.exchangeRate || 1380);     
         const costUSD = costNGN / adminRate;
@@ -1634,12 +1633,21 @@ async function handlePurchaseWithWallet(req, res) {
             });
         }
 
-        // 5. ATOMIC UPDATES (Debit Balance)
+        // 5. ATOMIC BALANCE DEBIT (The Fix for No Deduction)
         const balanceBefore = user.balance;
-        const balanceAfter = balanceBefore - costUSD;
+        
+        // Using findOneAndUpdate ensures the deduction happens at the DB level atomically
+        const updatedUser = await User.findOneAndUpdate(
+            { _id: user._id, balance: { $gte: costUSD } },
+            { $inc: { balance: -costUSD } },
+            { new: true }
+        );
 
-        user.balance = balanceAfter;
-        await user.save();
+        if (!updatedUser) {
+            return res.status(400).json({ success: false, message: "Transaction failed. Possible balance change during processing." });
+        }
+
+        const balanceAfter = updatedUser.balance;
 
         // 6. CREATE ORDER RECORD
         const orderData = {
@@ -1650,42 +1658,20 @@ async function handlePurchaseWithWallet(req, res) {
             planName: productDetails.plan,
             nodeName: productDetails.name,
             targetNumber: targetNum,
-            amount: costNGN, // We store NGN cost in Order history
+            amount: costNGN, 
             currency: "NGN",
             status: "successful",
             paymentReference: `WAL-${Date.now()}-${user._id.toString().slice(-4)}`,
-            metadata: {
-                ...metadata,
-                mobileNumber: mobileNumber
-            }
+            metadata: { ...metadata, mobileNumber: mobileNumber }
         };
 
-        if (itemType === "VPN") {
-            orderData.vpnCredentials = { 
-                username: credentials.username, 
-                password: credentials.password,
-                pcUsername: credentials.pcUsername,
-                pcPassword: credentials.pcPassword,
-                activationCode: credentials.activationCode
-            };
-        }
-        
-        if (itemType === "RDP") {
-            orderData.rdpDetails = { 
-                os: credentials.os, 
-                specs: credentials.specs 
-            };
-        }
+        if (itemType === "VPN") orderData.vpnCredentials = credentials;
+        if (itemType === "RDP") orderData.rdpDetails = credentials;
+        if (itemType === "Proxy") orderData.proxyDetails = credentials;
 
-        if (itemType === "Proxy") {
-            orderData.proxyDetails = { 
-                activationCode: credentials.activationCode,
-                instructions: credentials.instructions
-            };
-        }
         const newOrder = await Order.create(orderData);
 
-        // 7. CREATE TRANSACTION LOG (For History Table)
+        // 7. CREATE TRANSACTION LOG
         await Transaction.create({
             userId: user._id,
             type: 'debit',
@@ -1701,24 +1687,23 @@ async function handlePurchaseWithWallet(req, res) {
             metadata: { orderId: newOrder._id, product: productDetails.name }
         });
 
-        // 8. SEND DELIVERY EMAIL (Background process)
+        // 8. SEND DELIVERY EMAIL
         sendDeliveryEmail(user.email, { ...credentials, amount: `₦${costNGN.toLocaleString()}` }, newOrder)
-            .catch(emailErr => console.error("Email Error (Handled):", emailErr.message));
+            .catch(emailErr => console.error("Email Error:", emailErr.message));
 
         return res.json({ 
             success: true, 
             message: "Purchase successful!", 
-            balance: user.balance,
+            balance: updatedUser.balance,
             order: newOrder,
             credentials 
         });
 
     } catch (err) {
         console.error("Wallet Purchase Error:", err);
-        return res.status(500).json({ success: false, message: "Internal server error. Purchase could not be completed." });
+        return res.status(500).json({ success: false, message: "Internal server error." });
     }
 }
-
 
 const sendDeliveryEmail = async (userEmail, credentials) => {
     const transporter = nodemailer.createTransport({

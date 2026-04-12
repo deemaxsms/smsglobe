@@ -290,12 +290,12 @@
                 title.innerText = "Congratulations! Wallet Funded";
                 
                 const ngnPaid = data.amountNGN ? `(₦${data.amountNGN.toLocaleString()})` : '';
-                msg.innerHTML = `You have topped up <b>$${data.amountUSD.toFixed(2)}</b> ${ngnPaid}. <br>New balance: <b>$${data.newBalance.toFixed(2)}</b>.`;
+                msg.innerHTML = `You have topped up <b>$${(data.amountUSD || 0).toFixed(2)}</b> ${ngnPaid}. <br>New balance: <b>$${(data.newBalance || 0).toFixed(2)}</b>.`;
                 icon.innerHTML = `<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>`;
                 
                 action.classList.remove('hidden');
-                document.getElementById('currentBalance').innerText = `Bal: $${data.newBalance.toFixed(2)}`;
-                
+                document.getElementById('currentBalance').innerText = `Bal: $${(data.newBalance || 0).toFixed(2)}`;
+
                 // Countdown logic
                 let timeLeft = 8;
                 const timer = setInterval(() => {

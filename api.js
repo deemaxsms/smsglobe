@@ -1412,50 +1412,55 @@ async function handleVerifyTopup(req, res) {
                 message: "Transaction already processed." 
             });
         }
+// --- UPDATED BACKEND SECTION ---
+if (flwStatus === "successful") {
+    const { userId, usdAmount } = flwData.data.meta;
+    const flwAmountNGN = flwData.data.amount;
 
-        // 4. SCENARIO A: PAYMENT SUCCESSFUL
-        if (flwStatus === "successful") {
-            const { userId, usdAmount } = flwData.data.meta;
-            const flwAmountNGN = flwData.data.amount;
+    let amountCreditUSD = parseFloat(usdAmount);
+    if (isNaN(amountCreditUSD)) {
+        const settings = await SystemSettings.findOne();
+        const rate = settings?.exchangeRate || 1380;
+        amountCreditUSD = flwAmountNGN / rate;
+    }
 
-            // Determine credit amount
-            let amountCreditUSD = parseFloat(usdAmount);
-            if (isNaN(amountCreditUSD)) {
-                const settings = await SystemSettings.findOne();
-                const rate = settings?.exchangeRate || 1380;
-                amountCreditUSD = flwAmountNGN / rate;
-            }
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-            const user = await User.findById(userId);
-            if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const balanceBefore = user.balance;
+    const balanceAfter = balanceBefore + amountCreditUSD;
 
-            const balanceBefore = user.balance;
-            const balanceAfter = balanceBefore + amountCreditUSD;
+    // Fixed Mongoose Warning: Added returnDocument: 'after' instead of new: true
+    await Transaction.findOneAndUpdate(
+        { reference: txRef },
+        {
+            userId: user._id,
+            type: 'credit',
+            purpose: 'deposit',
+            amountUSD: amountCreditUSD,
+            amountNGN: flwAmountNGN,
+            exchangeRate: flwAmountNGN / amountCreditUSD,
+            status: 'successful',
+            paymentMethod: flwData.data.payment_type || 'card',
+            balanceBefore,
+            balanceAfter,
+            metadata: flwData.data
+        },
+        { upsert: true, returnDocument: 'after' } 
+    );
 
-            // Create or Update Transaction to Successful
-            await Transaction.findOneAndUpdate(
-                { reference: txRef },
-                {
-                    userId: user._id,
-                    type: 'credit',
-                    purpose: 'deposit',
-                    amountUSD: amountCreditUSD,
-                    amountNGN: flwAmountNGN,
-                    exchangeRate: flwAmountNGN / amountCreditUSD,
-                    status: 'successful',
-                    paymentMethod: flwData.data.payment_type || 'card',
-                    balanceBefore,
-                    balanceAfter,
-                    metadata: flwData.data
-                },
-                { upsert: true, new: true }
-            );
+    user.balance = balanceAfter;
+    await user.save();
 
-            user.balance = balanceAfter;
-            await user.save();
-
-            return res.json({ success: true, newBalance: user.balance, message: "Wallet funded successfully!" });
-        }
+    // FIXED: Now returning all fields the frontend expects
+    return res.json({ 
+        success: true, 
+        amountUSD: amountCreditUSD, 
+        amountNGN: flwAmountNGN,
+        newBalance: user.balance, 
+        message: "Wallet funded successfully!" 
+    });
+}
 
         // 5. SCENARIO B: PAYMENT PENDING (Network/Bank Delay)
         if (flwStatus === "pending") {

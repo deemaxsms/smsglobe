@@ -1419,7 +1419,6 @@ async function handlePurchaseWithWallet(req, res) {
         return res.status(500).json({ success: false, message: "Internal server error." });
     }
 }
-
 const sendDeliveryEmail = async (userEmail, credentials) => {
     const transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -1428,6 +1427,7 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
             pass: process.env.EMAIL_PASS
         }
     });
+
     const isVPN = credentials.type === "VPN";
     const isRDP = credentials.type === "RDP";
     const isESIM_Refill = credentials.type === "eSIM";
@@ -1463,7 +1463,7 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
     
     let dataTableHtml = '';
 
-   if (isRDP) {
+    if (isRDP) {
         const specsString = credentials.specs || ""; 
         const specParts = specsString.split(',').map(s => s.trim());
         const ramValue = credentials.ram || specParts[0] || '4GB RAM';
@@ -1473,8 +1473,8 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
         dataTableHtml = `
             <tr>
                 <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Login Credentials (IP/User/Pass)</span><br>
-                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.confirmationNumber || 'Provisioning Details via Admin...'}</strong>
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Login Details (IP/User/Pass)</span><br>
+                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.confirmationNumber || 'Details in Dashboard'}</strong>
                 </td>
                 <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                     <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Operating System</span><br>
@@ -1496,119 +1496,115 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
                 </td>
             </tr>`;
     } else if (isVPN) {
-        const hasUserPass = !!credentials.username;
+        const hasMobile = !!credentials.username;
+        const hasPC = !!credentials.pcUsername;
         const hasCode = !!credentials.activationCode;
+
         dataTableHtml = `
             <tr>
                 <td class="mobile-full" width="100%" valign="top" style="padding-bottom: 20px;">
                     <div style="background: #ffffff; border: 1px dashed #D1E0FF; padding: 15px; border-radius: 10px;">
-                        <span style="font-size: 10px; color: #667085; text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em;">Device Limit</span><br>
-                        <strong style="font-size: 14px; color: #101828;">${credentials.deviceLimit || 1} Connected Device(s)</strong>
+                        <span style="font-size: 10px; color: #667085; text-transform: uppercase; font-weight: 800;">Plan Info</span><br>
+                        <strong style="font-size: 14px; color: #101828;">${credentials.deviceLimit || 1} Device Connection(s)</strong>
                     </div>
                 </td>
             </tr>
+            ${hasMobile ? `
             <tr>
-                ${hasUserPass ? `
                 <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">VPN Username</span><br>
-                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828; background: #f4f7ff; padding: 2px 5px;">${credentials.username}</strong>
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Username</span><br>
+                    <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #101828;">${credentials.username}</strong>
                 </td>
                 <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Security Password</span><br>
-                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6; background: #f4f7ff; padding: 2px 5px;">${credentials.password}</strong>
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Password</span><br>
+                    <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.password}</strong>
                 </td>
-                ` : ''}
-
-                ${hasCode ? `
-                <td class="mobile-full" colspan="2" valign="top" style="padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation / License Key</span><br>
-                    <strong style="font-size: 16px; font-family: 'Courier New', monospace; color: #0F54C6; letter-spacing: 1px;">${credentials.activationCode}</strong>
+            </tr>` : ''}
+            ${hasPC ? `
+            <tr>
+                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px; border-top: 1px solid #f0f0f0; padding-top: 10px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">PC Username</span><br>
+                    <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #101828;">${credentials.pcUsername}</strong>
                 </td>
-                ` : ''}
-            </tr>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px; border-top: 1px solid #f0f0f0; padding-top: 10px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">PC Password</span><br>
+                    <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.pcPassword}</strong>
+                </td>
+            </tr>` : ''}
+            ${hasCode ? `
+            <tr>
+                <td colspan="2" valign="top" style="padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation Code / Method</span><br>
+                    <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.activationCode} ${credentials.pcMethod ? `(${credentials.pcMethod})` : ''}</strong>
+                </td>
+            </tr>` : ''}
             <tr>
                 <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Setup Instructions</span><br>
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Setup Guide</span><br>
                     <p style="font-size: 12px; color: #344054; line-height: 1.6; margin: 5px 0;">
-                        ${credentials.instructions || 'Download the recommended app for your device and enter the credentials above to start browsing securely.'}
+                        ${credentials.instructions || 'Check the dashboard for setup apps.'}
                     </p>
                 </td>
             </tr>`;
-   } else if (isESIM_Activation) {
-    dataTableHtml = `
-        <tr>
-            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation Target Email</span><br>
-                <strong style="font-size: 13px; color: #0F54C6;">${credentials.email || userEmail}</strong>
-            </td>
-            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier / Node</span><br>
-                <strong style="font-size: 13px; color: #101828;">${credentials.nodeName || credentials.carrierName || 'Global eSIM'}</strong>
-            </td>
-        </tr>
-        <tr>
-            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Device / Model</span><br>
-                <strong style="font-size: 12px; color: #344054;">${credentials.mobileNumber || credentials.deviceModel || 'eSIM Compatible Device'}</strong>
-            </td>
-            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
-                <strong style="font-size: 13px; color: #101828;">$${credentials.amount || '0.00'}</strong>
-            </td>
-        </tr>
-        <tr>
-            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Delivery Address</span><br>
-                <strong style="font-size: 12px; color: #344054;">${credentials.address || 'Digital Delivery'}</strong>
-            </td>
-            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Zip Code</span><br>
-                <strong style="font-size: 13px; color: #101828;">${credentials.zip || credentials.zipCode || 'N/A'}</strong>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Next Steps</span><br>
-                <p style="font-size: 12px; color: #344054; margin: 5px 0;">Our technical team is generating your unique QR code for <strong>${credentials.planName || 'your plan'}</strong>. This will be sent to <strong>${credentials.email || userEmail}</strong> within 30 minutes.</p>
-            </td>
-        </tr>`;
+    } else if (isESIM_Activation) {
+        dataTableHtml = `
+            <tr>
+                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation Email</span><br>
+                    <strong style="font-size: 13px; color: #0F54C6;">${credentials.email || userEmail}</strong>
+                </td>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
+                    <strong style="font-size: 13px; color: #101828;">${credentials.nodeName || credentials.carrierName || 'Global eSIM'}</strong>
+                </td>
+            </tr>
+            <tr>
+                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Device Model</span><br>
+                    <strong style="font-size: 12px; color: #344054;">${credentials.mobileNumber || credentials.deviceModel || 'Compatible Device'}</strong>
+                </td>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
+                    <strong style="font-size: 13px; color: #101828;">₦${credentials.amount || '0'}</strong>
+                </td>
+            </tr>`;
     } else if (isESIM_Refill) {
-    dataTableHtml = `
-        <tr>
-            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
-                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || credentials.carrierName}</strong>
-            </td>
-            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Number</span><br>
-                <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.targetNumber || credentials.mobileNumber}</strong>
-            </td>
-        </tr>
-        <tr>
-            <td class="mobile-full" width="50%" valign="top">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Refill Plan</span><br>
-                <strong style="font-size: 13px; color: #101828;">${credentials.planName || credentials.amount}</strong>
-            </td>
-            <td class="mobile-full" width="50%" valign="top" style="text-align: right;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Confirmation #</span><br>
-                <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #F9861E;">${credentials.confirmationNumber || 'PROCESSING'}</strong>
-            </td>
-        </tr>`;
-   } else {
-    dataTableHtml = `
-        <tr>
-            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation Code / Refill ID</span><br>
-                <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #0F54C6;">
-                    ${credentials.activationCode || credentials.confirmationNumber || 'N/A'}
-                </strong>
-            </td>
-            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
-                <strong style="font-size: 14px; color: #101828;">${credentials.amount}</strong>
-            </td>
-        </tr>`;
-}
+        dataTableHtml = `
+            <tr>
+                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
+                    <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || credentials.carrierName}</strong>
+                </td>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Number</span><br>
+                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.targetNumber || credentials.mobileNumber}</strong>
+                </td>
+            </tr>
+            <tr>
+                <td class="mobile-full" width="50%" valign="top">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Refill Plan</span><br>
+                    <strong style="font-size: 13px; color: #101828;">${credentials.planName || credentials.amount}</strong>
+                </td>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Reference #</span><br>
+                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #F9861E;">${credentials.confirmationNumber || 'PROCESSING'}</strong>
+                </td>
+            </tr>`;
+    } else {
+        dataTableHtml = `
+            <tr>
+                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">ID / Code</span><br>
+                    <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #0F54C6;">
+                        ${credentials.activationCode || credentials.confirmationNumber || 'N/A'}
+                    </strong>
+                </td>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 10px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Price Paid</span><br>
+                    <strong style="font-size: 14px; color: #101828;">₦${credentials.amount}</strong>
+                </td>
+            </tr>`;
+    }
 
     const htmlContent = `
     <!DOCTYPE html>
@@ -1626,35 +1622,27 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
             <tr>
                 <td align="center" style="padding: 20px 0;">
                     <div style="font-family: 'Inter', Helvetica, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; background-color: #ffffff;">
-                        
                         <div style="background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 1px solid #f0f0f0;">
                             <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" style="height: 24px; width: auto; display: block; margin: 0 auto;">
                         </div>
-
                         <div style="background-color: #0F54C6; color: white; padding: 35px 24px; text-align: center;">
                             <h2 style="margin: 0; font-size: 22px;">${headerTitle}</h2>
                             <p style="opacity: 0.8; font-size: 13px; margin-top: 8px;">${subHeader}</p>
                         </div>
-
                         <div style="padding: 24px; color: #344054; text-align: left;">
                             <p style="font-size: 14px; line-height: 1.5; margin-bottom: 24px;">
-                                Hello, thank you for choosing <strong>SMSGlobe</strong>. Your order details are provided below.
+                                Hello, thank you for choosing <strong>SMSGlobe</strong>. Your service details are provided below.
                             </p>
-                            
                             <div style="background: #F0F5FE; padding: 20px; border-radius: 12px; border: 1px solid #D1E0FF; margin-bottom: 24px;">
-                                <p style="margin: 0 0 10px 0; font-size: 10px; color: #0F54C6; font-weight: 800; text-transform: uppercase;">Service Details</p>
-                                <p style="font-size: 13px; margin: 0 0 20px 0; line-height: 1.6;">${credentials.instructions || 'Please keep this information for your records.'}</p>
-                                
-                                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
+                                <p style="margin: 0 0 10px 0; font-size: 10px; color: #0F54C6; font-weight: 800; text-transform: uppercase;">Service Order Info</p>
+                                <table border="0" cellpadding="0" cellspacing="0" width="100%">
                                     ${dataTableHtml}
                                 </table>
                             </div>
-
                             <div style="text-align: center; margin-top: 30px;">
                                 <a href="https://smsglobe.net" style="background-color: #0F54C6; color: #ffffff; padding: 12px 24px; text-decoration: none; font-size: 13px; font-weight: bold; border-radius: 8px; display: inline-block;">Access Dashboard</a>
                             </div>
                         </div>
-
                         <div style="background: #F9FAFB; padding: 20px; text-align: center; border-top: 1px solid #EAECF0;">
                             <p style="font-size: 11px; color: #667085; margin: 0;">&copy; 2026 <strong>SMSGlobe</strong>. All rights reserved.</p>
                         </div>

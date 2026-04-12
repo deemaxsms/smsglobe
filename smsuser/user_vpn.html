@@ -302,8 +302,8 @@ async function fetchUserProfile() {
                             </span>
                         </div>
                         <div class="bg-brand-background rounded-lg p-1.5 mb-3 border border-brand-border/50">
-                            <select id="plan-${vpn._id}" ${isOutOfStock ? 'disabled' : ''} class="w-full bg-transparent text-[10px] font-bold outline-none cursor-pointer">
-                                ${vpn.plans.map((p, i) => `<option value="${i}">${p.duration || 'Plan'} - $${parseFloat(p.price).toFixed(2)}</option>`).join('')}
+                            <select id="plan-${vpn._id}" ${isOutOfStock ? 'disabled' : ''} class="w-full bg-transparent text-[8px] font-bold outline-none cursor-pointer">
+                                ${vpn.plans.map((p, i) => `<option value="${i}">${p.duration || 'Plan'} - #${parseFloat(p.price).toFixed(2)}</option>`).join('')}
                             </select>
                         </div>
                         <button onclick="buyVPN('${vpn._id}')" ${isOutOfStock ? 'disabled' : ''} 

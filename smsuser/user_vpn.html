@@ -191,49 +191,31 @@
 <div id="vpnModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
     <div id="modalContent" class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl modal-animate">
         
-        <div id="confirmState" class="hidden">
-            <div class="p-8 text-center">
-                <div class="w-16 h-16 bg-brand-background text-brand-blue rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
+        <div id="confirmState" class="p-8 text-center">
+            <div class="w-16 h-16 bg-brand-background text-brand-blue rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <h2 class="text-xl font-bold text-brand-darkText mb-2 uppercase tracking-tight">Confirm Purchase</h2>
+            <div class="space-y-3 mb-6">
+                <div class="py-2 px-4 bg-gray-50 rounded-xl border border-brand-border text-left">
+                    <p class="text-[10px] font-bold text-brand-lightText uppercase tracking-tight">Your Balance</p>
+                    <p id="modalUserBalance" class="text-lg font-black text-brand-blue">₦0</p>
                 </div>
-
-                <h2 class="text-xl font-bold text-brand-darkText mb-2 uppercase tracking-tight">Confirm Purchase</h2>
-                
-                <div class="space-y-3 mb-6">
-                    <div class="py-2 px-4 bg-gray-50 rounded-xl border border-brand-border text-left">
-                        <p class="text-[10px] font-bold text-brand-lightText uppercase tracking-tight">Your Balance</p>
-                        <p id="modalUserBalance" class="text-lg font-black text-brand-blue">₦0</p>
-                    </div>
-
-                    <div class="py-2 px-4 bg-blue-50/50 rounded-xl border border-brand-blue/10 text-left">
-                        <p class="text-[10px] font-bold text-brand-blue uppercase tracking-tight">Purchase Amount</p>
-                        <p id="modalPurchaseAmount" class="text-lg font-black text-brand-darkText">₦0</p>
-                    </div>
-                </div>
-
-                <p class="text-xs text-brand-lightText mb-6">The plan amount will be deducted from your wallet balance.</p>
-                
-                <div class="flex gap-3">
-                    <button onclick="closeModal()" class="flex-1 py-4 border border-brand-border rounded-xl font-bold text-xs uppercase text-brand-midText active-scale">Cancel</button>
-                    
-                    <button id="finalConfirmBtn" class="flex-1 py-4 bg-brand-blue text-white rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2 active-scale transition-all shadow-lg shadow-blue-100">
-                        <span id="btnText">Confirm & Pay</span>
-                        <svg id="btnLoader" class="hidden animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    </button>
-
-                    <a href="topup.html" id="modalTopupBtn" class="hidden flex-1 py-4 bg-emerald-600 text-white rounded-xl font-bold text-xs uppercase text-center flex items-center justify-center active-scale transition-all shadow-lg shadow-emerald-100">
-                        Topup Wallet
-                    </a>
+                <div class="py-2 px-4 bg-blue-50/50 rounded-xl border border-brand-blue/10 text-left">
+                    <p class="text-[10px] font-bold text-brand-blue uppercase tracking-tight">Purchase Amount</p>
+                    <p id="modalPurchaseAmount" class="text-lg font-black text-brand-darkText">₦0</p>
                 </div>
             </div>
+            <div class="flex gap-3">
+                <button onclick="closeModal()" class="flex-1 py-4 border border-brand-border rounded-xl font-bold text-xs uppercase text-brand-midText active-scale">Cancel</button>
+                <button id="finalConfirmBtn" class="flex-1 py-4 bg-brand-blue text-white rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2 active-scale transition-all shadow-lg">
+                    <span id="btnText">Confirm & Pay</span>
+                </button>
+                <a href="topup.html" id="modalTopupBtn" class="hidden flex-1 py-4 bg-emerald-600 text-white rounded-xl font-bold text-xs uppercase text-center flex items-center justify-center active-scale">Topup Wallet</a>
+            </div>
         </div>
-        </div>
-</div>
 
         <div id="successState" class="hidden">
             <div class="bg-brand-blue p-6 text-center">
@@ -242,7 +224,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>
                 </div>
-                <h2 class="text-lg font-bold text-white">Purchase Successful!</h2>
+                <h2 class="text-lg font-bold text-white uppercase tracking-tight">Purchase Successful</h2>
             </div>
             <div class="p-6 space-y-3 max-h-[60vh] overflow-y-auto no-scrollbar">
                 <div id="wrapUser" class="hidden bg-brand-background rounded-xl p-3 border border-brand-border">
@@ -266,6 +248,7 @@
                         <button onclick="copyText('resCode')" class="text-[10px] font-bold text-brand-blue uppercase">Copy</button>
                     </div>
                 </div>
+                
                 <div class="flex justify-between items-center px-1">
                     <p class="text-[10px] font-bold text-brand-lightText uppercase">Device Limit</p>
                     <p id="resLimit" class="text-xs font-bold text-brand-darkText">1 Device</p>
@@ -274,11 +257,12 @@
                     <p class="text-[9px] font-bold text-brand-lightText uppercase mb-1">Setup Instructions:</p>
                     <p id="resInstructions" class="text-[10px] leading-relaxed text-brand-midText"></p>
                 </div>
-                <button onclick="location.reload()" class="w-full py-3.5 bg-brand-darkText text-white rounded-2xl font-bold text-xs uppercase mt-4">Close & Refresh</button>
+                <button onclick="location.reload()" class="w-full py-4 bg-brand-darkText text-white rounded-2xl font-bold text-xs uppercase mt-4 active-scale">Close & Refresh</button>
             </div>
         </div>
     </div>
 </div>
+
     <script>
         const API_BASE_URL = '/api';
         let allVPNs = [];
@@ -501,6 +485,7 @@ async function buyVPN(vpnId) {
         console.error("Verification Error:", err);
     }
 }
+
 function showSuccessDetails(creds, vpnData) {
     // 1. Switch UI States
     document.getElementById('confirmState').classList.add('hidden');
@@ -510,17 +495,18 @@ function showSuccessDetails(creds, vpnData) {
     const passWrap = document.getElementById('wrapPass');
     const codeWrap = document.getElementById('wrapCode');
 
-    // Reset visibility
+    // Reset visibility to hide previous data if any
     [userWrap, passWrap, codeWrap].forEach(el => el?.classList.add('hidden'));
 
     if (!creds) {
-        console.error("No credentials provided to success modal.");
+        console.error("No credentials provided.");
         return;
     }
 
-    // 2. Handle Username/Password (Safety first with optional chaining)
-    const finalUser = creds?.username || creds?.pcUsername;
-    const finalPass = creds?.password || creds?.pcPassword;
+    // 2. Handle Username & Password
+    // Check for both standard and PC specific fields from your backend response
+    const finalUser = creds.username || creds.pcUsername;
+    const finalPass = creds.password || creds.pcPassword;
 
     if (finalUser) {
         document.getElementById('resUser').innerText = finalUser;
@@ -532,21 +518,17 @@ function showSuccessDetails(creds, vpnData) {
     }
 
     // 3. Handle Activation Code
-    const actCode = creds?.activationCode || "";
-    if (actCode && actCode.trim() !== "") {
-        document.getElementById('resCode').innerText = actCode;
+    if (creds.activationCode && creds.activationCode.trim() !== "") {
+        document.getElementById('resCode').innerText = creds.activationCode;
         codeWrap.classList.remove('hidden');
     }
 
-    // 4. Handle Instructions and Limits
-    const defaultInstr = "Install the app and login with the credentials provided above.";
-    const finalInstructions = creds?.instructions || vpnData?.instructions || defaultInstr;
+    // 4. Handle Instructions and Metadata
+    const defaultInstr = "Download the app from the official store and use the details above to log in.";
+    const finalInstructions = creds.instructions || vpnData?.instructions || defaultInstr;
     
-    const limitDisplay = document.getElementById('resLimit');
-    const instrDisplay = document.getElementById('resInstructions');
-
-    if (limitDisplay) limitDisplay.innerText = `${vpnData?.deviceLimit || 1} Device(s)`;
-    if (instrDisplay) instrDisplay.innerText = finalInstructions;
+    document.getElementById('resLimit').innerText = `${vpnData?.deviceLimit || 1} Device(s)`;
+    document.getElementById('resInstructions').innerText = finalInstructions;
 }
 
         function copyText(id) {

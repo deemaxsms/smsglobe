@@ -100,12 +100,22 @@ const vpnSchema = new mongoose.Schema({
     image: { type: String },     
     deviceType: { type: String, enum: ['Phone', 'PC', 'Both'], default: 'Both' },
     stock: { type: Number, default: 0 },
+    deviceLimit: { type: Number, default: 1 }, // Added to match your frontend
     plans: [{
         duration: { type: String, required: true },
         price: { type: Number, required: true } // Price in NGN
     }],    
+    
+    // Mobile / Standard Credentials
     username: { type: String },
-    password: { type: String, select: false },    
+    password: { type: String, select: false }, 
+    
+    // PC Specific Credentials (Added these)
+    pcMethod: { type: String }, // e.g., 'User/Pass' or 'Activation Code'
+    pcUsername: { type: String },
+    pcPassword: { type: String, select: false },
+    activationCode: { type: String },
+    
     instructions: { type: String }
 }, { timestamps: true });
 
@@ -708,6 +718,7 @@ async function handleManageUser(req, res) {
         return res.status(500).json({ success: false, message: err.message });
     }
 }
+
 async function handleGetVPNs(req, res) {
     try {
         const vpns = await VPN.find({})
@@ -720,7 +731,6 @@ async function handleGetVPNs(req, res) {
         res.status(500).json({ success: false, message: "Failed to fetch VPN list" });
     }
 }
-
 async function handleAddVPN(req, res) {
     try {
         const { vpnId, ...data } = req.body;
@@ -735,13 +745,11 @@ async function handleAddVPN(req, res) {
         }
 
         const newVPN = new VPN({
-            ...data,
+            ...data, // This now spreads pcUsername, pcPassword, activationCode, pcMethod
             plans: formattedPlans,
-            // 2. Normalize deviceType to match Enum ['Phone', 'PC', 'Both']
             deviceType: normalizeDeviceType(data.deviceType),
             stock: parseInt(data.stock) || 0, 
-            deviceLimit: parseInt(data.deviceLimit) || 0,
-            // Ensure base price is synced with the first plan tier
+            deviceLimit: parseInt(data.deviceLimit) || 1, // Default to 1 if not provided
             price: formattedPlans.length > 0 ? formattedPlans[0].price : (Math.round(parseFloat(data.price)) || 0)
         });
 
@@ -761,13 +769,9 @@ async function handleUpdateVPN(req, res) {
         if (!targetId) {
             return res.status(400).json({ success: false, message: "VPN ID is required" });
         }
-        
-        // 1. Normalize deviceType if it exists in the update
-        if (updateData.deviceType) {
+                if (updateData.deviceType) {
             updateData.deviceType = normalizeDeviceType(updateData.deviceType);
         }
-
-        // 2. Clean up plans data and sync price
         if (updateData.plans && Array.isArray(updateData.plans)) {
             updateData.plans = updateData.plans.map(p => ({
                 duration: p.duration,
@@ -780,18 +784,19 @@ async function handleUpdateVPN(req, res) {
         } else if (updateData.price !== undefined) {
             updateData.price = Math.round(parseFloat(updateData.price)) || 0;
         }
-
-        // 3. Parse Numeric Fields
         if (updateData.stock !== undefined) updateData.stock = parseInt(updateData.stock) || 0;
         if (updateData.deviceLimit !== undefined) updateData.deviceLimit = parseInt(updateData.deviceLimit) || 0;
-        
-        const updated = await VPN.findByIdAndUpdate(targetId, updateData, { new: true, runValidators: true });
+        const updated = await VPN.findByIdAndUpdate(
+            targetId, 
+            { $set: updateData }, 
+            { new: true, runValidators: true }
+        );
         
         if (!updated) {
             return res.status(404).json({ success: false, message: "VPN node not found" });
         }
 
-        res.json({ success: true, message: "VPN Configuration Updated" });
+        res.json({ success: true, message: "VPN Configuration Updated Successfully" });
     } catch (err) {
         console.error("Update VPN Error:", err);
         res.status(500).json({ success: false, message: "Update failed: " + err.message });
@@ -1038,73 +1043,7 @@ async function handleGetUserMessages(req, res) {
     }
 }
 
-async function handlePurchaseVPN(req, res) {
-    const { vpnId, planIndex, currency } = req.body; // Added currency to body
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
 
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        
-        // 1. Fetch VPN and include password
-        const vpn = await VPN.findById(vpnId).select('+password'); 
-
-        // 2. Validate VPN and Plan existence
-        if (!vpn || !vpn.plans[planIndex]) {
-            return res.status(404).json({ success: false, message: "VPN Node or Plan not found." });
-        }
-
-        // 3. Check Stock availability
-        if (vpn.stock <= 0) {
-            return res.status(400).json({ success: false, message: "This VPN node is currently out of stock." });
-        }
-
-        const selectedPlan = vpn.plans[planIndex];
-
-        // --- NEW: RECORD THE TRANSACTION IN DATABASE ---
-        // This is what fills the empty "orders" collection in your screenshot
-        const Order = mongoose.models.Order || mongoose.model('Order'); // Ensure Order model is loaded
-        
-        const newOrder = new Order({
-            userEmail: decoded.email, // Taking email from the verified JWT token
-            productType: 'VPN',
-            planName: selectedPlan.duration,
-            nodeName: vpn.name,
-            amount: selectedPlan.price,
-            currency: currency || 'USD', // Captured from frontend (USD or NGN)
-            status: 'successful',
-            vpnCredentials: {
-                username: vpn.username,
-                password: vpn.password
-            }
-        });
-
-        await newOrder.save(); 
-        // -----------------------------------------------
-
-        // 4. Update Inventory
-        vpn.stock -= 1;
-        await vpn.save();
-
-        // 5. Return Credentials
-        return res.json({ 
-            success: true, 
-            message: "Access granted successfully!",
-            orderId: newOrder._id, // Helpful for frontend reference
-            credentials: {
-                username: vpn.username,
-                password: vpn.password,
-                deviceLimit: vpn.deviceLimit,
-                instructions: vpn.instructions
-            },
-            remainingStock: vpn.stock
-        });
-        
-    } catch (err) {
-        console.error("VPN Access Error:", err);
-        return res.status(401).json({ success: false, message: "Unauthorized or Session Expired" });
-    }
-}
 
 // --- 1. Initiate Topup (NGN Only) ---
 async function handleInitiateTopup(req, res) {
@@ -1281,6 +1220,7 @@ async function handleVerifyTopup(req, res) {
         return res.status(500).json({ success: false, message: err.message || "Internal server error" });
     }
 }
+
 async function handlePurchaseWithWallet(req, res) {
     const { 
         vpnId, proxyId, rdpId, carrierName, 
@@ -1316,10 +1256,11 @@ async function handlePurchaseWithWallet(req, res) {
 
         // 3. PRODUCT LOGIC & STOCK MANAGEMENT
         if (vpnId) {
+            // Updated to select mobile and PC credentials
             const item = await VPN.findOneAndUpdate(
                 { _id: vpnId, stock: { $gt: 0 } },
                 { $inc: { stock: -1 } },
-                { new: true, select: '+password' }
+                { new: true, select: '+password +pcPassword +activationCode' }
             );
             
             if (!item || !item.plans[planIndex]) {
@@ -1331,9 +1272,15 @@ async function handlePurchaseWithWallet(req, res) {
             productDetails.name = item.name;
             productDetails.plan = item.plans[planIndex].duration;
             
-            orderSpecifics.vpnCredentials = {
-                username: item.username,
-                password: item.password
+            // Map comprehensive credential set for the order
+            orderSpecifics = {
+                username: item.username || null,
+                password: item.password || null,
+                pcUsername: item.pcUsername || null,
+                pcPassword: item.pcPassword || null,
+                activationCode: item.activationCode || null,
+                pcMethod: item.pcMethod || null,
+                instructions: item.instructions || "Follow the setup guide provided in your dashboard."
             };
         } 
         else if (proxyId) {
@@ -1451,11 +1398,20 @@ async function handlePurchaseWithWallet(req, res) {
         sendDeliveryEmail(user.email, { ...orderSpecifics, amount: `₦${costNGN.toLocaleString()}` }, newOrder)
             .catch(err => console.error("Email Error:", err.message));
 
+        // 9. FINAL RESPONSE
         return res.json({ 
             success: true, 
             message: "Purchase successful!", 
             balance: balanceAfter,
-            order: newOrder
+            order: newOrder,
+            credentials: {
+                username: orderSpecifics.username || null,
+                password: orderSpecifics.password || null,
+                pcUsername: orderSpecifics.pcUsername || null,
+                pcPassword: orderSpecifics.pcPassword || null,
+                activationCode: orderSpecifics.activationCode || null,
+                instructions: orderSpecifics.instructions || null
+            }
         });
 
     } catch (err) {
@@ -1463,6 +1419,7 @@ async function handlePurchaseWithWallet(req, res) {
         return res.status(500).json({ success: false, message: "Internal server error." });
     }
 }
+
 const sendDeliveryEmail = async (userEmail, credentials) => {
     const transporter = nodemailer.createTransport({
         service: 'gmail',

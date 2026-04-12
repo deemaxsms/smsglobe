@@ -911,29 +911,33 @@
         `;
     }
 
-   async function initDashboard() {
-    await checkMaintenance(); 
+  /**
+ * Optimized Dashboard Initialization
+ * Uses Stale-While-Revalidate pattern for instant loading
+ */
+async function initDashboard() {
+    // 1. NON-BLOCKING: Start maintenance check in background
+    checkMaintenance(); 
+
     const token = localStorage.getItem('userToken');
     if (!token) { 
         window.location.href = 'user_login.html'; 
         return; 
     }
-    
+
     const urlParams = new URLSearchParams(window.location.search);
     const isPostTopup = urlParams.get('status') === 'successful' || urlParams.has('transaction_id');
 
-    if (isPostTopup) {
-        localStorage.removeItem('dashboard_cache');
-        console.log("Post-payment detected. Cache cleared.");
-    }
-
-    const cachedData = isPostTopup ? null : JSON.parse(localStorage.getItem('dashboard_cache'));
-    if (cachedData) {
-        updateDashboardUI(cachedData.user); // Removed rate argument
+    // 2. IMMEDIATE RENDER: Load from cache instantly
+    // We don't remove the cache on post-topup anymore, we just ignore it for the UI update
+    // to prevent the screen from looking "empty" while the new balance fetches.
+    const cachedData = JSON.parse(localStorage.getItem('dashboard_cache'));
+    if (cachedData && cachedData.user && !isPostTopup) {
+        updateDashboardUI(cachedData.user);
     }
 
     try {
-        // Exchange rate fetch removed. Only fetching profile.
+        // 3. BACKGROUND FETCH: Get fresh NGN data
         const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
             headers: { 
                 'Authorization': `Bearer ${token}`, 
@@ -950,57 +954,73 @@
             return;
         }
 
-        updateDashboardUI(userData); // Removed rate argument
+        // 4. SILENT UI UPDATE: Update with fresh data
+        updateDashboardUI(userData);
 
+        // 5. UPDATE CACHE
         localStorage.setItem('dashboard_cache', JSON.stringify({
             user: userData
         }));
 
+        // Clean URL if coming from a payment redirect
         if (isPostTopup) {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     } catch (err) { 
-        console.error("Dashboard refresh failed:", err);
+        console.error("Dashboard background refresh failed:", err);
     }
 }
 
+/**
+ * UI Render Function
+ * Optimized to prevent unnecessary DOM reflows
+ */
 function updateDashboardUI(user) {
     if (!user) return;
+    
     const fullName = user.fullName || "User Account";    
     const balanceNGN = parseFloat(user.balance) || 0; 
 
-    const elements = {
-        welcome: document.getElementById('userDisplayName'),
-        sidebar: document.getElementById('userName'),
-        initials: document.getElementById('userInitials'),
-        ngn: document.getElementById('mainBalanceDisplayNGN'),
-        refCode: document.getElementById('userReferralCode'),
-        refCount: document.getElementById('userReferralCount')
+    // Helper to only update DOM if value actually changed
+    const safeSetText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el && el.innerText !== String(value)) {
+            el.innerText = value;
+        }
     };
 
-    if (elements.welcome) elements.welcome.innerText = fullName;
-    if (elements.sidebar) elements.sidebar.innerText = fullName;
+    // Update basic info
+    safeSetText('userDisplayName', fullName);
+    safeSetText('userName', fullName);
+    safeSetText('userReferralCode', user.referralCode || "N/A");
+    safeSetText('userReferralCount', user.referralCount || 0);
     
-    if (elements.initials && fullName) {
+    // Update Initials
+    const initialsEl = document.getElementById('userInitials');
+    if (initialsEl && fullName) {
         const parts = fullName.trim().split(/\s+/);
         const initials = parts.length > 1 
             ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() 
             : parts[0][0].toUpperCase();
-        elements.initials.innerText = initials;
+        if (initialsEl.innerText !== initials) initialsEl.innerText = initials;
     }
 
-    // Format the number
-    const format = (val) => val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // Currency Formatting (NGN Only)
+    const format = (val) => val.toLocaleString('en-NG', { 
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2 
+    });
     
-    // Store the formatted string globally
+    // Set global cached string for the toggle-visibility logic (renderBalance)
     cachedBalanceNGN = `₦${format(balanceNGN)}`;
 
-    // Update display based on current visibility state
-    renderBalance();
-
-    // Update Referrals
-    if (elements.refCode) elements.refCode.innerText = user.referralCode || "N/A";
-    if (elements.refCount) elements.refCount.innerText = user.referralCount || 0;
+    // Trigger the actual balance display logic
+    if (typeof renderBalance === 'function') {
+        renderBalance();
+    } else {
+        const ngnEl = document.getElementById('mainBalanceDisplayNGN');
+        if (ngnEl) ngnEl.innerText = cachedBalanceNGN;
+    }
 }
 
 function toggleBalanceVisibility() {

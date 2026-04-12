@@ -335,6 +335,12 @@ async function fetchUserProfile() {
 async function buyVPN(vpnId) {
     const planIndex = document.getElementById(`plan-${vpnId}`).value;
     const vpnData = allVPNs.find(v => v._id === vpnId);
+    
+    if (!vpnData || !vpnData.plans[planIndex]) {
+        alert("Invalid plan selection.");
+        return;
+    }
+
     const selectedPlan = vpnData.plans[planIndex];
     const price = parseFloat(selectedPlan.price);
 
@@ -342,37 +348,26 @@ async function buyVPN(vpnId) {
     const confirmState = document.getElementById('confirmState');
     const successState = document.getElementById('successState');
     const confirmBtn = document.getElementById('finalConfirmBtn');
-    
-    // UI Elements for loading state
-    const btnText = confirmBtn.querySelector('#btnText') || confirmBtn; 
     const btnLoader = document.getElementById('btnLoader');
 
-    // Helper for professional Naira formatting
     const formatNaira = (amt) => {
-        return '₦' + parseFloat(amt).toLocaleString(undefined, {
+        return '₦' + parseFloat(amt).toLocaleString('en-NG', {
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
         });
     };
 
-    // 1. Update the Balance display (Naira)
+    // UI Updates for Modal
     document.getElementById('modalUserBalance').innerText = formatNaira(userBalance);
-
-    // 2. Update the Purchase Amount display (Naira)
     document.getElementById('modalPurchaseAmount').innerText = formatNaira(price);
 
-    // 3. Balance Validation Logic
     if (userBalance < price) {
-        document.getElementById('modalUserBalance').classList.add('text-red-600');
-        document.getElementById('modalUserBalance').classList.remove('text-brand-blue');
-        
+        document.getElementById('modalUserBalance').className = 'text-red-600 font-bold';
         confirmBtn.disabled = true;
         confirmBtn.innerText = "Insufficient Funds";
         confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
     } else {
-        document.getElementById('modalUserBalance').classList.remove('text-red-600');
-        document.getElementById('modalUserBalance').classList.add('text-brand-blue');
-        
+        document.getElementById('modalUserBalance').className = 'text-brand-blue font-bold';
         confirmBtn.disabled = false;
         confirmBtn.innerText = "Confirm & Pay";
         confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -383,14 +378,13 @@ async function buyVPN(vpnId) {
     modal.classList.remove('hidden');
 
     confirmBtn.onclick = async () => {
-        // --- START PROFESSIONAL LOADING STATE ---
         confirmBtn.disabled = true;
         if (btnLoader) btnLoader.classList.remove('hidden');
         confirmBtn.innerText = "Securing Transaction...";
         
         try {
-            // Artificial 3-second delay to simulate bank verification/security check
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            // Simulated delay for security verification
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
             const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
                 method: 'POST',
@@ -404,15 +398,25 @@ async function buyVPN(vpnId) {
             const data = await res.json();
             
             if (data.success) {
-                userBalance -= price; 
-                showSuccessDetails(data.credentials, vpnData);
+                userBalance = data.balance; // Sync balance with backend exactly
+                const credentials = data.credentials || (data.order ? {
+    username: data.order.username || data.order.vpnCredentials?.username,
+    password: data.order.password || data.order.vpnCredentials?.password,
+    pcUsername: data.order.pcUsername,    // Added
+    pcPassword: data.order.pcPassword,    // Added
+    activationCode: data.order.activationCode,
+    instructions: data.order.instructions
+} : null);
+
+showSuccessDetails(credentials, vpnData);
+                showSuccessDetails(credentials, vpnData);
             } else {
                 alert(data.message || "Purchase failed");
                 closeModal();
             }
         } catch (err) {
             console.error("Purchase error:", err);
-            alert("Connection Error. Please try again.");
+            alert("Connection Error. Please check your network and try again.");
             closeModal();
         } finally {
             confirmBtn.disabled = false;
@@ -423,6 +427,7 @@ async function buyVPN(vpnId) {
 }
 
 function showSuccessDetails(creds, vpnData) {
+    // 1. Switch UI States
     document.getElementById('confirmState').classList.add('hidden');
     document.getElementById('successState').classList.remove('hidden');
 
@@ -430,41 +435,43 @@ function showSuccessDetails(creds, vpnData) {
     const passWrap = document.getElementById('wrapPass');
     const codeWrap = document.getElementById('wrapCode');
 
-    // Reset visibility before showing new data
-    userWrap.classList.add('hidden');
-    passWrap.classList.add('hidden');
-    codeWrap.classList.add('hidden');
+    // Reset visibility
+    [userWrap, passWrap, codeWrap].forEach(el => el?.classList.add('hidden'));
 
-    // 1. Handle Username (Checks Phone key OR PC key)
-    const finalUser = creds.username || creds.pcUsername;
+    if (!creds) {
+        console.error("No credentials provided to success modal.");
+        return;
+    }
+
+    // 2. Handle Username/Password (Safety first with optional chaining)
+    const finalUser = creds?.username || creds?.pcUsername;
+    const finalPass = creds?.password || creds?.pcPassword;
+
     if (finalUser) {
         document.getElementById('resUser').innerText = finalUser;
         userWrap.classList.remove('hidden');
     }
-
-    // 2. Handle Password (Checks Phone key OR PC key)
-    const finalPass = creds.password || creds.pcPassword;
     if (finalPass) {
         document.getElementById('resPass').innerText = finalPass;
         passWrap.classList.remove('hidden');
     }
 
     // 3. Handle Activation Code
-    // Some PC methods use codes instead of User/Pass
-    const actCode = creds.activationCode || 
-                    (creds.plans && creds.plans[0] ? creds.plans[0].activationCode : null);
-    
-    if (actCode && actCode !== "") {
+    const actCode = creds?.activationCode || "";
+    if (actCode && actCode.trim() !== "") {
         document.getElementById('resCode').innerText = actCode;
         codeWrap.classList.remove('hidden');
     }
 
     // 4. Handle Instructions and Limits
-    const finalInstructions = creds.instructions || 
-                             (creds.plans && creds.plans[0] ? creds.plans[0].instructions : "Install the app and login with the credentials provided above.");
+    const defaultInstr = "Install the app and login with the credentials provided above.";
+    const finalInstructions = creds?.instructions || vpnData?.instructions || defaultInstr;
     
-    document.getElementById('resLimit').innerText = `${vpnData.deviceLimit || 1} Device(s)`;
-    document.getElementById('resInstructions').innerText = finalInstructions;
+    const limitDisplay = document.getElementById('resLimit');
+    const instrDisplay = document.getElementById('resInstructions');
+
+    if (limitDisplay) limitDisplay.innerText = `${vpnData?.deviceLimit || 1} Device(s)`;
+    if (instrDisplay) instrDisplay.innerText = finalInstructions;
 }
 
         function copyText(id) {

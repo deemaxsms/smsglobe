@@ -1755,16 +1755,20 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
         subHeader = "Your Proxy activation details are below.";
     }
     
-    // 2. DYNAMIC DATA TABLE
     let dataTableHtml = '';
 
-    if (isRDP) {
-        // RDP LAYOUT: Focusing on IP/Login and Hardware Specs
+   if (isRDP) {
+        const specsString = credentials.specs || ""; 
+        const specParts = specsString.split(',').map(s => s.trim());
+        const ramValue = credentials.ram || specParts[0] || '4GB RAM';
+        const cpuValue = credentials.cpu || specParts[1] || '2 Cores';
+        const storageValue = credentials.storage || specParts[2] || '60GB SSD';
+
         dataTableHtml = `
             <tr>
                 <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
                     <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Login Credentials (IP/User/Pass)</span><br>
-                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.confirmationNumber || credentials.loginDetails || 'Provisioning...'}</strong>
+                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.confirmationNumber || 'Provisioning Details via Admin...'}</strong>
                 </td>
                 <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                     <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Operating System</span><br>
@@ -1774,15 +1778,15 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
             <tr>
                 <td class="mobile-full" width="33%" valign="top">
                     <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">RAM</span><br>
-                    <strong style="font-size: 12px; color: #101828;">${credentials.ram || 'Standard'}</strong>
+                    <strong style="font-size: 12px; color: #101828;">${ramValue}</strong>
                 </td>
                 <td class="mobile-full" width="33%" valign="top" style="text-align: center;">
                     <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">CPU</span><br>
-                    <strong style="font-size: 12px; color: #101828;">${credentials.cpu || 'Standard'}</strong>
+                    <strong style="font-size: 12px; color: #101828;">${cpuValue}</strong>
                 </td>
                 <td class="mobile-full" width="33%" valign="top" style="text-align: right;">
                     <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Storage</span><br>
-                    <strong style="font-size: 12px; color: #101828;">${credentials.storage || 'Standard'}</strong>
+                    <strong style="font-size: 12px; color: #101828;">${storageValue}</strong>
                 </td>
             </tr>`;
     } else if (isVPN) {

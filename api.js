@@ -2798,8 +2798,6 @@ async function handleGetUserOrders(req, res) {
 
         const token = authHeader.split(' ')[1];
         
-        // 2. Verify token and get user email 
-        // (Adjust 'process.env.JWT_SECRET' to match your config)
         const jwt = require('jsonwebtoken');
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_secret_key');
         const userEmail = decoded.email;
@@ -2808,7 +2806,6 @@ async function handleGetUserOrders(req, res) {
             return res.status(400).json({ success: false, message: "Invalid token data" });
         }
 
-        // 3. Fetch orders from Database
         // We use the email to find all orders linked to this account
         const orders = await Order.find({ userEmail: userEmail })
             .sort({ createdAt: -1 }) // Newest first
@@ -3146,45 +3143,53 @@ async function handleGetSystemStatus(req, res) {
 
 async function handleGetUserTransactions(req, res) {
     try {
-        // 1. Verify Authentication
-        const user = await verifyUser(req);
-        if (!user) {
-            return res.status(401).json({ success: false, message: "Unauthorized" });
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+
+        if (!token) {
+            return res.status(401).json({ success: false, message: "No token provided" });
         }
 
-        // 2. Get Query Filters
-        // We look for 'deposit' purpose for the Topup page history
-        const { type } = req.query; 
-        let query = { userId: user._id };
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const userId = decoded.id || decoded._id;
+
+        if (!userId) {
+            return res.status(401).json({ success: false, message: "Invalid token payload" });
+        }
+        const { type } = req.query;
+        // Convert string ID to Mongoose ObjectId to be safe
+        let query = { userId: new mongoose.Types.ObjectId(userId) };
 
         if (type === 'topup') {
             query.purpose = 'deposit';
         }
-
-        // 3. Fetch Transactions
-        // Sort by createdAt -1 to show the newest transactions first
         const transactions = await Transaction.find(query)
             .sort({ createdAt: -1 })
-            .limit(50); // Limit to last 50 for performance
+            .limit(50)
+            .lean();
 
+        // 4. Successful Response
         return res.json({
             success: true,
             transactions: transactions.map(tx => ({
                 id: tx._id,
-                amountUSD: tx.amountUSD,
-                amountNGN: tx.amountNGN,
-                status: tx.status,
-                reference: tx.reference,
+                amountUSD: tx.amountUSD || 0,
+                amountNGN: tx.amountNGN || 0,
+                status: tx.status || 'pending',
+                reference: tx.reference || 'N/A',
                 purpose: tx.purpose,
                 createdAt: tx.createdAt
             }))
         });
 
     } catch (error) {
-        console.error("Error fetching transactions:", error);
+        // This will now show the EXACT error in your terminal/Netlify logs
+        console.error("CRITICAL_TRANSACTION_ERROR:", error.message);
+        
         return res.status(500).json({ 
             success: false, 
-            message: "Failed to fetch transaction history" 
+            message: "Internal Server Error",
+            error: error.message // Sending the message back helps you debug instantly
         });
     }
 }

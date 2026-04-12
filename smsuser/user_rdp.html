@@ -31,33 +31,27 @@
         }
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-   <style>
-        /* Prevents horizontal overflow "bounce" on mobile */
-        html, body {
-            overflow-x: hidden;
-            width: 100%;
-            touch-action: manipulation; /* Improves tap response time */
-        }
-
+    <style>
         .sidebar-transition { transition: transform 0.3s ease-in-out; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .active-scale:active { transform: scale(0.98); }
-        
-        /* Forces iOS to not zoom on focus */
-        input, select, textarea {
-            font-size: 16px !important;
-        }
-
-        /* Rest of your animations... */
         @keyframes marquee {
             0% { transform: translateX(100%); }
             100% { transform: translateX(-100%); }
         }
         .animate-marquee { animation: marquee 20s linear infinite; }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        input, select, textarea {
+        font-size: 16px !important;
+        }
     </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText overflow-x-hidden">
-
+    
     <div id="sidebarOverlay" class="fixed inset-0 bg-black/20 z-40 hidden lg:hidden"></div>
 
     <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white border-r border-brand-border z-50 transform -translate-x-full lg:translate-x-0 sidebar-transition flex flex-col">

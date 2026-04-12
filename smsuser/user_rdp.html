@@ -455,8 +455,6 @@
  async function fetchUserProfile() {
     try {
         const token = localStorage.getItem('userToken');
-        if (!token) return false;
-
         const res = await fetch(`${API_BASE_URL}/user-profile`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });

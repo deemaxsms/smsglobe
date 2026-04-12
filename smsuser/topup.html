@@ -195,20 +195,27 @@
             </section>
         </main>
     </div>
-<div id="statusAlert" class="hidden p-5 md:p-8 rounded-[2rem] bg-white shadow-2xl max-w-[320px] md:max-w-sm mx-auto border border-brand-border text-center overflow-hidden transition-all duration-500">
+
+<div id="statusAlert" class="hidden p-5 md:p-6 rounded-[2rem] bg-white shadow-2xl max-w-[310px] md:max-w-sm mx-auto border border-brand-border text-center overflow-hidden transition-all duration-500 min-h-[280px] flex flex-col justify-center">
     
     <div id="statusIcon" class="w-12 h-12 mx-auto mb-3 items-center justify-center rounded-full hidden">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+        </svg>
     </div>
+
     <h2 id="statusTitle" class="text-base md:text-lg font-black text-brand-darkText mb-1 uppercase tracking-tight leading-tight"></h2>
-    <div id="statusMessage" class="text-[10px] md:text-xs text-brand-lightText mb-4 md:mb-6 leading-relaxed px-2"></div>
+    
+    <div id="statusMessage" class="text-[10px] md:text-xs text-brand-lightText mb-4 leading-relaxed px-2"></div>
+
     <button id="manualRedirectBtn" onclick="window.location.href='user_dashboard.html'" 
-            class="hidden w-full py-3 md:py-4 bg-brand-darkText text-white rounded-2xl font-bold text-[10px] uppercase shadow-lg active-scale transition-all">
+            class="hidden w-full py-3.5 bg-brand-darkText text-white rounded-2xl font-bold text-[10px] uppercase shadow-lg active-scale transition-all">
         Go to Dashboard Now
     </button>
+    
     <div class="mt-4 pt-3 border-t border-gray-50">
         <p class="text-[8px] md:text-[9px] text-gray-400 leading-tight italic">
-            Funds typically reflect instantly. If delayed, please contact 24/7 support.
+            Security Note: Encrypted by SMSGlobe. Funds reflect within seconds. If delayed please contact Supports!
         </p>
     </div>
 </div>
@@ -334,9 +341,12 @@
         const redirectBtn = document.getElementById('manualRedirectBtn');
 
         alertBox.classList.remove('hidden');
-        title.innerText = "Verifying Transaction...";
+        title.innerText = "Verifying with Bank...";
 
         try {
+            // Check if token exists before fetching to avoid immediate catch
+            if (!token) throw new Error("Authentication missing. Please login again.");
+
             const response = await fetch('/api/verify-topup', {
                 method: 'POST',
                 headers: { 
@@ -346,36 +356,40 @@
                 body: JSON.stringify({ transactionId })
             });
 
-            const data = await response.json();
+            // CHECK: If server dies or route is wrong, this prevents the "Network Error" catch-all
+if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Server Error: ${response.status}`);
+}
+
+const data = await response.json();
 
             if (data.success) {
-                // SUCCESS STATE: Compact Green UI
+                // SUCCESS STATE
                 alertBox.className = "p-5 md:p-8 rounded-[2rem] bg-emerald-50 border border-emerald-100 text-center shadow-xl animate-in zoom-in duration-300 max-w-[320px] md:max-w-sm mx-auto";
+                title.className = "text-base md:text-lg font-black text-emerald-800 uppercase tracking-tight mb-2";
+                title.innerText = "Deposit Confirmed!";
                 
-                title.className = "text-base md:text-lg font-black text-emerald-800 uppercase tracking-tight mb-1";
-                title.innerText = "Deposit Successful!";
-                
+                // DISPLAY ACTUAL DEPOSITED AMOUNT
                 msg.className = "text-emerald-700 text-[10px] md:text-xs leading-tight";
-                
-                // DATA.AMOUNT is the actual deposit, DATA.NEWBALANCE is the total
                 msg.innerHTML = `
-                    <div class="mb-3">
-                        <p class="text-[9px] uppercase font-bold opacity-70 mb-0.5">Amount Credited</p>
-                        <p class="font-black text-2xl text-emerald-900">₦${data.amount.toLocaleString()}</p>
+                    <div class="mb-4">
+                        <p class="text-[9px] uppercase font-bold opacity-70 mb-1">Amount Credited</p>
+                        <p class="font-black text-3xl text-emerald-900">₦${data.amount.toLocaleString()}</p>
                     </div>
-                    <div class="bg-white/50 py-2 px-3 rounded-xl border border-emerald-100 inline-block mb-3">
-                        <p class="text-[8px] uppercase font-bold opacity-60">New Wallet Balance</p>
+                    <div class="bg-white/60 py-2 px-4 rounded-2xl border border-emerald-100 inline-block mb-4">
+                        <p class="text-[8px] uppercase font-bold opacity-60">Total Wallet Balance</p>
                         <p class="font-bold text-sm text-emerald-800">₦${data.newBalance.toLocaleString()}</p>
                     </div>
-                    <p class="mt-2 text-[9px] font-bold opacity-60 italic text-emerald-600">Redirecting in <span id="countdown">3</span>s...</p>
+                    <p class="text-[9px] font-bold opacity-60 italic">Redirecting to dashboard in <span id="countdown">3</span>s...</p>
                 `;
 
-                // Update Header Balance
+                // Update Header
                 const balanceEl = document.getElementById('currentBalance');
                 if(balanceEl) balanceEl.innerText = `Bal: ₦${data.newBalance.toLocaleString()}`;
 
                 redirectBtn.classList.remove('hidden');
-                redirectBtn.className = "w-full py-3 bg-emerald-600 text-white rounded-xl font-bold text-[10px] uppercase mt-2 active-scale transition-all";
+                redirectBtn.className = "w-full py-3 bg-emerald-600 text-white rounded-xl font-bold text-[10px] uppercase mt-2 active-scale";
 
                 let timeLeft = 3;
                 const timer = setInterval(() => {
@@ -388,20 +402,31 @@
                 }, 1000);
 
             } else {
-                // ERROR STATE
-                alertBox.className = "p-5 md:p-8 rounded-[2rem] bg-rose-50 border border-rose-100 text-center shadow-xl max-w-[320px] md:max-w-sm mx-auto";
-                title.className = "text-base font-black text-rose-800 uppercase mb-1";
-                title.innerText = "Verification Failed";
-                msg.innerText = data.message || "Something went wrong.";
+                // API RETURNED ERROR (e.g. Transaction already used)
+                alertBox.className = "p-6 rounded-3xl bg-rose-50 border border-rose-100 text-center max-w-[320px] mx-auto";
+                title.className = "text-base font-black text-rose-700 uppercase";
+                title.innerText = "Verification Declined";
+                msg.innerText = data.message || "The payment provider could not confirm this transaction.";
                 redirectBtn.classList.remove('hidden');
             }
         } catch (err) {
-            console.error("Verification Error:", err);
-            title.innerText = "Network Error";
-            msg.innerText = "Please refresh the page.";
+            // THIS IS WHERE YOUR "NETWORK ERROR" WAS COMING FROM
+            console.error("Critical Error:", err);
+            alertBox.className = "p-6 rounded-3xl bg-amber-50 border border-amber-100 text-center max-w-[320px] mx-auto";
+            title.className = "text-base font-black text-amber-800 uppercase";
+            title.innerText = "Syncing Issue";
+            msg.innerHTML = `
+                <p class="mb-2">Your payment was successful on Flutterwave, but we are having trouble updating your dashboard.</p>
+                <p class="font-bold">Transaction ID: ${transactionId}</p>
+                <p class="mt-2 text-[9px]">Please refresh this page or contact support.</p>
+            `;
+            redirectBtn.classList.remove('hidden');
+            redirectBtn.innerText = "Try Again / Refresh";
+            redirectBtn.onclick = () => location.reload();
         }
     }
 }
+
     window.onload = () => {
         syncWithBackend();
         fetchTransactionHistory();

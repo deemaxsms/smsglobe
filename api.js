@@ -1505,10 +1505,11 @@ async function handlePurchaseWithWallet(req, res) {
         
         const decoded = jwt.verify(token, JWT_SECRET);
         
+        // 1. FETCH FRESH USER DATA
         const user = await User.findById(decoded.id);
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-        // 1. IDEMPOTENCY CHECK (Prevents double orders)
+        // 2. IDEMPOTENCY CHECK (Prevents double-charging within 20 seconds)
         const recentOrder = await Order.findOne({
             userId: user._id,
             createdAt: { $gt: new Date(Date.now() - 20000) } 
@@ -1520,9 +1521,9 @@ async function handlePurchaseWithWallet(req, res) {
         let itemType;
         let costNGN = 0;
         let productDetails = { name: "", plan: "" };
-        let orderSpecifics = {}; // To hold specific credentials/details for OrderSchema
+        let orderSpecifics = {}; // Holds credentials/details for OrderSchema
 
-        // 2. PRODUCT LOGIC & STOCK MANAGEMENT
+        // 3. PRODUCT LOGIC & STOCK MANAGEMENT
         if (vpnId) {
             const item = await VPN.findOneAndUpdate(
                 { _id: vpnId, stock: { $gt: 0 } },
@@ -1535,7 +1536,7 @@ async function handlePurchaseWithWallet(req, res) {
             }
 
             itemType = "VPN";
-            costNGN = item.plans[planIndex].price;
+            costNGN = Number(item.plans[planIndex].price);
             productDetails.name = item.name;
             productDetails.plan = item.plans[planIndex].duration;
             
@@ -1556,7 +1557,7 @@ async function handlePurchaseWithWallet(req, res) {
             }
             
             itemType = "Proxy";
-            costNGN = item.plans[planIndex].price;
+            costNGN = Number(item.plans[planIndex].price);
             productDetails.name = item.name;
             productDetails.plan = `${item.plans[planIndex].ip_count} IPs`;
             
@@ -1584,7 +1585,7 @@ async function handlePurchaseWithWallet(req, res) {
             const selectedTier = rdpPlans[rdpId];
             if (!selectedTier) return res.status(404).json({ success: false, message: "RDP Plan not found" });
 
-            costNGN = selectedTier.price + (parseInt(metadata?.extraCPU || 0) * 5000) + (parseInt(metadata?.extraStorage || 0) * 200);
+            costNGN = Number(selectedTier.price) + (parseInt(metadata?.extraCPU || 0) * 5000) + (parseInt(metadata?.extraStorage || 0) * 200);
             productDetails.name = selectedTier.name;
             productDetails.plan = `${selectedTier.ram} RAM | ${metadata?.osChoice || 'Windows'}`;
             
@@ -1594,12 +1595,14 @@ async function handlePurchaseWithWallet(req, res) {
             };
         }
 
-        // 3. CURRENCY CONVERSION
+        // 4. CURRENCY CONVERSION & PRECISION FIX
         const settings = await SystemSettings.findOne().lean();     
         const adminRate = Number(settings?.exchangeRate || 1380);     
-        const costUSD = costNGN / adminRate;
+        
+        // Round to 2 decimal places to prevent floating point comparison errors
+        const costUSD = Math.round((costNGN / adminRate) * 100) / 100;
 
-        // 4. BALANCE VALIDATION
+        // 5. BALANCE VALIDATION
         if (user.balance < costUSD) {
             // Revert stock if validation fails
             if (vpnId) await VPN.findByIdAndUpdate(vpnId, { $inc: { stock: 1 } });
@@ -1608,28 +1611,31 @@ async function handlePurchaseWithWallet(req, res) {
             const walletInNGN = user.balance * adminRate;
             return res.status(400).json({ 
                 success: false, 
-                message: `Insufficient Balance. Required: ₦${costNGN.toLocaleString()}. Wallet: ₦${walletInNGN.toLocaleString()}` 
+                message: `Insufficient Balance. Required: ₦${costNGN.toLocaleString()} ($${costUSD}). Your Wallet: ₦${walletInNGN.toLocaleString()}` 
             });
         }
 
-        // 5. ATOMIC BALANCE DEBIT
-        const balanceBefore = user.balance;
+        // 6. ATOMIC BALANCE DEBIT
+        const balanceBefore = Number(user.balance);
+        
+        // We use $gte with a tiny epsilon (0.001) to handle binary rounding differences
         const updatedUser = await User.findOneAndUpdate(
-            { _id: user._id, balance: { $gte: costUSD } },
+            { _id: user._id, balance: { $gte: costUSD - 0.001 } },
             { $inc: { balance: -costUSD } },
             { new: true }
         );
 
         if (!updatedUser) {
+            console.error(`Atomic Debit Failure: User ${user._id} | Cost ${costUSD} | Balance ${user.balance}`);
             if (vpnId) await VPN.findByIdAndUpdate(vpnId, { $inc: { stock: 1 } });
             if (proxyId) await Proxy.findByIdAndUpdate(proxyId, { $inc: { stock: 1 } });
-            return res.status(400).json({ success: false, message: "Transaction failed." });
+            return res.status(400).json({ success: false, message: "Transaction failed. Please contact support." });
         }
 
         const balanceAfter = updatedUser.balance;
         const paymentReference = `WAL-${Date.now()}-${user._id.toString().slice(-4)}`;
 
-        // 6. CREATE ORDER RECORD (OrderSchema)
+        // 7. CREATE ORDER RECORD (OrderSchema)
         const newOrder = await Order.create({
             userId: user._id,
             userEmail: user.email,
@@ -1646,7 +1652,7 @@ async function handlePurchaseWithWallet(req, res) {
             ...orderSpecifics // Merges activationCode, vpnCredentials, or rdpDetails
         });
 
-        // 7. CREATE TRANSACTION LOG (TransactionSchema)
+        // 8. CREATE TRANSACTION LOG (TransactionSchema)
         await Transaction.create({
             userId: user._id,
             type: 'debit',
@@ -1662,7 +1668,7 @@ async function handlePurchaseWithWallet(req, res) {
             metadata: { orderId: newOrder._id, product: productDetails.name }
         });
 
-        // 8. SEND DELIVERY EMAIL
+        // 9. SEND DELIVERY EMAIL
         sendDeliveryEmail(user.email, { ...orderSpecifics, amount: `₦${costNGN.toLocaleString()}` }, newOrder)
             .catch(err => console.error("Email Error:", err.message));
 
@@ -1678,6 +1684,7 @@ async function handlePurchaseWithWallet(req, res) {
         return res.status(500).json({ success: false, message: "Internal server error." });
     }
 }
+
 const sendDeliveryEmail = async (userEmail, credentials) => {
     const transporter = nodemailer.createTransport({
         service: 'gmail',

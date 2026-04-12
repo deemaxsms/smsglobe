@@ -286,33 +286,40 @@ async function fetchUserProfile() {
             grid.classList.remove('hidden');
 
             grid.innerHTML = filtered.map(vpn => {
-                const isOutOfStock = (vpn.stock || 0) <= 0;
-                return `
-                <div class="bg-white border border-brand-border rounded-2xl shadow-sm flex flex-col overflow-hidden transition-all ${isOutOfStock ? 'opacity-60' : 'hover:shadow-md'}">
-                    <div class="h-24 md:h-32 bg-gray-50 relative flex items-center justify-center p-4 border-b">
-                        <img src="${vpn.image}" class="max-h-full object-contain ${isOutOfStock ? 'grayscale opacity-50' : ''}">
-                        ${isOutOfStock ? `<div class="absolute inset-0 flex items-center justify-center bg-white/40 backdrop-blur-[1px] font-black text-red-600 text-[10px] uppercase">Sold Out</div>` : ''}
-                    </div>
-                    <div class="p-3 md:p-5 flex flex-col flex-grow">
-                        <div class="mb-3">
-                            <h3 class="font-bold text-brand-darkText text-[11px] md:text-xs uppercase truncate">${vpn.name}</h3>
-                            <p class="text-[10px] text-brand-lightText font-medium">${vpn.region || 'Global'}</p>
-                            <span class="inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded ${isOutOfStock ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-500'}">
-                                ${isOutOfStock ? 'Out of Stock' : `In Stock: ${vpn.stock}`}
-                            </span>
-                        </div>
-                        <div class="bg-brand-background rounded-lg p-1.1 mb-3 border border-brand-border/50">
-                            <select id="plan-${vpn._id}" ${isOutOfStock ? 'disabled' : ''} class="w-full bg-transparent text-[6px] font-bold outline-none cursor-pointer">
-                                ${vpn.plans.map((p, i) => `<option value="${i}">${p.duration || 'Plan'} - #${parseFloat(p.price).toFixed(2)}</option>`).join('')}
-                            </select>
-                        </div>
-                        <button onclick="buyVPN('${vpn._id}')" ${isOutOfStock ? 'disabled' : ''} 
-                            class="mt-auto w-full py-2.5 ${isOutOfStock ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-brand-blue text-white hover:bg-blue-700'} text-[10px] font-bold rounded-lg transition-all">
-                            ${isOutOfStock ? 'Unavailable' : 'Purchase'}
-                        </button>
-                    </div>
-                </div>`;
-            }).join('');
+    const isOutOfStock = (vpn.stock || 0) <= 0;
+    return `
+    <div class="bg-white border border-brand-border rounded-2xl shadow-sm flex flex-col overflow-hidden transition-all ${isOutOfStock ? 'opacity-60' : 'hover:shadow-md'}">
+        <div class="h-24 md:h-32 bg-gray-50 relative flex items-center justify-center p-4 border-b">
+            <img src="${vpn.image}" class="max-h-full object-contain ${isOutOfStock ? 'grayscale opacity-50' : ''}">
+            ${isOutOfStock ? `<div class="absolute inset-0 flex items-center justify-center bg-white/40 backdrop-blur-[1px] font-black text-red-600 text-[10px] uppercase">Sold Out</div>` : ''}
+        </div>
+        <div class="p-3 md:p-5 flex flex-col flex-grow">
+            <div class="mb-3">
+                <h3 class="font-bold text-brand-darkText text-[11px] md:text-xs uppercase truncate">${vpn.name}</h3>
+                <p class="text-[10px] text-brand-lightText font-medium">${vpn.region || 'Global'}</p>
+                <span class="inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded ${isOutOfStock ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-500'}">
+                    ${isOutOfStock ? 'Out of Stock' : `In Stock: ${vpn.stock}`}
+                </span>
+            </div>
+
+            <div class="bg-brand-background rounded-lg mb-3 border border-brand-border/50 overflow-hidden">
+                <select id="plan-${vpn._id}" ${isOutOfStock ? 'disabled' : ''} 
+                    class="w-full bg-transparent px-2 py-1.5 text-[10px] md:text-xs font-bold outline-none cursor-pointer appearance-none">
+                    ${vpn.plans.map((p, i) => `
+                        <option value="${i}">
+                            ${p.duration || 'Plan'} - ₦${parseFloat(p.price).toLocaleString()}
+                        </option>
+                    `).join('')}
+                </select>
+            </div>
+
+            <button onclick="buyVPN('${vpn._id}')" ${isOutOfStock ? 'disabled' : ''} 
+                class="mt-auto w-full py-2.5 ${isOutOfStock ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-brand-blue text-white hover:bg-blue-700'} text-[10px] font-bold rounded-lg transition-all active-scale">
+                ${isOutOfStock ? 'Unavailable' : 'Purchase Now'}
+            </button>
+        </div>
+    </div>`;
+}).join('');
         }
 
         function switchTab(category) {

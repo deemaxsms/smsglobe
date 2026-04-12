@@ -2620,7 +2620,6 @@ async function handleDeleteRDP(req, res) {
         res.status(500).json({ success: false, message: "Delete failed" });
     }
 }
-
 async function handleGetRdpRequests(req, res) {
     try {
         const requests = await Order.find({ productType: 'RDP' })
@@ -2628,10 +2627,15 @@ async function handleGetRdpRequests(req, res) {
             .limit(100);
 
         const formattedRequests = requests.map(order => {
-            // If order.amount is already in Naira (e.g., 25000), 
-            // we send it as is. If you need it in USD for the UI, 
-            // keep the division. Otherwise, just format it.
             const nairaAmount = parseFloat(order.amount) || 0;
+            
+            // 1. DATA EXTRACTION LOGIC
+            // Check if specs exist in rdpDetails (as seen in your screenshot)
+            const specsString = order.rdpDetails?.specs || "";
+            const specParts = specsString.split(',').map(s => s.trim());
+            const ram = order.metadata?.ram || specParts[0] || 'N/A';
+            const cpu = order.metadata?.cpu || specParts[1] || 'Standard';
+            const storage = order.metadata?.storage || specParts[2] || 'Standard';
 
             return {
                 paymentReference: order.paymentReference,
@@ -2639,21 +2643,25 @@ async function handleGetRdpRequests(req, res) {
                 createdAt: order.createdAt,
                 userEmail: order.userEmail,
                 fullName: order.metadata?.fullName || 'N/A',
-                nodeName: order.nodeName || 'Tier Plan',
+                nodeName: order.nodeName || 'USA Tier 1',
                 planName: order.planName || 'RDP Server',
-                osChoice: order.metadata?.osChoice || 'Windows',
+                osChoice: order.metadata?.osChoice || order.rdpDetails?.os || 'Windows',
                 
-                // Hardware specs
-                ram: order.metadata?.ram || 'N/A',
-                cpu: order.metadata?.cpu || 'N/A',
-                storage: order.metadata?.storage || 'N/A',
+                // Hardware specs with parsed fallbacks
+                ram: ram,
+                cpu: cpu,
+                storage: storage,
                 
                 // Addons
                 extraCPU: order.metadata?.extraCPU || 0,
                 extraStorage: order.metadata?.extraStorage || 0,
                 
-                // Keep as Naira for the Admin Table
-                amount: nairaAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 }), 
+                // Amount & Status
+                amount: nairaAmount.toLocaleString('en-NG', { 
+                    style: 'currency', 
+                    currency: 'NGN', 
+                    minimumFractionDigits: 2 
+                }), 
                 status: order.status || 'pending',
                 confirmationNumber: order.confirmationNumber || 'PENDING'
             };

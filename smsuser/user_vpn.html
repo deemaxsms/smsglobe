@@ -141,35 +141,40 @@
   <div id="vpnModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
     <div id="modalContent" class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl modal-animate">
         
-        <div id="confirmState" class="hidden">
-            <div class="p-8 text-center">
-                <div class="w-16 h-16 bg-brand-background text-brand-blue rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                </div>
-
-                <h2 class="text-xl font-bold text-brand-darkText mb-2">Confirm Purchase</h2>
-                
-                <div class="mb-3 py-2 px-4 bg-gray-50 rounded-xl border border-brand-border inline-block w-full max-w-[240px]">
-                    <p class="text-[10px] font-bold text-brand-lightText uppercase tracking-tight">Your Balance</p>
-                    <p id="modalUserBalance" class="text-lg font-black text-brand-blue">$0.00</p>
-                </div>
-
-                <div class="mb-6 py-2 px-4 bg-blue-50/50 rounded-xl border border-brand-blue/10 inline-block w-full max-w-[240px]">
-                    <p class="text-[10px] font-bold text-brand-blue uppercase tracking-tight">Purchase Amount</p>
-                    <p id="modalPurchaseAmount" class="text-lg font-black text-brand-darkText">$0.00</p>
-                </div>
-
-                <p class="text-xs text-brand-lightText mb-6">The plan amount will be deducted from your wallet balance. Do you wish to proceed?</p>
-                
-                <div class="flex gap-3">
-                    <button onclick="closeModal()" class="flex-1 py-3 border border-brand-border rounded-xl font-bold text-xs uppercase text-brand-midText">Cancel</button>
-                    <button id="finalConfirmBtn" class="flex-1 py-3 bg-brand-blue text-white rounded-xl font-bold text-xs uppercase">Confirm & Pay</button>
-                </div>
-            </div>
+       <div id="confirmState" class="hidden">
+    <div class="p-8 text-center">
+        <div class="w-16 h-16 bg-brand-background text-brand-blue rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
         </div>
 
+        <h2 class="text-xl font-bold text-brand-darkText mb-2">Confirm Purchase</h2>
+        
+        <div class="mb-3 py-2 px-4 bg-gray-50 rounded-xl border border-brand-border inline-block w-full max-w-[240px]">
+            <p class="text-[10px] font-bold text-brand-lightText uppercase tracking-tight">Your Balance</p>
+            <p id="modalUserBalance" class="text-lg font-black text-brand-blue">₦0</p>
+        </div>
+
+        <div class="mb-6 py-2 px-4 bg-blue-50/50 rounded-xl border border-brand-blue/10 inline-block w-full max-w-[240px]">
+            <p class="text-[10px] font-bold text-brand-blue uppercase tracking-tight">Purchase Amount</p>
+            <p id="modalPurchaseAmount" class="text-lg font-black text-brand-darkText">₦0</p>
+        </div>
+
+        <p class="text-xs text-brand-lightText mb-6">The plan amount will be deducted from your wallet balance. Do you wish to proceed?</p>
+        
+        <div class="flex gap-3">
+            <button onclick="closeModal()" class="flex-1 py-3 border border-brand-border rounded-xl font-bold text-xs uppercase text-brand-midText">Cancel</button>
+           <button id="finalConfirmBtn" class="flex-1 py-3 bg-brand-blue text-white rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2 disabled:opacity-70">
+    <span id="btnText">Confirm & Pay</span>
+    <svg id="btnLoader" class="hidden animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+</button>
+        </div>
+    </div>
+</div>
         <div id="successState" class="hidden">
             <div class="bg-brand-blue p-6 text-center">
                 <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -337,19 +342,30 @@ async function buyVPN(vpnId) {
     const confirmState = document.getElementById('confirmState');
     const successState = document.getElementById('successState');
     const confirmBtn = document.getElementById('finalConfirmBtn');
+    
+    // UI Elements for loading state
+    const btnText = confirmBtn.querySelector('#btnText') || confirmBtn; 
+    const btnLoader = document.getElementById('btnLoader');
 
-    // 1. Update the Balance display
-    document.getElementById('modalUserBalance').innerText = `$${parseFloat(userBalance).toFixed(2)}`;
+    // Helper for professional Naira formatting
+    const formatNaira = (amt) => {
+        return '₦' + parseFloat(amt).toLocaleString(undefined, {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        });
+    };
 
-    // 2. Update the Purchase Amount display (NEW)
-    document.getElementById('modalPurchaseAmount').innerText = `$${price.toFixed(2)}`;
+    // 1. Update the Balance display (Naira)
+    document.getElementById('modalUserBalance').innerText = formatNaira(userBalance);
+
+    // 2. Update the Purchase Amount display (Naira)
+    document.getElementById('modalPurchaseAmount').innerText = formatNaira(price);
 
     // 3. Balance Validation Logic
     if (userBalance < price) {
         document.getElementById('modalUserBalance').classList.add('text-red-600');
         document.getElementById('modalUserBalance').classList.remove('text-brand-blue');
         
-        // Disable button if insufficient funds
         confirmBtn.disabled = true;
         confirmBtn.innerText = "Insufficient Funds";
         confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
@@ -357,7 +373,6 @@ async function buyVPN(vpnId) {
         document.getElementById('modalUserBalance').classList.remove('text-red-600');
         document.getElementById('modalUserBalance').classList.add('text-brand-blue');
         
-        // Enable button
         confirmBtn.disabled = false;
         confirmBtn.innerText = "Confirm & Pay";
         confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -368,10 +383,15 @@ async function buyVPN(vpnId) {
     modal.classList.remove('hidden');
 
     confirmBtn.onclick = async () => {
+        // --- START PROFESSIONAL LOADING STATE ---
         confirmBtn.disabled = true;
-        confirmBtn.innerText = "Processing...";
+        if (btnLoader) btnLoader.classList.remove('hidden');
+        confirmBtn.innerText = "Securing Transaction...";
         
         try {
+            // Artificial 3-second delay to simulate bank verification/security check
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
             const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
                 method: 'POST',
                 headers: { 
@@ -384,7 +404,6 @@ async function buyVPN(vpnId) {
             const data = await res.json();
             
             if (data.success) {
-                // Update local userBalance variable so it's correct for the next click
                 userBalance -= price; 
                 showSuccessDetails(data.credentials, vpnData);
             } else {
@@ -397,6 +416,7 @@ async function buyVPN(vpnId) {
             closeModal();
         } finally {
             confirmBtn.disabled = false;
+            if (btnLoader) btnLoader.classList.add('hidden');
             confirmBtn.innerText = "Confirm & Pay";
         }
     };

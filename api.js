@@ -272,14 +272,14 @@ async function generateUniqueCode() {
     return code;
 }
 
-const normalizeDeviceType = (type) => {
-    if (!type) return 'Both';
-    // Converts "phone" -> "Phone", "pc" -> "PC", etc.
-    const formatted = type.toLowerCase() === 'pc' ? 'PC' : type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
-    
-    // Validates against your Schema Enum
-    return ['Phone', 'PC', 'Both'].includes(formatted) ? formatted : 'Both';
-};
+function normalizeDeviceType(type) {
+    if (!type) return 'Phone';
+    const t = type.toLowerCase();
+    if (t === 'phone') return 'Phone';
+    if (t === 'pc') return 'PC';
+    if (t === 'both') return 'Both';
+    return 'Phone'; // Default fallback
+}
 
 app.all('/api/:action', async (req, res) => {
     await connectDB();
@@ -708,12 +708,10 @@ async function handleManageUser(req, res) {
         return res.status(500).json({ success: false, message: err.message });
     }
 }
-
 async function handleGetVPNs(req, res) {
     try {
         const vpns = await VPN.find({})
             .sort({ createdAt: -1 })
-            // ADD: pcPassword and activationCode to the selection
             .select('+password +pcPassword +activationCode +deviceType'); 
             
         res.json({ success: true, products: vpns }); 
@@ -727,12 +725,12 @@ async function handleAddVPN(req, res) {
     try {
         const { vpnId, ...data } = req.body;
 
-        // 1. Format plans and ensure prices are numbers
+        // 1. Format plans and ensure prices are parsed as integers (NGN standard)
         let formattedPlans = [];
         if (data.plans && Array.isArray(data.plans)) {
             formattedPlans = data.plans.map(p => ({
                 duration: p.duration || "",
-                price: parseFloat(p.price) || 0
+                price: Math.round(parseFloat(p.price)) || 0
             }));
         }
 
@@ -743,7 +741,8 @@ async function handleAddVPN(req, res) {
             deviceType: normalizeDeviceType(data.deviceType),
             stock: parseInt(data.stock) || 0, 
             deviceLimit: parseInt(data.deviceLimit) || 0,
-            price: formattedPlans.length > 0 ? formattedPlans[0].price : (parseFloat(data.price) || 0)
+            // Ensure base price is synced with the first plan tier
+            price: formattedPlans.length > 0 ? formattedPlans[0].price : (Math.round(parseFloat(data.price)) || 0)
         });
 
         await newVPN.save();
@@ -768,15 +767,18 @@ async function handleUpdateVPN(req, res) {
             updateData.deviceType = normalizeDeviceType(updateData.deviceType);
         }
 
-        // 2. Clean up plans data
+        // 2. Clean up plans data and sync price
         if (updateData.plans && Array.isArray(updateData.plans)) {
             updateData.plans = updateData.plans.map(p => ({
                 duration: p.duration,
-                price: parseFloat(p.price) || 0
+                price: Math.round(parseFloat(p.price)) || 0
             }));
+            
             if (updateData.plans.length > 0) {
                 updateData.price = updateData.plans[0].price;
             }
+        } else if (updateData.price !== undefined) {
+            updateData.price = Math.round(parseFloat(updateData.price)) || 0;
         }
 
         // 3. Parse Numeric Fields

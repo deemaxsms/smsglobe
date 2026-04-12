@@ -379,7 +379,6 @@
             </div>
         </button>
     </div>
-
 <div id="paymentModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4">
     <div class="fixed inset-0 bg-brand-darkText/60 backdrop-blur-sm" onclick="closePaymentModal()"></div>
     <div class="bg-white rounded-3xl p-8 max-w-sm w-full relative z-10 shadow-2xl scale-up">
@@ -388,29 +387,29 @@
             <p class="text-xs text-brand-lightText mt-1">Funds will be deducted from your wallet balance.</p>
         </div>
 
-      <div class="p-5 bg-gray-50 rounded-2xl border border-brand-border">
-    <span class="text-[10px] font-bold text-brand-lightText uppercase block mb-1">Available Balance</span>
-    <div class="flex justify-between items-baseline">
-        <span id="modalBalanceNGN" class="text-xl font-black text-brand-darkText tracking-tight">
-            ₦0.00
-        </span>
-        
-        <span id="modalBalanceUSD" class="text-[11px] font-bold text-brand-blue bg-brand-blue/10 px-2.5 py-1 rounded-lg">
-            $0.00
-        </span>
-    </div>
-</div>
+        <div class="space-y-3 mb-8">
+            <div class="p-5 bg-gray-50 rounded-2xl border border-brand-border">
+                <span class="text-[10px] font-bold text-brand-lightText uppercase block mb-1">Available Balance</span>
+                <div class="flex justify-between items-baseline">
+                    <span id="modalBalanceNGN" class="text-xl font-black text-brand-darkText tracking-tight">₦0.00</span>
+                    
+                    <span id="modalBalanceUSD" class="text-[11px] font-bold text-brand-blue bg-brand-blue/10 px-2.5 py-1 rounded-lg">
+                        $0.00
+                    </span>
+                </div>
+            </div>
+
             <div class="flex justify-between items-center p-4 bg-brand-blue/5 rounded-2xl border border-brand-blue/10">
-                <span class="text-[10px] font-bold text-brand-blue uppercase">Order Amount</span>
+                <span class="text-[10px] font-bold text-brand-blue uppercase tracking-wider">Order Amount</span>
                 <span id="modalTotalDue" class="text-sm font-black text-brand-blue">₦0.00</span>
             </div>
         </div>
 
         <div class="flex flex-col gap-3">
-            <button id="confirmPurchaseBtn" onclick="purchaseRDPWithWallet()" class="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold active-scale">
+            <button id="confirmPurchaseBtn" onclick="purchaseRDPWithWallet()" class="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold active-scale transition-colors">
                 Confirm & Pay Now
             </button>
-            <button onclick="closePaymentModal()" class="w-full py-2 text-xs font-bold text-brand-lightText hover:text-brand-darkText">
+            <button onclick="closePaymentModal()" class="w-full py-2 text-xs font-bold text-brand-lightText hover:text-brand-darkText transition-colors">
                 Cancel
             </button>
         </div>
@@ -567,11 +566,13 @@ async function fetchUserProfile() {
 
 async function initiateRDPPayment() {
     const payBtn = document.getElementById('payBtn');
-    if (!payBtn) return;
+    const confirmBtn = document.getElementById('confirmPurchaseBtn');
+    if (!payBtn || !confirmBtn) return;
 
     payBtn.innerText = "Verifying Balance...";
     payBtn.disabled = true;
 
+    // Refresh user balance from server
     const success = await fetchUserProfile();    
     
     payBtn.innerText = "Pay Securely Now";
@@ -581,39 +582,50 @@ async function initiateRDPPayment() {
         alert("Could not verify balance.");
         return;
     }
-    const EXCHANGE_RATE = Number(userBalances.rate); 
-    const usdValue = Number(userBalances.ngn); // Your API sends '32' here
-    const nairaEquivalent = usdValue * EXCHANGE_RATE; // 32 * 1380 = 44,160
 
+    // Logic: Convert USD Wallet (32) to NGN (44,160) using Admin Rate
+    const EXCHANGE_RATE = Number(userBalances.rate) || 1380; 
+    const usdValue = Number(userBalances.ngn); 
+    const nairaEquivalent = usdValue * EXCHANGE_RATE;
+
+    // UI: Update Balance Displays
     const modalBalanceNGN = document.getElementById('modalBalanceNGN');
     const modalBalanceUSD = document.getElementById('modalBalanceUSD');
     const modalTotalDisplay = document.getElementById('modalTotalDue');
-    const confirmBtn = document.getElementById('confirmPurchaseBtn');
+
     if (modalBalanceNGN) {
         modalBalanceNGN.innerText = '₦' + nairaEquivalent.toLocaleString('en-NG', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         });
     }
+
     if (modalBalanceUSD) {
         modalBalanceUSD.innerText = '$' + usdValue.toLocaleString('en-US', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         });
     }
-        const totalRequiredText = document.getElementById('summaryTotal').innerText;
+
+    // UI: Update Total Due
+    const totalRequiredText = document.getElementById('summaryTotal').innerText;
     if (modalTotalDisplay) {
         modalTotalDisplay.innerText = totalRequiredText;
     }
-    const numericPrice = parseInt(totalRequiredText.replace(/[^0-9]/g, ''));
+
+    // Validation: Compare Wallet NGN vs Plan NGN
+    const numericPrice = parseFloat(totalRequiredText.replace(/[^\d.]/g, ''));
     
     if (nairaEquivalent < numericPrice) {
         confirmBtn.innerText = "Insufficient Funds";
-        confirmBtn.classList.replace('bg-brand-blue', 'bg-red-500');
+        // Ensure it swaps colors correctly
+        confirmBtn.classList.remove('bg-brand-blue');
+        confirmBtn.classList.add('bg-red-500', 'cursor-not-allowed');
         confirmBtn.disabled = true;
     } else {
         confirmBtn.innerText = "Confirm & Pay Now";
-        confirmBtn.classList.replace('bg-red-500', 'bg-brand-blue');
+        confirmBtn.classList.remove('bg-red-500', 'cursor-not-allowed');
+        confirmBtn.classList.add('bg-brand-blue');
         confirmBtn.disabled = false;
     }
 

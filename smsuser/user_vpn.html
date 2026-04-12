@@ -410,36 +410,43 @@ function showSuccessDetails(creds, vpnData) {
     const passWrap = document.getElementById('wrapPass');
     const codeWrap = document.getElementById('wrapCode');
 
-    // Reset visibility
+    // Reset visibility before showing new data
     userWrap.classList.add('hidden');
     passWrap.classList.add('hidden');
     codeWrap.classList.add('hidden');
 
-    // 1. Handle Username
-    if (creds.username) {
-        document.getElementById('resUser').innerText = creds.username;
+    // 1. Handle Username (Checks Phone key OR PC key)
+    const finalUser = creds.username || creds.pcUsername;
+    if (finalUser) {
+        document.getElementById('resUser').innerText = finalUser;
         userWrap.classList.remove('hidden');
     }
 
-    // 2. Handle Password
-    if (creds.password) {
-        document.getElementById('resPass').innerText = creds.password;
+    // 2. Handle Password (Checks Phone key OR PC key)
+    const finalPass = creds.password || creds.pcPassword;
+    if (finalPass) {
+        document.getElementById('resPass').innerText = finalPass;
         passWrap.classList.remove('hidden');
     }
 
     // 3. Handle Activation Code
-    const actCode = creds.activationCode || (creds.plans && creds.plans[0] ? creds.plans[0].activationCode : null);
-    if (actCode) {
+    // Some PC methods use codes instead of User/Pass
+    const actCode = creds.activationCode || 
+                    (creds.plans && creds.plans[0] ? creds.plans[0].activationCode : null);
+    
+    if (actCode && actCode !== "") {
         document.getElementById('resCode').innerText = actCode;
         codeWrap.classList.remove('hidden');
     }
 
     // 4. Handle Instructions and Limits
-    const finalInstructions = creds.instructions || (creds.plans && creds.plans[0] ? creds.plans[0].instructions : "Install the app and login with credentials.");
+    const finalInstructions = creds.instructions || 
+                             (creds.plans && creds.plans[0] ? creds.plans[0].instructions : "Install the app and login with the credentials provided above.");
     
     document.getElementById('resLimit').innerText = `${vpnData.deviceLimit || 1} Device(s)`;
     document.getElementById('resInstructions').innerText = finalInstructions;
 }
+
         function copyText(id) {
             const text = document.getElementById(id).innerText;
             navigator.clipboard.writeText(text);

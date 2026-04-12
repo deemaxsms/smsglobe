@@ -730,55 +730,72 @@ function resetPurchaseButton(btn) {
 function closePaymentModal() {
     document.getElementById('paymentModal').classList.add('hidden');
 }
-    function showReceipt(order) {
-        selectionView?.classList.add('hidden');
-        checkoutView?.classList.add('hidden');
-        receiptView?.classList.remove('hidden');
-        headerTitle.innerText = "Order Confirmed";
+   function showReceipt(order) {
+    selectionView?.classList.add('hidden');
+    checkoutView?.classList.add('hidden');
+    receiptView?.classList.remove('hidden');
+    headerTitle.innerText = "Order Confirmed";
 
-        const meta = order.metadata || {};
-        const setField = (id, value) => {
-            const el = document.getElementById(id);
-            if (el) el.innerText = value;
-        };
+    const meta = order.metadata || {};
+    const setField = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = value;
+    };
 
-        const cpuDisplay = meta.extraCPU > 0 ? `${meta.baseCPU || "2 Cores"} (+${meta.extraCPU} Cores)` : (meta.baseCPU || "Standard");
-        const storageDisplay = meta.extraStorage > 0 ? `${meta.baseStorage || "60GB"} (+${meta.extraStorage}GB)` : (meta.baseStorage || "Standard");
+    // Logical displays for hardware specs
+    const cpuDisplay = meta.extraCPU > 0 ? `${meta.baseCPU || "2 Cores"} (+${meta.extraCPU} Cores)` : (meta.baseCPU || "Standard");
+    const storageDisplay = meta.extraStorage > 0 ? `${meta.baseStorage || "60GB"} (+${meta.extraStorage}GB)` : (meta.baseStorage || "Standard");
 
-        setField('rPlan', order.planName || "USA Tier RDP");
-        setField('rOS', meta.osChoice || "Windows Server");
-        setField('rRAM', meta.baseRAM || "Standard");
-        setField('rCPU', cpuDisplay);
-        setField('rStorage', storageDisplay);
-        setField('rID', order.paymentReference || "N/A");
-        
-        window.scrollTo(0, 0);
-    }
+    // Existing fields
+    setField('rPlan', order.planName || "USA Tier RDP");
+    setField('rOS', meta.osChoice || "Windows Server");
+    setField('rRAM', meta.baseRAM || "Standard");
+    setField('rCPU', cpuDisplay);
+    setField('rStorage', storageDisplay);
+    setField('rID', order.paymentReference || "N/A");
+
+    // NEW: Added fields for WhatsApp Admin contact logic
+    setField('rAmount', order.amount ? order.amount.toLocaleString() : "N/A");
+    setField('rFullName', order.fullName || "Customer");
+    setField('rEmail', order.userEmail || "N/A");
+    
+    window.scrollTo(0, 0);
+}
+
 
     function contactRDPAdmin() {
-        const tid = document.getElementById('rID')?.innerText || "N/A";
-        const plan = document.getElementById('rPlan')?.innerText || "N/A";
-        const ram = document.getElementById('rRAM')?.innerText || "N/A";
-        const cpu = document.getElementById('rCPU')?.innerText || "N/A";
-        const storage = document.getElementById('rStorage')?.innerText || "N/A";
-        const os = document.getElementById('rOS')?.innerText || "N/A";
+    // Pulling the data from your UI elements
+    const tid = document.getElementById('rID')?.innerText || "N/A";
+    const plan = document.getElementById('rPlan')?.innerText || "N/A";
+    const ram = document.getElementById('rRAM')?.innerText || "N/A";
+    const cpu = document.getElementById('rCPU')?.innerText || "N/A";
+    const storage = document.getElementById('rStorage')?.innerText || "N/A";
+    const os = document.getElementById('rOS')?.innerText || "N/A";
+    
+    // Data for verification
+    const amount = document.getElementById('rAmount')?.innerText || "N/A";
+    const userEmail = document.getElementById('rEmail')?.innerText || "N/A";
+    const fullName = document.getElementById('rFullName')?.innerText || "Customer Name N/A";
 
-        const msg = `🚀 *SMSGlobe: NEW RDP PROVISIONING*\n` +
-                    `__________________________________\n\n` +
-                    `✅ *PAYMENT STATUS:* CONFIRMED\n` +
-                    `🆔 *REF ID:* ${tid}\n\n` +
-                    `*SERVER CONFIGURATION:*\n` +
-                    `━━━━━━━━━━━━━━━━━━\n` +
-                    `🖥️ *PLAN:* ${plan}\n` +
-                    `💿 *OS:* ${os}\n` +
-                    `🧠 *RAM:* ${ram}\n` +
-                    `⚡ *CPU:* ${cpu}\n` +
-                    `💾 *STORAGE:* ${storage}\n` +
-                    `━━━━━━━━━━━━━━━━━━\n\n` +
-                    `⚡ We will notify you immediately your RDP Activation is complete.`;
+    const msg = `🚀 *SMSGlobe: NEW RDP PROVISIONING*\n` +
+                `__________________________________\n\n` +
+                `✅ *PAYMENT STATUS:* CONFIRMED\n` +
+                `🆔 *REF ID:* ${tid}\n` +
+                `💰 *AMOUNT PAID:* ₦${amount}\n` +
+                `👤 *CUSTOMER:* ${fullName}\n` +
+                `📧 *EMAIL:* ${userEmail}\n\n` +
+                `*SERVER CONFIGURATION:*\n` +
+                `━━━━━━━━━━━━━━━━━━\n` +
+                `🖥️ *PLAN:* ${plan}\n` +
+                `💿 *OS:* ${os}\n` +
+                `🧠 *RAM:* ${ram}\n` +
+                `⚡ *CPU:* ${cpu}\n` +
+                `💾 *STORAGE:* ${storage}\n` +
+                `━━━━━━━━━━━━━━━━━━\n\n` +
+                `⚡ Please proceed with setup for this customer.`;
 
-        window.open(`https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`, '_blank');
-    }
+    window.open(`https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`, '_blank');
+}
 
     function showSelectionView() {
         selectionView.classList.remove('hidden');

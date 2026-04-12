@@ -138,78 +138,82 @@
         </main>
     </div>
 
-  <div id="confirmState" class="hidden">
-    <div class="p-8 text-center">
-        <div class="w-16 h-16 bg-brand-background text-brand-blue rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-        </div>
-
-        <h2 class="text-xl font-bold text-brand-darkText mb-2">Confirm Purchase</h2>
+  <div id="vpnModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
+    <div id="modalContent" class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl modal-animate">
         
-        <div class="mb-3 py-2 px-4 bg-gray-50 rounded-xl border border-brand-border inline-block w-full max-w-[240px]">
-            <p class="text-[10px] font-bold text-brand-lightText uppercase tracking-tight">Your Balance</p>
-            <p id="modalUserBalance" class="text-lg font-black text-brand-blue">$0.00</p>
-        </div>
-
-        <div class="mb-6 py-2 px-4 bg-blue-50/50 rounded-xl border border-brand-blue/10 inline-block w-full max-w-[240px]">
-            <p class="text-[10px] font-bold text-brand-blue uppercase tracking-tight">Purchase Amount</p>
-            <p id="modalPurchaseAmount" class="text-lg font-black text-brand-darkText">$0.00</p>
-        </div>
-
-        <p class="text-xs text-brand-lightText mb-6">The plan amount will be deducted from your wallet balance. Do you wish to proceed?</p>
-        
-        <div class="flex gap-3">
-            <button onclick="closeModal()" class="flex-1 py-3 border border-brand-border rounded-xl font-bold text-xs uppercase text-brand-midText">Cancel</button>
-            <button id="finalConfirmBtn" class="flex-1 py-3 bg-brand-blue text-white rounded-xl font-bold text-xs uppercase">Confirm & Pay</button>
-        </div>
-    </div>
-</div>
-
-            <div id="successState" class="hidden">
-                <div class="bg-brand-blue p-6 text-center">
-                    <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                    </div>
-                    <h2 class="text-lg font-bold text-white">Purchase Successful!</h2>
+        <div id="confirmState" class="hidden">
+            <div class="p-8 text-center">
+                <div class="w-16 h-16 bg-brand-background text-brand-blue rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
                 </div>
-                <div class="p-6 space-y-3 max-h-[60vh] overflow-y-auto no-scrollbar">
-                    <div id="wrapUser" class="hidden bg-brand-background rounded-xl p-3 border border-brand-border">
-                        <p class="text-[9px] font-bold text-brand-blue uppercase mb-1">Username / Email</p>
-                        <div class="flex items-center justify-between">
-                            <span id="resUser" class="text-xs font-mono font-bold text-brand-darkText">---</span>
-                            <button onclick="copyText('resUser')" class="text-[10px] font-bold text-brand-blue uppercase">Copy</button>
-                        </div>
-                    </div>
-                    <div id="wrapPass" class="hidden bg-brand-background rounded-xl p-3 border border-brand-border">
-                        <p class="text-[9px] font-bold text-brand-blue uppercase mb-1">Password</p>
-                        <div class="flex items-center justify-between">
-                            <span id="resPass" class="text-xs font-mono font-bold text-brand-darkText">---</span>
-                            <button onclick="copyText('resPass')" class="text-[10px] font-bold text-brand-blue uppercase">Copy</button>
-                        </div>
-                    </div>
-                    <div id="wrapCode" class="hidden bg-brand-background rounded-xl p-3 border border-brand-border">
-                        <p class="text-[9px] font-bold text-brand-blue uppercase mb-1">Activation Code</p>
-                        <div class="flex items-center justify-between">
-                            <span id="resCode" class="text-xs font-mono font-bold text-brand-darkText">---</span>
-                            <button onclick="copyText('resCode')" class="text-[10px] font-bold text-brand-blue uppercase">Copy</button>
-                        </div>
-                    </div>
-                    <div class="flex justify-between items-center px-1">
-                        <p class="text-[10px] font-bold text-brand-lightText uppercase">Device Limit</p>
-                        <p id="resLimit" class="text-xs font-bold text-brand-darkText">1 Device</p>
-                    </div>
-                    <div class="pt-2 border-t border-brand-border">
-                        <p class="text-[9px] font-bold text-brand-lightText uppercase mb-1">Setup Instructions:</p>
-                        <p id="resInstructions" class="text-[10px] leading-relaxed text-brand-midText"></p>
-                    </div>
-                    <button onclick="location.reload()" class="w-full py-3.5 bg-brand-darkText text-white rounded-2xl font-bold text-xs uppercase mt-4">Close & Refresh</button>
+
+                <h2 class="text-xl font-bold text-brand-darkText mb-2">Confirm Purchase</h2>
+                
+                <div class="mb-3 py-2 px-4 bg-gray-50 rounded-xl border border-brand-border inline-block w-full max-w-[240px]">
+                    <p class="text-[10px] font-bold text-brand-lightText uppercase tracking-tight">Your Balance</p>
+                    <p id="modalUserBalance" class="text-lg font-black text-brand-blue">$0.00</p>
+                </div>
+
+                <div class="mb-6 py-2 px-4 bg-blue-50/50 rounded-xl border border-brand-blue/10 inline-block w-full max-w-[240px]">
+                    <p class="text-[10px] font-bold text-brand-blue uppercase tracking-tight">Purchase Amount</p>
+                    <p id="modalPurchaseAmount" class="text-lg font-black text-brand-darkText">$0.00</p>
+                </div>
+
+                <p class="text-xs text-brand-lightText mb-6">The plan amount will be deducted from your wallet balance. Do you wish to proceed?</p>
+                
+                <div class="flex gap-3">
+                    <button onclick="closeModal()" class="flex-1 py-3 border border-brand-border rounded-xl font-bold text-xs uppercase text-brand-midText">Cancel</button>
+                    <button id="finalConfirmBtn" class="flex-1 py-3 bg-brand-blue text-white rounded-xl font-bold text-xs uppercase">Confirm & Pay</button>
                 </div>
             </div>
         </div>
-    </div>
 
+        <div id="successState" class="hidden">
+            <div class="bg-brand-blue p-6 text-center">
+                <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <h2 class="text-lg font-bold text-white">Purchase Successful!</h2>
+            </div>
+            <div class="p-6 space-y-3 max-h-[60vh] overflow-y-auto no-scrollbar">
+                <div id="wrapUser" class="hidden bg-brand-background rounded-xl p-3 border border-brand-border">
+                    <p class="text-[9px] font-bold text-brand-blue uppercase mb-1">Username / Email</p>
+                    <div class="flex items-center justify-between">
+                        <span id="resUser" class="text-xs font-mono font-bold text-brand-darkText">---</span>
+                        <button onclick="copyText('resUser')" class="text-[10px] font-bold text-brand-blue uppercase">Copy</button>
+                    </div>
+                </div>
+                <div id="wrapPass" class="hidden bg-brand-background rounded-xl p-3 border border-brand-border">
+                    <p class="text-[9px] font-bold text-brand-blue uppercase mb-1">Password</p>
+                    <div class="flex items-center justify-between">
+                        <span id="resPass" class="text-xs font-mono font-bold text-brand-darkText">---</span>
+                        <button onclick="copyText('resPass')" class="text-[10px] font-bold text-brand-blue uppercase">Copy</button>
+                    </div>
+                </div>
+                <div id="wrapCode" class="hidden bg-brand-background rounded-xl p-3 border border-brand-border">
+                    <p class="text-[9px] font-bold text-brand-blue uppercase mb-1">Activation Code</p>
+                    <div class="flex items-center justify-between">
+                        <span id="resCode" class="text-xs font-mono font-bold text-brand-darkText">---</span>
+                        <button onclick="copyText('resCode')" class="text-[10px] font-bold text-brand-blue uppercase">Copy</button>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center px-1">
+                    <p class="text-[10px] font-bold text-brand-lightText uppercase">Device Limit</p>
+                    <p id="resLimit" class="text-xs font-bold text-brand-darkText">1 Device</p>
+                </div>
+                <div class="pt-2 border-t border-brand-border">
+                    <p class="text-[9px] font-bold text-brand-lightText uppercase mb-1">Setup Instructions:</p>
+                    <p id="resInstructions" class="text-[10px] leading-relaxed text-brand-midText"></p>
+                </div>
+                <button onclick="location.reload()" class="w-full py-3.5 bg-brand-darkText text-white rounded-2xl font-bold text-xs uppercase mt-4">Close & Refresh</button>
+            </div>
+        </div>
+    </div>
+</div>
     <script>
         const API_BASE_URL = '/api';
         let allVPNs = [];
@@ -322,7 +326,7 @@ async function fetchUserProfile() {
             });
             renderVPNs();
         }
-
+        
 async function buyVPN(vpnId) {
     const planIndex = document.getElementById(`plan-${vpnId}`).value;
     const vpnData = allVPNs.find(v => v._id === vpnId);
@@ -374,7 +378,7 @@ async function buyVPN(vpnId) {
                     'Content-Type': 'application/json', 
                     'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
                 },
-            body: JSON.stringify({ vpnId, planIndex: parseInt(planIndex, 10) })
+                body: JSON.stringify({ vpnId, planIndex: parseInt(planIndex) })
             });
 
             const data = await res.json();

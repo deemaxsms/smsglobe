@@ -452,9 +452,11 @@
         renderPlans();
     };
 
- async function fetchUserProfile() {
+async function fetchUserProfile() {
     try {
         const token = localStorage.getItem('userToken');
+        if (!token) return false;
+
         const res = await fetch(`${API_BASE_URL}/user-profile`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -462,8 +464,9 @@
         const data = await res.json();
         
         if (data.success) {
-            userBalances.ngn = data.user?.balance ?? 0;
-            userBalances.usd = data.user?.usd_balance ?? 0; 
+            // FIX: Remove '.user' since your API returns balance at the top level
+            userBalances.ngn = data.balance ?? 0;
+            userBalances.usd = data.usd_balance ?? 0; 
             return true;
         }
     } catch (err) {

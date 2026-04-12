@@ -1499,10 +1499,11 @@ async function handlePurchaseWithWallet(req, res) {
         let targetNum = mobileNumber || null;
 
         if (vpnId) {
+            // UPDATED: Added +pcPassword and +activationCode to selection since they are 'select: false' in schema
             item = await VPN.findOneAndUpdate(
                 { _id: vpnId, stock: { $gt: 0 } },
                 { $inc: { stock: -1 } },
-                { new: true, select: '+password' }
+                { new: true, select: '+password +pcPassword +activationCode' }
             );
             if (!item || !item.plans[planIndex]) return res.status(404).json({ success: false, message: "VPN unavailable or out of stock" });
             
@@ -1511,10 +1512,16 @@ async function handlePurchaseWithWallet(req, res) {
             costInUSD = item.plans[planIndex].price;
             productDetails.name = item.name;
             productDetails.plan = item.plans[planIndex].duration;
+
+            // UPDATED: Including PC-specific keys so the frontend can display them
             credentials = {
                 type: "VPN",
                 username: item.username,
                 password: item.password,
+                pcUsername: item.pcUsername,   // Added
+                pcPassword: item.pcPassword,   // Added
+                pcMethod: item.pcMethod,       // Added
+                activationCode: item.activationCode,
                 instructions: item.instructions || "Check dashboard."
             };
         } 
@@ -1522,7 +1529,7 @@ async function handlePurchaseWithWallet(req, res) {
             item = await Proxy.findOneAndUpdate(
                 { _id: proxyId, stock: { $gt: 0 } },
                 { $inc: { stock: -1 } },
-                { new: true }
+                { new: true, select: '+activationCode' }
             );
             if (!item || !item.plans[planIndex]) return res.status(404).json({ success: false, message: "Proxy unavailable or out of stock" });
             
@@ -1562,11 +1569,15 @@ async function handlePurchaseWithWallet(req, res) {
             const extraCPU = metadata?.extraCPU || 0;
             const extraStorage = metadata?.extraStorage || 0;
             
-            const rdpPlans = {
-                "tier1": { name: "USA Tier 1", price: 35, ram: "4GB", cpu: "2 Cores", storage: "60GB" },
-                "tier2": { name: "USA Tier 2", price: 45, ram: "6GB", cpu: "3 Cores", storage: "100GB" },
-                "tier3": { name: "USA Tier 3", price: 55, ram: "8GB", cpu: "4 Cores", storage: "140GB" }
-            };
+          const plans = {
+        tier1: { id: "tier1", name: "USA Tier 1", price: 45000, hardware: "4GB RAM | 2 CPU Cores", storage: "60GB SSD", net: "100Mbps" },
+        tier2: { id: "tier2", name: "USA Tier 2", price: 55000, hardware: "6GB RAM | 3 CPU Cores", storage: "100GB SSD", net: "100Mbps" },
+        tier3: { id: "tier3", name: "USA Tier 3", price: 65000, hardware: "8GB RAM | 4 CPU Cores", storage: "140GB SSD", net: "200Mbps" },
+        tier4: { id: "tier4", name: "USA Tier 4", price: 80000, hardware: "12GB RAM | 6 CPU Cores", storage: "180GB SSD", net: "200Mbps" },
+        tier5: { id: "tier5", name: "USA Tier 5", price: 90000, hardware: "18GB RAM | 8 CPU Cores", storage: "240GB SSD", net: "300Mbps" },
+        tier6: { id: "tier6", name: "USA Tier 6", price: 130000, hardware: "24GB RAM | 8 CPU Cores", storage: "280GB SSD", net: "300Mbps" }
+    };
+
 
             const selectedTier = rdpPlans[rdpId];
             if (!selectedTier) return res.status(404).json({ success: false, message: "RDP Plan not found" });
@@ -1610,7 +1621,16 @@ async function handlePurchaseWithWallet(req, res) {
             }
         };
 
-        if (itemType === "VPN") orderData.vpnCredentials = { username: credentials.username, password: credentials.password };
+        // UPDATED: Storing both Phone and PC credentials in the Order history
+        if (itemType === "VPN") {
+            orderData.vpnCredentials = { 
+                username: credentials.username, 
+                password: credentials.password,
+                pcUsername: credentials.pcUsername,
+                pcPassword: credentials.pcPassword,
+                activationCode: credentials.activationCode
+            };
+        }
         if (itemType === "RDP") orderData.rdpDetails = { os: credentials.os, specs: credentials.specs };
 
         const newOrder = await Order.create(orderData);
@@ -1625,7 +1645,7 @@ async function handlePurchaseWithWallet(req, res) {
             success: true, 
             message: "Purchase successful!", 
             balance: user.balance,
-            credentials 
+            credentials // This now contains all necessary PC fields
         });
 
     } catch (err) {

@@ -561,34 +561,25 @@ async function executeFinalPurchase() {
                 'Content-Type': 'application/json', 
                 'Authorization': `Bearer ${token}` 
             },
-            body: JSON.stringify({ 
-                proxyId, 
-                planIndex,
-                currency: 'NGN' // Explicitly tell backend we are using Naira
-            })
+            body: JSON.stringify({ proxyId, planIndex, currency: 'NGN' })
         });
 
         const data = await res.json();
 
         if (data.success) {
-            document.getElementById('confirmState').classList.add('hidden');
-            const successView = document.getElementById('successState');
-            if(successView) successView.classList.remove('hidden');
-            
-            document.getElementById('modalCode').innerText = data.credentials?.activationCode || "PROVISIONED";
-            if (data.credentials?.instructions) {
-                document.getElementById('modalInstructions').innerText = data.credentials.instructions;
-            }
+            // Trigger the modal view change and data injection
+            showSuccessModal(data); 
         } else {
             alert(data.message || "Purchase failed. Please check your balance.");
             closeModalOnly();
         }
     } catch (err) {
+        console.error("Purchase Error:", err);
         alert("Transaction failed. Please contact support.");
         closeModalOnly();
     } finally {
         btn.disabled = false;
-        btn.innerText = "Confirm & Pay";
+        btn.innerText = "Confirm & Pay Now";
     }
 }
 
@@ -602,7 +593,7 @@ function closeModal() {
 }
 
 
-function showSuccessModal(credentials) {
+function showSuccessModal(data) {
     const modal = document.getElementById('proxyModal');
     const confirmState = document.getElementById('confirmState');
     const successState = document.getElementById('successState');
@@ -610,15 +601,17 @@ function showSuccessModal(credentials) {
     const modalCode = document.getElementById('modalCode');
     const modalInstructions = document.getElementById('modalInstructions');
     
-    // 1. Switch the UI sections
-    confirmState.classList.add('hidden');
-    successState.classList.remove('hidden');
+    // 1. Hide the confirmation view and show the success view
+    if (confirmState) confirmState.classList.add('hidden');
+    if (successState) successState.classList.remove('hidden');
     
-    // 2. Display the code and instructions
-    modalCode.innerText = credentials.activationCode || "PROVISIONING...";
-    modalInstructions.innerText = credentials.instructions || "Your purchase is ready. Check your dashboard for setup details.";
+    const code = data.activationCode || (data.credentials && data.credentials.activationCode) || "PROVISIONED";
+    const info = data.instructions || (data.credentials && data.credentials.instructions) || "Check dashboard for details.";
+
+    modalCode.innerText = code;
+    modalInstructions.innerText = info;
     
-    // 3. Ensure the modal is visible
+    // 3. Open the modal if it was closed
     modal.classList.remove('hidden');
 }
 

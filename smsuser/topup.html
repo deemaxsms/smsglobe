@@ -432,9 +432,10 @@
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
 
-   async function fetchTransactionHistory() {
+async function fetchTransactionHistory() {
     const tableBody = document.getElementById('historyTableBody');
-    
+    if (!tableBody) return;
+
     try {
         const response = await fetch('/api/user-transactions?type=topup', {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -442,45 +443,56 @@
         const data = await response.json();
 
         if (!data.success || !data.transactions || data.transactions.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-12 text-center">...No Transactions...</td></tr>`;
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="px-6 py-12 text-center">
+                        <img src="https://i.imgur.com/G368osH.png" class="h-12 w-12 mx-auto mb-3 opacity-20" alt="No data">
+                        <p class="text-[11px] font-bold text-brand-lightText uppercase tracking-tight">No transactions found</p>
+                    </td>
+                </tr>`;
             return;
         }
 
         tableBody.innerHTML = ''; 
 
         data.transactions.forEach(tx => {
+            // Formatting Date: 12 Apr 2026
             const date = new Date(tx.createdAt).toLocaleDateString('en-GB', {
                 day: '2-digit', month: 'short', year: 'numeric'
             });
             
-            // --- UPDATED FOR AM/PM ---
+            // Formatting Time: 02:30 PM
             const time = new Date(tx.createdAt).toLocaleTimeString('en-US', {
                 hour: '2-digit', 
                 minute: '2-digit',
                 hour12: true 
             });
 
+            // Status Styling Logic
             let statusClass = "bg-gray-100 text-gray-600";
             if (tx.status === 'successful' || tx.status === 'completed') statusClass = "bg-green-100 text-green-700";
             if (tx.status === 'failed') statusClass = "bg-red-100 text-red-700";
-            if (tx.status === 'cancelled' || tx.status === 'pending') statusClass = "bg-orange-100 text-orange-700";
+            if (tx.status === 'pending') statusClass = "bg-orange-100 text-orange-700";
 
-            // Format Payment Method display (e.g., "bank_transfer" -> "Bank Transfer")
-            const method = (tx.paymentMethod || 'Wallet').replace(/_/g, ' ');
+            // Format Payment Method: "bank_transfer" -> "Bank Transfer"
+            const rawMethod = tx.paymentMethod || 'Card'; 
+            const displayMethod = rawMethod.split('_').map(word => 
+                word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+            ).join(' ');
 
             tableBody.innerHTML += `
                 <tr class="hover:bg-gray-50/50 transition-colors">
                     <td class="px-6 py-4">
                         <p class="text-[12px] font-bold text-brand-darkText">${date}</p>
-                        <p class="text-[10px] text-brand-lightText uppercase">${time}</p>
+                        <p class="text-[10px] text-brand-lightText uppercase font-medium">${time}</p>
                     </td>
                     <td class="px-6 py-4">
                         <p class="text-[12px] font-black text-brand-darkText">$${Number(tx.amountUSD).toFixed(2)}</p>
                         <p class="text-[9px] font-bold text-brand-blue uppercase">₦${Number(tx.amountNGN || 0).toLocaleString()}</p>
                     </td>
                     <td class="px-6 py-4">
-                        <p class="text-[11px] font-bold text-brand-darkText capitalize">${method}</p>
-                        <p class="text-[9px] text-brand-lightText font-mono">${tx.reference.split('-')[1] || ''}</p>
+                        <p class="text-[11px] font-bold text-brand-darkText">${displayMethod}</p>
+                        <p class="text-[9px] text-brand-lightText font-mono opacity-60">${tx.reference.split('-')[1] || ''}</p>
                     </td>
                     <td class="px-6 py-4">
                         <span class="px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${statusClass}">
@@ -492,7 +504,7 @@
         });
     } catch (err) {
         console.error("History Fetch Error:", err);
-        tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-red-500 text-[11px]">Failed to load history.</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-red-500 text-[11px] font-bold">Failed to load history.</td></tr>`;
     }
 }
 

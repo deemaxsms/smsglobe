@@ -307,54 +307,25 @@ rentedNumberSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 const RentedNumber = mongoose.models.RentedNumber || mongoose.model('RentedNumber', rentedNumberSchema);
 
 const transactionSchema = new mongoose.Schema({
-    userId: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: 'User', 
-        required: true, 
-        index: true 
-    },
-    type: { 
-        type: String, 
-        enum: ['credit', 'debit'], 
-        required: true 
-    },
-    purpose: { 
-        type: String, 
-        enum: ['deposit', 'purchase', 'refund', 'referral_bonus'], 
-        required: true 
-    },
-    // Using a setter to prevent floating-point math errors (e.g., 10.0000000004)
-    amountUSD: { 
-        type: Number, 
-        required: true,
-        set: v => Math.round(v * 100) / 100 
-    },
-    amountNGN: { 
-        type: Number,
-        set: v => Math.round(v * 100) / 100 
-    },
-    exchangeRate: { 
-        type: Number 
-    },
-    status: { 
-        type: String, 
-        enum: ['pending', 'successful', 'failed'], 
-        default: 'pending',
-        index: true
-    },
-    reference: { 
-        type: String, 
-        unique: true, 
-        required: true,
-        trim: true 
-    }, 
-    balanceBefore: { type: Number, default: 0 }, 
-    balanceAfter: { type: Number, default: 0 },  
-    // Mixed allows you to store the raw Flutterwave JSON response for debugging
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    type: { type: String, enum: ['credit', 'debit'], required: true },
+    purpose: { type: String, enum: ['deposit', 'purchase', 'refund', 'referral_bonus'], required: true },
+    
+    // Monetary fields with rounding logic
+    amountUSD: { type: Number, required: true, set: v => Math.round(v * 100) / 100 },
+    amountNGN: { type: Number, set: v => Math.round(v * 100) / 100 },
+    exchangeRate: { type: Number },
+    
+    status: { type: String, enum: ['pending', 'successful', 'failed'], default: 'pending', index: true },
+    reference: { type: String, unique: true, required: true, trim: true },
+    paymentMethod: { type: String, default: 'card' }, // NEW: As requested
+    
+    balanceBefore: { type: Number, default: 0 },
+    balanceAfter: { type: Number, default: 0 },
     metadata: { type: mongoose.Schema.Types.Mixed } 
 }, { timestamps: true });
 
-// CRITICAL: Compound index for fast transaction history loading
+// Performance Indexes
 transactionSchema.index({ userId: 1, createdAt: -1 });
 
 const Transaction = mongoose.models.Transaction || mongoose.model('Transaction', transactionSchema);
@@ -1460,19 +1431,20 @@ async function handleVerifyTopup(req, res) {
             const balanceAfter = balanceBefore + amountCreditUSD;
 
             // Save the transaction record
-            await Transaction.create({
-                userId: user._id,
-                type: 'credit',
-                purpose: 'deposit',
-                amountUSD: amountCreditUSD,
-                amountNGN: flwAmountNGN,
-                exchangeRate: flwAmountNGN / amountCreditUSD,
-                status: 'successful',
-                reference: txRef,
-                balanceBefore: balanceBefore,
-                balanceAfter: balanceAfter,
-                metadata: flwData.data // Store raw response for audit trails
-            });
+           await Transaction.create({
+    userId: user._id,
+    type: 'credit',
+    purpose: 'deposit',
+    amountUSD: amountCreditUSD,
+    amountNGN: flwAmountNGN,
+    exchangeRate: flwAmountNGN / amountCreditUSD,
+    status: 'successful',
+    reference: txRef,
+    paymentMethod: flwData.data.payment_type || 'card', 
+    balanceBefore: balanceBefore,
+    balanceAfter: balanceAfter,
+    metadata: flwData.data 
+});
 
             // Update user balance
             user.balance = balanceAfter;

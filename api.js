@@ -1626,6 +1626,10 @@ async function handlePurchaseWithWallet(req, res) {
 
         // 4. BALANCE VALIDATION
         if (user.balance < costUSD) {
+            // Revert stock if validation fails after stock was already decremented
+            if (vpnId) await VPN.findByIdAndUpdate(vpnId, { $inc: { stock: 1 } });
+            if (proxyId) await Proxy.findByIdAndUpdate(proxyId, { $inc: { stock: 1 } });
+
             const walletInNGN = user.balance * adminRate;
             return res.status(400).json({ 
                 success: false, 
@@ -1633,10 +1637,9 @@ async function handlePurchaseWithWallet(req, res) {
             });
         }
 
-        // 5. ATOMIC BALANCE DEBIT (The Fix for No Deduction)
+        // 5. ATOMIC BALANCE DEBIT
         const balanceBefore = user.balance;
         
-        // Using findOneAndUpdate ensures the deduction happens at the DB level atomically
         const updatedUser = await User.findOneAndUpdate(
             { _id: user._id, balance: { $gte: costUSD } },
             { $inc: { balance: -costUSD } },
@@ -1644,7 +1647,10 @@ async function handlePurchaseWithWallet(req, res) {
         );
 
         if (!updatedUser) {
-            return res.status(400).json({ success: false, message: "Transaction failed. Possible balance change during processing." });
+            // Revert stock if deduction fails
+            if (vpnId) await VPN.findByIdAndUpdate(vpnId, { $inc: { stock: 1 } });
+            if (proxyId) await Proxy.findByIdAndUpdate(proxyId, { $inc: { stock: 1 } });
+            return res.status(400).json({ success: false, message: "Transaction failed. Please check balance." });
         }
 
         const balanceAfter = updatedUser.balance;

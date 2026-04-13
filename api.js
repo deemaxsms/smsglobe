@@ -1323,7 +1323,7 @@ async function handlePurchaseWithWallet(req, res) {
     try {
         if (!token) return res.status(401).json({ success: false, message: "Unauthorized" });
         
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
         // 1. FETCH FRESH USER DATA
         const user = await User.findById(decoded.id);
@@ -1451,29 +1451,28 @@ async function handlePurchaseWithWallet(req, res) {
 }
 
 else if (metadata?.activationEmail && metadata?.firstName) {
-    // This identifies an eSIM_Activation based on the presence of form metadata
-    itemType = "eSIM_Activation";
-    
-    // Clean price (₦50,000 -> 50000)
-    const cleanedPrice = planAmount.toString().replace(/[^0-9]/g, "");
-    costNGN = Math.round(Number(cleanedPrice));
-    
-    productDetails.name = carrierName || "Global eSIM";
-    productDetails.plan = planName || `₦${costNGN.toLocaleString()} Activation`;
+            // IDENTIFY ACTIVATION
+            itemType = "eSIM_Activation";
+            const cleanedPrice = planAmount.toString().replace(/[^0-9]/g, "");
+            costNGN = Math.round(Number(cleanedPrice));
+            
+            productDetails.name = carrierName || "Global eSIM";
+            productDetails.plan = planName || `₦${costNGN.toLocaleString()} Activation`;
 
-    orderSpecifics = {
-        carrier: { name: carrierName, image: productImage },
-        deviceName: mobileNumber, // In activation, mobileNumber field is used for Device Name
-        customerDetails: {
-            firstName: metadata.firstName,
-            lastName: metadata.lastName,
-            address: metadata.address,
-            zipCode: metadata.zip,
-            email: metadata.activationEmail
-        },
-        instructions: "Your eSIM activation request is being processed. You will be contacted via WhatsApp/Email."
-    };
-}
+            orderSpecifics = {
+                carrier: { name: carrierName, image: productImage },
+                deviceName: mobileNumber, 
+                customerDetails: {
+                    firstName: metadata.firstName,
+                    lastName: metadata.lastName,
+                    address: metadata.address,
+                    zipCode: metadata.zip,
+                    email: metadata.activationEmail
+                },
+                instructions: "Your eSIM activation request is being processed. You will be contacted via WhatsApp/Email."
+            };
+        }
+        
         const { useBonus } = req.body; // New field from frontend toggle
         const mainBal = Number(user.balance || 0);
         const bonusBal = Number(user.bonusBalance || 0);

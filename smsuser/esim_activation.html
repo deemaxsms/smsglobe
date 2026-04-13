@@ -626,6 +626,7 @@ async function initiatePayment() {
     // 4. Open the Payment Modal (The function we created earlier)
     openPaymentModal();
 }
+
 async function purchaseEsimWithWallet() {
     const amount = parseInt(document.getElementById('planSelector').value);
     const useBonus = document.getElementById('esimUseBonusToggle').checked;

@@ -926,6 +926,7 @@
             </div>
         `;
     }
+
 /**
  * Optimized Dashboard Initialization
  */
@@ -1013,23 +1014,22 @@ function updateDashboardUI(user) {
         if (initialsEl.innerText !== initials) initialsEl.innerText = initials;
     }
 
-    // --- Currency Formatting ---
+  // --- Currency Formatting ---
     const format = (val) => val.toLocaleString('en-NG', { 
         minimumFractionDigits: 2, 
         maximumFractionDigits: 2 
-    });    
+    });     
+
+    const ngnEl = document.getElementById('mainBalanceDisplayNGN');
+    if (ngnEl) {
+        ngnEl.innerText = `₦${format(balanceNGN)}`;
+    }
 
     if (typeof renderBalance === 'function') {
         renderBalance();
-    } else {
-        const ngnEl = document.getElementById('mainBalanceDisplayNGN');
-        if (ngnEl) ngnEl.innerText = `₦${format(balanceNGN)}`;
     }
 
     safeSetText('bonusBalanceDisplay', `₦${format(bonusBalance)}`);
-
-    // --- MILESTONE CALCULATION ---
-    // Calculates how many left to reach the next 10 (10, 20, 30...)
     const nextMilestone = Math.ceil((referralCount + 1) / 10) * 10;
     const remaining = nextMilestone - referralCount;
 

@@ -322,10 +322,15 @@
                         <span class="text-[10px] md:text-xs font-black text-emerald-600 text-right">₦<span id="displayRAmount">0.00</span></span>
                     </div>
 
-                    <div class="flex justify-between items-center py-2.5 border-b border-gray-100 md:border-b-0">
-                        <span class="text-[8px] md:text-[10px] font-bold text-brand-lightText uppercase tracking-wider shrink-0 mr-4">Storage</span>
-                        <span id="rStorage" class="text-[10px] md:text-xs font-black text-brand-darkText text-right"></span>
-                    </div>
+                   <div class="flex justify-between items-center py-2.5 border-b border-gray-100">
+    <span class="text-[8px] md:text-[10px] font-bold text-brand-lightText uppercase tracking-wider shrink-0 mr-4">Storage</span>
+    <span id="rStorage" class="text-[10px] md:text-xs font-black text-brand-darkText text-right"></span>
+</div>
+
+<div class="flex justify-between items-center py-2.5 border-b border-gray-100">
+    <span class="text-[8px] md:text-[10px] font-bold text-brand-lightText uppercase tracking-wider shrink-0 mr-4">Network Speed</span>
+    <span id="rNet" class="text-[10px] md:text-xs font-black text-brand-darkText text-right"></span>
+</div>
 
                     <div class="flex justify-between items-center py-3 md:col-span-2">
                         <span class="text-[8px] md:text-[10px] font-bold text-brand-lightText uppercase tracking-wider shrink-0 mr-4">Reference ID</span>
@@ -738,67 +743,61 @@ function closePaymentModal() {
     receiptView?.classList.remove('hidden');
     headerTitle.innerText = "Order Confirmed";
 
+    // Metadata is where our custom selections live
     const meta = order.metadata || {};
-    const specParts = (order.rdpDetails?.specs || "").split(',').map(s => s.trim());
     
     const setField = (id, value) => {
         const el = document.getElementById(id);
         if (el) el.innerText = value || "Standard";
     };
-
-    // Logical display for specs
-    const ramDisplay = meta.ram || specParts[0] || "4GB RAM";
-    
+    const ramDisplay = meta.ram || order.ram || "Standard";    
+    const baseCPU = meta.cpu || order.cpu || "2 Cores";
     const cpuDisplay = meta.extraCPU > 0 
-        ? `${meta.cpu || specParts[1] || "2 Cores"} (+${meta.extraCPU} Cores)` 
-        : (meta.cpu || specParts[1] || "Standard");
-        
-    // FIX: Correctly format storage display with metadata
+        ? `${baseCPU} (+${meta.extraCPU} Cores)` 
+        : baseCPU;        
+    const baseStorage = meta.storage || order.storage || "60GB SSD";
     const storageDisplay = meta.extraStorage > 0 
-        ? `${meta.storage || specParts[2] || "60GB"} (+${meta.extraStorage}GB)` 
-        : (meta.storage || specParts[2] || "Standard");
-
+        ? `${baseStorage} (+${meta.extraStorage}GB)` 
+        : baseStorage;
+    const netDisplay = meta.net || order.net || "1Gbps";
     setField('rPlan', order.planName || "RDP Plan");
-    setField('rOS', meta.osChoice || order.rdpDetails?.os || "Windows Server");
+    setField('rOS', meta.osChoice || order.os || "Windows Server");
     setField('rRAM', ramDisplay);
     setField('rCPU', cpuDisplay);
     setField('rStorage', storageDisplay);
+    setField('rNet', netDisplay); // Now displays in the new HTML row
     setField('rID', order.paymentReference || "N/A");         
     
     const formattedAmount = order.amount ? Number(order.amount).toLocaleString() : "0";
     setField('displayRAmount', formattedAmount);
-    setField('rAmount', formattedAmount);
     
     setField('rFullName', meta.fullName || order.fullName || "Customer");
-    setField('rEmail', order.userEmail || "N/A");    
-    
-    // Hidden span for WhatsApp capture
-    const netSpan = document.createElement('span');
-    netSpan.id = 'rNet';
-    netSpan.className = 'hidden';
-    netSpan.innerText = meta.net || "100Mbps";
-    document.body.appendChild(netSpan);
     
     window.scrollTo(0, 0);
 }
-
  function contactRDPAdmin() {
+    // 1. Extract values from the UI (matching the IDs in your receipt HTML)
     const tid = document.getElementById('rID')?.innerText || "N/A";
     const plan = document.getElementById('rPlan')?.innerText || "N/A";
     const ram = document.getElementById('rRAM')?.innerText || "N/A";
     const cpu = document.getElementById('rCPU')?.innerText || "N/A";
-    const storage = document.getElementById('rStorage')?.innerText || "N/A";
-    const os = document.getElementById('rOS')?.innerText || "N/A";
-    const net = document.getElementById('rNet')?.innerText || "Standard";
-    const amount = document.getElementById('rAmount')?.innerText || "N/A";
+    const storage = document.getElementById('rStorage')?.innerText || "Standard";
+    const os = document.getElementById('rOS')?.innerText || "Windows Server";
+    const net = document.getElementById('rNet')?.innerText || "1Gbps"; // New Network Field
+    
+    // Updated ID to match your HTML 'displayRAmount'
+    const amount = document.getElementById('displayRAmount')?.innerText || "0.00";
+    
     const userEmail = document.getElementById('rEmail')?.innerText || "N/A";
     const fullName = document.getElementById('rFullName')?.innerText || "Customer";
 
+    // 2. Generate current timestamp
     const timeSent = new Date().toLocaleString('en-NG', { 
         dateStyle: 'medium', 
         timeStyle: 'short' 
     });
 
+    // 3. Construct the Professional WhatsApp Message
     const msg = `🚀 *SMSGlobe: NEW RDP PROVISIONING*\n` +
                 `📅 *DATE:* ${timeSent}\n` +
                 `__________________________________\n\n` +
@@ -814,13 +813,15 @@ function closePaymentModal() {
                 `🧠 *RAM:* ${ram}\n` +
                 `⚡ *CPU:* ${cpu}\n` +
                 `💾 *STORAGE:* ${storage}\n` +
-                `🌐 *NETWORK:* ${net}\n` +
+                `🌐 *NETWORK:* ${net}\n` + // Added Network Speed
                 `━━━━━━━━━━━━━━━━━━\n\n` +
-                `⚡ *SmsGlobe:* Please proceed with setup for this customer.`;
+                `⚡ *SmsGlobe Admin:* Please proceed with setup for this customer.`;
 
+    // 4. Encode and Redirect
     const whatsappUrl = `https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`;
     window.open(whatsappUrl, '_blank');
 }
+
     function showSelectionView() {
         selectionView.classList.remove('hidden');
         checkoutView.classList.add('hidden');

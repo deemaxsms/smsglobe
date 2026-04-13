@@ -559,32 +559,44 @@ function showReceipt(order) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function contactManagement() {
-    // 1. Scrape all data from the eSIM Receipt UI
+   function contactManagement() {
+    // 1. Core Order Data
     const tid = document.getElementById('rID')?.innerText || "N/A";
     const carrier = document.getElementById('rCarrier')?.innerText || "N/A";
     const country = document.getElementById('rCountry')?.innerText || "N/A";
     const number = document.getElementById('rNumber')?.innerText || "N/A";
-    const plan = document.getElementById('rPlan')?.innerText || "N/A"; // This is the amount
+    const plan = document.getElementById('rPlan')?.innerText || "N/A"; 
+
+    // 2. USER DETAILS (Check these IDs match your HTML)
+    // If you are using your standard receipt layout, they are likely 'rUserEmail' or 'rFullName'
+    const userEmail = document.getElementById('rEmail')?.innerText || 
+                      document.getElementById('displayUserEmail')?.innerText || "N/A";
+    const fullName = document.getElementById('rFullName')?.innerText || 
+                     document.getElementById('displayFullName')?.innerText || "Customer";
+
+    // 3. BALANCE BREAKDOWN
+    // Scrape the specific amounts used from the receipt UI
+    const mainUsed = document.getElementById('rMainUsed')?.innerText || "₦0";
+    const bonusUsedAmount = document.getElementById('rBonusUsed')?.innerText || "₦0";
     
-    // Fallback selectors for User Details (Assuming they match your RDP receipt structure)
-    const userEmail = document.getElementById('rEmail')?.innerText || "N/A";
-    const fullName = document.getElementById('rFullName')?.innerText || "Customer";
-    const bonusUsed = document.getElementById('esimUseBonusToggle')?.checked ? "YES (Referral Bonus)" : "NO (Main Wallet)";
+    // Determine the label
+    const paymentMethod = (bonusUsedAmount !== "₦0" && bonusUsedAmount !== "0") 
+        ? `Split (Main: ${mainUsed} | Bonus: ${bonusUsedAmount})` 
+        : `Main Wallet (${mainUsed})`;
 
     const timeSent = new Date().toLocaleString('en-NG', { 
         dateStyle: 'medium', 
         timeStyle: 'short' 
     });
 
-    // 2. Construct the high-design message
+    // 4. Construct the high-design message
     const msg = `📱 *SMSGlobe: NEW eSIM REFILL REQUEST*\n` +
                 `📅 *DATE:* ${timeSent}\n` +
                 `__________________________________\n\n` +
                 `✅ *PAYMENT STATUS:* CONFIRMED\n` +
                 `🆔 *REF ID:* ${tid}\n` +
-                `💰 *PLAN/AMOUNT:* ${plan}\n` + 
-                `🎁 *BONUS USED:* ${bonusUsed}\n` +
+                `💰 *TOTAL AMOUNT:* ${plan}\n` + 
+                `💳 *PAYMENT DETAIL:* ${paymentMethod}\n` +
                 `👤 *CUSTOMER:* ${fullName}\n` +
                 `📧 *EMAIL:* ${userEmail}\n\n` +
                 `*REFILL DETAILS:*\n` +
@@ -593,9 +605,9 @@ function contactManagement() {
                 `🌍 *COUNTRY:* ${country}\n` +
                 `🔢 *TARGET NO:* ${number}\n` +
                 `━━━━━━━━━━━━━━━━━━\n\n` +
-                `*SmsGlobe:* The customer has paid for this refill. Please process and update the confirmation code/credentials manually.`;
+                `*SmsGlobe Admin:* Customer has paid. Please process and update confirmation ID.`;
 
-    // 3. Open WhatsApp (Using the Admin number from your RDP logic)
+    // 5. Open WhatsApp
     const whatsappUrl = `https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`;
     window.open(whatsappUrl, '_blank');
 }

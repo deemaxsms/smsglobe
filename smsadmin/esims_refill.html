@@ -138,84 +138,136 @@
         overlay.classList.toggle('hidden');
     }
 
-   // --- UPDATED FETCH FUNCTION ---
-async function fetchRefills() {
-    const token = localStorage.getItem('smsglobe_admin_token');
-    const tbody = document.getElementById('refills-body');
+    // --- FETCH FUNCTION: Handles data display for both eSIM and eSIM_Refill types ---
+    async function fetchRefills() {
+        const token = localStorage.getItem('smsglobe_admin_token');
+        const tbody = document.getElementById('refills-body');
 
-    try {
-        const response = await fetch('/api/esim-refills', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
+        try {
+            const response = await fetch('/api/esim-refills', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
 
-        if (data.success && data.refills.length > 0) {
-            tbody.innerHTML = data.refills.map(refill => {
-                const status = refill.status.toLowerCase();
-                
-                let actionArea = '';
-                
-                // UPDATED: Now includes 'pending' as a processable state for wallet payments
-                if (status === 'successful' || status === 'processing' || status === 'pending') {
-                    actionArea = `
-                        <div class="flex flex-col gap-2 items-end">
-                            <input type="text" id="conf-${refill.paymentReference}" 
-                                   placeholder="Enter Confirmation #" 
-                                   class="border border-brand-border rounded px-2 py-1.5 text-[10px] w-40 focus:ring-1 focus:ring-brand-blue outline-none shadow-sm font-medium">
-                            <button onclick="processRefill('${refill.paymentReference}')" 
-                                    class="bg-green-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold hover:bg-green-700 transition-all shadow-md">
-                                Mark as Done
-                            </button>
-                        </div>`;
-                } 
-                else if (status === 'completed') {
-                    actionArea = `
-                        <div class="text-right">
-                            <div class="text-green-600 font-bold text-[10px] flex items-center justify-end gap-1 mb-1">
-                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                                Refill Applied
-                            </div>
-                            <div class="text-[9px] text-brand-lightText font-mono">ID: ${refill.confirmationNumber || 'N/A'}</div>
-                        </div>`;
-                } else {
-                    actionArea = `<span class="text-gray-400 text-[10px] italic">Order ${status}</span>`;
-                }
+            if (data.success && data.refills.length > 0) {
+                tbody.innerHTML = data.refills.map(refill => {
+                    const status = refill.status.toLowerCase();
+                    const tid = refill.paymentReference;
+                    
+                    let actionArea = '';
+                    
+                    // Show processing tools for 'pending', 'successful', or 'processing' states
+                    if (['pending', 'successful', 'processing'].includes(status)) {
+                        actionArea = `
+                            <div class="flex flex-col gap-2 items-end">
+                                <input type="text" id="conf-${tid}" 
+                                       placeholder="Enter Confirmation #" 
+                                       class="border border-brand-border rounded px-2 py-1.5 text-[10px] w-40 focus:ring-1 focus:ring-brand-blue outline-none shadow-sm font-medium">
+                                <button onclick="processRefill('${tid}')" 
+                                        class="bg-green-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold hover:bg-green-700 transition-all shadow-md">
+                                    Mark as Done
+                                </button>
+                            </div>`;
+                    } 
+                    else if (status === 'completed') {
+                        actionArea = `
+                            <div class="text-right">
+                                <div class="text-green-600 font-bold text-[10px] flex items-center justify-end gap-1 mb-1">
+                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                                    Applied
+                                </div>
+                                <div class="text-[9px] text-brand-lightText font-mono">CODE: ${refill.confirmationNumber || 'N/A'}</div>
+                            </div>`;
+                    } else {
+                        actionArea = `<span class="text-gray-400 text-[10px] italic uppercase">${status}</span>`;
+                    }
 
-                return `
-                    <tr class="hover:bg-gray-50/50 transition-colors">
-                        <td class="px-4 py-4">
-                            <div class="font-bold text-brand-darkText">#${refill.paymentReference.slice(-8)}</div>
-                            <div class="text-[9px] text-brand-lightText">${new Date(refill.createdAt).toLocaleDateString()}</div>
-                        </td>
-                        <td class="px-4 py-4">
-                            <div class="font-medium">${refill.userEmail}</div>
-                        </td>
-                        <td class="px-4 py-4">
-                            <div class="font-bold text-brand-orange uppercase text-[10px]">${refill.carrier || 'eSIM'}</div>
-                            <div class="text-[10px] font-mono bg-gray-100 px-1.5 py-0.5 rounded inline-block mt-1">
-                                ${refill.targetNumber || refill.esimIdentifier}
-                            </div>
-                        </td>
-                        <td class="px-4 py-4 text-center font-bold text-brand-blue">
-                            ${refill.amountNGN} 
-                        </td>
-                        <td class="px-4 py-4">
-                            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getStatusClass(refill.status)}">
-                                ${refill.status}
-                            </span>
-                        </td>
-                        <td class="px-4 py-4 text-right">
-                            ${actionArea}
-                        </td>
-                    </tr>`;
-            }).join('');
-        } else {
-            tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-brand-lightText italic">No requests found.</td></tr>`;
+                    return `
+                        <tr class="hover:bg-gray-50/50 transition-colors">
+                            <td class="px-4 py-4">
+                                <div class="font-bold text-brand-darkText">#${tid.slice(-8)}</div>
+                                <div class="text-[9px] text-brand-lightText">${new Date(refill.createdAt).toLocaleDateString()}</div>
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="font-medium text-[12px]">${refill.userEmail}</div>
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="font-bold text-brand-orange uppercase text-[10px]">${refill.nodeName || refill.carrier || 'eSIM'}</div>
+                                <div class="text-[10px] font-mono bg-gray-100 px-1.5 py-0.5 rounded inline-block mt-1">
+                                    ${refill.targetNumber || refill.esimIdentifier || 'N/A'}
+                                </div>
+                            </td>
+                            <td class="px-4 py-4 text-center font-bold text-brand-blue">
+                                ${refill.currency || '₦'} ${Number(refill.amount).toLocaleString()}
+                            </td>
+                            <td class="px-4 py-4">
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getStatusClass(refill.status)}">
+                                    ${refill.status}
+                                </span>
+                            </td>
+                            <td class="px-4 py-4 text-right">
+                                ${actionArea}
+                            </td>
+                        </tr>`;
+                }).join('');
+            } else {
+                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-brand-lightText italic">No requests found.</td></tr>`;
+            }
+        } catch (err) {
+            console.error("Fetch error:", err);
+            tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-red-500 font-bold">Error loading data.</td></tr>`;
         }
-    } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-red-500 font-bold">Error loading data.</td></tr>`;
     }
-}
+
+    // --- PROCESS FUNCTION: Matches handleAdminEsimUpdate payload ---
+    async function processRefill(tid) {
+        const confInput = document.getElementById(`conf-${tid}`);
+        const confirmationNumber = confInput.value.trim();
+        const btn = event.target;
+
+        if (!confirmationNumber) {
+            alert("Please enter the confirmation/activation number before marking as done.");
+            confInput.focus();
+            return;
+        }
+
+        if (!confirm("Are you sure? This will update the database and email the customer.")) return;
+
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = "Saving...";
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+        const token = localStorage.getItem('smsglobe_admin_token');
+
+        try {
+            const response = await fetch('/api/update-esim-status', {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify({ 
+                    tid: tid, 
+                    confirmationNumber: confirmationNumber 
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert('Success: Order completed and user notified.');
+                await fetchRefills(); 
+            } else {
+                alert('Failed: ' + (data.message || 'Unknown error occurred'));
+                resetButton(btn, originalText);
+            }
+        } catch (err) {
+            console.error("Network Error:", err);
+            alert('Network error. Please try again.');
+            resetButton(btn, originalText);
+        }
+    }
 
     function getStatusClass(status) {
         const s = status.toLowerCase();
@@ -225,71 +277,11 @@ async function fetchRefills() {
         return 'bg-gray-100 text-gray-700';
     }
 
-    // THIS IS THE MAIN FUNCTION FOR ADMIN TO UPDATE STATUS + CONFIRMATION NUMBER
-   async function processRefill(tid) {
-    // 1. Get the specific input and button elements
-    const confInput = document.getElementById(`conf-${tid}`);
-    const confirmationNumber = confInput.value.trim();
-    
-    // Find the button that was clicked to show loading state
-    const btn = event.target;
-
-    // 2. Validation
-    if (!confirmationNumber) {
-        alert("Please enter the confirmation number from the provider before marking as done.");
-        confInput.focus();
-        return;
+    function resetButton(btn, text) {
+        btn.disabled = false;
+        btn.innerText = text;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
     }
-
-    if (!confirm("Confirm: Have you applied this refill? This will notify the user via email.")) return;
-
-    // 3. Prepare UI for loading
-    const originalText = btn.innerText;
-    btn.disabled = true;
-    btn.innerText = "Processing...";
-    btn.classList.add('opacity-50', 'cursor-not-allowed');
-
-    const token = localStorage.getItem('smsglobe_admin_token');
-
-    try {
-        // 4. Send the Request
-        const response = await fetch('/api/update-esim-status', {
-            method: 'POST',
-            headers: { 
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json' 
-            },
-            body: JSON.stringify({ 
-                tid: tid, 
-                status: 'Completed', 
-                confirmationNumber: confirmationNumber 
-            })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            alert('Success! Order updated and delivery email sent.');
-            // 5. Refresh the list to hide the input/button for this row
-            await fetchRefills(); 
-        } else {
-            // Handle logical errors (e.g., Transaction ID not found)
-            alert('Error: ' + (data.message || data.error || 'Update failed'));
-            resetButton(btn, originalText);
-        }
-    } catch (err) {
-        console.error("Network Error:", err);
-        alert('Failed to connect to server. Please check your internet.');
-        resetButton(btn, originalText);
-    }
-}
-
-// Helper function to restore button if the request fails
-function resetButton(btn, text) {
-    btn.disabled = false;
-    btn.innerText = text;
-    btn.classList.remove('opacity-50', 'cursor-not-allowed');
-}
 
     function logout() {
         localStorage.removeItem('smsglobe_admin_token');

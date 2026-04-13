@@ -122,9 +122,10 @@ const ProxySchema = new mongoose.Schema({
     stock: { type: Number, default: 0 },
     plans: [{
         ip_count: { type: Number, required: true },
-        price: { type: Number, required: true } // Price in NGN
+        price: { type: Number, required: true } 
     }],
-    activationCode: String
+    activationCode: String,
+    instructions: { type: String, default: "Check dashboard for details." }
 }, { timestamps: true });
 
 const Proxy = mongoose.models.Proxy || mongoose.model('Proxy', ProxySchema);
@@ -145,13 +146,10 @@ const transactionSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     type: { type: String, enum: ['credit', 'debit'], required: true },
     purpose: { type: String, enum: ['deposit', 'purchase', 'refund', 'referral_bonus'], required: true },
-    
     amountNGN: { type: Number, required: true, set: v => Math.round(v * 100) / 100 },
-    
     status: { type: String, enum: ['pending', 'successful', 'failed'], default: 'pending', index: true },
     reference: { type: String, unique: true, required: true, trim: true },
     paymentMethod: { type: String, default: 'wallet' }, 
-    
     balanceBefore: { type: Number, default: 0 },
     balanceAfter: { type: Number, default: 0 },
     metadata: { type: mongoose.Schema.Types.Mixed } 
@@ -1743,6 +1741,7 @@ const sendResetPasswordEmail = async (userEmail, resetLink, isAdmin = false) => 
         html: htmlContent
     });
 };
+
 // 2. GET ALL Proxies (Sorted by Newest)
 async function handleGetProxies(req, res) {
     try {

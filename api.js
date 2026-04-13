@@ -2400,10 +2400,7 @@ async function handleGetRdpRequests(req, res) {
             .limit(100);
 
         const formattedRequests = requests.map(order => {
-            // Treat the stored amount as pure Naira
             const nairaAmount = parseFloat(order.amount) || 0;
-            
-            // Extract metadata for the admin table
             const meta = order.metadata || {};
             const rdpDetails = order.rdpDetails || {};
 
@@ -2415,14 +2412,16 @@ async function handleGetRdpRequests(req, res) {
                 fullName: meta.fullName || 'N/A',
                 nodeName: order.nodeName || 'USA Tier 1',
                 planName: order.planName || 'RDP Server',
-               metadata: {
-        osChoice: meta.osChoice || rdpDetails.os || 'Windows',
-        ram: meta.ram || 'Standard',
-        storage: meta.storage || rdpDetails.specs?.split(',')[2] || 'Standard', // ADD THIS
-        net: order.net || 'N/A', // ADD THIS
-        extraCPU: meta.extraCPU || 0,
-        extraStorage: meta.extraStorage || 0
-    },
+                paymentMethod: order.useBonus ? "Bonus + Main" : "Main Wallet Only",
+                bonusDeducted: order.bonusUsed || 0,
+                metadata: {
+                    osChoice: meta.osChoice || rdpDetails.os || 'Windows',
+                    ram: meta.ram || 'Standard',
+                    storage: meta.storage || 'Standard',
+                    net: order.net || 'N/A',
+                    extraCPU: meta.extraCPU || 0,
+                    extraStorage: meta.extraStorage || 0
+                },
                 amount: nairaAmount, 
                 status: order.status || 'pending',
                 confirmationNumber: order.confirmationNumber || 'PENDING'

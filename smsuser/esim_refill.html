@@ -410,38 +410,44 @@ async function loadUserData() {
     }
 
     async function initiatePayment() {
-        const num = document.getElementById('targetNumber').value.trim();
-        const planString = document.getElementById('planSelector').value; 
-        const carrier = window.currentSelectedCarrier;
-        const payBtn = document.getElementById('payBtn');
-        const confirmBtn = document.getElementById('confirmPurchaseBtn');
-        const bonusToggle = document.getElementById('esimUseBonusToggle');
+    const num = document.getElementById('targetNumber').value.trim();
+    const planString = document.getElementById('planSelector').value; 
+    const carrier = window.currentSelectedCarrier;
+    const payBtn = document.getElementById('payBtn');
+    const confirmBtn = document.getElementById('confirmPurchaseBtn');
 
-        if (!num) { alert("Please enter the eSIM mobile number"); return; }
-        if (!carrier) return;
+    if (!num) { alert("Please enter the eSIM mobile number"); return; }
+    if (!carrier) return;
 
-        payBtn.innerText = "Checking Wallet...";
-        payBtn.disabled = true;
-        
-        // Refresh balance
-        await loadUserData(); 
-        
-        payBtn.innerText = `Pay for ${planString} (Wallet)`;
-        payBtn.disabled = false;
+    payBtn.innerText = "Checking Wallet...";
+    payBtn.disabled = true;
+    
+    await loadUserData(); 
+    
+    payBtn.innerText = `Pay for ${planString} (Wallet)`;
+    payBtn.disabled = false;
 
-        // Balance definitions
-        const mainBal = Number(userBalances.ngn || 0);
-        const bonusBal = Number(userBalances.bonusNGN || 0);
-        const isUnlocked = userBalances.hasDeposited || mainBal > 0;
+    const mainBal = Number(userBalances.ngn || 0);
+    const bonusBal = Number(userBalances.bonusNGN || 0);
 
-        // Update Modal UI - Note: price logic is now handled during final purchase
-        document.getElementById('modalBalanceNGN').innerText = `₦${mainBal.toLocaleString()}`;
-        document.getElementById('paymentModal').classList.remove('hidden');
-        
-        // Final purchase button remains active; backend will return "Insufficient Funds" if NGN is too low
-        confirmBtn.innerText = "Confirm & Pay Now";
-        confirmBtn.disabled = false;
+    // --- FIX 1: UPDATE THE MODAL DISPLAYS ---
+    document.getElementById('modalBalanceNGN').innerText = `₦${mainBal.toLocaleString()}`;
+    document.getElementById('modalTotalDue').innerText = planString; // Updates "Total Amount Due"
+    
+    // --- FIX 2: SHOW BONUS IF AVAILABLE ---
+    const bonusSection = document.getElementById('esimBonusSection');
+    if (bonusBal > 0) {
+        bonusSection.classList.remove('hidden');
+        document.getElementById('modalBonusBalanceNGN').innerText = `₦${bonusBal.toLocaleString()}`;
+    } else {
+        bonusSection.classList.add('hidden');
     }
+
+    document.getElementById('paymentModal').classList.remove('hidden');
+    
+    confirmBtn.innerText = "Confirm & Pay Now";
+    confirmBtn.disabled = false;
+}
 
     async function purchaseEsimWithWallet() {
     const confirmBtn = document.getElementById('confirmPurchaseBtn');

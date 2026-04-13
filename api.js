@@ -1058,7 +1058,6 @@ async function handleUserRegister(req, res) {
     }
 }
 
-// Fetch profile for the logged-in user (NGN Only)
 async function handleGetUserProfile(req, res) {
     // 1. Verify token
     const authHeader = req.headers['authorization'];
@@ -1472,7 +1471,7 @@ else if (metadata?.activationEmail && metadata?.firstName) {
                 instructions: "Your eSIM activation request is being processed. You will be contacted via WhatsApp/Email."
             };
         }
-        
+
         const { useBonus } = req.body; // New field from frontend toggle
         const mainBal = Number(user.balance || 0);
         const bonusBal = Number(user.bonusBalance || 0);

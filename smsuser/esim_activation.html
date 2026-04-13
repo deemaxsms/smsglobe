@@ -628,32 +628,36 @@ async function initiatePayment() {
 }
 
 async function purchaseEsimWithWallet() {
-    const amount = parseInt(document.getElementById('planSelector').value);
-    const useBonus = document.getElementById('esimUseBonusToggle').checked;
     const btn = document.getElementById('confirmPurchaseBtn');
+    if (!btn) return;
 
-    // Get input values
-    const firstName = document.getElementById('firstName').value.trim();
-    const lastName = document.getElementById('lastName').value.trim();
-    const email = document.getElementById('emailAddress').value.trim();
+    // Capture form values
+    const amount = parseInt(document.getElementById('planSelector')?.value) || 0;
+    const useBonus = document.getElementById('esimUseBonusToggle')?.checked || false;
+    const firstName = document.getElementById('firstName')?.value.trim();
+    const lastName = document.getElementById('lastName')?.value.trim();
+    const email = document.getElementById('emailAddress')?.value.trim();
     const address = document.getElementById('physicalAddress')?.value.trim() || "N/A";
     const zip = document.getElementById('zipCode')?.value.trim() || "N/A";
-    const deviceName = document.getElementById('targetNumber').value.trim();
+    const deviceName = document.getElementById('targetNumber')?.value.trim();
 
+    // Visual feedback
     btn.disabled = true;
     btn.innerText = "PROCESSING...";
 
     try {
-        const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
+        const token = localStorage.getItem('userToken');
+        if (!token) throw new Error("Authentication token missing. Please log in again.");
+
+        const response = await fetch(`${baseUrl}/purchase-with-wallet`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+                'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
-                // Matching the backend handlePurchaseWithWallet structure:
                 carrierName: window.currentSelectedCarrier?.name || "Global eSIM",
-                mobileNumber: deviceName, // We pass deviceName as mobileNumber for the backend 'target' logic
+                mobileNumber: deviceName,
                 planAmount: amount,
                 useBonus: useBonus,
                 metadata: {
@@ -667,26 +671,39 @@ async function purchaseEsimWithWallet() {
             })
         });
 
-        const data = await res.json();
+        // Check if the response is actually JSON
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("Server returned a non-JSON response. Check backend logs.");
+        }
+
+        const data = await response.json();
 
         if (data.success) {
-            // Close the payment modal first if it's open
-            if(typeof closeModal === 'function') closeModal('esimPaymentModal');
-            
-            showReceipt(data.order);
+            if (typeof closeModal === 'function') closeModal('esimPaymentModal');
+            // If showReceipt exists, call it; otherwise, alert success
+            if (typeof showReceipt === 'function') {
+                showReceipt(data.order);
+            } else {
+                alert("Activation Successful!");
+                window.location.reload();
+            }
         } else {
             alert(data.message || "Activation Failed");
-            btn.disabled = false;
-            btn.innerText = "Confirm & Pay Now";
+            resetButton(btn);
         }
     } catch (err) {
-        console.error("Purchase Error:", err);
-        alert("Connection error. Please try again.");
-        btn.disabled = false;
-        btn.innerText = "Confirm & Pay Now";
+        console.error("Critical Purchase Error:", err);
+        alert(`Error: ${err.message}`);
+        resetButton(btn);
     }
 }
 
+// Helper function to reset button state
+function resetButton(btn) {
+    btn.disabled = false;
+    btn.innerText = "Confirm & Pay Now";
+}
 // Updated showReceipt function
 function showReceipt(order) {
     document.getElementById('paymentModal').classList.add('hidden');

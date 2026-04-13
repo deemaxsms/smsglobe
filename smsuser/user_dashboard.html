@@ -166,10 +166,13 @@
     </nav>
 
     <div class="p-4 border-t border-brand-border">
-        <button id="logoutBtn" class="flex items-center gap-3 w-full px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl text-[13px] font-bold transition-all">
-    <span>Log Out</span>
-</button>
-    </div>
+    <button id="logoutBtn" class="flex items-center gap-3 w-full px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl text-[13px] font-bold transition-all">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+        </svg>
+        <span>Log Out</span>
+    </button>
+</div>
 </aside>
 
     <div class="flex-grow lg:ml-60 flex flex-col min-h-screen">
@@ -1077,17 +1080,6 @@ function renderBalance() {
         }
     }
 
-
-    document.addEventListener('DOMContentLoaded', () => {
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            localStorage.removeItem('userToken'); 
-            localStorage.removeItem('dashboard_cache');
-            window.location.href = 'user_login.html';
-        });
-    }
-});
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const toggleSidebar = () => { 
@@ -1100,6 +1092,25 @@ function renderBalance() {
     if(overlay) overlay.addEventListener('click', toggleSidebar);
     
     window.onload = initDashboard;
+
+    document.addEventListener('DOMContentLoaded', () => {
+    const logoutBtn = document.getElementById('logoutBtn');
+    
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', (e) => {
+            // Prevent any default behavior
+            e.preventDefault();
+            
+            // Clear credentials
+            localStorage.removeItem('userToken'); 
+            localStorage.removeItem('dashboard_cache');
+            
+            // Redirect
+            window.location.href = 'user_login.html';
+        });
+    }
+});
+
 </script>
 </body>
 </html>

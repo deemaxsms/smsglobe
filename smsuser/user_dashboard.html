@@ -166,12 +166,9 @@
     </nav>
 
     <div class="p-4 border-t border-brand-border">
-        <button onclick="logout()" class="flex items-center gap-3 w-full px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl text-[13px] font-bold transition-all">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-            </svg>
-            <span>Log Out</span>
-        </button>
+        <button id="logoutBtn" class="flex items-center gap-3 w-full px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl text-[13px] font-bold transition-all">
+    <span>Log Out</span>
+</button>
     </div>
 </aside>
 
@@ -1080,13 +1077,24 @@ function renderBalance() {
         }
     }
 
-    function logout() { 
-        localStorage.removeItem('userToken'); 
-        localStorage.removeItem('dashboard_cache');
-        window.location.href = 'user_login.html'; 
+   // Ensure the function is in the global scope
+window.logout = function() { 
+    localStorage.removeItem('userToken'); 
+    localStorage.removeItem('dashboard_cache');
+    // Optional: clear all if you want a fresh start
+    // localStorage.clear(); 
+    window.location.href = 'user_login.html'; 
+};
+    document.addEventListener('DOMContentLoaded', () => {
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('userToken'); 
+            localStorage.removeItem('dashboard_cache');
+            window.location.href = 'user_login.html';
+        });
     }
-    
-    // Sidebar Logic
+});
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
     const toggleSidebar = () => { 

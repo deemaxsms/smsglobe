@@ -248,13 +248,12 @@
                 </div>
             </div>
 
-       <div id="receiptView" class="hidden max-w-2xl mx-auto py-10 px-4">
+      <div id="receiptView" class="hidden max-w-2xl mx-auto py-10 px-4">
     <div class="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
         <div class="bg-blue-600 p-8 text-center text-white relative">
             <div class="mb-4">
                 <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe Logo" class="h-10 mx-auto brightness-0 invert">
             </div>
-            
             <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
@@ -289,9 +288,9 @@
                         <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Physical Address</p>
                         <p id="rAddress" class="text-xs font-bold text-gray-800 break-words">---</p>
                     </div>
-                    <div>
+                    <div class="col-span-2 md:col-span-1">
                         <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Zip Code</p>
-                        <p id="rZip" class="text-sm font-black text-gray-800">---</p>
+                        <p id="rZip" class="text-sm font-black text-gray-800 uppercase">---</p>
                     </div>
                 </div>
 
@@ -328,6 +327,7 @@
         </div>
     </div>
 </div>
+
         </main>
     </div>
 
@@ -724,48 +724,37 @@ function resetButton(btn) {
     btn.innerText = "Confirm & Pay Now";
 }
 
+// This function remains as you have it, which is correct
 function showReceipt(order) {
-    // 1. Hide modal and existing forms
     const viewsToHide = ['paymentModal', 'selectionView', 'formView', 'esimPaymentModal'];
     viewsToHide.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
 
-    // 2. Safe Data Extraction
     const details = order.metadata || order.details || {};
-    const firstName = details.firstName || 'Customer';
-    const lastName = details.lastName || '';
-    const email = details.activationEmail || details.email || 'N/A';
-    const device = order.mobileNumber || details.deviceName || 'N/A';
-    const carrier = order.carrierName || details.carrier || 'eSIM';
-    const address = details.address || 'N/A';
-    const zip = details.zip || 'N/A';
-
-    // 3. Helper to set text content safely
+    
     const safeSet = (id, val) => {
         const el = document.getElementById(id);
-        if (el) el.innerText = val;
+        if (el) el.innerText = val || 'N/A';
     };
 
     const formatCurr = (num) => `₦${(num || 0).toLocaleString()}`;
 
-    // 4. Populate Receipt Fields
-    safeSet('rID', order.paymentReference || order.id || 'N/A');
-    safeSet('rFullName', `${firstName} ${lastName}`.trim());
-    safeSet('rCarrier', carrier);
-    safeSet('rEmail', email);
-    safeSet('rNumber', device);
-    safeSet('rAddress', address);
-    safeSet('rZip', zip);
+    // Populate the new fields
+    safeSet('rID', order.paymentReference || order.id);
+    safeSet('rFullName', `${details.firstName || ''} ${details.lastName || ''}`.trim() || 'Customer');
+    safeSet('rCarrier', order.carrierName || details.carrier || 'Global eSIM');
+    safeSet('rEmail', details.activationEmail || details.email);
+    safeSet('rNumber', order.mobileNumber || details.deviceName);
+    safeSet('rAddress', details.address); // From metadata
+    safeSet('rZip', details.zip);         // From metadata
     
-    // Financials
     safeSet('rPlan', formatCurr(order.planAmount || order.amount));
     safeSet('rMainUsed', formatCurr(order.mainBalanceUsed));
     safeSet('rBonusUsed', formatCurr(order.bonusBalanceUsed));
     safeSet('rTotalPaid', formatCurr(order.planAmount || order.amount));
 
-    // 5. Reveal Receipt View
     const receiptView = document.getElementById('receiptView');
     if (receiptView) {
         receiptView.classList.remove('hidden');

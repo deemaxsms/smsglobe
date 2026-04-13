@@ -1077,14 +1077,7 @@ function renderBalance() {
         }
     }
 
-   // Ensure the function is in the global scope
-window.logout = function() { 
-    localStorage.removeItem('userToken'); 
-    localStorage.removeItem('dashboard_cache');
-    // Optional: clear all if you want a fresh start
-    // localStorage.clear(); 
-    window.location.href = 'user_login.html'; 
-};
+
     document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {

@@ -324,6 +324,7 @@
   <script>
     const API_BASE_URL = '/api';
     let userBalances = { ngn: 0, bonusNGN: 0, hasDeposited: false };
+    let currentOrderData = null;
 
     const carriers = [
         { id: 'tmobile', name: 'T-Mobile (Prepaid)', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Carrier' },
@@ -545,36 +546,53 @@ async function loadUserData() {
 }
 
 function showReceipt(order) {
+    currentOrderData = order;
+
     document.getElementById('selectionView').classList.add('hidden');
     document.getElementById('formView').classList.add('hidden');
     document.getElementById('paymentModal').classList.add('hidden');
-    document.getElementById('rID').innerText = order.paymentReference || 'N/A';    
-    document.getElementById('rCarrier').innerText = order.carrier?.name || order.nodeName || 'eSIM';    
-    document.getElementById('rNumber').innerText = order.target?.number || order.targetNumber || 'N/A';    
-    document.getElementById('rPlan').innerText = order.planName || `₦${order.amount?.toLocaleString()}` || 'Refill';        
-    document.getElementById('rCountry').innerText = order.target?.country || order.country || 'N/A';
+
+    if (document.getElementById('rID')) 
+        document.getElementById('rID').innerText = order.paymentReference || 'N/A';
+    if (document.getElementById('rCarrier')) 
+        document.getElementById('rCarrier').innerText = order.carrier?.name || order.nodeName || 'eSIM';
+    if (document.getElementById('rNumber')) 
+        document.getElementById('rNumber').innerText = order.target?.number || order.targetNumber || 'N/A';
+    if (document.getElementById('rPlan')) 
+        document.getElementById('rPlan').innerText = order.planName || `₦${order.amount?.toLocaleString()}`;
+    if (document.getElementById('rCountry')) 
+        document.getElementById('rCountry').innerText = order.target?.country || order.country || 'N/A';
+    if (document.getElementById('rMainUsed'))
+        document.getElementById('rMainUsed').innerText = `₦${(order.mainBalanceUsed || 0).toLocaleString()}`;
+    if (document.getElementById('rBonusUsed'))
+        document.getElementById('rBonusUsed').innerText = `₦${(order.bonusBalanceUsed || 0).toLocaleString()}`;
+    if (document.getElementById('rEmail'))
+        document.getElementById('rEmail').innerText = order.userEmail || 'N/A';
+    
+    if (document.getElementById('rFullName'))
+        document.getElementById('rFullName').innerText = order.fullName || 'Customer';
     const receiptView = document.getElementById('receiptView');
-    receiptView.classList.remove('hidden');
+    if (receiptView) {
+        receiptView.classList.remove('hidden');
+    }
     
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-   function contactManagement() {
-    // 1. Core Order Data
-    const tid = document.getElementById('rID')?.innerText || "N/A";
-    const carrier = document.getElementById('rCarrier')?.innerText || "N/A";
-    const country = document.getElementById('rCountry')?.innerText || "N/A";
-    const number = document.getElementById('rNumber')?.innerText || "N/A";
-    const plan = document.getElementById('rPlan')?.innerText || "N/A"; 
-    const userEmail = document.getElementById('rEmail')?.innerText || 
-                      document.getElementById('displayUserEmail')?.innerText || "N/A";
-    const fullName = document.getElementById('rFullName')?.innerText || 
-                     document.getElementById('displayFullName')?.innerText || "N/A";
-    const mainUsed = document.getElementById('rMainUsed')?.innerText || "₦0";
-    const bonusUsedAmount = document.getElementById('rBonusUsed')?.innerText || "₦0";    
-    const paymentMethod = (bonusUsedAmount !== "₦0" && bonusUsedAmount !== "0") 
-        ? `Split (Main: ${mainUsed} | Bonus: ${bonusUsedAmount})` 
-        : `Main Wallet (${mainUsed})`;
+  function contactManagement() {
+    const order = currentOrderData || {};
+    const tid = order.paymentReference || document.getElementById('rID')?.innerText || "N/A";
+    const carrier = order.carrier?.name || order.nodeName || document.getElementById('rCarrier')?.innerText || "N/A";
+    const country = order.target?.country || order.country || document.getElementById('rCountry')?.innerText || "N/A";
+    const number = order.target?.number || order.targetNumber || document.getElementById('rNumber')?.innerText || "N/A";
+    const plan = order.planName || (order.amount ? `₦${order.amount.toLocaleString()}` : document.getElementById('rPlan')?.innerText || "N/A");
+    const fullName = order.fullName || document.getElementById('rFullName')?.innerText || "Customer";
+    const userEmail = order.userEmail || document.getElementById('rEmail')?.innerText || "N/A";
+    const mainUsed = order.mainBalanceUsed || 0;
+    const bonusUsed = order.bonusBalanceUsed || 0;    
+    const paymentMethod = bonusUsed > 0 
+        ? `Split (Main: ₦${mainUsed.toLocaleString()} | Bonus: ₦${bonusUsed.toLocaleString()})` 
+        : `Main Wallet (₦${mainUsed.toLocaleString()})`;
 
     const timeSent = new Date().toLocaleString('en-NG', { 
         dateStyle: 'medium', 
@@ -597,7 +615,7 @@ function showReceipt(order) {
                 `🌍 *COUNTRY:* ${country}\n` +
                 `🔢 *TARGET NO:* ${number}\n` +
                 `━━━━━━━━━━━━━━━━━━\n\n` +
-                `*SmsGlobe Admin:* Customer has paid. Please process and update confirmation ID.`;
+                `*SmsGlobe:* Customer has paid. Please process and update confirmation ID.`;
 
     // 5. Open WhatsApp
     const whatsappUrl = `https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`;

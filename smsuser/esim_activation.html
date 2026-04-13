@@ -348,10 +348,10 @@
                 </div>
             </div>
 
-            <div class="flex justify-between items-center p-4 bg-brand-blue/5 rounded-2xl border border-brand-blue/10">
-                <span class="text-[10px] font-bold text-brand-blue uppercase">Total Amount Due</span>
-                <span id="modalTotalDue" class="text-base font-black text-brand-blue">₦0.00</span>
-            </div>
+           <div class="p-4 bg-brand-blue/5 rounded-2xl border border-brand-blue/10">
+    <span class="text-[9px] font-bold text-brand-blue uppercase block mb-1">Total Amount Due</span>
+    <span id="modalTotalDue" class="text-base font-black text-brand-blue">₦0</span>
+</div>
         </div>
 
         <div class="flex flex-col gap-3">
@@ -529,7 +529,7 @@ function openPaymentModal() {
    const planText = planSelector.value; 
     const pricePart = planText.split('.')[0]; 
     const amount = parseInt(pricePart.replace(/[^0-9]/g, '')) || 0;
-    
+
     // 2. Dynamic UI Updates (Title and Icon)
     const modalTitle = document.querySelector('#paymentModal h3');
     if (modalTitle) {

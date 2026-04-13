@@ -149,7 +149,7 @@ const rdpSchema = new mongoose.Schema({
 
 const RDP = mongoose.models.RDP || mongoose.model('RDP', rdpSchema, 'rdp_orders');
 
-// --- TRANSACTION SCHEMA (USD fields removed) ---
+// --- TRANSACTION SCHEMA ---
 const transactionSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     type: { type: String, enum: ['credit', 'debit'], required: true },
@@ -157,15 +157,17 @@ const transactionSchema = new mongoose.Schema({
     amountNGN: { type: Number, required: true, set: v => Math.round(v * 100) / 100 },
     status: { type: String, enum: ['pending', 'successful', 'failed'], default: 'pending', index: true },
     reference: { type: String, unique: true, required: true, trim: true },
-    paymentMethod: { type: String, default: 'wallet' }, 
+    paymentMethod: { type: String, default: 'wallet' },     
     balanceBefore: { type: Number, default: 0 },
     balanceAfter: { type: Number, default: 0 },
+    bonusBefore: { type: Number, default: 0 }, // New field
+    bonusAfter: { type: Number, default: 0 },  // New field
+
     metadata: { type: mongoose.Schema.Types.Mixed } 
 }, { timestamps: true });
 
 const Transaction = mongoose.models.Transaction || mongoose.model('Transaction', transactionSchema);
 
-// --- ORDER SCHEMA ---
 const orderSchema = new mongoose.Schema({
     userEmail: { type: String, required: true, index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -177,8 +179,10 @@ const orderSchema = new mongoose.Schema({
     },
     planName: String, 
     nodeName: String, 
-    amount: { type: Number, required: true }, // Amount in NGN
-    currency: { type: String, default: 'NGN' }, 
+    amount: { type: Number, required: true }, // Total cost
+    currency: { type: String, default: 'NGN' },     
+    mainBalanceUsed: { type: Number, default: 0 }, 
+    bonusBalanceUsed: { type: Number, default: 0 }, 
     status: { type: String, enum: ['pending', 'successful', 'failed', 'completed'], default: 'pending' }, 
     paymentReference: { type: String, unique: true },    
     ram: String,
@@ -192,7 +196,6 @@ const orderSchema = new mongoose.Schema({
     vpnCredentials: { username: String, password: { type: String } },
     rdpDetails: { os: String, specs: String },
     
-    // Metadata for any other flexible data
     metadata: { type: mongoose.Schema.Types.Mixed } 
     
 }, { timestamps: true });
@@ -699,12 +702,12 @@ async function handleManageUser(req, res) {
         return res.status(500).json({ success: false, message: err.message });
     }
 }
-
 async function handleGetVPNs(req, res) {
     try {
         const vpns = await VPN.find({})
             .sort({ createdAt: -1 })
-            .select('+password +pcPassword +activationCode +deviceType'); 
+            // Ensure stock and deviceLimit are included in the selection
+            .select('+password +pcPassword +activationCode +deviceType +stock +deviceLimit'); 
             
         res.json({ success: true, products: vpns }); 
     } catch (err) {
@@ -714,31 +717,39 @@ async function handleGetVPNs(req, res) {
 }
 async function handleAddVPN(req, res) {
     try {
-        const { vpnId, ...data } = req.body;
-
-        // 1. Format plans and ensure prices are parsed as integers (NGN standard)
+        // 1. Destructure to extract plans and deviceType for explicit handling
+        const { plans, deviceType, stock, deviceLimit, price, ...otherData } = req.body;
         let formattedPlans = [];
-        if (data.plans && Array.isArray(data.plans)) {
-            formattedPlans = data.plans.map(p => ({
-                duration: p.duration || "",
+        if (plans && Array.isArray(plans)) {
+            formattedPlans = plans.map(p => ({
+                duration: p.duration || "1 Month", // Default duration if missing
                 price: Math.round(parseFloat(p.price)) || 0
             }));
         }
-
         const newVPN = new VPN({
-            ...data, // This now spreads pcUsername, pcPassword, activationCode, pcMethod
-            plans: formattedPlans,
-            deviceType: normalizeDeviceType(data.deviceType),
-            stock: parseInt(data.stock) || 0, 
-            deviceLimit: parseInt(data.deviceLimit) || 1, // Default to 1 if not provided
-            price: formattedPlans.length > 0 ? formattedPlans[0].price : (Math.round(parseFloat(data.price)) || 0)
+            ...otherData, 
+            plans: formattedPlans,  
+            deviceType: deviceType ? normalizeDeviceType(deviceType) : 'Phone',            
+            stock: parseInt(stock) || 0, 
+            deviceLimit: parseInt(deviceLimit) || 1,             
+            price: formattedPlans.length > 0 
+                ? formattedPlans[0].price 
+                : (Math.round(parseFloat(price)) || 0)
         });
-
         await newVPN.save();
-        res.status(201).json({ success: true, message: "VPN Node & Stock Synced Successfully" });
+
+        res.status(201).json({ 
+            success: true, 
+            message: "VPN Node & Stock Synced Successfully",
+            productId: newVPN._id 
+        });
+        
     } catch (err) {
         console.error("Add VPN Error:", err);
-        res.status(500).json({ success: false, message: "Upload failed: " + err.message });
+        res.status(500).json({ 
+            success: false, 
+            message: "Upload failed: " + err.message 
+        });
     }
 }
 
@@ -750,12 +761,12 @@ async function handleUpdateVPN(req, res) {
         if (!targetId) {
             return res.status(400).json({ success: false, message: "VPN ID is required" });
         }
-                if (updateData.deviceType) {
+        if (updateData.deviceType) {
             updateData.deviceType = normalizeDeviceType(updateData.deviceType);
         }
         if (updateData.plans && Array.isArray(updateData.plans)) {
             updateData.plans = updateData.plans.map(p => ({
-                duration: p.duration,
+                duration: p.duration || "1 Month",
                 price: Math.round(parseFloat(p.price)) || 0
             }));
             
@@ -765,25 +776,35 @@ async function handleUpdateVPN(req, res) {
         } else if (updateData.price !== undefined) {
             updateData.price = Math.round(parseFloat(updateData.price)) || 0;
         }
-        if (updateData.stock !== undefined) updateData.stock = parseInt(updateData.stock) || 0;
-        if (updateData.deviceLimit !== undefined) updateData.deviceLimit = parseInt(updateData.deviceLimit) || 0;
+        if (updateData.stock !== undefined) {
+            updateData.stock = parseInt(updateData.stock) || 0;
+        }
+        if (updateData.deviceLimit !== undefined) {
+            updateData.deviceLimit = parseInt(updateData.deviceLimit) || 1;
+        }
         const updated = await VPN.findByIdAndUpdate(
             targetId, 
             { $set: updateData }, 
             { new: true, runValidators: true }
         );
-        
         if (!updated) {
             return res.status(404).json({ success: false, message: "VPN node not found" });
         }
 
-        res.json({ success: true, message: "VPN Configuration Updated Successfully" });
+        res.json({ 
+            success: true, 
+            message: "VPN Configuration Updated Successfully",
+            data: updated 
+        });
+
     } catch (err) {
         console.error("Update VPN Error:", err);
-        res.status(500).json({ success: false, message: "Update failed: " + err.message });
+        res.status(500).json({ 
+            success: false, 
+            message: "Update failed: " + err.message 
+        });
     }
 }
-
 async function handleDeleteVPN(req, res) {
     try {
         const { id } = req.query;
@@ -801,14 +822,9 @@ async function handleDeleteVPN(req, res) {
     }
 }
 
-// --- 1. User Login Handler ---
 async function handleUserLogin(req, res) {
-    // 1. Log the incoming request to verify property names (email vs userName, etc.)
     console.log("Incoming Login Data:", req.body);
-
     const { email, password, captchaToken } = req.body;
-
-    // 2. PREVENT CRASH: Validate that essential fields exist as strings
     if (!email || typeof email !== 'string') {
         return res.status(400).json({ success: false, message: "Valid email is required." });
     }
@@ -819,8 +835,6 @@ async function handleUserLogin(req, res) {
     if (!captchaToken) {
         return res.status(400).json({ success: false, message: "reCAPTCHA token missing." });
     }
-
-    // Wrap verification in a sub-try/catch to handle network issues with Google
     try {
         const isHuman = await verifyRecaptcha(captchaToken);
         if (!isHuman) {
@@ -828,9 +842,7 @@ async function handleUserLogin(req, res) {
         }
     } catch (recaptchaErr) {
         console.error("reCAPTCHA Service Error:", recaptchaErr.message);
-        // If reCAPTCHA service is down, decide if you want to block or allow
     }
-
     try {
         const settings = await SystemSettings.findOne(); 
         if (settings && settings.maintenanceMode === true) {
@@ -865,7 +877,9 @@ async function handleUserLogin(req, res) {
             user: { 
                 name: user.fullName, 
                 email: user.email, 
-                balance: user.balance || 0 
+                balance: user.balance || 0,
+                bonusBalance: user.bonusBalance || 0,
+                hasDeposited: user.hasDeposited || false
             } 
         });
 
@@ -884,6 +898,7 @@ async function handleUserLogin(req, res) {
         });
     }
 }
+
 async function handleUserRegister(req, res) {
     const { fullName, email, password, captchaToken, friendReferralCode } = req.body;
 
@@ -917,7 +932,7 @@ async function handleUserRegister(req, res) {
                 referredBy = referrer.referralCode;
                 
                 // UPDATE: Add the $2,000 bonus to the REFERRER
-                referrer.bonusBalance = (referrer.bonusBalance || 0) + 2000;
+                referrer.bonusBalance = (referrer.bonusBalance || 0) + 3000;
                 referrer.referralCount = (referrer.referralCount || 0) + 1;
                 
                 await referrer.save();
@@ -989,7 +1004,9 @@ async function handleGetUserProfile(req, res) {
             fullName: user.fullName,
             email: user.email, 
             status: user.status || 'active',
-            balance: user.balance || 0, // This is now strictly NGN
+            balance: user.balance || 0, 
+            bonusBalance: user.bonusBalance || 0, 
+            hasDeposited: user.hasDeposited || false,
             referralCode: user.referralCode || "", 
             referralCount: user.referralCount || 0 
         });
@@ -1238,7 +1255,6 @@ async function handlePurchaseWithWallet(req, res) {
 
         // 3. PRODUCT LOGIC & STOCK MANAGEMENT
         if (vpnId) {
-            // Updated to select mobile and PC credentials
             const item = await VPN.findOneAndUpdate(
                 { _id: vpnId, stock: { $gt: 0 } },
                 { $inc: { stock: -1 } },
@@ -1254,7 +1270,6 @@ async function handlePurchaseWithWallet(req, res) {
             productDetails.name = item.name;
             productDetails.plan = item.plans[planIndex].duration;
             
-            // Map comprehensive credential set for the order
             orderSpecifics = {
                 username: item.username || null,
                 password: item.password || null,
@@ -1265,27 +1280,25 @@ async function handlePurchaseWithWallet(req, res) {
                 instructions: item.instructions || "Follow the setup guide provided in your dashboard."
             };
         } 
-      else if (proxyId) {
-    const item = await Proxy.findOneAndUpdate(
-        { _id: proxyId, stock: { $gt: 0 } },
-        { $inc: { stock: -1 } },
-        // Add instructions to the select string
-        { new: true, select: '+activationCode +instructions' } 
-    );
+        else if (proxyId) {
+            const item = await Proxy.findOneAndUpdate(
+                { _id: proxyId, stock: { $gt: 0 } },
+                { $inc: { stock: -1 } },
+                { new: true, select: '+activationCode +instructions' } 
+            );
 
-    if (!item || !item.plans[planIndex]) {
-        return res.status(404).json({ success: false, message: "Proxy unavailable or out of stock" });
-    }
-    
-    itemType = "Proxy";
-    costNGN = Math.round(Number(item.plans[planIndex].price));
-    productDetails.name = item.name;
-    productDetails.plan = `${item.plans[planIndex].ip_count} IPs`;    
-    orderSpecifics.activationCode = item.activationCode;
-    orderSpecifics.instructions = item.instructions; // ADD THIS LINE
-}
-
-       else if (rdpId) {
+            if (!item || !item.plans[planIndex]) {
+                return res.status(404).json({ success: false, message: "Proxy unavailable or out of stock" });
+            }
+            
+            itemType = "Proxy";
+            costNGN = Math.round(Number(item.plans[planIndex].price));
+            productDetails.name = item.name;
+            productDetails.plan = `${item.plans[planIndex].ip_count} IPs`;    
+            orderSpecifics.activationCode = item.activationCode;
+            orderSpecifics.instructions = item.instructions;
+        }
+        else if (rdpId) {
             itemType = "RDP";
             const rdpPlans = {
                 tier1: { id: "tier1", name: "USA Tier 1", price: 45000, ram: "4GB", cpu: "2 Cores", storage: "60GB SSD", net: "1Gbps" },
@@ -1299,21 +1312,18 @@ async function handlePurchaseWithWallet(req, res) {
             const selectedTier = rdpPlans[rdpId];
             if (!selectedTier) return res.status(404).json({ success: false, message: "RDP Plan not found" });
 
-            // 1. Capture Extras from metadata
             const extraCPUCount = parseInt(metadata?.extraCPU || 0);
             const extraStorageGB = parseInt(metadata?.extraStorage || 0);
 
-            // 2. Calculate Final Cost
             costNGN = Math.round(
                 Number(selectedTier.price) + 
-                (extraCPUCount *5000) + 
-                (extraStorageGB *2000)
+                (extraCPUCount * 5000) + 
+                (extraStorageGB * 2000)
             );
             
             productDetails.name = selectedTier.name;
             productDetails.plan = `${selectedTier.ram} RAM | ${metadata?.osChoice || 'Windows Server'}`;
             
-            // 3. MAP TO SCHEMA: explicitly include extraCPU and extraStorage
             orderSpecifics = {
                 ram: selectedTier.ram,
                 cpu: selectedTier.cpu,
@@ -1325,37 +1335,60 @@ async function handlePurchaseWithWallet(req, res) {
             };
         }
 
-        // 4. BALANCE VALIDATION (NGN ONLY)
-        if (user.balance < costNGN) {
-            // Revert stock if validation fails
+        // --- 4. BALANCE VALIDATION (REFACTORED FOR BONUS) ---
+        const mainBal = Number(user.balance || 0);
+        const bonusBal = Number(user.bonusBalance || 0);
+        const isBonusUnlocked = user.hasDeposited || mainBal > 0;
+        
+        // Buying Power is combined ONLY if unlocked
+        const buyingPower = isBonusUnlocked ? (mainBal + bonusBal) : mainBal;
+
+        if (buyingPower < costNGN) {
+            // Revert stock
             if (vpnId) await VPN.findByIdAndUpdate(vpnId, { $inc: { stock: 1 } });
             if (proxyId) await Proxy.findByIdAndUpdate(proxyId, { $inc: { stock: 1 } });
 
+            const lockNote = (!isBonusUnlocked && bonusBal > 0) ? " (Bonus locked. Deposit to unlock)" : "";
             return res.status(400).json({ 
                 success: false, 
-                message: `Insufficient Balance. Required: ₦${costNGN.toLocaleString()}. Your Wallet: ₦${user.balance.toLocaleString()}` 
+                message: `Insufficient Funds. Required: ₦${costNGN.toLocaleString()}. Your Buying Power: ₦${buyingPower.toLocaleString()}${lockNote}` 
             });
         }
 
-        // 5. ATOMIC BALANCE DEBIT
-        const balanceBefore = Number(user.balance);
-        
+        let remainingToPay = costNGN;
+        let newMainBalance = mainBal;
+        let newBonusBalance = bonusBal;
+
+        // Take from Bonus first if unlocked
+        if (isBonusUnlocked && newBonusBalance > 0) {
+            if (newBonusBalance >= remainingToPay) {
+                newBonusBalance -= remainingToPay;
+                remainingToPay = 0;
+            } else {
+                remainingToPay -= newBonusBalance;
+                newBonusBalance = 0;
+            }
+        }
+
+        if (remainingToPay > 0) {
+            newMainBalance -= remainingToPay;
+        }
         const updatedUser = await User.findOneAndUpdate(
-            { _id: user._id, balance: { $gte: costNGN } },
-            { $inc: { balance: -costNGN } },
+            { _id: user._id, balance: mainBal, bonusBalance: bonusBal },
+            { $set: { balance: newMainBalance, bonusBalance: newBonusBalance } },
             { new: true }
         );
 
         if (!updatedUser) {
             if (vpnId) await VPN.findByIdAndUpdate(vpnId, { $inc: { stock: 1 } });
             if (proxyId) await Proxy.findByIdAndUpdate(proxyId, { $inc: { stock: 1 } });
-            return res.status(400).json({ success: false, message: "Transaction failed. Please contact support." });
+            return res.status(400).json({ success: false, message: "Transaction failed. Please try again." });
         }
 
+        const balanceBefore = mainBal; // For Transaction log
         const balanceAfter = updatedUser.balance;
         const paymentReference = `WAL-${Date.now()}-${user._id.toString().slice(-4)}`;
 
-       // 6. CREATE ORDER RECORD
         const newOrder = await Order.create({
             userId: user._id,
             userEmail: user.email,
@@ -1364,12 +1397,14 @@ async function handlePurchaseWithWallet(req, res) {
             planName: productDetails.plan,
             nodeName: productDetails.name,
             targetNumber: mobileNumber || null,
-            amount: costNGN, 
+            amount: costNGN, // Total cost
+            mainBalanceUsed: mainBal - newMainBalance, // Record specific amount from main
+            bonusBalanceUsed: bonusBal - newBonusBalance, // Record specific amount from bonus
             currency: "NGN",
             status: "successful",
             paymentReference: paymentReference,
-            metadata: metadata, // Keep original metadata for logs
-            ...orderSpecifics   // This now contains extraCPU, extraStorage, ram, cpu, storage, net, os
+            metadata: metadata, 
+            ...orderSpecifics   
         });
 
         // 7. CREATE TRANSACTION LOG
@@ -1380,12 +1415,18 @@ async function handlePurchaseWithWallet(req, res) {
             amountNGN: costNGN,
             status: 'successful',
             reference: paymentReference,
-            paymentMethod: 'wallet',
-            balanceBefore: balanceBefore,
-            balanceAfter: balanceAfter,
+            paymentMethod: 'wallet_combined',            
+            balanceBefore: mainBal,
+            balanceAfter: newMainBalance,
+            bonusBefore: bonusBal,
+            bonusAfter: newBonusBalance,
             metadata: { 
                 orderId: newOrder._id, 
                 product: productDetails.name,
+                breakdown: {
+                    mainWallet: mainBal - newMainBalance,
+                    bonusWallet: bonusBal - newBonusBalance
+                },
                 extras: itemType === "RDP" ? { 
                     cpu: orderSpecifics.extraCPU, 
                     storage: orderSpecifics.extraStorage 
@@ -1394,32 +1435,28 @@ async function handlePurchaseWithWallet(req, res) {
         });
 
         // 8. SEND DELIVERY EMAIL
-        // We pass the full newOrder so the email template can show (+ Extra) details
         sendDeliveryEmail(user.email, { 
             ...orderSpecifics, 
             amount: `₦${costNGN.toLocaleString()}`,
             planName: productDetails.plan
-        }, newOrder)
-            .catch(err => console.error("Email Error:", err.message));
+        }, newOrder).catch(err => console.error("Email Error:", err.message));
 
         // 9. FINAL RESPONSE
         return res.json({ 
             success: true, 
             message: "Purchase successful!", 
             balance: balanceAfter,
-            order: newOrder, // The frontend 'showReceipt' uses this!
-            
-            // Add these fields explicitly so the frontend receipt is 100% accurate
+            bonusBalance: updatedUser.bonusBalance,
+            order: newOrder,
             rdpDetails: itemType === "RDP" ? {
                 ram: newOrder.ram,
                 cpu: newOrder.cpu,
-                extraCPU: newOrder.extraCPU, // Added explicitly
+                extraCPU: newOrder.extraCPU,
                 storage: newOrder.storage,
-                extraStorage: newOrder.extraStorage, // Added explicitly
+                extraStorage: newOrder.extraStorage,
                 net: newOrder.net,
                 os: newOrder.os
             } : null,
-            
             credentials: {
                 username: orderSpecifics.username || null,
                 password: orderSpecifics.password || null,

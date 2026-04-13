@@ -188,7 +188,6 @@
 
 <div id="proxyModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
     <div class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-in zoom-in fade-in duration-300">
-        
         <div id="confirmState" class="p-8 text-center">
             <div class="w-16 h-16 bg-brand-background text-brand-blue rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -196,15 +195,22 @@
                 </svg>
             </div>
             <h2 class="text-xl font-bold text-brand-darkText mb-2 uppercase tracking-tight">Confirm Purchase</h2>
-            <p class="text-brand-lightText text-xs mb-6">Review your transaction details before proceeding.</p>
+            <p class="text-brand-lightText text-[10px] mb-6">Review your transaction details before proceeding.</p>
             
-            <div class="space-y-3 mb-8">
-                <div class="py-3 px-4 bg-gray-50 rounded-2xl border border-brand-border text-left">
-                    <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Your Current Balance</p>
-                    <p id="modalUserBalanceNGN" class="text-lg font-black text-brand-blue">₦0.00</p>
+            <div class="space-y-2 mb-8">
+                <div class="py-3 px-4 bg-gray-50 rounded-2xl border border-brand-border text-left flex justify-between items-center">
+                    <div>
+                        <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Main Balance</p>
+                        <p id="modalUserBalanceNGN" class="text-lg font-black text-brand-blue">₦0.00</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Referral Bonus</p>
+                        <p id="modalBonusBalanceNGN" class="text-sm font-bold text-green-600">₦0.00</p>
+                    </div>
                 </div>
+
                 <div class="py-3 px-4 bg-blue-50/50 rounded-2xl border border-brand-blue/10 text-left">
-                    <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider">Purchase Amount</p>
+                    <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider">Total Amount Due</p>
                     <p id="modalPurchaseAmountNGN" class="text-lg font-black text-brand-darkText">₦0.00</p>
                 </div>
             </div>
@@ -214,8 +220,13 @@
                 <button id="finalConfirmBtn" class="flex-1 py-4 bg-brand-blue text-white rounded-2xl font-bold text-xs uppercase shadow-lg active-scale">
                     Confirm & Pay
                 </button>
+                <button id="modalTopupBtn" onclick="window.location.href='topup.html'" class="hidden flex-1 py-4 bg-brand-darkText text-white rounded-2xl font-bold text-xs uppercase shadow-lg active-scale">
+                    Add Funds
+                </button>
             </div>
         </div>
+    </div>
+</div>
 
         <div id="successState" class="hidden">
             <div class="bg-brand-blue p-8 text-center relative">
@@ -481,66 +492,55 @@ async function buyProxy(proxyId) {
     const proxy = allProxies.find(p => p._id === proxyId);
     const selectedPlan = proxy.plans[planIndex];
 
+    const formatNGN = (amt) => `₦${Number(amt || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
+
     try {
-        // Fetch fresh balance from backend
         const res = await fetch(`${API_BASE_URL}/user-profile`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
         
         if (data.success) {
-            // Treat backend 'balance' as pure NGN
-            const balanceNGN = data.user ? data.user.balance : data.balance;
-            const priceNGN = Number(selectedPlan.price); 
-
-            // 1. Update Balance Display (Naira Only)
-            if (document.getElementById('modalUserBalanceNGN')) {
-                document.getElementById('modalUserBalanceNGN').innerText = `₦${Number(balanceNGN).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                })}`;
-            }
-
-            // 2. Update Purchase Amount Display (Naira Only)
-            if (document.getElementById('modalPurchaseAmountNGN')) {
-                document.getElementById('modalPurchaseAmountNGN').innerText = `₦${Number(priceNGN).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                })}`;
-            }
+            const user = data.user || data;
+            const mainBal = parseFloat(user.balance || 0);
+            const bonusBal = parseFloat(user.bonusBalance || 0);
+            const isUnlocked = user.hasDeposited || mainBal > 0;
             
-            // 3. UI State Handling (Confirm vs Topup)
+            const buyingPower = isUnlocked ? (mainBal + bonusBal) : mainBal;
+            const priceNGN = Number(selectedPlan.price); 
+            if (document.getElementById('modalUserBalanceNGN')) 
+                document.getElementById('modalUserBalanceNGN').innerText = formatNGN(mainBal);
+            if (document.getElementById('modalBonusBalanceNGN')) 
+                document.getElementById('modalBonusBalanceNGN').innerText = formatNGN(bonusBal);
+            if (document.getElementById('modalPurchaseAmountNGN')) 
+                document.getElementById('modalPurchaseAmountNGN').innerText = formatNGN(priceNGN);            
             const finalBtn = document.getElementById('finalConfirmBtn');
             const topupBtn = document.getElementById('modalTopupBtn');
             
-            if (balanceNGN < priceNGN) {
-                // INSUFFICIENT FUNDS: Show Topup, Hide Confirm
-                if (finalBtn) finalBtn.classList.add('hidden');
-                if (topupBtn) topupBtn.classList.remove('hidden');
-            } else {
-                // SUFFICIENT FUNDS: Show Confirm, Hide Topup
-                if (finalBtn) {
-                    finalBtn.classList.remove('hidden');
-                    finalBtn.innerText = "Confirm & Pay Now";
-                    finalBtn.disabled = false;
-                    
-                    // Set up the final click handler
-                    currentPendingPurchase = { proxyId, planIndex };
-                    finalBtn.onclick = executeFinalPurchase;
+            if (buyingPower < priceNGN) {
+                finalBtn.classList.add('hidden');
+                topupBtn.classList.remove('hidden');
+                if ((mainBal + bonusBal) >= priceNGN && !isUnlocked) {
+                    alert("Your Referral Bonus is locked. Please make a deposit to use your full balance.");
                 }
-                if (topupBtn) topupBtn.classList.add('hidden');
+            } else {
+                finalBtn.classList.remove('hidden');
+                topupBtn.classList.add('hidden');
+                finalBtn.disabled = false;
+                finalBtn.innerText = "Confirm & Pay Now";
+                
+                currentPendingPurchase = { proxyId, planIndex };
+                finalBtn.onclick = executeFinalPurchase;
             }
 
-            // 4. Open Modal & Reset States
+            // 3. Show Modal
             document.getElementById('proxyModal').classList.remove('hidden');
             document.getElementById('confirmState').classList.remove('hidden'); 
-            if(document.getElementById('successState')) {
-                document.getElementById('successState').classList.add('hidden'); 
-            }
+            if(document.getElementById('successState')) document.getElementById('successState').classList.add('hidden'); 
         }
     } catch (err) {
         console.error("Verification Error:", err);
-        alert("Verification failed. Please check your connection.");
+        alert("Could not verify balance. Please try again.");
     }
 }
 
@@ -551,49 +551,42 @@ async function executeFinalPurchase() {
     const token = localStorage.getItem('userToken');
     const btn = document.getElementById('finalConfirmBtn');
 
-    // 1. Enter Loading State
     btn.disabled = true;
-    btn.classList.add('opacity-75', 'cursor-not-allowed');
 
     try {
-        // 2. 3-Second Countdown/Delay
+        // Countdown visual
         let secondsLeft = 3;
         while (secondsLeft > 0) {
-            btn.innerHTML = `
-                <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Processing in ${secondsLeft}s...
-            `;
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            btn.innerHTML = `<span class="flex items-center justify-center"><svg class="animate-spin h-4 w-4 mr-2 text-white" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Securing in ${secondsLeft}s...</span>`;
+            await new Promise(r => setTimeout(r, 1000));
             secondsLeft--;
         }
-        btn.innerText = "Securing Connection...";
+
         const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json', 
                 'Authorization': `Bearer ${token}` 
             },
-            body: JSON.stringify({ proxyId, planIndex, currency: 'NGN' })
+            body: JSON.stringify({ 
+                proxyId, 
+                planIndex: parseInt(planIndex) 
+            })
         });
 
         const data = await res.json();
         if (data.success) {
+            userBalance = data.balance; 
             showSuccessModal(data); 
         } else {
-            alert(data.message || "Purchase failed. Please check your balance.");
+            alert(data.message || "Purchase failed.");
             closeModalOnly();
         }
     } catch (err) {
         console.error("Purchase Error:", err);
-        alert("Transaction failed. Please contact support.");
-        closeModalOnly();
+        alert("Transaction failed. Check network.");
     } finally {
-        // Reset button state
         btn.disabled = false;
-        btn.classList.remove('opacity-75', 'cursor-not-allowed');
         btn.innerText = "Confirm & Pay Now";
     }
 }

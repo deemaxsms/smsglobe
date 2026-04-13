@@ -198,16 +198,21 @@
                 </svg>
             </div>
             <h2 class="text-xl font-bold text-brand-darkText mb-2 uppercase tracking-tight">Confirm Purchase</h2>
-            <div class="space-y-3 mb-6">
-                <div class="py-2 px-4 bg-gray-50 rounded-xl border border-brand-border text-left">
-                    <p class="text-[10px] font-bold text-brand-lightText uppercase tracking-tight">Your Balance</p>
-                    <p id="modalUserBalance" class="text-lg font-black text-brand-blue">₦0</p>
-                </div>
-                <div class="py-2 px-4 bg-blue-50/50 rounded-xl border border-brand-blue/10 text-left">
-                    <p class="text-[10px] font-bold text-brand-blue uppercase tracking-tight">Purchase Amount</p>
-                    <p id="modalPurchaseAmount" class="text-lg font-black text-brand-darkText">₦0</p>
-                </div>
-            </div>
+           <div class="space-y-3 mb-6">
+    <div class="py-2 px-4 bg-gray-50 rounded-xl border border-brand-border text-left">
+        <p class="text-[10px] font-bold text-brand-lightText uppercase tracking-tight">Main Wallet</p>
+        <p id="modalUserBalance" class="text-lg font-black text-brand-blue">₦0</p>
+    </div>
+    <div id="bonusSection" class="py-2 px-4 bg-emerald-50/50 rounded-xl border border-emerald-500/10 text-left">
+        <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-tight">Referral Bonus (Unlocked)</p>
+        <p id="modalBonusBalance" class="text-lg font-black text-emerald-600">₦0</p>
+    </div>
+    
+    <div class="py-2 px-4 bg-blue-50/50 rounded-xl border border-brand-blue/10 text-left">
+        <p class="text-[10px] font-bold text-brand-blue uppercase tracking-tight">Total Price</p>
+        <p id="modalPurchaseAmount" class="text-lg font-black text-brand-darkText">₦0</p>
+    </div>
+</div>
             <div class="flex gap-3">
                 <button onclick="closeModal()" class="flex-1 py-4 border border-brand-border rounded-xl font-bold text-xs uppercase text-brand-midText active-scale">Cancel</button>
                 <button id="finalConfirmBtn" class="flex-1 py-4 bg-brand-blue text-white rounded-xl font-bold text-xs uppercase flex items-center justify-center gap-2 active-scale transition-all shadow-lg">
@@ -402,10 +407,10 @@ async function buyVPN(vpnId) {
     const confirmBtn = document.getElementById('finalConfirmBtn');
     const topupBtn = document.getElementById('modalTopupBtn');
     const btnLoader = document.getElementById('btnLoader');
-    const btnText = document.getElementById('btnText'); // Get reference here
+    const btnText = document.getElementById('btnText');
 
     const formatNaira = (amt) => {
-        return '₦' + parseFloat(amt).toLocaleString('en-NG', {
+        return '₦' + parseFloat(amt || 0).toLocaleString('en-NG', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         });
@@ -418,19 +423,37 @@ async function buyVPN(vpnId) {
         const data = await res.json();
         
         if (data.success) {
-            const currentBalance = data.user ? data.user.balance : data.balance;
+            // 1. GET ALL BALANCE COMPONENTS
+            const user = data.user || data;
+            const mainBalance = parseFloat(user.balance || 0);
+            const bonusBalance = parseFloat(user.bonusBalance || 0);
+            const isUnlocked = user.hasDeposited || mainBalance > 0;
+            
+            // 2. CALCULATE BUYING POWER (Matches Backend Logic)
+            const buyingPower = isUnlocked ? (mainBalance + bonusBalance) : mainBalance;
 
-            document.getElementById('modalUserBalance').innerText = formatNaira(currentBalance);
+            // 3. UPDATE MODAL UI WITH BREAKDOWN
+            document.getElementById('modalUserBalance').innerText = formatNaira(mainBalance);
+            
+            // Optional: If you added modalBonusBalance to your HTML as suggested earlier
+            const bonusEl = document.getElementById('modalBonusBalance');
+            if (bonusEl) bonusEl.innerText = formatNaira(bonusBalance);
+            
             document.getElementById('modalPurchaseAmount').innerText = formatNaira(price);
 
-            if (currentBalance < price) {
+            // 4. CHECK AFFORDABILITY AGAINST BUYING POWER
+            if (buyingPower < price) {
                 confirmBtn.classList.add('hidden');
                 topupBtn.classList.remove('hidden');
+                
+                // If they have enough total but bonus is locked, explain why
+                if ((mainBalance + bonusBalance) >= price && !isUnlocked) {
+                     alert("You have enough total balance, but your Referral Bonus is locked. Please make a deposit to unlock it.");
+                }
             } else {
                 confirmBtn.classList.remove('hidden');
                 topupBtn.classList.add('hidden');
                 confirmBtn.disabled = false;
-                // FIX: Update the span text instead of overwriting innerHTML
                 if (btnText) btnText.innerText = "Confirm & Pay"; 
             }
 
@@ -441,7 +464,6 @@ async function buyVPN(vpnId) {
             confirmBtn.onclick = async () => {
                 confirmBtn.disabled = true;
                 if (btnLoader) btnLoader.classList.remove('hidden');
-                // FIX: Accessing btnText safely
                 if (btnText) btnText.innerText = "Processing...";
                 
                 try {
@@ -457,6 +479,9 @@ async function buyVPN(vpnId) {
                     const pData = await purchaseRes.json();
                     
                     if (pData.success) {
+                        // Update local balance state
+                        userBalance = pData.balance; 
+                        
                         const credentials = pData.credentials || (pData.order ? {
                             username: pData.order.username || pData.order.vpnCredentials?.username,
                             password: pData.order.password || pData.order.vpnCredentials?.password,
@@ -483,6 +508,7 @@ async function buyVPN(vpnId) {
         }
     } catch (err) {
         console.error("Verification Error:", err);
+        alert("Could not verify balance. Please log in again.");
     }
 }
 
@@ -494,17 +520,12 @@ function showSuccessDetails(creds, vpnData) {
     const userWrap = document.getElementById('wrapUser');
     const passWrap = document.getElementById('wrapPass');
     const codeWrap = document.getElementById('wrapCode');
-
-    // Reset visibility to hide previous data if any
     [userWrap, passWrap, codeWrap].forEach(el => el?.classList.add('hidden'));
 
     if (!creds) {
         console.error("No credentials provided.");
         return;
     }
-
-    // 2. Handle Username & Password
-    // Check for both standard and PC specific fields from your backend response
     const finalUser = creds.username || creds.pcUsername;
     const finalPass = creds.password || creds.pcPassword;
 
@@ -516,8 +537,6 @@ function showSuccessDetails(creds, vpnData) {
         document.getElementById('resPass').innerText = finalPass;
         passWrap.classList.remove('hidden');
     }
-
-    // 3. Handle Activation Code
     if (creds.activationCode && creds.activationCode.trim() !== "") {
         document.getElementById('resCode').innerText = creds.activationCode;
         codeWrap.classList.remove('hidden');

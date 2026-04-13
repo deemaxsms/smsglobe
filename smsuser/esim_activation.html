@@ -526,10 +526,10 @@ function openPaymentModal() {
     const planSelector = document.getElementById('planSelector');
     if (!planSelector) return;
 
-    // 1. Convert "₦20,000.00 Activation" string to a pure number
-    const planText = planSelector.value;
-    const amount = parseInt(planText.replace(/[^0-9]/g, '')) || 0;
-
+   const planText = planSelector.value; 
+    const pricePart = planText.split('.')[0]; 
+    const amount = parseInt(pricePart.replace(/[^0-9]/g, '')) || 0;
+    
     // 2. Dynamic UI Updates (Title and Icon)
     const modalTitle = document.querySelector('#paymentModal h3');
     if (modalTitle) {

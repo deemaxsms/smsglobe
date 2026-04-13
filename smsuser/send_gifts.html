@@ -96,6 +96,10 @@
             </a>
         </nav>
 
+        <div id="userInitials" class="bg-brand-blue text-white rounded-full p-2">U</div>
+<span id="userName">Loading...</span>
+<p id="walletBalance">Balance: ₦0</p>
+
         <div class="p-4 border-t border-brand-border">
             <button onclick="logout()" class="flex items-center space-x-3 w-full px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg text-xs font-bold transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
@@ -154,12 +158,15 @@
                         <p class="text-[11px] font-bold text-brand-darkText">Celebration Cakes</p>
                     </div>
 
-                    <div class="bg-white p-3 rounded-2xl border border-brand-border hover:shadow-md transition-shadow text-center group">
-                    <div class="aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden">
-              <img src="https://imgur.com/SkmdudQ=" alt="Frame" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-                </div>
-             <p class="text-[11px] font-bold text-brand-darkText">Frame</p>
-                </div>
+                  <div class="bg-white p-3 rounded-2xl border border-brand-border hover:shadow-md transition-shadow text-center group">
+    <div class="aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden">
+        <img src="https://i.imgur.com/SkmdudQ.jpg" 
+             alt="Frame" 
+             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+             onerror="this.src='https://via.placeholder.com/150?text=Frame+Image'">
+    </div>
+    <p class="text-[11px] font-bold text-brand-darkText">Frame</p>
+</div>
 
                     <div class="bg-white p-3 rounded-2xl border border-brand-border hover:shadow-md transition-shadow text-center group">
                         <div class="aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden">
@@ -407,34 +414,42 @@
     }
 
     // --- SESSION & PROFILE INITIALIZATION ---
-    async function initGifting() {
-        const token = localStorage.getItem('userToken');
-        if (!token) { window.location.href = 'user_login.html'; return; }
+   async function initGifting() {
+    const token = localStorage.getItem('userToken');
+    if (!token) { window.location.href = 'user_login.html'; return; }
 
-        try {
-            const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!profileRes.ok) throw new Error('Session Expired');
-            
-            const userData = await profileRes.json();
-            const user = userData.user || userData; // Adjust based on your API response structure
+    try {
+        const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!profileRes.ok) throw new Error('Session Expired');
+        
+        const userData = await profileRes.json();
+        const user = userData.user || userData;
 
-            document.getElementById('userName').innerText = user.fullName || user.full_name || "User";
-            // Check if walletBalance exists, otherwise default to 0
+        // Use Optional Chaining or If statements to prevent "Cannot set properties of null"
+        const nameEl = document.getElementById('userName');
+        if (nameEl) nameEl.innerText = user.fullName || user.full_name || "User";
+
+        const walletEl = document.getElementById('walletBalance');
+        if (walletEl) {
             const balance = user.walletBalance !== undefined ? user.walletBalance : 0;
-            document.getElementById('walletBalance').innerText = `Balance: ₦${balance.toLocaleString()}`;
-            document.getElementById('userInitials').innerText = (user.fullName || "U").charAt(0).toUpperCase();
-            
-            // Fill sender details automatically if fields exist
-            if(document.getElementsByName('senderName')[0]) {
-                document.getElementsByName('senderName')[0].value = user.fullName || "";
-            }
-        } catch (err) { 
-            console.error("Profile Load Error:", err);
+            walletEl.innerText = `Balance: ₦${balance.toLocaleString()}`;
         }
-    }
 
+        const initialsEl = document.getElementById('userInitials');
+        if (initialsEl) {
+            initialsEl.innerText = (user.fullName || user.full_name || "U").charAt(0).toUpperCase();
+        }
+        
+        const senderInput = document.getElementsByName('senderName')[0];
+        if(senderInput) {
+            senderInput.value = user.fullName || user.full_name || "";
+        }
+    } catch (err) { 
+        console.error("Profile Load Error:", err);
+    }
+}
     // --- SYSTEM SUBMISSION (Updated to use API) ---
     document.getElementById('giftForm').addEventListener('submit', async function(e) {
         e.preventDefault();

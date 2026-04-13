@@ -197,6 +197,7 @@
         <div class="my-5 space-y-2.5 border-t border-b border-dashed border-brand-border py-5 font-mono text-[10px] md:text-xs">
             <div class="flex justify-between items-center"><span class="text-brand-lightText">Carrier:</span> <span id="rCarrier" class="font-bold text-right text-brand-darkText uppercase">--</span></div>
             <div class="flex justify-between items-center"><span class="text-brand-lightText">Target Number:</span> <span id="rNumber" class="font-bold text-right text-brand-darkText">--</span></div>
+           <div class="flex justify-between items-center"><span class="text-brand-lightText">Coverage Country:</span>  <span id="rCountry" class="font-bold text-right text-brand-darkText uppercase">--</span></div>
             <div class="flex justify-between items-center"><span class="text-brand-lightText">Plan Paid:</span> <span id="rPlan" class="font-bold text-right text-brand-darkText">--</span></div>
             <div class="flex justify-between items-center"><span class="text-brand-lightText">Payment Method:</span> <span class="bg-brand-blue text-white px-2 py-0.5 rounded font-bold text-[8px] md:text-[9px] uppercase">Wallet Balance 💳</span></div>
             <div class="flex justify-between items-center pt-1"><span class="text-brand-lightText">Refill Status:</span> <span class="text-orange-600 font-bold text-[9px] uppercase animate-pulse">Processing by Admin</span></div>
@@ -517,6 +518,69 @@ async function loadUserData() {
     }
 }
 
+function showReceipt(order) {
+    document.getElementById('selectionView').classList.add('hidden');
+    document.getElementById('formView').classList.add('hidden');
+    document.getElementById('paymentModal').classList.add('hidden');
+    document.getElementById('rID').innerText = order.paymentReference || 'N/A';
+    document.getElementById('rCarrier').innerText = order.carrier?.name || order.carrierName || 'eSIM';
+    document.getElementById('rNumber').innerText = order.target?.number || order.mobileNumber || 'N/A';
+    document.getElementById('rPlan').innerText = order.planName || order.amount || 'Refill';    
+    document.getElementById('rCountry').innerText = order.target?.country || order.coverageCountry || 'N/A';
+
+    const receiptView = document.getElementById('receiptView');
+    receiptView.classList.remove('hidden');
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function contactManagement() {
+    // 1. Scrape all data from the eSIM Receipt UI
+    const tid = document.getElementById('rID')?.innerText || "N/A";
+    const carrier = document.getElementById('rCarrier')?.innerText || "N/A";
+    const country = document.getElementById('rCountry')?.innerText || "N/A";
+    const number = document.getElementById('rNumber')?.innerText || "N/A";
+    const plan = document.getElementById('rPlan')?.innerText || "N/A"; // This is the amount
+    
+    // Fallback selectors for User Details (Assuming they match your RDP receipt structure)
+    const userEmail = document.getElementById('rEmail')?.innerText || "N/A";
+    const fullName = document.getElementById('rFullName')?.innerText || "Customer";
+    const bonusUsed = document.getElementById('esimUseBonusToggle')?.checked ? "YES (Referral Bonus)" : "NO (Main Wallet)";
+
+    const timeSent = new Date().toLocaleString('en-NG', { 
+        dateStyle: 'medium', 
+        timeStyle: 'short' 
+    });
+
+    // 2. Construct the high-design message
+    const msg = `📱 *SMSGlobe: NEW eSIM REFILL REQUEST*\n` +
+                `📅 *DATE:* ${timeSent}\n` +
+                `__________________________________\n\n` +
+                `✅ *PAYMENT STATUS:* CONFIRMED\n` +
+                `🆔 *REF ID:* ${tid}\n` +
+                `💰 *PLAN/AMOUNT:* ${plan}\n` + 
+                `🎁 *BONUS USED:* ${bonusUsed}\n` +
+                `👤 *CUSTOMER:* ${fullName}\n` +
+                `📧 *EMAIL:* ${userEmail}\n\n` +
+                `*REFILL DETAILS:*\n` +
+                `━━━━━━━━━━━━━━━━━━\n` +
+                `📶 *CARRIER:* ${carrier}\n` +
+                `🌍 *COUNTRY:* ${country}\n` +
+                `🔢 *TARGET NO:* ${number}\n` +
+                `━━━━━━━━━━━━━━━━━━\n\n` +
+                `*SmsGlobe Admin:* The customer has paid for this refill. Please process and update the confirmation code/credentials manually.`;
+
+    // 3. Open WhatsApp (Using the Admin number from your RDP logic)
+    const whatsappUrl = `https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`;
+    window.open(whatsappUrl, '_blank');
+}
+
+function closeReceipt() {
+    document.getElementById('receiptModal').classList.add('hidden');
+    document.getElementById('receiptModal').classList.remove('flex');
+    // Go back to the grid view for a fresh start
+    goBackToGrid();
+}
 
     function logout() {
         localStorage.removeItem('userToken');

@@ -138,7 +138,7 @@
             overlay.classList.toggle('hidden');
         }
 
-      async function fetchRDPRequests() {
+     async function fetchRDPRequests() {
     const token = localStorage.getItem('smsglobe_admin_token');
     const tbody = document.getElementById('rdp-body');
 
@@ -151,12 +151,10 @@
         if (data.success && data.orders.length > 0) {
             tbody.innerHTML = data.orders.map(order => {
                 const status = order.status.toLowerCase();
-                
-                // Extract metadata (this is where the RDP details like OS and Extra specs live)
-                const meta = order.metadata || {};
+                const meta = order.metadata || {}; // Access the nested metadata from backend
                 
                 let actionArea = '';
-                if (status === 'successful' || status === 'processing' || status === 'pending') {
+                if (['successful', 'processing', 'pending'].includes(status)) {
                     actionArea = `
                         <div class="flex flex-col gap-2 items-end">
                             <input type="text" id="conf-${order.paymentReference}" 
@@ -176,9 +174,10 @@
                             </div>
                             <div class="text-[9px] text-brand-lightText font-mono truncate max-w-[120px] ml-auto" title="${order.confirmationNumber}">${order.confirmationNumber}</div>
                         </div>`;
-                } else {
-                    actionArea = `<span class="text-gray-400 text-[10px] italic">Failed/Cancelled</span>`;
                 }
+
+                // Format amount to Naira string
+                const formattedPrice = `₦${Number(order.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
                 return `
                     <tr class="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
@@ -186,37 +185,30 @@
                             <div class="font-bold text-brand-darkText">#${order.paymentReference.slice(-8)}</div>
                             <div class="text-[9px] font-bold text-brand-blue uppercase">RDP SERVER</div>
                         </td>
-
                         <td class="px-4 py-4">
                             <div class="text-[11px] font-semibold text-brand-darkText">${order.userEmail}</div>
-                            <div class="text-[10px] text-brand-lightText">${order.fullName || 'No Name'}</div>
+                            <div class="text-[10px] text-brand-lightText">${order.fullName}</div>
                         </td>
-
                         <td class="px-4 py-4">
-                            <div class="font-bold text-brand-darkText uppercase text-[10px]">${order.planName || order.nodeName || 'Tier Plan'}</div>
-                            <div class="text-[10px] text-brand-orange font-bold">${meta.osChoice || 'Windows Server'}</div>
+                            <div class="font-bold text-brand-darkText uppercase text-[10px]">${order.planName}</div>
+                            <div class="text-[10px] text-brand-orange font-bold">${meta.osChoice}</div>
                         </td>
-
                         <td class="px-4 py-4">
-                            <div class="text-[10px] text-brand-darkText font-medium">RAM: ${meta.baseRAM || 'Standard'}</div>
+                            <div class="text-[10px] text-brand-darkText font-medium">RAM: ${meta.baseRAM}</div>
                             <div class="text-[9px] text-brand-lightText font-bold">Ref: ${order.paymentReference}</div>
                         </td>
-
                         <td class="px-4 py-4">
-                            <div class="text-[10px] text-brand-blue font-bold">+ ${meta.extraCPU || 0} Extra CPU</div>
-                            <div class="text-[10px] text-brand-blue font-bold">+ ${meta.extraStorage || 0}GB Disk</div>
+                            <div class="text-[10px] text-brand-blue font-bold">+ ${meta.extraCPU} CPU</div>
+                            <div class="text-[10px] text-brand-blue font-bold">+ ${meta.extraStorage}GB Disk</div>
                         </td>
-
                         <td class="px-4 py-4 font-bold text-brand-darkText">
-                            ₦${order.amount}
+                            ${formattedPrice}
                         </td>
-
                         <td class="px-4 py-4">
                             <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getStatusClass(order.status)}">
                                 ${order.status}
                             </span>
                         </td>
-
                         <td class="px-4 py-4 text-right">
                             ${actionArea}
                         </td>
@@ -229,6 +221,7 @@
         tbody.innerHTML = `<tr><td colspan="8" class="px-6 py-12 text-center text-red-500 font-bold">Error loading RDP data.</td></tr>`;
     }
 }
+
         function getStatusClass(status) {
             const s = status.toLowerCase();
             if (s === 'completed' || s === 'successful') return 'bg-green-100 text-green-700';

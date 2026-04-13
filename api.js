@@ -497,14 +497,8 @@ async function handleDashboardStats(req, res) {
     try {
         const User = mongoose.models.User || mongoose.model('User');
         const Order = mongoose.models.Order || mongoose.model('Order');
-        // Import your SystemSettings model at the top of the file
 
         const totalUsers = await User.countDocuments();
-
-        // --- NEW: FETCH DYNAMIC RATE FROM DB ---
-        const settings = await SystemSettings.findOne();
-        const RATE = settings?.exchangeRate || 1380; // Use DB rate, fallback to 1380
-        // ---------------------------------------
 
         const now = new Date();
         const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
@@ -518,38 +512,19 @@ async function handleDashboardStats(req, res) {
             status: { $in: validStatuses } 
         });
 
-        let usdStats = { totalRevenue: 0, daily: 0, weekly: 0, monthly: 0, yearly: 0 };
+        // Simplified to only NGN
         let ngnStats = { totalRevenue: 0, daily: 0, weekly: 0, monthly: 0, yearly: 0 };
 
         orders.forEach(order => {
-            const rawAmount = parseFloat(order.amount || 0);
+            const amount = parseFloat(order.amount || 0);
             const date = new Date(order.createdAt || now);
             
-            let valUSD = 0;
-            let valNGN = 0;
-
-            // Normalize currency using the LIVE RATE from DB
-            if (order.currency === 'NGN') {
-                valNGN = rawAmount;
-                valUSD = rawAmount / RATE;
-            } else {
-                valUSD = rawAmount;
-                valNGN = rawAmount * RATE;
-            }
-
-            // Update USD Stats
-            usdStats.totalRevenue += valUSD;
-            if (date >= startOfDay) usdStats.daily += valUSD;
-            if (date >= startOfWeek) usdStats.weekly += valUSD;
-            if (date >= startOfMonth) usdStats.monthly += valUSD;
-            if (date >= startOfYear) usdStats.yearly += valUSD;
-
-            // Update NGN Stats
-            ngnStats.totalRevenue += valNGN;
-            if (date >= startOfDay) ngnStats.daily += valNGN;
-            if (date >= startOfWeek) ngnStats.weekly += valNGN;
-            if (date >= startOfMonth) ngnStats.monthly += valNGN;
-            if (date >= startOfYear) ngnStats.yearly += valNGN;
+            // We assume all orders are treated as NGN value now
+            ngnStats.totalRevenue += amount;
+            if (date >= startOfDay) ngnStats.daily += amount;
+            if (date >= startOfWeek) ngnStats.weekly += amount;
+            if (date >= startOfMonth) ngnStats.monthly += amount;
+            if (date >= startOfYear) ngnStats.yearly += amount;
         });
 
         const rawRecentOrders = await Order.find({ 
@@ -558,28 +533,21 @@ async function handleDashboardStats(req, res) {
         .sort({ createdAt: -1 })
         .limit(10);
 
-        const recentOrders = rawRecentOrders.map(order => {
-            const amount = parseFloat(order.amount || 0);
-            // Use the LIVE RATE here as well for the table display
-            const finalAmountNGN = order.currency === 'NGN' ? amount : amount * RATE;
-            
-            return {
-                userEmail: order.userEmail,
-                productType: order.productType || order.planName,
-                status: order.status,
-                amountNGN: finalAmountNGN, 
-                createdAt: order.createdAt
-            };
-        });
+        const recentOrders = rawRecentOrders.map(order => ({
+            userEmail: order.userEmail,
+            productType: order.productType || order.planName,
+            status: order.status,
+            amount: parseFloat(order.amount || 0), 
+            createdAt: order.createdAt
+        }));
 
-        // Chart logic remains the same as it counts order frequency, not currency
+        // Chart logic
         const chartLabels = [];
         const chartData = [];
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
             d.setDate(d.getDate() - i);
-            const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
-            chartLabels.push(dayName);
+            chartLabels.push(d.toLocaleDateString('en-US', { weekday: 'short' }));
 
             const start = new Date(d); start.setHours(0,0,0,0);
             const end = new Date(d); end.setHours(23,59,59,999);
@@ -595,8 +563,7 @@ async function handleDashboardStats(req, res) {
         return res.json({ 
             success: true, 
             totalUsers,
-            usd: usdStats,
-            ngn: ngnStats,
+            revenue: ngnStats, // Renamed to generic revenue
             recentOrders,
             chart: { labels: chartLabels, data: chartData } 
         });
@@ -634,7 +601,6 @@ async function handleAllTransactions(req, res) {
         return res.status(500).json({ success: false });
     }
 }
-
 async function handleGetUsers(req, res) {
     try {
         const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({}, { strict: false }), 'users');
@@ -643,18 +609,21 @@ async function handleGetUsers(req, res) {
         return res.json({ 
             success: true, 
             users: users.map(u => ({
-                _id: u._id, // Added ID for actions
-                fullName: u.fullName,
+                _id: u._id,
+                fullName: u.fullName || 'Member',
                 email: u.email,
-                status: u.status || 'active', // Added status
+                status: u.status || 'active',
+                balance: u.balance || 0,           // Added balance
+                referralCode: u.referralCode || 'N/A', // Added referral code
+                referralCount: u.referralCount || 0,   // Added count
                 createdAt: u.createdAt
             }))
         });
     } catch (err) {
+        console.error("Fetch Users Error:", err);
         return res.status(500).json({ success: false, message: "Database Error" });
     }
 }
-
 async function handleManageUser(req, res) {
     const { action, userId } = req.body;
     console.log("API RECEIVED:", req.body);
@@ -2329,37 +2298,30 @@ async function handleGetRdpRequests(req, res) {
             .limit(100);
 
         const formattedRequests = requests.map(order => {
-            // Since the frontend is now strictly Naira, we treat the stored amount 
-            // as the final Naira value without checking for conversion rates.
+            // Treat the stored amount as pure Naira
             const nairaAmount = parseFloat(order.amount) || 0;
             
-            const specsString = order.rdpDetails?.specs || "";
-            const specParts = specsString.split(',').map(s => s.trim());
-            const ram = order.metadata?.ram || specParts[0] || 'N/A';
-            const cpu = order.metadata?.cpu || specParts[1] || 'Standard';
-            const storage = order.metadata?.storage || specParts[2] || 'Standard';
+            // Extract metadata for the admin table
+            const meta = order.metadata || {};
+            const rdpDetails = order.rdpDetails || {};
 
             return {
                 paymentReference: order.paymentReference,
                 productType: 'RDP',
                 createdAt: order.createdAt,
                 userEmail: order.userEmail,
-                fullName: order.metadata?.fullName || 'N/A',
+                fullName: meta.fullName || 'N/A',
                 nodeName: order.nodeName || 'USA Tier 1',
                 planName: order.planName || 'RDP Server',
-                osChoice: order.metadata?.osChoice || order.rdpDetails?.os || 'Windows',
-                ram: ram,
-                cpu: cpu,
-                storage: storage,
-                extraCPU: order.metadata?.extraCPU || 0,
-                extraStorage: order.metadata?.extraStorage || 0,
-                
-                // Clean formatting: strictly Naira
-                amount: nairaAmount.toLocaleString('en-NG', { 
-                    style: 'currency', 
-                    currency: 'NGN', 
-                    minimumFractionDigits: 2 
-                }), 
+                // Map nested metadata correctly
+                metadata: {
+                    osChoice: meta.osChoice || rdpDetails.os || 'Windows',
+                    baseRAM: meta.ram || 'Standard',
+                    extraCPU: meta.extraCPU || 0,
+                    extraStorage: meta.extraStorage || 0
+                },
+                // Return raw number for frontend processing
+                amount: nairaAmount, 
                 status: order.status || 'pending',
                 confirmationNumber: order.confirmationNumber || 'PENDING'
             };
@@ -2374,7 +2336,8 @@ async function handleGetRdpRequests(req, res) {
         console.error("❌ RDP Fetch Error:", error);
         return res.status(500).json({ success: false, message: "Failed to fetch RDP requests" });
     }
-} 
+}
+
 async function getTextverifiedToken() {
     try {
         const response = await axios.post(

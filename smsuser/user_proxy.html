@@ -551,10 +551,25 @@ async function executeFinalPurchase() {
     const token = localStorage.getItem('userToken');
     const btn = document.getElementById('finalConfirmBtn');
 
+    // 1. Enter Loading State
     btn.disabled = true;
-    btn.innerText = "Processing...";
+    btn.classList.add('opacity-75', 'cursor-not-allowed');
 
     try {
+        // 2. 3-Second Countdown/Delay
+        let secondsLeft = 3;
+        while (secondsLeft > 0) {
+            btn.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processing in ${secondsLeft}s...
+            `;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            secondsLeft--;
+        }
+        btn.innerText = "Securing Connection...";
         const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
             method: 'POST',
             headers: { 
@@ -565,9 +580,7 @@ async function executeFinalPurchase() {
         });
 
         const data = await res.json();
-
         if (data.success) {
-            // Trigger the modal view change and data injection
             showSuccessModal(data); 
         } else {
             alert(data.message || "Purchase failed. Please check your balance.");
@@ -578,7 +591,9 @@ async function executeFinalPurchase() {
         alert("Transaction failed. Please contact support.");
         closeModalOnly();
     } finally {
+        // Reset button state
         btn.disabled = false;
+        btn.classList.remove('opacity-75', 'cursor-not-allowed');
         btn.innerText = "Confirm & Pay Now";
     }
 }
@@ -600,19 +615,26 @@ function showSuccessModal(data) {
     
     const modalCode = document.getElementById('modalCode');
     const modalInstructions = document.getElementById('modalInstructions');
-    
-    // 1. Hide the confirmation view and show the success view
     if (confirmState) confirmState.classList.add('hidden');
-    if (successState) successState.classList.remove('hidden');
-    
-    const code = data.activationCode || (data.credentials && data.credentials.activationCode) || "PROVISIONED";
-    const info = data.instructions || (data.credentials && data.credentials.instructions) || "Check dashboard for details.";
-
-    modalCode.innerText = code;
-    modalInstructions.innerText = info;
-    
-    // 3. Open the modal if it was closed
-    modal.classList.remove('hidden');
+    if (successState) {
+        successState.classList.remove('hidden');
+        successState.classList.add('animate-in', 'zoom-in', 'duration-300');
+    }
+    const credentials = data.credentials || {};
+    const code = credentials.activationCode || data.activationCode || "PROVISIONED";
+    const info = credentials.instructions || data.instructions || "Check dashboard for details.";
+    if (modalCode) modalCode.innerText = code;
+    if (modalInstructions) modalInstructions.innerText = info;    
+    const copyBtn = document.getElementById('copyCodeBtn');
+    if (copyBtn) {
+        copyBtn.onclick = () => {
+            navigator.clipboard.writeText(code);
+            const originalSvg = copyBtn.innerHTML;
+            copyBtn.innerHTML = '<span class="text-[8px] text-emerald-500 font-bold">COPIED!</span>';
+            setTimeout(() => { copyBtn.innerHTML = originalSvg; }, 2000);
+        };
+    }    
+    if (modal) modal.classList.remove('hidden');
 }
 
 // Helper to close modal and reset for next time

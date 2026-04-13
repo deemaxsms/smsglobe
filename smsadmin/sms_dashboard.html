@@ -107,172 +107,115 @@
             </div>
         </aside>
 
-        <main class="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full">
-            <header class="grid grid-cols-1 md:flex md:items-center md:justify-between mb-8 gap-4">
-                <div class="max-w-[calc(100%-60px)] md:max-w-none">
-                    <h2 class="text-xl md:text-2xl font-bold tracking-tight">Financial Overview</h2>
-                    <p class="text-brand-lightText text-xs md:text-sm">Real-time data from MongoDB</p>
-                </div>
-                <button onclick="fetchDashboardData()" class="bg-brand-blue text-white px-5 py-2 rounded-xl text-xs md:text-sm font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2 w-fit">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    Refresh
-                </button>
-            </header>
+       <main class="flex-1 p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full">
+    <header class="grid grid-cols-1 md:flex md:items-center md:justify-between mb-8 gap-4">
+        <div>
+            <h2 class="text-xl md:text-2xl font-bold tracking-tight">Financial Overview</h2>
+            <p class="text-brand-lightText text-xs md:text-sm">Transaction metrics in NGN</p>
+        </div>
+        <button onclick="fetchDashboardData()" class="bg-brand-blue text-white px-5 py-2 rounded-xl text-xs md:text-sm font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2 w-fit">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Refresh
+        </button>
+    </header>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-8">
-                <div class="bg-white p-5 md:p-6 rounded-2xl border border-brand-border shadow-sm">
-                    <p class="text-brand-lightText text-[10px] md:text-[11px] font-bold uppercase tracking-widest">Active Users</p>
-                    <h3 id="total-users" class="text-2xl md:text-3xl font-bold mt-1 md:mt-2 text-brand-blue">0</h3>
-                </div>
-                <div class="bg-white p-5 md:p-6 rounded-2xl border border-brand-border shadow-sm">
-                    <p class="text-brand-lightText text-[10px] md:text-[11px] font-bold uppercase tracking-widest">Total Revenue</p>
-                    <div class="flex flex-col md:flex-row md:items-baseline md:gap-3">
-                        <h3 id="total-revenue-usd" class="text-2xl md:text-3xl font-bold mt-1 md:mt-2 text-brand-darkText">$0.00</h3>
-                        <span id="total-revenue-ngn" class="currency-label mt-1">₦0.00</span>
-                    </div>
-                </div>
-            </div>
-
-            <h3 class="font-bold text-[10px] mb-4 text-brand-midText uppercase tracking-widest px-1">Growth Metrics</h3>
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-8">
-                <div class="bg-white p-3 md:p-4 rounded-xl border border-brand-border">
-                    <p class="text-brand-lightText text-[9px] font-bold uppercase">Daily</p>
-                    <h4 id="rev-daily-usd" class="text-base md:text-lg font-bold">$0.00</h4>
-                    <p id="rev-daily-ngn" class="text-[10px] text-brand-blue font-bold">₦0.00</p>
-                </div>
-                <div class="bg-white p-3 md:p-4 rounded-xl border border-brand-border">
-                    <p class="text-brand-lightText text-[9px] font-bold uppercase">Weekly</p>
-                    <h4 id="rev-weekly-usd" class="text-base md:text-lg font-bold">$0.00</h4>
-                    <p id="rev-weekly-ngn" class="text-[10px] text-brand-blue font-bold">₦0.00</p>
-                </div>
-                <div class="bg-white p-3 md:p-4 rounded-xl border border-brand-border">
-                    <p class="text-brand-lightText text-[9px] font-bold uppercase">Monthly</p>
-                    <h4 id="rev-monthly-usd" class="text-base md:text-lg font-bold">$0.00</h4>
-                    <p id="rev-monthly-ngn" class="text-[10px] text-brand-blue font-bold">₦0.00</p>
-                </div>
-                <div class="bg-white p-3 md:p-4 rounded-xl border border-brand-border">
-                    <p class="text-brand-lightText text-[9px] font-bold uppercase">Yearly</p>
-                    <h4 id="rev-yearly-usd" class="text-base md:text-lg font-bold">$0.00</h4>
-                    <p id="rev-yearly-ngn" class="text-[10px] text-brand-blue font-bold">₦0.00</p>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-2xl border border-brand-border shadow-sm overflow-hidden">
-                <div class="px-5 py-3 border-b border-brand-border bg-gray-50/30 flex justify-between items-center">
-                    <h4 class="font-bold text-xs md:text-sm">Recent Activity</h4>
-                    <span class="text-[9px] md:text-[10px] text-green-500 font-bold uppercase tracking-tighter flex items-center gap-1.5">
-                        <span class="relative flex h-2 w-2">
-                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                          <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                        </span>
-                        Live Sync
-                    </span>
-                </div>
-                <div id="sales-container" class="p-10 h-40 flex items-center justify-center text-brand-lightText text-xs italic text-center">
-                    Connecting to Vercel Infrastructure...
-                </div>
-            </div>
-        </main>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-8">
+        <div class="bg-white p-5 md:p-6 rounded-2xl border border-brand-border shadow-sm">
+            <p class="text-brand-lightText text-[10px] md:text-[11px] font-bold uppercase tracking-widest">Active Users</p>
+            <h3 id="total-users" class="text-2xl md:text-3xl font-bold mt-1 text-brand-blue">0</h3>
+        </div>
+        <div class="bg-white p-5 md:p-6 rounded-2xl border border-brand-border shadow-sm">
+            <p class="text-brand-lightText text-[10px] md:text-[11px] font-bold uppercase tracking-widest">Total Revenue (NGN)</p>
+            <h3 id="total-revenue" class="text-2xl md:text-3xl font-bold mt-1 text-brand-darkText">₦0.00</h3>
+        </div>
     </div>
 
+    <h3 class="font-bold text-[10px] mb-4 text-brand-midText uppercase tracking-widest px-1">Growth Metrics</h3>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-8">
+        <div class="bg-white p-4 rounded-xl border border-brand-border">
+            <p class="text-brand-lightText text-[9px] font-bold uppercase">Daily</p>
+            <h4 id="rev-daily" class="text-base md:text-lg font-bold text-brand-blue">₦0.00</h4>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-brand-border">
+            <p class="text-brand-lightText text-[9px] font-bold uppercase">Weekly</p>
+            <h4 id="rev-weekly" class="text-base md:text-lg font-bold text-brand-blue">₦0.00</h4>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-brand-border">
+            <p class="text-brand-lightText text-[9px] font-bold uppercase">Monthly</p>
+            <h4 id="rev-monthly" class="text-base md:text-lg font-bold text-brand-blue">₦0.00</h4>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-brand-border">
+            <p class="text-brand-lightText text-[9px] font-bold uppercase">Yearly</p>
+            <h4 id="rev-yearly" class="text-base md:text-lg font-bold text-brand-blue">₦0.00</h4>
+        </div>
+    </div>
+
+    </main>
+
 <script>
-    function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('sidebar-overlay');
-        sidebar.classList.toggle('-translate-x-full');
-        overlay.classList.toggle('hidden');
-    }
+    const fmtNGN = (val) => `₦${(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-    function updateUIElement(id, value) {
-        const el = document.getElementById(id);
-        if (el) el.innerText = value;
-    }
+    async function fetchDashboardData() {
+        const token = localStorage.getItem('smsglobe_admin_token');
+        const container = document.getElementById('sales-container');
+        
+        try {
+            const response = await fetch('/api/dashboard-stats', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
 
- async function fetchDashboardData() {
-    const token = localStorage.getItem('smsglobe_admin_token');
-    const container = document.getElementById('sales-container');
-    
-    try {
-        const response = await fetch('/api/dashboard-stats', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
+            if (data.success) {
+                updateUIElement('total-users', (data.totalUsers || 0).toLocaleString());
+                
+                // Update Revenue Labels
+                updateUIElement('total-revenue', fmtNGN(data.revenue.totalRevenue));
+                updateUIElement('rev-daily', fmtNGN(data.revenue.daily));
+                updateUIElement('rev-weekly', fmtNGN(data.revenue.weekly));
+                updateUIElement('rev-monthly', fmtNGN(data.revenue.monthly));
+                updateUIElement('rev-yearly', fmtNGN(data.revenue.yearly));
 
-        if (data.success) {
-            // 1. Update Stats Cards
-            updateUIElement('total-users', (data.totalUsers || 0).toLocaleString());
-
-            const fmtUSD = (val) => `$${(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            const fmtNGN = (val) => `₦${(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-            updateUIElement('total-revenue-usd', fmtUSD(data.usd.totalRevenue));
-            updateUIElement('total-revenue-ngn', fmtNGN(data.ngn.totalRevenue));
-
-            // 2. Update Growth Metrics
-            updateUIElement('rev-daily-usd', fmtUSD(data.usd.daily));
-            updateUIElement('rev-daily-ngn', fmtNGN(data.ngn.daily));
-            updateUIElement('rev-weekly-usd', fmtUSD(data.usd.weekly));
-            updateUIElement('rev-weekly-ngn', fmtNGN(data.ngn.weekly));
-            updateUIElement('rev-monthly-usd', fmtUSD(data.usd.monthly));
-            updateUIElement('rev-monthly-ngn', fmtNGN(data.ngn.monthly));
-            updateUIElement('rev-yearly-usd', fmtUSD(data.usd.yearly));
-            updateUIElement('rev-yearly-ngn', fmtNGN(data.ngn.yearly));
-
-            // 3. Render Recent Activity Table
-            if (container) {
-                if (data.recentOrders && data.recentOrders.length > 0) {
-                    container.className = "overflow-x-auto"; 
-                    container.innerHTML = `
-                        <table class="w-full text-left text-[11px] md:text-xs">
-                            <thead class="bg-gray-50 text-brand-lightText uppercase border-b border-brand-border">
-                                <tr>
-                                    <th class="px-6 py-3 font-bold">Time</th>
-                                    <th class="px-6 py-3 font-bold">Customer</th>
-                                    <th class="px-6 py-3 font-bold">Product</th>
-                                    <th class="px-6 py-3 font-bold text-right">Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-100">
-                                ${data.recentOrders.map(order => {
-                                    const date = new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                                    const day = new Date(order.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' });
-                                    return `
-                                    <tr class="hover:bg-gray-50/50 transition-colors">
-                                        <td class="px-6 py-4 text-brand-lightText whitespace-nowrap">
-                                            ${day}, ${date}
-                                        </td>
-                                        <td class="px-6 py-4 font-medium text-brand-darkText">
-                                            ${order.userEmail || 'System User'}
-                                        </td>
-                                        <td class="px-6 py-4">
-                                            <span class="px-2 py-1 rounded-md bg-brand-background text-brand-blue font-bold text-[10px] uppercase">
-                                                ${(order.productType || 'Service').replace('_', ' ')}
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 text-right font-bold text-brand-blue">
-                                            ${fmtNGN(order.amountNGN)}
-                                        </td>
-                                    </tr>`;
-                                }).join('')}
-                            </tbody>
-                        </table>`;
-                } else {
-                    container.innerHTML = `<div class="p-10 text-center text-brand-lightText italic">No successful sales recorded yet.</div>`;
+                // Table Render Logic
+                if (container && data.recentOrders) {
+                    if (data.recentOrders.length > 0) {
+                        container.className = "overflow-x-auto"; 
+                        container.innerHTML = `
+                            <table class="w-full text-left text-[11px] md:text-xs">
+                                <thead class="bg-gray-50 text-brand-lightText uppercase border-b border-brand-border">
+                                    <tr>
+                                        <th class="px-6 py-3 font-bold">Time</th>
+                                        <th class="px-6 py-3 font-bold">Customer</th>
+                                        <th class="px-6 py-3 font-bold">Product</th>
+                                        <th class="px-6 py-3 font-bold text-right">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    ${data.recentOrders.map(order => `
+                                        <tr class="hover:bg-gray-50/50">
+                                            <td class="px-6 py-4 text-brand-lightText">
+                                                ${new Date(order.createdAt).toLocaleDateString([], {month:'short', day:'numeric'})}, 
+                                                ${new Date(order.createdAt).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                                            </td>
+                                            <td class="px-6 py-4 font-medium text-brand-darkText">${order.userEmail}</td>
+                                            <td class="px-6 py-4">
+                                                <span class="px-2 py-1 rounded-md bg-brand-background text-brand-blue font-bold text-[10px] uppercase">
+                                                    ${(order.productType || 'Service').replace('_', ' ')}
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 text-right font-bold text-brand-blue">${fmtNGN(order.amount)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>`;
+                    } else {
+                        container.innerHTML = `<div class="p-10 text-center text-brand-lightText italic">No successful sales recorded yet.</div>`;
+                    }
                 }
             }
+        } catch (err) {
+            console.error(err);
         }
-    } catch (err) {
-        console.error("Dashboard Fetch Error:", err);
-        if (container) container.innerHTML = `<div class="p-10 text-center text-red-500 font-bold">Server Connection Error.</div>`;
     }
-}
-
-    function logout() {
-        localStorage.removeItem('smsglobe_admin_token');
-        window.location.href = 'sms_login.html';
-    }
-
-    window.onload = fetchDashboardData;
 </script>
 </body>
 </html>

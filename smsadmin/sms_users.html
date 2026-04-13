@@ -112,15 +112,15 @@
             <div class="bg-white rounded-2xl border border-brand-border shadow-sm overflow-hidden">
                 <div class="overflow-x-auto custom-scrollbar">
                     <table class="w-full text-left border-collapse">
-                        <thead class="bg-gray-50/50 border-b border-brand-border">
-                            <tr>
-                                <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">User Identity</th>
-                                <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Join Date</th>
-                                <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Account Status</th>
-                                <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Usage Rate</th>
-                                <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText text-right">Actions</th>
-                            </tr>
-                        </thead>
+                       <thead class="bg-gray-50/50 border-b border-brand-border">
+    <tr>
+        <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">User Identity</th>
+        <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Wallet / Ref</th>
+        <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Account Status</th>
+        <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText">Usage Rate</th>
+        <th class="px-4 md:px-6 py-4 text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-brand-lightText text-right">Actions</th>
+    </tr>
+</thead>
                         <tbody id="users-table-body" class="divide-y divide-brand-border">
                             <tr>
                                 <td colspan="5" class="px-6 py-20 text-center">
@@ -253,51 +253,54 @@
             return;
         }
 
-        tbody.innerHTML = users.map(user => {
-            const date = new Date(user.createdAt).toLocaleDateString('en-US', {
-                year: 'numeric', month: 'short', day: 'numeric'
-            });
+tbody.innerHTML = users.map(user => {
+    const date = new Date(user.createdAt).toLocaleDateString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric'
+    });
 
-            const isSuspended = user.status === 'suspended';
-            const usage = calculateUsage(user.createdAt);
+    const isSuspended = user.status === 'suspended';
+    const usage = calculateUsage(user.createdAt);
 
-            return `
-                <tr class="hover:bg-brand-background/30 transition-colors">
-                    <td class="px-4 md:px-6 py-4">
-                        <div class="font-bold text-brand-darkText truncate max-w-[120px] md:max-w-none">${user.fullName || 'Member'}</div>
-                        <div class="text-[10px] md:text-[11px] text-brand-lightText truncate max-w-[120px] md:max-w-none">${user.email}</div>
-                    </td>
-                    <td class="px-4 md:px-6 py-4 text-brand-midText font-medium whitespace-nowrap">
-                        ${date}
-                    </td>
-                    <td class="px-4 md:px-6 py-4">
-                        <span class="px-2 py-0.5 md:py-1 rounded-lg text-[9px] md:text-[10px] font-bold uppercase border ${
-                            isSuspended 
-                            ? 'bg-red-50 text-red-600 border-red-100' 
-                            : 'bg-green-50 text-green-600 border-green-100'
-                        }">${user.status || 'Active'}</span>
-                    </td>
-                    <td class="px-4 md:px-6 py-4">
-                        <div class="flex flex-col gap-1.5 min-w-[100px]">
-                            <div class="flex justify-between items-center text-[10px] font-bold">
-                                <span class="text-brand-blue">${usage.frequency}</span>
-                                <span class="text-brand-midText">${usage.percent}%</span>
-                            </div>
-                            <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                <div class="usage-bar bg-brand-blue h-full rounded-full" style="width: 0%" data-percent="${usage.percent}"></div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-4 md:px-6 py-4 text-right space-x-1 whitespace-nowrap">
-                        ${isSuspended 
-                            ? `<button onclick="handleUserAction('activate', '${user._id}')" class="px-3 py-1.5 bg-green-600 text-white rounded-lg text-[10px] font-bold hover:bg-green-700 active:scale-95 transition-all">Activate</button>`
-                            : `<button onclick="handleUserAction('suspend', '${user._id}')" class="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-[10px] font-bold hover:bg-orange-600 active:scale-95 transition-all">Suspend User</button>`
-                        }
-                        <button onclick="handleUserAction('delete', '${user._id}')" class="px-3 py-1.5 bg-red-50 text-red-600 border border-red-100 rounded-lg text-[10px] font-bold hover:bg-red-100 active:scale-95 transition-all">Delete</button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+    return `
+        <tr class="hover:bg-brand-background/30 transition-colors">
+            <td class="px-4 md:px-6 py-4">
+                <div class="font-bold text-brand-darkText truncate max-w-[120px] md:max-w-none">${user.fullName}</div>
+                <div class="text-[10px] md:text-[11px] text-brand-lightText truncate max-w-[120px] md:max-w-none">${user.email}</div>
+                <div class="text-[9px] text-brand-blue font-mono mt-1">Code: ${user.referralCode}</div>
+            </td>
+            <td class="px-4 md:px-6 py-4">
+                <div class="text-brand-darkText font-bold">₦${user.balance.toLocaleString()}</div>
+                <div class="text-[10px] text-brand-lightText">${user.referralCount} Referrals</div>
+            </td>
+            <td class="px-4 md:px-6 py-4">
+                <span class="px-2 py-0.5 md:py-1 rounded-lg text-[9px] md:text-[10px] font-bold uppercase border ${
+                    isSuspended 
+                    ? 'bg-red-50 text-red-600 border-red-100' 
+                    : 'bg-green-50 text-green-600 border-green-100'
+                }">${user.status || 'Active'}</span>
+                <div class="text-[9px] text-brand-lightText mt-1">${date}</div>
+            </td>
+            <td class="px-4 md:px-6 py-4">
+                <div class="flex flex-col gap-1.5 min-w-[100px]">
+                    <div class="flex justify-between items-center text-[10px] font-bold">
+                        <span class="text-brand-blue">${usage.frequency}</span>
+                        <span class="text-brand-midText">${usage.percent}%</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                        <div class="usage-bar bg-brand-blue h-full rounded-full" style="width: 0%" data-percent="${usage.percent}"></div>
+                    </div>
+                </div>
+            </td>
+            <td class="px-4 md:px-6 py-4 text-right space-x-1 whitespace-nowrap">
+                ${isSuspended 
+                    ? `<button onclick="handleUserAction('activate', '${user._id}')" class="px-3 py-1.5 bg-green-600 text-white rounded-lg text-[10px] font-bold hover:bg-green-700 active:scale-95 transition-all">Activate</button>`
+                    : `<button onclick="handleUserAction('suspend', '${user._id}')" class="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-[10px] font-bold hover:bg-orange-600 active:scale-95 transition-all">Suspend</button>`
+                }
+                <button onclick="handleUserAction('delete', '${user._id}')" class="px-3 py-1.5 bg-red-50 text-red-600 border border-red-100 rounded-lg text-[10px] font-bold hover:bg-red-100 active:scale-95 transition-all">Delete</button>
+            </td>
+        </tr>
+    `;
+}).join('');
 
         // Trigger the "slow" animation for percentages after rendering
         setTimeout(() => {

@@ -377,33 +377,43 @@
         { id: '1year', name: 'One Year Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan' }
     ];
 
-    const activationPlans = [];
-    for (let i = 20; i <= 150; i += 10) { activationPlans.push(`$${i}.00 Activation`); }
+ const activationPlans = [];
+for (let i = 20000; i <= 150000; i += 10000) { 
+    activationPlans.push(`₦${i.toLocaleString()}.00 Activation`); 
+}
 
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('-translate-x-full');
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
 
-    // 1. Fetch Profile & Balance on Load
-    async function fetchUserProfile() {
-        try {
-            const res = await fetch(`${API_BASE_URL}/user-profile`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
-            });
-            const data = await res.json();
-            if (data.success) {
-                userBalance = data.balance || 0;
-                userBonusBalance = data.bonusBalance || 0;
-                
-                // Update UI
-                document.getElementById('displayBalance').innerText = `₦${userBalance.toLocaleString()}`;
-                document.getElementById('displayBonus').innerText = `₦${userBonusBalance.toLocaleString()}`;
+   async function fetchUserProfile() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/user-profile`, {
+            headers: { 
+                'Authorization': `Bearer ${localStorage.getItem('userToken')}`,
+                'Cache-Control': 'no-cache' 
             }
-        } catch (err) {
-            console.error("Balance sync failed", err);
-        }
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+            userBalance = data.balance || 0; 
+            userBonusBalance = data.bonusBalance || 0; // NEW: Capture the bonus            
+            const balEl = document.getElementById('displayBalance');
+            if (balEl) balEl.innerText = `₦${userBalance.toLocaleString()}`;
+            const bonusEl = document.getElementById('displayBonus');
+            if (bonusEl) bonusEl.innerText = `₦${userBonusBalance.toLocaleString()}`;
+            const refCountEl = document.getElementById('userReferralCount');
+            if (refCountEl) refCountEl.innerText = data.referralCount || 0;
+            
+            console.log("Profile Sync: Main Wallet and Bonus Balance updated.");
+       }
+    } catch (err) {
+        console.error("Failed to fetch balance and bonus", err);
     }
+}
 
     function initPage() {
         const grid = document.getElementById('carrierGrid');

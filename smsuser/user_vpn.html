@@ -204,21 +204,23 @@
         <p id="modalUserBalance" class="text-lg font-black text-brand-blue">₦0</p>
     </div>
 
-    <label for="useBonusToggle" id="bonusSection" class="group block py-3 px-4 bg-emerald-50/50 rounded-xl border border-emerald-500/20 text-left cursor-pointer transition-all hover:bg-emerald-50 active-scale">
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-tight">Referral Bonus (Unlocked)</p>
+   <label for="useBonusToggle" id="bonusSection" class="group block py-3 px-4 bg-emerald-50/50 rounded-xl border border-emerald-500/20 text-left cursor-pointer transition-all hover:bg-emerald-50 active-scale hidden">
+    <div class="flex items-center justify-between">
+        <div>
+            <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-tight">Referral Bonus (Unlocked)</p>
+            <div class="flex items-baseline gap-1">
                 <p id="modalBonusBalance" class="text-lg font-black text-emerald-600">₦0</p>
             </div>
-            
-            <div class="flex items-center gap-3">
-                <span id="bonusStatusLabel" class="text-[9px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-md border border-emerald-200">USE FIRST</span>
-                
-                <input type="checkbox" id="useBonusToggle" checked 
-                    class="w-5 h-5 rounded-md border-emerald-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
-            </div>
         </div>
-    </label>
+        
+        <div class="flex items-center gap-3">
+            <span id="bonusStatusLabel" class="text-[9px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-md border border-emerald-200 transition-colors">USE FIRST</span>
+            
+            <input type="checkbox" id="useBonusToggle" checked 
+                class="w-6 h-6 rounded-lg border-emerald-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer shadow-sm">
+        </div>
+    </div>
+</label>
     
     <div class="py-2 px-4 bg-blue-50/50 rounded-xl border border-brand-blue/10 text-left">
         <p class="text-[10px] font-bold text-brand-blue uppercase tracking-tight">Total Price</p>
@@ -461,28 +463,42 @@ async function buyVPN(vpnId) {
                 bonusToggle.checked = false;
             }
 
-            // 3. AFFORDABILITY CHECK (Initial Check)
-            // Backend logic: Buying power = Main + Bonus (if unlocked)
-            const initialBuyingPower = isUnlocked ? (mainBalance + bonusBalance) : mainBalance;
+            // --- 3. AFFORDABILITY GATEKEEPER ---
+            const checkAffordability = () => {
+                const isUsingBonus = bonusToggle.checked;
+                // Total effective funds based on toggle and unlock status
+                const currentBuyingPower = (isUsingBonus && isUnlocked) ? (mainBalance + bonusBalance) : mainBalance;
 
-            if (initialBuyingPower < price) {
-                confirmBtn.classList.add('hidden');
-                topupBtn.classList.remove('hidden');
-                if (!isUnlocked && (mainBalance + bonusBalance) >= price) {
-                    alert("Your Referral Bonus is locked. Please make a deposit to unlock it.");
+                if (currentBuyingPower < price) {
+                    confirmBtn.classList.add('hidden');
+                    topupBtn.classList.remove('hidden');
+                    
+                    // Visual feedback if the toggle is the reason they can't afford it
+                    if (!isUsingBonus && (mainBalance + bonusBalance) >= price) {
+                        bonusStatusLabel.innerText = "REQUIRED";
+                        bonusStatusLabel.className = "text-[9px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded-md border border-red-200";
+                    }
+                } else {
+                    confirmBtn.classList.remove('hidden');
+                    topupBtn.classList.add('hidden');
+                    confirmBtn.disabled = false;
+                    if (btnText) btnText.innerText = "Confirm & Pay";
+                    
+                    // Reset label if affordable
+                    if (isUsingBonus) {
+                        bonusStatusLabel.innerText = "USE FIRST";
+                        bonusStatusLabel.className = "text-[9px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-md border border-emerald-200";
+                    }
                 }
-            } else {
-                confirmBtn.classList.remove('hidden');
-                topupBtn.classList.add('hidden');
-                confirmBtn.disabled = false;
-                if (btnText) btnText.innerText = "Confirm & Pay"; 
-            }
+            };
 
-            // 4. DYNAMIC UI UPDATE ON TOGGLE
+            // Run initial check
+            checkAffordability();
+
+            // --- 4. DYNAMIC UI UPDATE ON TOGGLE ---
             bonusToggle.onchange = (e) => {
                 const isUsingBonus = e.target.checked;
                 
-                // Update Label Visuals
                 if (isUsingBonus) {
                     bonusStatusLabel.innerText = "USE FIRST";
                     bonusStatusLabel.className = "text-[9px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-md border border-emerald-200";
@@ -491,15 +507,7 @@ async function buyVPN(vpnId) {
                     bonusStatusLabel.className = "text-[9px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-md border border-gray-200";
                 }
 
-                // Re-check affordability if they uncheck bonus
-                const currentBuyingPower = (isUsingBonus && isUnlocked) ? (mainBalance + bonusBalance) : mainBalance;
-                if (currentBuyingPower < price) {
-                    confirmBtn.classList.add('hidden');
-                    topupBtn.classList.remove('hidden');
-                } else {
-                    confirmBtn.classList.remove('hidden');
-                    topupBtn.classList.add('hidden');
-                }
+                checkAffordability(); // Re-validate affordability immediately
             };
 
             // Show Modal
@@ -507,7 +515,7 @@ async function buyVPN(vpnId) {
             confirmState.classList.remove('hidden');
             modal.classList.remove('hidden');
 
-            // 5. FINAL CONFIRMATION & API CALL
+            // --- 5. FINAL CONFIRMATION & API CALL ---
             confirmBtn.onclick = async () => {
                 confirmBtn.disabled = true;
                 if (btnLoader) btnLoader.classList.remove('hidden');
@@ -523,17 +531,15 @@ async function buyVPN(vpnId) {
                         body: JSON.stringify({ 
                             vpnId, 
                             planIndex: parseInt(planIndex),
-                            useBonus: bonusToggle.checked // Sending the user's choice
+                            useBonus: bonusToggle.checked // Sending the current toggle state
                         })
                     });
 
                     const pData = await purchaseRes.json();
                     
                     if (pData.success) {
-                        // Update local balance if necessary
-                        if (typeof userBalance !== 'undefined') userBalance = pData.balance; 
-                        
-                        const credentials = pData.credentials || (pData.order ? {
+                        // Success: Pass credentials to details view
+                        const creds = pData.credentials || (pData.order ? {
                             username: pData.order.username || pData.order.vpnCredentials?.username,
                             password: pData.order.password || pData.order.vpnCredentials?.password,
                             pcUsername: pData.order.pcUsername,
@@ -542,10 +548,16 @@ async function buyVPN(vpnId) {
                             instructions: pData.order.instructions
                         } : null);
 
-                        showSuccessDetails(credentials, vpnData);
+                        if (typeof userBalance !== 'undefined') userBalance = pData.balance; 
+                        showSuccessDetails(creds, vpnData);
                     } else {
                         alert(pData.message || "Purchase failed");
-                        closeModal();
+                        // Don't close modal on insufficient funds so they can toggle bonus if needed
+                        if (pData.message && pData.message.includes("Insufficient")) {
+                           checkAffordability();
+                        } else {
+                           closeModal();
+                        }
                     }
                 } catch (err) {
                     alert("Connection Error. Please check your network.");

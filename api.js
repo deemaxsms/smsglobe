@@ -1357,40 +1357,49 @@ async function handlePurchaseWithWallet(req, res) {
 
             return res.status(400).json({ success: false, message: errorMsg });
         }
-
-        // --- 5. DEDUCTION LOGIC ---
         let remainingToPay = costNGN;
-        let newMainBalance = mainBal;
-        let newBonusBalance = bonusBal;
+        let bonusDeduction = 0;
+        let mainDeduction = 0;
 
-        // ONLY deduct from Bonus if the user explicitly allowed it (canUseBonus)
         if (canUseBonus) {
-            if (newBonusBalance >= remainingToPay) {
-                newBonusBalance -= remainingToPay;
+            if (bonusBal >= remainingToPay) {
+                bonusDeduction = remainingToPay;
                 remainingToPay = 0;
             } else {
-                remainingToPay -= newBonusBalance;
-                newBonusBalance = 0;
+                bonusDeduction = bonusBal;
+                remainingToPay -= bonusBal;
             }
         }
 
-        // The rest (or all, if useBonus was false) comes from Main Balance
         if (remainingToPay > 0) {
-            newMainBalance -= remainingToPay;
+            mainDeduction = remainingToPay;
         }
-
-        // Atomic update to prevent race conditions
-        const updatedUser = await User.findOneAndUpdate(
-            { _id: user._id, balance: mainBal, bonusBalance: bonusBal },
-            { $set: { balance: newMainBalance, bonusBalance: newBonusBalance } },
-            { new: true }
-        );
+       const updatedUser = await User.findOneAndUpdate(
+    { 
+        _id: user._id, 
+        balance: { $gte: mainDeduction } 
+    },
+    { 
+        $inc: { 
+            balance: -mainDeduction, 
+            bonusBalance: -bonusDeduction 
+        } 
+    },
+    { new: true }
+);
 
         if (!updatedUser) {
             if (vpnId) await VPN.findByIdAndUpdate(vpnId, { $inc: { stock: 1 } });
             if (proxyId) await Proxy.findByIdAndUpdate(proxyId, { $inc: { stock: 1 } });
-            return res.status(400).json({ success: false, message: "Transaction failed. Please try again." });
+            
+            return res.status(400).json({ 
+                success: false, 
+                message: "Transaction failed. Please ensure you have sufficient funds and try again." 
+            });
         }
+
+        newMainBalance = updatedUser.balance;
+        newBonusBalance = updatedUser.bonusBalance;
 
         const balanceBefore = mainBal; // For Transaction log
         const balanceAfter = updatedUser.balance;

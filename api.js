@@ -1422,6 +1422,28 @@ async function handlePurchaseWithWallet(req, res) {
                 extraStorage: extraStorageGB
             };
         }
+        if (metadata?.activationEmail && metadata?.firstName) {
+    // IDENTIFY ACTIVATION
+    itemType = "eSIM_Activation";
+    const cleanedPrice = planAmount.toString().replace(/[^0-9]/g, "");
+    costNGN = Math.round(Number(cleanedPrice));
+    
+    productDetails.name = carrierName || "Global eSIM";
+    productDetails.plan = planName || `₦${costNGN.toLocaleString()} Activation`;
+
+    orderSpecifics = {
+        carrier: { name: carrierName, image: productImage },
+        deviceName: mobileNumber, 
+        customerDetails: {
+            firstName: metadata.firstName,
+            lastName: metadata.lastName,
+            address: metadata.address,
+            zipCode: metadata.zip,
+            email: metadata.activationEmail
+        },
+        instructions: "Your eSIM activation request is being processed. You will be contacted via WhatsApp/Email."
+    };
+}
        else if (carrierName && mobileNumber) {
     itemType = "eSIM_Refill";
     
@@ -1447,30 +1469,6 @@ async function handlePurchaseWithWallet(req, res) {
         instructions: "Your refill request has been received and is being processed."
     };
 }
-
-else if (metadata?.activationEmail && metadata?.firstName) {
-            // IDENTIFY ACTIVATION
-            itemType = "eSIM_Activation";
-            const cleanedPrice = planAmount.toString().replace(/[^0-9]/g, "");
-            costNGN = Math.round(Number(cleanedPrice));
-            
-            productDetails.name = carrierName || "Global eSIM";
-            productDetails.plan = planName || `₦${costNGN.toLocaleString()} Activation`;
-
-            orderSpecifics = {
-                carrier: { name: carrierName, image: productImage },
-                deviceName: mobileNumber, 
-                customerDetails: {
-                    firstName: metadata.firstName,
-                    lastName: metadata.lastName,
-                    address: metadata.address,
-                    zipCode: metadata.zip,
-                    email: metadata.activationEmail
-                },
-                instructions: "Your eSIM activation request is being processed. You will be contacted via WhatsApp/Email."
-            };
-        }
-
         const { useBonus } = req.body; // New field from frontend toggle
         const mainBal = Number(user.balance || 0);
         const bonusBal = Number(user.bonusBalance || 0);

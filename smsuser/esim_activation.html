@@ -673,9 +673,10 @@ async function purchaseEsimActivateWithWallet() {
                 'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
-                carrierName: window.currentSelectedCarrier?.name || "Global eSIM",
+                productType: 'ESIM_ACTIVATION', // Add this line!
+                carrierName: window.currentSelectedCarrier?.name,
                 mobileNumber: deviceName,
-                planAmount: amount,
+                planAmount: amountValue,
                 useBonus: useBonus,
                 metadata: {
                     firstName,
@@ -683,7 +684,7 @@ async function purchaseEsimActivateWithWallet() {
                     activationEmail: email,
                     address,
                     zip,
-                    activationType: "N/A"
+                    activationType: "Prepaid"
                 }
             })
         });

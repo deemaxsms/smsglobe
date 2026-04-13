@@ -151,36 +151,42 @@ const RDP = mongoose.models.RDP || mongoose.model('RDP', rdpSchema, 'rdp_orders'
 
 // --- eSIM REFILL SCHEMA ---
 const esimRefillSchema = new mongoose.Schema({
+    // User Identity
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     userEmail: { type: String, required: true, index: true },
     fullName: { type: String },    
     carrier: {
-        id: { type: String, required: true },
-        name: { type: String, required: true },
-        image: String
+        id: { type: String, required: true }, // Internal ID or 'manual'
+        name: { type: String, required: true }, // e.g., T-Mobile
+        image: { type: String } // URL to carrier logo
     },
     target: {
-        number: { type: String, required: true },
-        country: { type: String, required: true } // Captured from coverageCountry
+        number: { type: String, required: true }, // The phone number being topped up
+        country: { type: String, required: true } // The coverage country
     },
-    amount: { type: Number, required: true }, 
+
+    // Financial Data
+    amount: { type: Number, required: true }, // Total cost in NGN
     currency: { type: String, default: 'NGN' },
     mainBalanceUsed: { type: Number, default: 0 },
     bonusBalanceUsed: { type: Number, default: 0 },
+    paymentReference: { type: String, unique: true, required: true }, // WAL- or ESIM- prefix    
     status: { 
         type: String, 
         enum: ['pending', 'processing', 'successful', 'failed', 'completed'], 
         default: 'pending',
         index: true 
     },
-    paymentReference: { type: String, unique: true, required: true },
-    confirmationNumber: { type: String }, // <--- ADDED FOR ADMIN
-    adminNote: String,
+    confirmationNumber: { type: String }, // The ID admin provides after manual processing
+    adminNote: { type: String },
+
+    // Extensibility
     metadata: { type: mongoose.Schema.Types.Mixed }
 }, { timestamps: true });
 
 esimRefillSchema.index({ createdAt: -1 });
 const EsimRefill = mongoose.models.EsimRefill || mongoose.model('EsimRefill', esimRefillSchema, 'esim_refills');
+
 
 // --- TRANSACTION SCHEMA ---
 const transactionSchema = new mongoose.Schema({
@@ -212,26 +218,33 @@ const orderSchema = new mongoose.Schema({
     },
     planName: String, 
     nodeName: String, 
-    amount: { type: Number, required: true }, // Total cost
-    currency: { type: String, default: 'NGN' },     
+    amount: { type: Number, required: true },
+    currency: { type: String, default: 'NGN' },         
     mainBalanceUsed: { type: Number, default: 0 }, 
     bonusBalanceUsed: { type: Number, default: 0 }, 
-    status: { type: String, enum: ['pending', 'successful', 'failed', 'completed'], default: 'pending' }, 
+    status: { 
+        type: String, 
+        enum: ['pending', 'processing', 'successful', 'failed', 'completed'], 
+        default: 'pending' 
+    }, 
     paymentReference: { type: String, unique: true },    
+    confirmationNumber: { type: String }, // NEW: Store manual activation codes or IDs
+    adminNote: String, // NEW: Internal notes for the order
     ram: String,
     cpu: String,
     storage: String,
     net: String,
     os: String,
     extraCPU: { type: Number, default: 0 },
-    extraStorage: { type: Number, default: 0 },
+    extraStorage: { type: Number, default: 0 },    
     activationCode: String, 
     vpnCredentials: { username: String, password: { type: String } },
-    rdpDetails: { os: String, specs: String },
-    
     metadata: { type: mongoose.Schema.Types.Mixed } 
     
 }, { timestamps: true });
+
+// Optimize for dashboard performance
+orderSchema.index({ createdAt: -1 });
 
 const Order = mongoose.models.Order || mongoose.model('Order', orderSchema);
 
@@ -1456,27 +1469,28 @@ async function handlePurchaseWithWallet(req, res) {
        // --- 6. CREATE ORDER RECORDS ---
        let newOrder;
 if (itemType === "eSIM_Refill") {
-    // Save to the specialized EsimRefill collection
-    newOrder = await EsimRefill.create({
+    if (!orderSpecifics.target.country || !orderSpecifics.target.number) {
+        throw new Error("Missing target country or mobile number for eSIM Refill");
+    }
+        newOrder = await EsimRefill.create({
         userId: user._id,
         userEmail: user.email,
-        fullName: user.fullName,
+        fullName: user.fullName || "Customer",
         carrier: {
-            id: orderSpecifics.carrier.id,
+            id: orderSpecifics.carrier.id || "manual",
             name: orderSpecifics.carrier.name,
             image: orderSpecifics.carrier.image
         },
         target: {
             number: orderSpecifics.target.number,
-            country: orderSpecifics.target.country // Captured from coverageCountry variable
+            country: orderSpecifics.target.country 
         },
         amount: costNGN,
         mainBalanceUsed: mainDeduction,
         bonusBalanceUsed: bonusDeduction,
         paymentReference: paymentReference,
-        status: 'pending' // Admin sees this in the dashboard
+        status: 'pending' // Admin sees this to start processing
     });
-
         } else {
             // Save to standard Order collection
             newOrder = await Order.create({
@@ -2002,6 +2016,7 @@ async function handleAllTransactions(req, res) {
         res.status(500).json({ success: false, message: "Server error" });
     }
 }
+
 async function handleCreateEsimOrder(req, res) {
     const { email, carrierName, mobileNumber, planAmount, productImage, useBonus } = req.body;
 

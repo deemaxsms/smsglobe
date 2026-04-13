@@ -289,8 +289,7 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div class="space-y-1">
                         <label class="text-[11px] font-semibold text-brand-midText">Zip Code</label>
-                        <input type="text" name="zipCode" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Zip/Postcode">
-                    </div>
+                    <input type="text" name="zipCode" placeholder="Enter Zip Code" class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all">                    </div>
                     <div class="space-y-1">
                         <label class="text-[11px] font-semibold text-brand-midText">Country</label>
                         <input type="text" name="country" required class="w-full bg-brand-background border border-brand-border rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none transition-all" placeholder="Country">
@@ -539,6 +538,46 @@
         document.getElementById('sidebar').classList.add('-translate-x-full');
         document.getElementById('sidebarOverlay').classList.add('hidden');
     });
+
+    // --- ZIP CODE LOOKUP LOGIC ---
+async function lookupZip(zipCode) {
+    // Only trigger if zip is at least 3 characters (adjust based on target country)
+    if (zipCode.length < 3) return;
+
+    const cityInput = document.querySelector('input[name="city"]');
+    const stateInput = document.querySelector('input[name="state"]');
+    const country = document.querySelector('select[name="country"]')?.value || 'US';
+
+    try {
+        const response = await fetch(`https://api.zippopotam.us/${country}/${zipCode}`);
+        
+        if (response.ok) {
+            const data = await response.json();
+            const place = data.places[0];
+            
+            // Auto-fill fields
+            if (cityInput) cityInput.value = place['place name'];
+            if (stateInput) stateInput.value = place['state'];
+            
+            // Optional: visual feedback
+            cityInput.classList.add('bg-green-50');
+            stateInput.classList.add('bg-green-50');
+            setTimeout(() => {
+                cityInput.classList.remove('bg-green-50');
+                stateInput.classList.remove('bg-green-50');
+            }, 2000);
+        }
+    } catch (err) {
+        console.warn("Zip lookup failed or service unavailable.");
+    }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    const zipInput = document.querySelector('input[name="zipCode"]');
+    if (zipInput) {
+        zipInput.addEventListener('change', (e) => lookupZip(e.target.value));
+    }
+});
 
     window.onload = initGifting;
 </script>

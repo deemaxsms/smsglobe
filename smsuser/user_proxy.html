@@ -197,15 +197,25 @@
             <h2 class="text-xl font-bold text-brand-darkText mb-2 uppercase tracking-tight">Confirm Purchase</h2>
             <p class="text-brand-lightText text-[10px] mb-6">Review your transaction details before proceeding.</p>
             
-            <div class="space-y-2 mb-8">
+            <div class="space-y-2 mb-6">
                 <div class="py-3 px-4 bg-gray-50 rounded-2xl border border-brand-border text-left flex justify-between items-center">
                     <div>
                         <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Main Balance</p>
                         <p id="modalUserBalanceNGN" class="text-lg font-black text-brand-blue">₦0.00</p>
                     </div>
-                    <div class="text-right">
-                        <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Referral Bonus</p>
-                        <p id="modalBonusBalanceNGN" class="text-sm font-bold text-green-600">₦0.00</p>
+                </div>
+
+                <div id="bonusSection" class="hidden py-3 px-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 text-left flex justify-between items-center">
+                    <div class="flex flex-col">
+                        <p class="text-[9px] font-bold text-emerald-700 uppercase tracking-wider">Referral Bonus</p>
+                        <p id="modalBonusBalanceNGN" class="text-sm font-black text-emerald-600">₦0.00</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="bonusStatusLabel" class="text-[9px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-md border border-emerald-200">USE FIRST</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="useBonusToggle" class="sr-only peer" checked>
+                            <div class="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
                     </div>
                 </div>
 
@@ -491,6 +501,14 @@ async function buyProxy(proxyId) {
     const token = localStorage.getItem('userToken');
     const proxy = allProxies.find(p => p._id === proxyId);
     const selectedPlan = proxy.plans[planIndex];
+    const priceNGN = Number(selectedPlan.price);
+
+    // UI Elements
+    const bonusSection = document.getElementById('bonusSection');
+    const bonusToggle = document.getElementById('useBonusToggle');
+    const bonusStatusLabel = document.getElementById('bonusStatusLabel');
+    const finalBtn = document.getElementById('finalConfirmBtn');
+    const topupBtn = document.getElementById('modalTopupBtn');
 
     const formatNGN = (amt) => `₦${Number(amt || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
 
@@ -505,42 +523,67 @@ async function buyProxy(proxyId) {
             const mainBal = parseFloat(user.balance || 0);
             const bonusBal = parseFloat(user.bonusBalance || 0);
             const isUnlocked = user.hasDeposited || mainBal > 0;
-            
-            const buyingPower = isUnlocked ? (mainBal + bonusBal) : mainBal;
-            const priceNGN = Number(selectedPlan.price); 
-            if (document.getElementById('modalUserBalanceNGN')) 
-                document.getElementById('modalUserBalanceNGN').innerText = formatNGN(mainBal);
-            if (document.getElementById('modalBonusBalanceNGN')) 
+
+            // 1. Update Labels
+            document.getElementById('modalUserBalanceNGN').innerText = formatNGN(mainBal);
+            document.getElementById('modalPurchaseAmountNGN').innerText = formatNGN(priceNGN);
+
+            // 2. Bonus Logic
+            if (bonusBal > 0) {
+                bonusSection.classList.remove('hidden');
                 document.getElementById('modalBonusBalanceNGN').innerText = formatNGN(bonusBal);
-            if (document.getElementById('modalPurchaseAmountNGN')) 
-                document.getElementById('modalPurchaseAmountNGN').innerText = formatNGN(priceNGN);            
-            const finalBtn = document.getElementById('finalConfirmBtn');
-            const topupBtn = document.getElementById('modalTopupBtn');
-            
-            if (buyingPower < priceNGN) {
-                finalBtn.classList.add('hidden');
-                topupBtn.classList.remove('hidden');
-                if ((mainBal + bonusBal) >= priceNGN && !isUnlocked) {
-                    alert("Your Referral Bonus is locked. Please make a deposit to use your full balance.");
-                }
+                bonusToggle.checked = true;
             } else {
-                finalBtn.classList.remove('hidden');
-                topupBtn.classList.add('hidden');
-                finalBtn.disabled = false;
-                finalBtn.innerText = "Confirm & Pay Now";
-                
-                currentPendingPurchase = { proxyId, planIndex };
-                finalBtn.onclick = executeFinalPurchase;
+                bonusSection.classList.add('hidden');
+                bonusToggle.checked = false;
             }
 
-            // 3. Show Modal
+            // 3. Affordability Gatekeeper
+            const checkAffordability = () => {
+                const isUsingBonus = bonusToggle.checked;
+                const currentBuyingPower = (isUsingBonus && isUnlocked) ? (mainBal + bonusBal) : mainBal;
+
+                if (currentBuyingPower < priceNGN) {
+                    finalBtn.classList.add('hidden');
+                    topupBtn.classList.remove('hidden');
+                    if (!isUsingBonus && (mainBal + bonusBal) >= priceNGN) {
+                        bonusStatusLabel.innerText = "REQUIRED";
+                        bonusStatusLabel.className = "text-[9px] font-bold text-red-600 bg-white px-2 py-1 rounded-md border border-red-200";
+                    }
+                } else {
+                    finalBtn.classList.remove('hidden');
+                    topupBtn.classList.add('hidden');
+                    finalBtn.disabled = false;
+                    finalBtn.innerText = "Confirm & Pay Now";
+                    
+                    if (isUsingBonus) {
+                        bonusStatusLabel.innerText = "USE FIRST";
+                        bonusStatusLabel.className = "text-[9px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-md border border-emerald-200";
+                    }
+                }
+            };
+
+            checkAffordability();
+
+            // 4. Toggle Event
+            bonusToggle.onchange = (e) => {
+                const isUsingBonus = e.target.checked;
+                bonusStatusLabel.innerText = isUsingBonus ? "USE FIRST" : "SKIPPED";
+                bonusStatusLabel.className = isUsingBonus 
+                    ? "text-[9px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-md border border-emerald-200"
+                    : "text-[9px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-md border border-gray-200";
+                checkAffordability();
+            };
+
+            currentPendingPurchase = { proxyId, planIndex };
+            finalBtn.onclick = executeFinalPurchase;
+
+            // Show Modal
             document.getElementById('proxyModal').classList.remove('hidden');
-            document.getElementById('confirmState').classList.remove('hidden'); 
-            if(document.getElementById('successState')) document.getElementById('successState').classList.add('hidden'); 
         }
     } catch (err) {
         console.error("Verification Error:", err);
-        alert("Could not verify balance. Please try again.");
+        alert("Could not verify balance.");
     }
 }
 
@@ -550,18 +593,11 @@ async function executeFinalPurchase() {
     const { proxyId, planIndex } = currentPendingPurchase;
     const token = localStorage.getItem('userToken');
     const btn = document.getElementById('finalConfirmBtn');
+    const useBonus = document.getElementById('useBonusToggle').checked;
 
     btn.disabled = true;
 
     try {
-        // Countdown visual
-        let secondsLeft = 3;
-        while (secondsLeft > 0) {
-            btn.innerHTML = `<span class="flex items-center justify-center"><svg class="animate-spin h-4 w-4 mr-2 text-white" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Securing in ${secondsLeft}s...</span>`;
-            await new Promise(r => setTimeout(r, 1000));
-            secondsLeft--;
-        }
-
         const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
             method: 'POST',
             headers: { 
@@ -570,20 +606,18 @@ async function executeFinalPurchase() {
             },
             body: JSON.stringify({ 
                 proxyId, 
-                planIndex: parseInt(planIndex) 
+                planIndex: parseInt(planIndex),
+                useBonus: useBonus
             })
         });
 
         const data = await res.json();
         if (data.success) {
-            userBalance = data.balance; 
             showSuccessModal(data); 
         } else {
             alert(data.message || "Purchase failed.");
-            closeModalOnly();
         }
     } catch (err) {
-        console.error("Purchase Error:", err);
         alert("Transaction failed. Check network.");
     } finally {
         btn.disabled = false;

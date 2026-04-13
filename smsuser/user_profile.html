@@ -210,7 +210,7 @@
                 </div>
             </div>
 
-            <section class="bg-white rounded-2xl border border-brand-border overflow-hidden shadow-sm">
+<section class="bg-white rounded-2xl border border-brand-border overflow-hidden shadow-sm">
     <div class="p-4 border-b border-brand-border bg-gray-50/50 flex justify-between items-center">
         <h3 class="text-[10px] font-bold text-brand-darkText uppercase tracking-wider">Transaction History</h3>
         <span id="orderCount" class="text-[9px] bg-brand-blue/10 text-brand-blue px-2 py-0.5 rounded-full font-bold">0 Orders</span>
@@ -219,15 +219,16 @@
         <table class="w-full text-left border-collapse">
             <thead>
                 <tr class="border-b border-brand-border bg-gray-50/30">
-                    <th class="px-5 py-3 text-[9px] font-bold text-brand-lightText uppercase">Product</th>
-                    <th class="px-5 py-3 text-[9px] font-bold text-brand-lightText uppercase">Amount</th>
-                    <th class="px-5 py-3 text-[9px] font-bold text-brand-lightText uppercase">Status</th>
-                    <th class="px-5 py-3 text-[9px] font-bold text-brand-lightText uppercase">Date & Time</th>         
-       </tr>
+                    <th class="px-3 md:px-5 py-3 text-[8px] md:text-[9px] font-bold text-brand-lightText uppercase">Product</th>
+                    <th class="px-3 md:px-5 py-3 text-[8px] md:text-[9px] font-bold text-brand-lightText uppercase">Amount</th>
+                    <th class="px-3 md:px-5 py-3 text-[8px] md:text-[9px] font-bold text-brand-lightText uppercase">Source</th>
+                    <th class="px-3 md:px-5 py-3 text-[8px] md:text-[9px] font-bold text-brand-lightText uppercase">Status</th>
+                    <th class="px-3 md:px-5 py-3 text-[8px] md:text-[9px] font-bold text-brand-lightText uppercase">Date</th>        
+                </tr>
             </thead>
             <tbody id="transactionsBody" class="divide-y divide-brand-border">
                 <tr>
-                    <td colspan="4" class="px-5 py-10 text-center text-[11px] text-brand-lightText">Loading transactions...</td>
+                    <td colspan="5" class="px-5 py-10 text-center text-[10px] text-brand-lightText">Loading transactions...</td>
                 </tr>
             </tbody>
         </table>
@@ -372,14 +373,14 @@ function renderOrders(orders) {
     const progressBar = document.getElementById('orderProgress');
     
     if (!orders || orders.length === 0) {
-        container.innerHTML = `<tr><td colspan="4" class="px-5 py-10 text-center text-[11px] text-brand-lightText">No transactions found.</td></tr>`;
+        container.innerHTML = `<tr><td colspan="5" class="px-5 py-10 text-center text-[10px] text-brand-lightText">No transactions found.</td></tr>`;
         return;
     }
 
     const total = orders.length;
     if (countLabel) countLabel.innerText = `${total} Orders`;
     if (insightCount) insightCount.innerText = total;
-    if (progressBar) progressBar.style.width = `${Math.min(total * 4, 100)}%`; // Visual logic
+    if (progressBar) progressBar.style.width = `${Math.min(total * 4, 100)}%`;
 
     container.innerHTML = ''; 
 
@@ -393,44 +394,57 @@ function renderOrders(orders) {
         if (rawDate) {
             const dateObj = new Date(rawDate);
             if (!isNaN(dateObj.getTime())) {
-                dateStr = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                dateStr = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
                 timeStr = dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase();
             }
         }
 
+        // Status Logic
         const statusColors = {
             successful: 'bg-green-50 text-green-600 border-green-100',
             completed: 'bg-green-50 text-green-600 border-green-100',
             pending: 'bg-orange-50 text-orange-600 border-orange-100',
             failed: 'bg-red-50 text-red-600 border-red-100'
         };
-        
         const currentStatus = (order.status || 'pending').toLowerCase();
         const colorClass = statusColors[currentStatus] || 'bg-gray-50 text-gray-600 border-gray-100';
+
+        // Source / Payment Method Logic
+        const isBonus = order.paymentMethod === 'Referral Bonus' || order.useBonus === true;
+        const sourceLabel = isBonus ? 'BONUS' : 'WALLET';
+        const sourceClass = isBonus 
+            ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+            : 'bg-blue-50 text-blue-600 border-blue-100';
+
         const displayProduct = order.productType || order.product || 'Service';
-        const displayDetails = order.nodeName ? `${order.nodeName} - ${order.planName}` : (order.planName || 'Standard Plan');
+        const displayDetails = order.nodeName ? `${order.nodeName}` : (order.planName || 'Standard');
         const displayCurrency = order.currency === 'USD' ? '$' : '₦';
 
         const row = `
             <tr class="hover:bg-gray-50/50 transition-colors border-b border-gray-50 last:border-0">
-                <td class="px-5 py-3">
+                <td class="px-3 md:px-5 py-3">
                     <div class="flex flex-col">
-                        <span class="text-[11px] font-bold text-brand-darkText uppercase">${displayProduct}</span>
-                        <span class="text-[9px] text-brand-lightText">${displayDetails}</span>
+                        <span class="text-[9px] md:text-[11px] font-bold text-brand-darkText uppercase truncate max-w-[80px] md:max-w-none">${displayProduct}</span>
+                        <span class="text-[8px] text-brand-lightText truncate max-w-[80px]">${displayDetails}</span>
                     </div>
                 </td>
-                <td class="px-5 py-3 text-[11px] font-bold text-brand-darkText">
+                <td class="px-3 md:px-5 py-3 text-[9px] md:text-[11px] font-bold text-brand-darkText">
                     ${displayCurrency}${order.amount ? order.amount.toLocaleString() : '0'}
                 </td>
-                <td class="px-5 py-3">
-                    <span class="px-2 py-0.5 rounded-full text-[9px] font-bold border ${colorClass} uppercase">
+                <td class="px-3 md:px-5 py-3">
+                    <span class="px-1.5 py-0.5 rounded text-[7px] md:text-[8px] font-black border ${sourceClass} uppercase tracking-tighter">
+                        ${sourceLabel}
+                    </span>
+                </td>
+                <td class="px-3 md:px-5 py-3">
+                    <span class="px-1.5 py-0.5 rounded-full text-[8px] font-bold border ${colorClass} uppercase">
                         ${currentStatus}
                     </span>
                 </td>
-                <td class="px-5 py-3">
+                <td class="px-3 md:px-5 py-3">
                     <div class="flex flex-col">
-                        <span class="text-[10px] text-brand-darkText font-semibold">${dateStr}</span>
-                        <span class="text-[8px] text-brand-lightText font-medium uppercase">${timeStr}</span>
+                        <span class="text-[8px] md:text-[10px] text-brand-darkText font-semibold">${dateStr}</span>
+                        <span class="text-[7px] text-brand-lightText font-medium uppercase">${timeStr}</span>
                     </div>
                 </td>
             </tr>

@@ -2959,42 +2959,55 @@ async function handleGetUserTransactions(req, res) {
         if (!userId) {
             return res.status(401).json({ success: false, message: "Invalid token payload" });
         }
+        
         const { type } = req.query;
-        // Convert string ID to Mongoose ObjectId to be safe
         let query = { userId: new mongoose.Types.ObjectId(userId) };
 
         if (type === 'topup') {
             query.purpose = 'deposit';
         }
+
         const transactions = await Transaction.find(query)
             .sort({ createdAt: -1 })
             .limit(50)
             .lean();
 
-return res.json({
-    success: true,
-    transactions: transactions.map(tx => ({
-        id: tx._id,
-        amountUSD: tx.amountUSD,
-        amountNGN: tx.amountNGN,
-        status: tx.status,
-        reference: tx.reference,
-        purpose: tx.purpose,
-        createdAt: tx.createdAt,
-        paymentMethod: tx.metadata?.payment_type || 'Wallet' 
-    }))
-});
+        return res.json({
+            success: true,
+            transactions: transactions.map(tx => {
+                // Determine the source label
+                let sourceLabel = 'Main Wallet';
+                
+                // If it's a purchase and usedBonus is true in metadata
+                if (tx.purpose !== 'deposit' && tx.metadata?.usedBonus === true) {
+                    sourceLabel = 'Referral Bonus';
+                } else if (tx.purpose === 'deposit') {
+                    sourceLabel = tx.metadata?.payment_type || 'External Topup';
+                }
+
+                return {
+                    id: tx._id,
+                    amountUSD: tx.amountUSD,
+                    amountNGN: tx.amountNGN,
+                    status: tx.status,
+                    reference: tx.reference,
+                    purpose: tx.purpose,
+                    createdAt: tx.createdAt,
+                    // Use the new sourceLabel here
+                    paymentMethod: sourceLabel 
+                };
+            })
+        });
     } catch (error) {
-        // This will now show the EXACT error in your terminal/Netlify logs
         console.error("CRITICAL_TRANSACTION_ERROR:", error.message);
-        
         return res.status(500).json({ 
             success: false, 
             message: "Internal Server Error",
-            error: error.message // Sending the message back helps you debug instantly
+            error: error.message 
         });
     }
 }
+
 // --- 8. STARTUP ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

@@ -1280,9 +1280,7 @@ async function handlePurchaseWithWallet(req, res) {
     itemType = "Proxy";
     costNGN = Math.round(Number(item.plans[planIndex].price));
     productDetails.name = item.name;
-    productDetails.plan = `${item.plans[planIndex].ip_count} IPs`;
-    
-    // Attach the instructions here so they are available for the response
+    productDetails.plan = `${item.plans[planIndex].ip_count} IPs`;    
     orderSpecifics.activationCode = item.activationCode;
     orderSpecifics.instructions = item.instructions; // ADD THIS LINE
 }

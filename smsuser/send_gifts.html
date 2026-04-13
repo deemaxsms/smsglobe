@@ -396,7 +396,6 @@
     </div>
 
 <script>
-    const API_BASE_URL = '/api';
     const WHATSAPP_NUMBER = "2347059450227"; 
 
     // --- NAVIGATION LOGIC ---
@@ -412,123 +411,88 @@
         document.getElementById('introSection').classList.remove('hidden');
     }
 
-    // --- SESSION & PROFILE INITIALIZATION ---
-   async function initGifting() {
-    const token = localStorage.getItem('userToken');
-    if (!token) { window.location.href = 'user_login.html'; return; }
+    // --- ZIP CODE LOOKUP (Client Side Only) ---
+    async function lookupZip(zipCode) {
+        if (zipCode.length < 3) return;
+        const cityInput = document.querySelector('input[name="city"]');
+        const stateInput = document.querySelector('input[name="state"]');
+        const country = document.querySelector('select[name="country"]')?.value || 'US';
 
-    try {
-        const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!profileRes.ok) throw new Error('Session Expired');
-        
-        const userData = await profileRes.json();
-        const user = userData.user || userData;
-
-        // Use Optional Chaining or If statements to prevent "Cannot set properties of null"
-        const nameEl = document.getElementById('userName');
-        if (nameEl) nameEl.innerText = user.fullName || user.full_name || "User";
-
-        const walletEl = document.getElementById('walletBalance');
-        if (walletEl) {
-            const balance = user.walletBalance !== undefined ? user.walletBalance : 0;
-            walletEl.innerText = `Balance: ₦${balance.toLocaleString()}`;
+        try {
+            const response = await fetch(`https://api.zippopotam.us/${country}/${zipCode}`);
+            if (response.ok) {
+                const data = await response.json();
+                const place = data.places[0];
+                if (cityInput) cityInput.value = place['place name'];
+                if (stateInput) stateInput.value = place['state'];
+            }
+        } catch (err) {
+            console.warn("Zip lookup service unavailable.");
         }
-
-        const initialsEl = document.getElementById('userInitials');
-        if (initialsEl) {
-            initialsEl.innerText = (user.fullName || user.full_name || "U").charAt(0).toUpperCase();
-        }
-        
-        const senderInput = document.getElementsByName('senderName')[0];
-        if(senderInput) {
-            senderInput.value = user.fullName || user.full_name || "";
-        }
-    } catch (err) { 
-        console.error("Profile Load Error:", err);
     }
-}
-    // --- SYSTEM SUBMISSION (Updated to use API) ---
-    document.getElementById('giftForm').addEventListener('submit', async function(e) {
+
+    // --- FORM SUBMISSION (DIRECT TO WHATSAPP) ---
+    document.getElementById('giftForm').addEventListener('submit', function(e) {
         e.preventDefault();
 
-        const isSure = confirm("Are you sure you want to submit this gift request?");
+        const isSure = confirm("Are you sure you want to send this gift request?");
         if (!isSure) return;
 
         const btn = e.target.querySelector('button');
         const btnText = btn.querySelector('span');
-        const originalText = btnText.innerText;
         
         btn.disabled = true;
-        btnText.innerText = 'Processing Request...';
+        btnText.innerText = 'Opening WhatsApp...';
 
         const formData = new FormData(e.target);
         const d = Object.fromEntries(formData.entries());
 
-        try {
-            // 1. Create the order in your Database
-            const res = await fetch(`${API_BASE_URL}/create-gift-request`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('userToken')}`
-                },
-                body: JSON.stringify({
-                    productType: 'Gift', // Or whatever enum you use
-                    receiverName: d.receiverName,
-                    receiverPhone: d.receiverPhone,
-                    address: `${d.streetAddress} ${d.houseNumber || ''}, ${d.city}, ${d.state}, ${d.country}`,
-                    giftType: d.giftType,
-                    amount: d.budget || 0, // Using budget as the initial amount field
-                    message: d.message
-                })
-            });
+        // 1. Format the WhatsApp Message
+        let message = `*NEW GIFT APPLICATION (SMSGlobe)*\n\n`;
+        
+        message += `*--- SENDER DETAILS ---*\n`;
+        message += `👤 Name: ${d.senderName}\n`;
+        message += `📞 Phone: ${d.senderPhone}\n\n`;
+        
+        message += `*--- RECEIVER DETAILS ---*\n`;
+        message += `👤 Name: ${d.receiverName}\n`;
+        message += `📍 Address: ${d.streetAddress} ${d.houseNumber || ''}\n`;
+        message += `🏙️ City/State: ${d.city}, ${d.state}\n`;
+        message += `📮 Zip/Country: ${d.zipCode}, ${d.country}\n`;
+        message += `📞 Recipient Phone: ${d.receiverPhone || 'Not provided'}\n\n`;
 
-            const data = await res.json();
+        message += `*--- GIFT INFO ---*\n`;
+        message += `🎁 Type: ${d.giftType}\n`;
+        message += `💰 Budget/Value: ₦${d.budget || 'To be discussed'}\n`;
+        message += `📝 Note: ${d.message || 'No personal note'}\n\n`;
 
-            if (data.success) {
-                // 2. Show Success Modal
-                document.getElementById('successModal').classList.remove('hidden');
-                
-                // 3. OPTIONAL: Still open WhatsApp as a secondary confirmation
-                const whatsappMsg = encodeURIComponent(`Hello SMSGlobe, I just submitted a gift request for ${d.giftType} for ${d.receiverName}. Reference: ${data.orderId || 'New Order'}`);
-                setTimeout(() => {
-                    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${whatsappMsg}`, '_blank');
-                }, 2000);
+        message += `*--- NOTICE ---*\n`;
+        message += `Please provide final valuation and payment details.`;
 
-            } else {
-                alert(data.message || "Failed to submit request.");
-                btn.disabled = false;
-                btnText.innerText = originalText;
-            }
-        } catch (err) {
-            console.error(err);
-            alert("Connection error. Please try again.");
+        // 2. Encode and Redirect
+        const encodedMessage = encodeURIComponent(message);
+        const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+
+        // 3. UI Feedback
+        setTimeout(() => {
+            window.open(whatsappUrl, '_blank');
+            
+            // Show the success modal locally since we aren't using a DB
+            const modal = document.getElementById('successModal');
+            if(modal) modal.classList.remove('hidden');
+
             btn.disabled = false;
-            btnText.innerText = originalText;
-        }
+            btnText.innerText = 'Confirm Gift Details';
+            e.target.reset();
+        }, 800);
     });
 
-    // --- UI HELPERS ---
-    function logout() {
-        localStorage.clear();
-        window.location.href = 'user_login.html';
-    }
-
+    // Sidebar & UI Helpers
     function toggleSupportMenu() {
         const menu = document.getElementById('supportMenu');
-        const isHidden = menu.classList.contains('hidden');
-        if (isHidden) {
-            menu.classList.remove('hidden');
-            setTimeout(() => menu.classList.remove('translate-y-10', 'opacity-0', 'scale-95'), 10);
-        } else {
-            menu.classList.add('translate-y-10', 'opacity-0', 'scale-95');
-            setTimeout(() => menu.classList.add('hidden'), 300);
-        }
+        menu.classList.toggle('hidden');
     }
 
-    // Sidebar Mobile Logic
     document.getElementById('openSidebar')?.addEventListener('click', () => {
         document.getElementById('sidebar').classList.remove('-translate-x-full');
         document.getElementById('sidebarOverlay').classList.remove('hidden');
@@ -539,47 +503,13 @@
         document.getElementById('sidebarOverlay').classList.add('hidden');
     });
 
-    // --- ZIP CODE LOOKUP LOGIC ---
-async function lookupZip(zipCode) {
-    // Only trigger if zip is at least 3 characters (adjust based on target country)
-    if (zipCode.length < 3) return;
-
-    const cityInput = document.querySelector('input[name="city"]');
-    const stateInput = document.querySelector('input[name="state"]');
-    const country = document.querySelector('select[name="country"]')?.value || 'US';
-
-    try {
-        const response = await fetch(`https://api.zippopotam.us/${country}/${zipCode}`);
-        
-        if (response.ok) {
-            const data = await response.json();
-            const place = data.places[0];
-            
-            // Auto-fill fields
-            if (cityInput) cityInput.value = place['place name'];
-            if (stateInput) stateInput.value = place['state'];
-            
-            // Optional: visual feedback
-            cityInput.classList.add('bg-green-50');
-            stateInput.classList.add('bg-green-50');
-            setTimeout(() => {
-                cityInput.classList.remove('bg-green-50');
-                stateInput.classList.remove('bg-green-50');
-            }, 2000);
+    // Listen for Zip changes
+    window.addEventListener('DOMContentLoaded', () => {
+        const zipInput = document.querySelector('input[name="zipCode"]');
+        if (zipInput) {
+            zipInput.addEventListener('change', (e) => lookupZip(e.target.value));
         }
-    } catch (err) {
-        console.warn("Zip lookup failed or service unavailable.");
-    }
-}
-
-window.addEventListener('DOMContentLoaded', () => {
-    const zipInput = document.querySelector('input[name="zipCode"]');
-    if (zipInput) {
-        zipInput.addEventListener('change', (e) => lookupZip(e.target.value));
-    }
-});
-
-    window.onload = initGifting;
+    });
 </script>
 </body>
 </html>

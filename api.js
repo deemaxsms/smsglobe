@@ -1075,7 +1075,6 @@ async function handleGetUserProfile(req, res) {
             return res.status(404).json({ success: false, message: "User not found" });
         }
 
-        // 2. Check for suspension
         if (user.status === 'suspended') {
             return res.status(403).json({ 
                 success: false, 

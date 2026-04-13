@@ -1930,51 +1930,83 @@ async function handleAllTransactions(req, res) {
 }
 
 async function handleCreateEsimOrder(req, res) {
-    const { email, carrierName, mobileNumber, planAmount, refId, productImage } = req.body;
+    // Note: We now expect 'useBonus' from the frontend
+    const { email, carrierName, mobileNumber, planAmount, productImage, useBonus } = req.body;
 
-    // Validation
     if (!email || !carrierName || !mobileNumber || !planAmount) {
         return res.status(400).json({ success: false, message: "Missing required eSIM data" });
     }
 
     try {
-        // --- NEW: FETCH DYNAMIC SETTINGS FROM DB ---
-        const settings = await SystemSettings.findOne();
-        const LIVE_RATE = settings?.exchangeRate || 1380; 
-        const MARKUP = settings?.globalMarkup || 0; 
-        // --------------------------------------------
+        // 1. Fetch Dynamic Settings & User
+        const [settings, user] = await Promise.all([
+            SystemSettings.findOne(),
+            User.findOne({ email: email.toLowerCase() })
+        ]);
 
-        // 1. Clean the USD amount (e.g., "$15.00" -> 15)
+        if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+        const LIVE_RATE = settings?.exchangeRate || 1380;
+        const MARKUP = settings?.globalMarkup || 0;
+
+        // 2. Price Calculation
         const amountUSD = parseFloat(planAmount.replace(/[$,]/g, ''));
-        
-        // 2. Calculate the Naira equivalent + Markup
         const basePriceNGN = amountUSD * LIVE_RATE;
         const markupAmount = basePriceNGN * (MARKUP / 100);
         const finalAmountNGN = Math.round(basePriceNGN + markupAmount);
 
-        // 3. Create the order using your existing Order model
+        // 3. Balance & Bonus Logic (Matches RDP/VPN)
+        let remainingToPay = finalAmountNGN;
+        let bonusUsed = 0;
+        let mainUsed = 0;
+
+        // User can only use bonus if they have deposited before or have a main balance
+        const canUseBonus = useBonus && (user.hasDeposited || user.ngn > 0);
+
+        if (canUseBonus && user.bonusNGN > 0) {
+            bonusUsed = Math.min(user.bonusNGN, remainingToPay);
+            remainingToPay -= bonusUsed;
+        }
+
+        if (remainingToPay > user.ngn) {
+            return res.status(400).json({ success: false, message: "Insufficient wallet balance" });
+        }
+
+        mainUsed = remainingToPay;
+
+        // 4. Atomic Update: Deduct Balances
+        user.ngn -= mainUsed;
+        user.bonusNGN -= bonusUsed;
+        await user.save();
+
+        // 5. Create Order (Status is pending for admin to fulfill)
+        const refId = `ESIM-${Math.random().toString(36).toUpperCase().substring(2, 10)}`;
         const newOrder = await Order.create({
-            userEmail: email,
+            userEmail: email.toLowerCase(),
             productType: 'eSIM',
-            nodeName: carrierName,      // Mapping Carrier to nodeName
-            planName: planAmount,       // Mapping Plan to planName
-            targetNumber: mobileNumber, // The eSIM phone number
-            productImage: productImage, // Carrier logo URL
-            amount: finalAmountNGN,     // Saving the DYNAMICALLY calculated Naira amount
+            nodeName: carrierName,
+            planName: planAmount,
+            targetNumber: mobileNumber,
+            productImage: productImage,
+            amount: finalAmountNGN,
             currency: 'NGN',
-            paymentReference: refId || `REF-${Date.now()}`,
-            status: 'pending'           // Stays pending for admin refill
+            paymentReference: refId,
+            status: 'pending' 
         });
+
+        // 6. Optional: Create a Transaction log entry
+        // await Transaction.create({ userEmail: email, amount: finalAmountNGN, type: 'debit', description: `eSIM Refill: ${carrierName}` });
 
         return res.status(201).json({ 
             success: true, 
-            message: "Order created successfully", 
-            orderId: newOrder._id 
+            message: "Refill ordered successfully. Admin notified.", 
+            order: newOrder,
+            ref: refId
         });
 
     } catch (err) {
-        console.error("eSIM Creation Error:", err);
-        return res.status(500).json({ success: false, message: "Server database error" });
+        console.error("eSIM Wallet Purchase Error:", err);
+        return res.status(500).json({ success: false, message: "Transaction failed. Please contact support." });
     }
 }
 
@@ -2074,33 +2106,29 @@ async function handleAdminEsimUpdate(req, res) {
     }
 }
 
-// GET All eSIM Refills for Admin
 async function getEsimRefills(req, res) {
     try {
+        // Fetch all eSIM orders sorted by newest first
         const refills = await Order.find({ 
             productType: 'eSIM' 
         })
         .sort({ createdAt: -1 })
         .limit(100);
 
-        const formattedRefills = refills.map(refill => {
-            // Convert NGN back to USD
-            const amountInUSD = refill.amount / 1380;
+        const formattedRefills = refills.map(refill => ({
+            paymentReference: refill.paymentReference,
+            createdAt: refill.createdAt,
+            userEmail: refill.userEmail,
+            // Strictly using NGN as requested
+            amountNGN: `₦${Number(refill.amount).toLocaleString()}`, 
+            status: refill.status || 'pending',
+            esimIdentifier: refill.targetNumber || 'N/A',
+            carrier: refill.nodeName || 'Global eSIM',
+            confirmationNumber: refill.confirmationNumber || 'PENDING'
+        }));
 
-            return {
-                paymentReference: refill.paymentReference,
-                createdAt: refill.createdAt,
-                userEmail: refill.userEmail,
-                amount: amountInUSD.toFixed(2), 
-                status: refill.status || 'pending',
-                esimIdentifier: refill.targetNumber || 'N/A',
-                carrier: refill.nodeName || refill.carrierName || refill.productName || 'Global eSIM',
-                confirmationNumber: refill.confirmationNumber || 'PENDING'
-            };
-        });
-
-        return res.json({
-            success: true,
+        return res.json({ 
+            success: true, 
             refills: formattedRefills 
         });
 

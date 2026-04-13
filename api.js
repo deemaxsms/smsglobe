@@ -1308,7 +1308,7 @@ async function handlePurchaseWithWallet(req, res) {
             // 2. Calculate Final Cost
             costNGN = Math.round(
                 Number(selectedTier.price) + 
-                (extraCPUCount * 5000) + 
+                (extraCPUCount *5000) + 
                 (extraStorageGB *2000)
             );
             

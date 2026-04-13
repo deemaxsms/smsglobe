@@ -314,6 +314,63 @@
 </div>
         </main>
     </div>
+
+     <div id="paymentModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4">
+    <div class="fixed inset-0 bg-brand-darkText/60 backdrop-blur-sm" onclick="closePaymentModal()"></div>
+    
+    <div class="bg-white rounded-3xl p-8 max-w-sm w-full relative z-10 shadow-2xl scale-up overflow-hidden">
+        
+        <div id="modalIconContainer" class="flex justify-center mb-4">
+            </div>
+
+        <div class="text-center mb-6">
+            <h3 class="text-xl font-black text-brand-darkText uppercase tracking-tight">Confirm Refill</h3>
+            <p class="text-[10px] text-brand-lightText mt-1">Review your balances before proceeding.</p>
+        </div>
+
+        <div class="space-y-3 mb-8">
+            <div class="p-4 bg-gray-50 rounded-2xl border border-brand-border">
+                <span class="text-[9px] font-bold text-brand-lightText uppercase block mb-1">Main Wallet Balance</span>
+                <span id="modalBalanceNGN" class="text-base font-black text-brand-darkText">₦0.00</span>
+            </div>
+
+            <div id="esimBonusSection" class="hidden p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex justify-between items-center">
+                <div>
+                    <span class="text-[9px] font-bold text-emerald-700 uppercase block mb-1">Referral Bonus</span>
+                    <span id="modalBonusBalanceNGN" class="text-sm font-black text-emerald-600">₦0.00</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="esimBonusStatusLabel" class="text-[8px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-md border border-emerald-200">USE FIRST</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="esimUseBonusToggle" class="sr-only peer" checked>
+                        <div class="w-7 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center p-4 bg-brand-blue/5 rounded-2xl border border-brand-blue/10">
+                <span class="text-[10px] font-bold text-brand-blue uppercase">Total Amount Due</span>
+                <span id="modalTotalDue" class="text-base font-black text-brand-blue">₦0.00</span>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-3">
+            <button id="confirmPurchaseBtn" onclick="purchaseEsimWithWallet()" class="w-full bg-brand-blue text-white py-4 rounded-2xl font-bold active-scale transition-all duration-200 uppercase text-xs tracking-wider">
+                Confirm & Pay Now
+            </button>
+
+            <a href="topup.html" id="topupBtn" class="hidden w-full bg-emerald-600 text-white py-4 rounded-2xl font-bold text-center active-scale hover:bg-emerald-700 transition-all duration-200 uppercase text-xs">
+                Topup Wallet Balance
+            </a>
+
+            <button onclick="closePaymentModal()" class="w-full py-2 text-[10px] font-bold text-brand-lightText hover:text-brand-darkText uppercase">
+                Go Back
+            </button>
+        </div>
+    </div>
+</div>
+
+
 <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end space-y-4">
     
     <div id="supportMenu" class="hidden flex flex-col space-y-3 mb-2 transition-all duration-300 transform translate-y-10 opacity-0 scale-95">
@@ -465,37 +522,75 @@ for (let i = 20000; i <= 150000; i += 10000) {
             status.classList.add('text-brand-lightText');
         }
     }
+function openPaymentModal() {
+    const planSelector = document.getElementById('planSelector');
+    if (!planSelector) return;
 
-    function openPaymentModal() {
-    const amount = parseInt(document.getElementById('planSelector').value);
-    
-    // Fill Modal Data
-    document.getElementById('modalBalanceNGN').innerText = `₦${userBalance.toLocaleString()}`;
-    document.getElementById('modalBonusBalanceNGN').innerText = `₦${userBonusBalance.toLocaleString()}`;
-    document.getElementById('modalTotalDue').innerText = `₦${amount.toLocaleString()}`;
+    // 1. Convert "₦20,000.00 Activation" string to a pure number
+    const planText = planSelector.value;
+    const amount = parseInt(planText.replace(/[^0-9]/g, '')) || 0;
 
-    // Handle Bonus Logic
-    const bonusSection = document.getElementById('esimBonusSection');
-    if (userBonusBalance > 0) {
-        bonusSection.classList.remove('hidden');
-    } else {
-        bonusSection.classList.add('hidden');
+    // 2. Dynamic UI Updates (Title and Icon)
+    const modalTitle = document.querySelector('#paymentModal h3');
+    if (modalTitle) {
+        // Change title based on whether it's an activation or a standard refill
+        modalTitle.innerText = window.currentActivationMetadata ? "Confirm Activation" : "Confirm Refill";
     }
 
-    // Check if total balance is enough
+    const iconContainer = document.getElementById('modalIconContainer');
+    if (iconContainer && window.currentSelectedCarrier) {
+        iconContainer.innerHTML = `
+            <div class="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-100 p-2">
+                <img src="${window.currentSelectedCarrier.image}" class="max-h-full max-w-full object-contain">
+            </div>
+        `;
+    }
+
+    // 3. Fill Wallet Data with Null Checks
+    const elBal = document.getElementById('modalBalanceNGN');
+    const elBonus = document.getElementById('modalBonusBalanceNGN');
+    const elDue = document.getElementById('modalTotalDue');
+
+    if (elBal) elBal.innerText = `₦${userBalance.toLocaleString()}`;
+    if (elBonus) elBonus.innerText = `₦${userBonusBalance.toLocaleString()}`;
+    if (elDue) elDue.innerText = `₦${amount.toLocaleString()}`;
+
+    // 4. Handle Bonus Visibility
+    const bonusSection = document.getElementById('esimBonusSection');
+    if (bonusSection) {
+        if (userBonusBalance > 0) {
+            bonusSection.classList.remove('hidden');
+        } else {
+            bonusSection.classList.add('hidden');
+        }
+    }
+
+    // 5. Sufficient Funds Logic
     const totalAvailable = userBalance + userBonusBalance;
     const confirmBtn = document.getElementById('confirmPurchaseBtn');
     const topupBtn = document.getElementById('topupBtn');
 
-    if (totalAvailable < amount) {
-        confirmBtn.classList.add('hidden');
-        topupBtn.classList.remove('hidden');
-    } else {
-        confirmBtn.classList.remove('hidden');
-        topupBtn.classList.add('hidden');
+    if (confirmBtn && topupBtn) {
+        if (totalAvailable < amount) {
+            // Not enough money - Hide pay button, show topup button
+            confirmBtn.classList.add('hidden');
+            topupBtn.classList.remove('hidden');
+        } else {
+            // Balance OK - Show pay button, hide topup button
+            confirmBtn.classList.remove('hidden');
+            topupBtn.classList.add('hidden');
+            confirmBtn.disabled = false;
+            confirmBtn.innerText = "Confirm & Pay Now";
+        }
     }
 
-    document.getElementById('paymentModal').classList.remove('hidden');
+    // 6. Show the Modal
+    const modal = document.getElementById('paymentModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        // Optional: Trigger CSS animation by adding a class if you have one
+        modal.querySelector('.scale-up')?.classList.add('active');
+    }
 }
 
 function closePaymentModal() {

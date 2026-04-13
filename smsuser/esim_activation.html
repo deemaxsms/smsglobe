@@ -197,7 +197,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="text-[9px] md:text-[10px] font-bold text-brand-blue uppercase tracking-wider mb-2 block">Activation Type</label>
-                                <input type="text" id="prepaidType" placeholder="e.g. Standard, Data Only" class="w-full bg-brand-background border border-brand-border p-3 rounded-xl text-xs font-bold focus:ring-2 focus:ring-brand-blue outline-none mobile-input">
+                                <input type="text" id="prepaidType" placeholder="e.g. Prepaid, Postpaid" class="w-full bg-brand-background border border-brand-border p-3 rounded-xl text-xs font-bold focus:ring-2 focus:ring-brand-blue outline-none mobile-input">
                             </div>
                             <div>
                                 <label class="text-[9px] md:text-[10px] font-bold text-brand-blue uppercase tracking-wider mb-2 block">Subscription Plan (USD)</label>
@@ -502,15 +502,46 @@ function closePaymentModal() {
     document.getElementById('paymentModal').classList.add('hidden');
 }
 
- async function purchaseEsimWithWallet() {
+async function initiatePayment() {
+    // 1. Get Form Values
+    const firstName = document.getElementById('firstName')?.value.trim();
+    const lastName = document.getElementById('lastName')?.value.trim();
+    const email = document.getElementById('emailAddress')?.value.trim();
+    const address = document.getElementById('physicalAddress')?.value.trim();
+    const zip = document.getElementById('zipCode')?.value.trim();
+    const deviceName = document.getElementById('targetNumber')?.value.trim(); // Using targetNumber field for Device Name
+    const planValue = document.getElementById('planSelector')?.value;
+
+    // 2. Simple Validation
+    if (!firstName || !lastName || !email || !deviceName || !planValue) {
+        alert("Please fill in all required fields (Name, Email, Device, and Plan).");
+        return;
+    }
+
+    // 3. Store metadata globally so the final purchase function can access it
+    window.currentActivationMetadata = {
+        firstName,
+        lastName,
+        activationEmail: email,
+        address: address || "N/A",
+        zip: zip || "N/A",
+        activationType: "N/A" // Or get from a toggle if you have one
+    };
+
+    // 4. Open the Payment Modal (The function we created earlier)
+    openPaymentModal();
+}
+async function purchaseEsimWithWallet() {
     const amount = parseInt(document.getElementById('planSelector').value);
     const useBonus = document.getElementById('esimUseBonusToggle').checked;
     const btn = document.getElementById('confirmPurchaseBtn');
 
-    // Prepare metadata
+    // Get input values
     const firstName = document.getElementById('firstName').value.trim();
     const lastName = document.getElementById('lastName').value.trim();
     const email = document.getElementById('emailAddress').value.trim();
+    const address = document.getElementById('physicalAddress')?.value.trim() || "N/A";
+    const zip = document.getElementById('zipCode')?.value.trim() || "N/A";
     const deviceName = document.getElementById('targetNumber').value.trim();
 
     btn.disabled = true;
@@ -524,15 +555,18 @@ function closePaymentModal() {
                 'Authorization': `Bearer ${localStorage.getItem('userToken')}`
             },
             body: JSON.stringify({
-                serviceType: 'eSIM_Activation',
-                amount: amount,
+                // Matching the backend handlePurchaseWithWallet structure:
+                carrierName: window.currentSelectedCarrier?.name || "Global eSIM",
+                mobileNumber: deviceName, // We pass deviceName as mobileNumber for the backend 'target' logic
+                planAmount: amount,
                 useBonus: useBonus,
-                details: {
-                    carrier: window.currentSelectedCarrier.name,
-                    deviceName: deviceName,
-                    firstName: firstName,
-                    lastName: lastName,
-                    email: email
+                metadata: {
+                    firstName,
+                    lastName,
+                    activationEmail: email,
+                    address,
+                    zip,
+                    activationType: "N/A"
                 }
             })
         });
@@ -540,6 +574,9 @@ function closePaymentModal() {
         const data = await res.json();
 
         if (data.success) {
+            // Close the payment modal first if it's open
+            if(typeof closeModal === 'function') closeModal('esimPaymentModal');
+            
             showReceipt(data.order);
         } else {
             alert(data.message || "Activation Failed");
@@ -547,8 +584,10 @@ function closePaymentModal() {
             btn.innerText = "Confirm & Pay Now";
         }
     } catch (err) {
+        console.error("Purchase Error:", err);
         alert("Connection error. Please try again.");
         btn.disabled = false;
+        btn.innerText = "Confirm & Pay Now";
     }
 }
 

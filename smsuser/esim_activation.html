@@ -248,86 +248,82 @@
                 </div>
             </div>
 
-       <div id="receiptView" class="hidden max-w-2xl mx-auto py-10 px-4">
-    <div class="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
-        <div class="bg-blue-600 p-8 text-center text-white relative">
-            <div class="mb-4">
-                <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe Logo" class="h-10 mx-auto brightness-0 invert">
-            </div>
-            
-            <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                </svg>
-            </div>
-            <h2 class="text-2xl font-black uppercase tracking-tight">Activation Pending</h2>
-            <p class="text-white/80 text-[10px] font-bold mt-1 uppercase tracking-widest">
-                Order Ref: <span id="rID" class="select-all">---</span>
+     <div class="max-w-md mx-auto bg-white rounded-[32px] overflow-hidden shadow-2xl border border-brand-border">
+    <div class="bg-brand-blue p-8 text-center text-white">
+        <div class="flex justify-center mb-4">
+            <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="h-8 brightness-0 invert">
+        </div>
+        <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+        <h2 class="text-2xl font-black uppercase tracking-wider mb-1">Activation Pending</h2>
+        <p class="text-xs font-bold opacity-80 uppercase tracking-tighter">
+            Order Ref: <span id="ref-display">${activation.paymentReference}</span>
+        </p>
+    </div>
+
+    <div class="p-6 grid grid-cols-3 gap-y-6 border-b border-brand-border border-dashed">
+        <div class="col-span-1">
+            <p class="text-[10px] font-bold text-brand-lightText uppercase">Customer</p>
+            <p class="text-sm font-bold text-brand-darkText truncate">
+                ${activation.customerDetails.firstName} ${activation.customerDetails.lastName}
             </p>
         </div>
-
-        <div class="p-6 md:p-8">
-            <div class="space-y-6">
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4 pb-6 border-b border-dashed border-gray-200">
-                    <div>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Customer</p>
-                        <p id="rFullName" class="text-sm font-black text-gray-800 break-words">---</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Carrier</p>
-                        <p id="rCarrier" class="text-sm font-black text-gray-800 uppercase">---</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Device/Number</p>
-                        <p id="rNumber" class="text-sm font-black text-blue-600 uppercase">---</p>
-                    </div>
-                    <div class="col-span-2 md:col-span-1">
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email</p>
-                        <p id="rEmail" class="text-xs font-bold text-gray-800 break-all">---</p>
-                    </div>
-                    <div class="col-span-2 md:col-span-1">
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Physical Address</p>
-                        <p id="rAddress" class="text-xs font-bold text-gray-800 break-words">---</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Zip Code</p>
-                        <p id="rZip" class="text-sm font-black text-gray-800">---</p>
-                    </div>
-                </div>
-
-                <div class="py-2 space-y-3">
-                    <div class="flex justify-between text-xs font-bold">
-                        <span class="text-gray-500">Activation Plan</span>
-                        <span id="rPlan" class="text-gray-800">₦0.00</span>
-                    </div>
-                    <div class="flex justify-between text-xs font-bold">
-                        <span class="text-gray-500">Paid from Main Wallet</span>
-                        <span id="rMainUsed" class="text-gray-800">₦0.00</span>
-                    </div>
-                    <div class="flex justify-between text-xs font-bold">
-                        <span class="text-emerald-600">Paid from Referral Bonus</span>
-                        <span id="rBonusUsed" class="text-emerald-600">₦0.00</span>
-                    </div>
-                </div>
-
-                <div class="bg-gray-50 p-5 rounded-2xl flex justify-between items-center border border-gray-100">
-                    <span class="text-xs font-black text-gray-500 uppercase">Total Paid</span>
-                    <span id="rTotalPaid" class="text-2xl font-black text-blue-600">₦0.00</span>
-                </div>
-            </div>
-
-            <div class="mt-8 space-y-3">
-                <button onclick="contactManagement()" class="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-green-100">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.316 1.592 5.448 0 9.886-4.438 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.718-.975z"/></svg>
-                    Notify SMSGlobe Support
-                </button>
-                <button onclick="location.reload()" class="w-full py-3 text-[10px] font-black text-gray-400 hover:text-gray-600 uppercase tracking-widest transition-colors">
-                    Done / Close
-                </button>
-            </div>
+        <div class="col-span-1">
+            <p class="text-[10px] font-bold text-brand-lightText uppercase">Carrier</p>
+            <p class="text-sm font-bold text-brand-darkText uppercase">${activation.carrier.name}</p>
+        </div>
+        <div class="col-span-1">
+            <p class="text-[10px] font-bold text-brand-lightText uppercase">Device/Number</p>
+            <p class="text-sm font-bold text-brand-blue truncate">${activation.deviceName || 'N/A'}</p>
+        </div>
+        <div class="col-span-1">
+            <p class="text-[10px] font-bold text-brand-lightText uppercase">Email</p>
+            <p class="text-sm font-bold text-brand-darkText truncate">${activation.customerDetails.email}</p>
+        </div>
+        <div class="col-span-1">
+            <p class="text-[10px] font-bold text-brand-lightText uppercase">Physical Address</p>
+            <p class="text-sm font-bold text-brand-darkText">${activation.customerDetails.address || 'N/A'}</p>
+        </div>
+        <div class="col-span-1">
+            <p class="text-[10px] font-bold text-brand-lightText uppercase">Zip Code</p>
+            <p class="text-sm font-bold text-brand-darkText">${activation.customerDetails.zipCode || 'N/A'}</p>
         </div>
     </div>
+
+    <div class="p-6 space-y-3">
+        <div class="flex justify-between items-center text-xs font-bold">
+            <span class="text-brand-lightText">Activation Plan</span>
+            <span class="text-brand-darkText uppercase">${activation.activationType}</span>
+        </div>
+        <div class="flex justify-between items-center text-xs font-bold">
+            <span class="text-brand-lightText">Paid from Main Wallet</span>
+            <span class="text-brand-darkText">₦${activation.mainBalanceUsed.toLocaleString()}</span>
+        </div>
+        <div class="flex justify-between items-center text-xs font-bold">
+            <span class="text-brand-lightText text-green-600">Paid from Referral Bonus</span>
+            <span class="text-green-600">₦${activation.bonusBalanceUsed.toLocaleString()}</span>
+        </div>
+    </div>
+
+    <div class="mx-6 p-4 bg-brand-background rounded-2xl flex justify-between items-center mb-6">
+        <span class="text-xs font-black text-brand-lightText uppercase">Total Paid</span>
+        <span class="text-2xl font-black text-brand-blue">₦${activation.amount.toLocaleString()}</span>
+    </div>
+
+    <div class="p-6 pt-0 space-y-3">
+        <a href="https://wa.me/YOUR_NUMBER" class="w-full bg-[#25D366] text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-lg">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.067 2.877 1.215 3.076.149.198 2.095 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            Notify SMSGlobe Support
+        </a>
+        <button onclick="window.location.href='/dashboard'" class="w-full py-2 text-xs font-bold text-brand-lightText hover:text-brand-darkText uppercase tracking-widest transition-colors">
+            Done / Close
+        </button>
+    </div>
 </div>
+
         </main>
     </div>
 
@@ -648,7 +644,8 @@ async function purchaseEsimActivateWithWallet() {
     if (!btn) return;
 
     // 1. Capture Form Values
-    const amount = parseInt(document.getElementById('planSelector')?.value) || 0;
+    const planRaw = document.getElementById('planSelector')?.value || "";
+    const amount = parseInt(planRaw.replace(/[^0-9]/g, '')) || 0;
     const useBonus = document.getElementById('esimUseBonusToggle')?.checked || false;
     const firstName = document.getElementById('firstName')?.value.trim();
     const lastName = document.getElementById('lastName')?.value.trim();
@@ -725,24 +722,13 @@ function resetButton(btn) {
 }
 
 function showReceipt(order) {
-    // 1. Hide modal and existing forms
     const viewsToHide = ['paymentModal', 'selectionView', 'formView', 'esimPaymentModal'];
     viewsToHide.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
 
-    // 2. Safe Data Extraction
-    const details = order.metadata || order.details || {};
-    const firstName = details.firstName || 'Customer';
-    const lastName = details.lastName || '';
-    const email = details.activationEmail || details.email || 'N/A';
-    const device = order.mobileNumber || details.deviceName || 'N/A';
-    const carrier = order.carrierName || details.carrier || 'eSIM';
-    const address = details.address || 'N/A';
-    const zip = details.zip || 'N/A';
-
-    // 3. Helper to set text content safely
+    const details = order.metadata || {};
     const safeSet = (id, val) => {
         const el = document.getElementById(id);
         if (el) el.innerText = val;
@@ -750,27 +736,25 @@ function showReceipt(order) {
 
     const formatCurr = (num) => `₦${(num || 0).toLocaleString()}`;
 
-    // 4. Populate Receipt Fields
-    safeSet('rID', order.paymentReference || order.id || 'N/A');
-    safeSet('rFullName', `${firstName} ${lastName}`.trim());
-    safeSet('rCarrier', carrier);
-    safeSet('rEmail', email);
-    safeSet('rNumber', device);
-    safeSet('rAddress', address);
-    safeSet('rZip', zip);
+    // Populate Fields based on your Screenshot IDs
+    safeSet('rID', order.paymentReference || 'N/A');
+    safeSet('rFullName', `${details.firstName || ''} ${details.lastName || ''}`.trim());
+    safeSet('rCarrier', order.carrierName || 'eSIM');
+    safeSet('rEmail', details.activationEmail || 'N/A');
+    safeSet('rNumber', order.mobileNumber || 'N/A');
+    safeSet('rAddress', details.address || 'N/A');
+    safeSet('rZip', details.zip || 'N/A');
     
     // Financials
-    safeSet('rPlan', formatCurr(order.planAmount || order.amount));
+    safeSet('rPlan', formatCurr(order.planAmount));
     safeSet('rMainUsed', formatCurr(order.mainBalanceUsed));
     safeSet('rBonusUsed', formatCurr(order.bonusBalanceUsed));
-    safeSet('rTotalPaid', formatCurr(order.planAmount || order.amount));
+    
+    // CRITICAL: Set rAmount for the WhatsApp function to find
+    safeSet('rAmount', formatCurr(order.planAmount)); 
 
-    // 5. Reveal Receipt View
     const receiptView = document.getElementById('receiptView');
-    if (receiptView) {
-        receiptView.classList.remove('hidden');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    if (receiptView) receiptView.classList.remove('hidden');
 }
 
   

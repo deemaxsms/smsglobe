@@ -238,42 +238,40 @@
     </div>
 </div>
 
-        <div id="successState" class="hidden">
-            <div class="bg-brand-blue p-8 text-center relative">
-                <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle, #fff 1px, transparent 1px); background-size: 20px 20px;"></div>
-                <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 backdrop-blur-sm">
-                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                </div>
-                <h2 class="text-2xl font-bold text-white leading-tight">Purchase Secured!</h2>
-                <p class="text-blue-100 text-[10px] mt-1 font-medium tracking-wide uppercase">Transaction Successful</p>
+      <div id="successState" class="hidden flex flex-col h-full">
+    <div class="bg-brand-blue p-8 text-center relative overflow-hidden">
+        <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle, #fff 1px, transparent 1px); background-size: 20px 20px;"></div>
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 backdrop-blur-sm relative z-10">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+        <h2 class="text-2xl font-bold text-white leading-tight relative z-10">Purchase Secured!</h2>
+        <p class="text-blue-100 text-[10px] mt-1 font-medium tracking-wide uppercase relative z-10">Transaction Successful</p>
+    </div>
+
+    <div class="p-6 md:p-8 bg-white flex-grow">
+        <div class="bg-brand-background rounded-2xl border border-brand-blue/10 p-5 space-y-4 shadow-inner">
+            <div>
+                <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider mb-1">Instructions</p>
+                <p id="modalInstructions" class="text-[10px] text-brand-midText leading-relaxed italic">Follow instructions...</p>
             </div>
 
-            <div class="p-6 md:p-8">
-                <div class="bg-brand-background rounded-2xl border border-brand-blue/10 p-5 space-y-4 shadow-inner">
-                    <div>
-                        <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider mb-1">Instructions</p>
-                        <p id="modalInstructions" class="text-[10px] text-brand-midText leading-relaxed italic">Checking credentials...</p>
-                    </div>
-
-                    <div class="space-y-1">
-                        <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Activation Code</p>
-                        <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-brand-blue/5">
-                            <p id="modalCode" class="text-xs font-mono font-bold text-brand-darkText tracking-wider">-------</p>
-                            <button onclick="copyToClipboard('modalCode', this)" class="text-brand-blue hover:text-blue-700 transition-colors">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            </button>
-                        </div>
-                    </div>
+            <div class="space-y-1">
+                <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Activation Code / Link</p>
+                <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-brand-blue/5">
+                    <p id="modalCode" class="text-xs font-mono font-bold text-brand-darkText tracking-wider break-all">-------</p>
+                    <button onclick="copyToClipboard('modalCode', this)" class="text-brand-blue hover:text-blue-700 transition-colors p-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    </button>
                 </div>
-
-                <button onclick="location.href='user_dashboard.html'" class="w-full mt-6 py-4 bg-brand-blue text-white rounded-2xl text-xs font-bold shadow-xl shadow-blue-200 flex items-center justify-center gap-2 active-scale">
-                    <span>Finish & Go to Dashboard</span>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
-                </button>
             </div>
         </div>
+
+        <button onclick="location.href='user_dashboard.html'" class="w-full mt-6 py-4 bg-brand-blue text-white rounded-2xl text-xs font-bold shadow-xl shadow-blue-200 flex items-center justify-center gap-2 active-scale">
+            <span>Finish & Go to Dashboard</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+        </button>
     </div>
 </div>
 
@@ -639,28 +637,42 @@ function showSuccessModal(data) {
     const modal = document.getElementById('proxyModal');
     const confirmState = document.getElementById('confirmState');
     const successState = document.getElementById('successState');
-    
     const modalCode = document.getElementById('modalCode');
     const modalInstructions = document.getElementById('modalInstructions');
+
+    // 1. Toggle Visibility
     if (confirmState) confirmState.classList.add('hidden');
+    
     if (successState) {
         successState.classList.remove('hidden');
-        successState.classList.add('animate-in', 'zoom-in', 'duration-300');
+        // Add animation and ensure it's at the top of the modal scroll
+        successState.classList.add('animate-in', 'fade-in', 'zoom-in', 'duration-500');
+        modal.scrollTop = 0; 
     }
+
+    // 2. Robust Data Parsing
+    // Checks for credentials object, top-level activationCode, or generic 'code'
     const credentials = data.credentials || {};
-    const code = credentials.activationCode || data.activationCode || "PROVISIONED";
-    const info = credentials.instructions || data.instructions || "Check dashboard for details.";
+    const code = credentials.activationCode || data.activationCode || data.code || "SUCCESSFUL";
+    const info = credentials.instructions || data.instructions || data.message || "Your service is now active.";
+
     if (modalCode) modalCode.innerText = code;
-    if (modalInstructions) modalInstructions.innerText = info;    
-    const copyBtn = document.getElementById('copyCodeBtn');
+    if (modalInstructions) modalInstructions.innerText = info;
+
+    // 3. Dynamic Copy Button Logic
+    const copyBtn = document.querySelector('[onclick*="copyToClipboard"]') || document.getElementById('copyCodeBtn');
     if (copyBtn) {
-        copyBtn.onclick = () => {
-            navigator.clipboard.writeText(code);
-            const originalSvg = copyBtn.innerHTML;
-            copyBtn.innerHTML = '<span class="text-[8px] text-emerald-500 font-bold">COPIED!</span>';
-            setTimeout(() => { copyBtn.innerHTML = originalSvg; }, 2000);
+        copyBtn.onclick = (e) => {
+            e.preventDefault();
+            navigator.clipboard.writeText(code).then(() => {
+                const originalContent = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<span class="text-[9px] text-emerald-500 font-bold uppercase">Copied!</span>';
+                setTimeout(() => { copyBtn.innerHTML = originalContent; }, 2000);
+            });
         };
-    }    
+    }
+
+    // 4. Final Reveal
     if (modal) modal.classList.remove('hidden');
 }
 

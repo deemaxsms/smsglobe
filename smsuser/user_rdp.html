@@ -193,6 +193,11 @@
                                     <p class="text-[10px] font-bold text-brand-lightText uppercase">Storage</p>
                                     <p id="displayStorage" class="text-xs font-black text-brand-darkText mt-1">60GB SSD NVMe</p>
                                 </div>
+
+                                <div class="p-4 bg-brand-background rounded-2xl">
+                                <p class="text-[10px] font-bold text-brand-lightText uppercase">Network Speed</p>
+                                <p id="displayNet" class="text-xs font-black text-brand-darkText mt-1">1Gbps</p>
+                                 </div>
                             </div>
 
                             <div class="mt-8 border-t border-brand-border pt-6">
@@ -518,55 +523,67 @@ async function fetchUserProfile() {
     return false;
 }
 
-    function renderPlans() {
-        if(!tableBody) return;
-        tableBody.innerHTML = Object.values(plans).map(plan => `
-            <tr onclick="selectPlan('${plan.id}')" class="cursor-pointer hover:bg-gray-50 transition-all active-scale">
-                <td class="px-6 py-6 border-b border-brand-border">
-                    <p class="text-sm font-bold text-brand-darkText">${plan.name}</p>
-                    <p class="text-[11px] text-brand-lightText">${plan.hardware}</p>
-                </td>
-                <td class="px-6 py-6 border-b border-brand-border">
-                    <p class="text-[11px] font-bold">${plan.storage}</p>
-                    <p class="text-[10px] text-green-600 font-bold uppercase">${plan.net} Unmetered</p>
-                </td>
-                <td class="px-6 py-6 border-b border-brand-border text-center">
-                    <p class="text-lg font-black">₦${plan.price.toLocaleString()}</p>
-                </td>
-                <td class="px-6 py-6 border-b border-brand-border text-right">
-                    <span class="bg-brand-blue text-white text-[10px] font-bold px-6 py-2.5 rounded-xl">Continue</span>
-                </td>
-            </tr>
-        `).join('');
-    }
+  function renderPlans() {
+    if(!tableBody) return;
+    tableBody.innerHTML = Object.values(plans).map(plan => `
+        <tr onclick="selectPlan('${plan.id}')" class="group cursor-pointer hover:bg-gray-50 transition-all active-scale">
+            <td class="px-6 py-6 border-b border-brand-border">
+                <p class="text-sm font-bold text-brand-darkText group-hover:text-brand-blue transition-colors">${plan.name}</p>
+                <p class="text-[11px] text-brand-lightText">${plan.hardware}</p>
+            </td>
+            <td class="px-6 py-6 border-b border-brand-border">
+                <p class="text-[11px] font-bold text-brand-darkText">${plan.storage}</p>
+                <p class="text-[10px] text-emerald-600 font-bold uppercase tracking-tight">
+                     ${plan.net || "1Gbps"} Port Speed
+                </p>
+            </td>
+            <td class="px-6 py-6 border-b border-brand-border text-center">
+                <p class="text-lg font-black text-brand-darkText">₦${plan.price.toLocaleString()}</p>
+                <p class="text-[9px] text-brand-lightText uppercase tracking-widest">Monthly</p>
+            </td>
+            <td class="px-6 py-6 border-b border-brand-border text-right">
+                <span class="bg-brand-blue text-white text-[10px] font-bold px-6 py-2.5 rounded-xl shadow-sm group-hover:bg-brand-darkText transition-all">
+                    Continue
+                </span>
+            </td>
+        </tr>
+    `).join('');
+}
 
-    function selectPlan(planKey) {
-        activePlan = plans[planKey];
-        
-        window.currentSelectedRDP = {
-            _id: activePlan.id,
-            name: activePlan.name,
-            ram: activePlan.hardware.split('|')[0].trim(),
-            cpu: activePlan.hardware.split('|')[1].trim(),
-            storage: activePlan.storage,
-            category: "RDP"
-        };
+   function selectPlan(planKey) {
+    activePlan = plans[planKey];
+    
+    // 1. Set the global selected object for the checkout/purchase process
+    window.currentSelectedRDP = {
+        _id: activePlan.id,
+        name: activePlan.name,
+        // Using clean properties if they exist, otherwise fallback to split
+        ram: activePlan.ram || activePlan.hardware.split('|')[0].trim(),
+        cpu: activePlan.cpu || activePlan.hardware.split('|')[1].trim(),
+        storage: activePlan.storage,
+        net: activePlan.net || "1Gbps", // Ensure net is captured here
+        category: "RDP"
+    };
+    document.getElementById('displayPlanName').innerText = activePlan.name;
+    document.getElementById('displayPlanPrice').innerText = `₦${activePlan.price.toLocaleString()}`;
+    document.getElementById('displayHardware').innerText = activePlan.hardware;    
+    const storageText = activePlan.storage.includes("NVMe") 
+        ? activePlan.storage 
+        : activePlan.storage + " NVMe";
+    document.getElementById('displayStorage').innerText = storageText;
+    const netDisplay = document.getElementById('displayNet');
+    if (netDisplay) {
+        netDisplay.innerText = activePlan.net || "1Gbps";
+    }    
+    if(document.getElementById('extraCPU')) document.getElementById('extraCPU').value = "";
+    if(document.getElementById('extraStorage')) document.getElementById('extraStorage').value = "";    
+    calculateTotal();
 
-        document.getElementById('displayPlanName').innerText = activePlan.name;
-        document.getElementById('displayPlanPrice').innerText = `₦${activePlan.price.toLocaleString()}`;
-        document.getElementById('displayHardware').innerText = activePlan.hardware;
-        document.getElementById('displayStorage').innerText = activePlan.storage + " NVMe";
-        
-        if(document.getElementById('extraCPU')) document.getElementById('extraCPU').value = "";
-        if(document.getElementById('extraStorage')) document.getElementById('extraStorage').value = "";
-        
-        calculateTotal();
-
-        selectionView.classList.add('hidden');
-        checkoutView.classList.remove('hidden');
-        headerTitle.innerText = "Checkout / " + activePlan.name;
-        window.scrollTo(0, 0);
-    }
+    selectionView.classList.add('hidden');
+    checkoutView.classList.remove('hidden');    
+    headerTitle.innerText = "Checkout / " + activePlan.name;
+    window.scrollTo(0, 0);
+}
 
     function calculateTotal() {
         if (!activePlan) return;

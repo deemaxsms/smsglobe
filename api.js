@@ -947,26 +947,19 @@ async function handleUserLogin(req, res) {
 
 async function handleUserRegister(req, res) {
     const { fullName, email, password, captchaToken, friendReferralCode } = req.body;
-
-    // 1. reCAPTCHA Validation
     if (!captchaToken) {
         return res.status(400).json({ success: false, message: "reCAPTCHA token missing." });
     }
-
     const isHuman = await verifyRecaptcha(captchaToken);
     if (!isHuman) {
         return res.status(400).json({ success: false, message: "reCAPTCHA verification failed." });
     }
-
     try {
         const normalizedEmail = email.toLowerCase().trim();
-
-        // 2. Check if user already exists
         const existingUser = await User.findOne({ email: normalizedEmail });
         if (existingUser) {
             return res.status(400).json({ success: false, message: "This email is already registered." });
         }
-
         let referredBy = null;
 
         // 3. Handle Referral Logic
@@ -979,7 +972,7 @@ async function handleUserRegister(req, res) {
                 
                 // UPDATE: Add the $2,000 bonus to the REFERRER
                 referrer.bonusBalance = (referrer.bonusBalance || 0) + 3000;
-                referrer.referralCount = (referrer.referralCount || 0) + 1;
+                referrer.referralCount = (referrer.referralCount || 0) + 10;
                 
                 await referrer.save();
             } else {
@@ -1466,50 +1459,27 @@ async function handlePurchaseWithWallet(req, res) {
         const balanceAfter = updatedUser.balance;
         const paymentReference = `WAL-${Date.now()}-${user._id.toString().slice(-4)}`;
 
-       // --- 6. CREATE ORDER RECORDS ---
-       let newOrder;
-if (itemType === "eSIM_Refill") {
-    if (!orderSpecifics.target.country || !orderSpecifics.target.number) {
-        throw new Error("Missing target country or mobile number for eSIM Refill");
-    }
-        newOrder = await EsimRefill.create({
-        userId: user._id,
-        userEmail: user.email,
-        fullName: user.fullName || "Customer",
-        carrier: {
-            id: orderSpecifics.carrier.id || "manual",
-            name: orderSpecifics.carrier.name,
-            image: orderSpecifics.carrier.image
-        },
-        target: {
-            number: orderSpecifics.target.number,
-            country: orderSpecifics.target.country 
-        },
-        amount: costNGN,
-        mainBalanceUsed: mainDeduction,
-        bonusBalanceUsed: bonusDeduction,
-        paymentReference: paymentReference,
-        status: 'pending' // Admin sees this to start processing
-    });
-        } else {
-            // Save to standard Order collection
-            newOrder = await Order.create({
-                userId: user._id,
-                userEmail: user.email,
-                fullName: user.fullName,
-                productType: itemType,
-                planName: productDetails.plan,
-                nodeName: productDetails.name,
-                amount: costNGN,
-                mainBalanceUsed: mainDeduction,
-                bonusBalanceUsed: bonusDeduction,
-                currency: "NGN",
-                status: "successful",
-                paymentReference: paymentReference,
-                metadata: metadata, 
-                ...orderSpecifics   
-            });
-        }
+    const newOrder = await Order.create({
+            userId: user._id,
+            userEmail: user.email,
+            fullName: user.fullName || "Customer",
+            productType: itemType, // 'eSIM_Refill', 'VPN', 'RDP', etc.
+            planName: productDetails.plan,
+            nodeName: productDetails.name,
+            amount: costNGN,
+            mainBalanceUsed: mainDeduction,
+            bonusBalanceUsed: bonusDeduction,
+            currency: "NGN",            
+            status: itemType === "eSIM_Refill" ? "pending" : "successful",
+            paymentReference: paymentReference,
+            targetNumber: orderSpecifics.target?.number || null,
+            country: orderSpecifics.target?.country || null,
+            ...orderSpecifics,
+            metadata: { 
+                ...metadata,
+                carrierDetails: orderSpecifics.carrier || null 
+            }
+        });
 
         // 7. CREATE TRANSACTION LOG
         await Transaction.create({
@@ -2095,10 +2065,10 @@ async function handleCreateEsimOrder(req, res) {
         return res.status(500).json({ success: false, message: "Transaction failed. Please contact support." });
     }
 }
-// ADMIN FETCH: Now querying the specialized EsimRefill collection
+
 async function getEsimRefills(req, res) {
     try {
-        const refills = await EsimRefill.find()
+        const refills = await Order.find({ productType: 'eSIM_Refill' })
             .sort({ createdAt: -1 })
             .limit(100);
 
@@ -2106,16 +2076,12 @@ async function getEsimRefills(req, res) {
             paymentReference: refill.paymentReference,
             createdAt: refill.createdAt,
             userEmail: refill.userEmail,
-            fullName: refill.fullName,
+            fullName: refill.fullName || "Customer",
             amountNGN: `₦${Number(refill.amount).toLocaleString()}`, 
-            status: refill.status || 'pending',
-            
-            // Accessing nested schema fields
-            targetNumber: refill.target?.number || 'N/A',
-            country: refill.target?.country || 'N/A',
-            carrier: refill.carrier?.name || 'Global eSIM',
-            
-            // Displaying the Admin-provided ID
+            status: refill.status || 'pending',            
+            targetNumber: refill.targetNumber || (refill.target?.number) || 'N/A',
+            country: refill.country || (refill.target?.country) || 'N/A',
+            carrier: refill.nodeName || (refill.carrier?.name) || 'Global eSIM',
             confirmationNumber: refill.confirmationNumber || 'PENDING'
         }));
 
@@ -2133,9 +2099,7 @@ async function getEsimRefills(req, res) {
     }
 }
 
-// ADMIN UPDATE: Update confirmation number and status in EsimRefill collection
 async function handleAdminEsimUpdate(req, res) {
-    // Get TID from query (for links) or body (for forms)
     const tid = req.query.tid || req.body.tid;
     const { confirmationNumber, adminNote } = req.body;
 
@@ -2144,11 +2108,11 @@ async function handleAdminEsimUpdate(req, res) {
     }
 
     try {
-        const updatedRefill = await EsimRefill.findOneAndUpdate(
-            { paymentReference: tid },
+        const updatedOrder = await Order.findOneAndUpdate(
+            { paymentReference: tid, productType: 'eSIM_Refill' },
             { 
                 $set: { 
-                    status: 'completed', // Using 'completed' from your schema enum
+                    status: 'completed', 
                     confirmationNumber: confirmationNumber, 
                     adminNote: adminNote || '',
                     updatedAt: new Date() 
@@ -2157,30 +2121,27 @@ async function handleAdminEsimUpdate(req, res) {
             { new: true }
         );
 
-        if (!updatedRefill) {
+        if (!updatedOrder) {
             return res.status(404).json({ success: false, message: "Refill record not found." });
         }
-
-        // Send confirmation email to the user
         try {
-            await sendDeliveryEmail(updatedRefill.userEmail, {
+            await sendDeliveryEmail(updatedOrder.userEmail, {
                 type: "eSIM_Refill",
-                nodeName: updatedRefill.carrier?.name || "eSIM Carrier",
-                targetNumber: updatedRefill.target?.number,
-                country: updatedRefill.target?.country,
-                amount: `₦${updatedRefill.amount.toLocaleString()}`,
-                confirmationNumber: confirmationNumber, // Pass to email template
+                nodeName: updatedOrder.nodeName || "eSIM Carrier",
+                targetNumber: updatedOrder.targetNumber || updatedOrder.target?.number,
+                country: updatedOrder.country || updatedOrder.target?.country,
+                amount: `₦${updatedOrder.amount.toLocaleString()}`,
+                confirmationNumber: confirmationNumber,
                 instructions: "Your eSIM refill is now active. Please restart your device if the balance doesn't reflect immediately."
             });
         } catch (emailErr) {
             console.error("Email notification failed:", emailErr.message);
-            // We don't return error here because the DB update was successful
         }
 
         return res.json({ 
             success: true, 
             message: "Refill marked as completed and user notified.",
-            data: updatedRefill 
+            data: updatedOrder 
         });
 
     } catch (error) {

@@ -241,35 +241,77 @@
 
                         <div class="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-xl mt-2">
                             <p class="text-[10px] font-bold text-orange-800 uppercase tracking-wide">
-                                ⚠️ Non-Refundable Policy: Once the eSIM QR code is generated, the transaction is final.
+                                 Non-Refundable Policy: Once the eSIM QR code is generated, the transaction is final.
                             </p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div id="receiptView" class="hidden animate-flow py-4 md:py-8 px-4">
-                <div class="bg-white border-2 border-dashed border-brand-border rounded-[2rem] p-5 md:p-8 max-w-[340px] md:max-w-md mx-auto shadow-2xl relative">
-                    <div class="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 md:w-10 md:h-10 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg border-4 border-white">
-                        <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7"></path></svg>
+           <div id="receiptView" class="hidden max-w-2xl mx-auto py-10 px-4">
+    <div class="bg-white rounded-3xl shadow-2xl overflow-hidden border border-brand-border">
+        <div class="bg-brand-blue p-8 text-center text-white">
+            <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+            </div>
+            <h2 class="text-2xl font-black uppercase tracking-tight">Activation Pending</h2>
+            <p class="text-white/80 text-xs font-bold mt-1">Order Ref: <span id="rID">---</span></p>
+        </div>
+
+        <div class="p-8">
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-4 pb-6 border-b border-dashed border-gray-200">
+                    <div>
+                        <p class="text-[10px] font-bold text-brand-lightText uppercase">Customer</p>
+                        <p id="rFullName" class="text-sm font-black text-brand-darkText">---</p>
                     </div>
-                    <div class="text-center mt-2">
-                        <h2 class="text-base md:text-xl font-black text-brand-darkText uppercase tracking-tight">Activation Paid</h2>
-                        <p class="text-[9px] md:text-[10px] text-brand-lightText mt-1">Ref ID: <span id="rID" class="font-mono bg-gray-100 px-1 rounded">--</span></p>
+                    <div>
+                        <p class="text-[10px] font-bold text-brand-lightText uppercase">Carrier</p>
+                        <p id="rCarrier" class="text-sm font-black text-brand-darkText">---</p>
                     </div>
-                    <div class="my-5 space-y-2.5 border-t border-b border-dashed border-brand-border py-5 font-mono text-[10px] md:text-xs">
-                        <div class="flex justify-between items-center"><span class="text-brand-lightText">Plan:</span> <span id="rCarrier" class="font-bold text-right text-brand-darkText uppercase">--</span></div>
-                        <div class="flex justify-between items-center"><span class="text-brand-lightText">Name:</span> <span id="rName" class="font-bold text-right text-brand-darkText">--</span></div>
-                        <div class="flex justify-between items-center"><span class="text-brand-lightText">Amount:</span> <span id="rPlan" class="font-bold text-right text-brand-darkText">--</span></div>
-                        <div class="flex justify-between items-center"><span class="text-brand-lightText">Payment:</span> <span class="bg-green-500 text-white px-2 py-0.5 rounded font-bold text-[8px] md:text-[9px] uppercase">Confirmed ✅</span></div>
-                        <div class="flex justify-between items-center pt-1"><span class="text-brand-lightText">Status:</span> <span class="text-orange-600 font-bold text-[9px] uppercase animate-pulse">Awaiting eSim Activation</span></div>
+                    <div>
+                        <p class="text-[10px] font-bold text-brand-lightText uppercase">Email</p>
+                        <p id="rEmail" class="text-xs font-bold text-brand-darkText">---</p>
                     </div>
-                    <button onclick="contactManagement()" class="w-full py-3.5 bg-[#25D366] text-white rounded-xl text-[10px] md:text-[12px] font-bold flex items-center justify-center gap-2 hover:brightness-95 active:scale-[0.98] transition-all shadow-md">
-                        Get Activation QR Code
-                    </button>
-                    <button onclick="location.reload()" class="w-full text-[8px] md:text-[10px] font-black text-brand-lightText hover:text-brand-blue uppercase py-3 mt-1 tracking-widest transition-colors">← New Activation</button>
+                    <div>
+                        <p class="text-[10px] font-bold text-brand-lightText uppercase">Device/Number</p>
+                        <p id="rNumber" class="text-sm font-black text-brand-blue">---</p>
+                    </div>
+                </div>
+
+                <div class="py-4 space-y-2">
+                    <div class="flex justify-between text-xs font-bold">
+                        <span class="text-brand-lightText">Activation Plan</span>
+                        <span id="rPlan" class="text-brand-darkText">₦0</span>
+                    </div>
+                    <div class="flex justify-between text-xs font-bold">
+                        <span class="text-brand-lightText">Paid from Main Wallet</span>
+                        <span id="rMainUsed" class="text-brand-darkText">₦0</span>
+                    </div>
+                    <div class="flex justify-between text-xs font-bold">
+                        <span class="text-emerald-600">Paid from Referral Bonus</span>
+                        <span id="rBonusUsed" class="text-emerald-600">₦0</span>
+                    </div>
+                </div>
+
+                <div class="bg-brand-background p-4 rounded-2xl flex justify-between items-center border border-brand-border">
+                    <span class="text-xs font-black text-brand-darkText uppercase">Total Paid</span>
+                    <span id="rTotalPaid" class="text-xl font-black text-brand-blue">₦0</span>
                 </div>
             </div>
+
+            <div class="mt-8 space-y-3">
+                <button onclick="contactManagement()" class="w-full bg-[#25D366] text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-200">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.316 1.592 5.448 0 9.886-4.438 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.718-.975z"/></svg>
+                    Notify SMSGlobe Support
+                </button>
+                <button onclick="location.reload()" class="w-full py-3 text-xs font-bold text-brand-lightText hover:text-brand-darkText uppercase">
+                    Done / Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
         </main>
     </div>
 <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end space-y-4">
@@ -324,9 +366,8 @@
 </button>
     <script>
     const API_BASE_URL = '/api';
-    
-    // Global variable to hold the live rate
-    let NAIRA_RATE = 1380; 
+    let userBalance = 0;
+    let userBonusBalance = 0;
     
     const carriers = [
         { id: 'tmobile', name: 'T-Mobile (Prepaid)', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Carrier' },
@@ -344,17 +385,23 @@
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
 
-    async function getLiveExchangeRate() {
+    // 1. Fetch Profile & Balance on Load
+    async function fetchUserProfile() {
         try {
-            const response = await fetch('/api/system-settings');
-            const data = await response.json();
+            const res = await fetch(`${API_BASE_URL}/user-profile`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
+            });
+            const data = await res.json();
             if (data.success) {
-                return data.settings.exchangeRate; // Returns the rate from DB
+                userBalance = data.balance || 0;
+                userBonusBalance = data.bonusBalance || 0;
+                
+                // Update UI
+                document.getElementById('displayBalance').innerText = `₦${userBalance.toLocaleString()}`;
+                document.getElementById('displayBonus').innerText = `₦${userBonusBalance.toLocaleString()}`;
             }
-            return 1380; // Fallback if DB fails
         } catch (err) {
-            console.error("Error fetching rate:", err);
-            return 1380; 
+            console.error("Balance sync failed", err);
         }
     }
 
@@ -409,6 +456,117 @@
         }
     }
 
+    function openPaymentModal() {
+    const amount = parseInt(document.getElementById('planSelector').value);
+    
+    // Fill Modal Data
+    document.getElementById('modalBalanceNGN').innerText = `₦${userBalance.toLocaleString()}`;
+    document.getElementById('modalBonusBalanceNGN').innerText = `₦${userBonusBalance.toLocaleString()}`;
+    document.getElementById('modalTotalDue').innerText = `₦${amount.toLocaleString()}`;
+
+    // Handle Bonus Logic
+    const bonusSection = document.getElementById('esimBonusSection');
+    if (userBonusBalance > 0) {
+        bonusSection.classList.remove('hidden');
+    } else {
+        bonusSection.classList.add('hidden');
+    }
+
+    // Check if total balance is enough
+    const totalAvailable = userBalance + userBonusBalance;
+    const confirmBtn = document.getElementById('confirmPurchaseBtn');
+    const topupBtn = document.getElementById('topupBtn');
+
+    if (totalAvailable < amount) {
+        confirmBtn.classList.add('hidden');
+        topupBtn.classList.remove('hidden');
+    } else {
+        confirmBtn.classList.remove('hidden');
+        topupBtn.classList.add('hidden');
+    }
+
+    document.getElementById('paymentModal').classList.remove('hidden');
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModal').classList.add('hidden');
+}
+
+ async function purchaseEsimWithWallet() {
+    const amount = parseInt(document.getElementById('planSelector').value);
+    const useBonus = document.getElementById('esimUseBonusToggle').checked;
+    const btn = document.getElementById('confirmPurchaseBtn');
+
+    // Prepare metadata
+    const firstName = document.getElementById('firstName').value.trim();
+    const lastName = document.getElementById('lastName').value.trim();
+    const email = document.getElementById('emailAddress').value.trim();
+    const deviceName = document.getElementById('targetNumber').value.trim();
+
+    btn.disabled = true;
+    btn.innerText = "PROCESSING...";
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/purchase-service`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+            },
+            body: JSON.stringify({
+                serviceType: 'eSIM_Activation',
+                amount: amount,
+                useBonus: useBonus,
+                details: {
+                    carrier: window.currentSelectedCarrier.name,
+                    deviceName: deviceName,
+                    firstName: firstName,
+                    lastName: lastName,
+                    email: email
+                }
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            showReceipt(data.order);
+        } else {
+            alert(data.message || "Activation Failed");
+            btn.disabled = false;
+            btn.innerText = "Confirm & Pay Now";
+        }
+    } catch (err) {
+        alert("Connection error. Please try again.");
+        btn.disabled = false;
+    }
+}
+
+// Updated showReceipt function
+function showReceipt(order) {
+    document.getElementById('paymentModal').classList.add('hidden');
+    document.getElementById('selectionView').classList.add('hidden');
+    document.getElementById('formView').classList.add('hidden');
+
+    // Fill the IDs
+    document.getElementById('rID').innerText = order.paymentReference || 'N/A';
+    document.getElementById('rCarrier').innerText = order.details?.carrier || 'eSIM';
+    document.getElementById('rFullName').innerText = `${order.details?.firstName} ${order.details?.lastName}`;
+    document.getElementById('rEmail').innerText = order.details?.email || 'N/A';
+    document.getElementById('rNumber').innerText = order.details?.deviceName || 'N/A';
+    
+    // Financials
+    document.getElementById('rPlan').innerText = `₦${order.amount.toLocaleString()}`;
+    document.getElementById('rMainUsed').innerText = `₦${(order.mainBalanceUsed || 0).toLocaleString()}`;
+    document.getElementById('rBonusUsed').innerText = `₦${(order.bonusBalanceUsed || 0).toLocaleString()}`;
+    document.getElementById('rTotalPaid').innerText = `₦${order.amount.toLocaleString()}`;
+
+    const receiptView = document.getElementById('receiptView');
+    receiptView.classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+  
     function selectCarrier(id) {
         const carrier = carriers.find(c => c.id === id);
         window.currentSelectedCarrier = carrier; 
@@ -416,146 +574,15 @@
         document.getElementById('formView').classList.remove('hidden');
         document.getElementById('formCarrierName').innerText = carrier.name;
         document.getElementById('formCarrierLogo').src = carrier.image;
-        updateButtonPrice();
     }
-
-    function updateButtonPrice() {
-        const plan = document.getElementById('planSelector').value;
-        document.getElementById('payBtn').innerText = `Pay ${getNairaPrice(plan)} (Activate)`;
-    }
-
-    function getNairaPrice(usdString) {
-        const usd = parseFloat(usdString.replace(/[$,a-zA-Z ]/g, ''));
-        // Uses the dynamic NAIRA_RATE fetched in window.onload
-        return `₦${(usd * NAIRA_RATE).toLocaleString()}`;
-    }
-
-    document.getElementById('planSelector').addEventListener('change', updateButtonPrice);
-
+    
     function goBackToGrid() {
         document.getElementById('selectionView').classList.remove('hidden');
         document.getElementById('formView').classList.add('hidden');
     }
 
-    function escapeHTML(str) {
-        return str ? str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])) : '--';
-    }
-
-   async function initiatePayment() {
-    // 1. Get Form Values
-    const firstName = document.getElementById('firstName').value.trim();
-    const lastName = document.getElementById('lastName').value.trim();
-    const email = document.getElementById('emailAddress').value.trim();
-    const address = document.getElementById('fullAddress').value.trim();
-    const zip = document.getElementById('zipCode').value.trim();
-    const activationType = document.getElementById('prepaidType').value.trim();
-    const deviceName = document.getElementById('targetNumber').value.trim(); 
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    // 2. Validation
-    if(!firstName || !lastName || !email || !address || !zip || !activationType || !deviceName) {
-        alert("Please ensure all fields, including the Device Name, are filled.");
-        return;
-    }
-
-    if(!emailRegex.test(email)) {
-        alert("Please enter a valid activation email address.");
-        return;
-    }
-
-    // 3. Prepare Data
-    const rawPlan = document.getElementById('planSelector').value;
-   const match = rawPlan.match(/(\d+\.?\d*)/);
-const cleanPlanAmount = match ? match[0] : "0.00";
-    
-    const carrier = window.currentSelectedCarrier;
-    const token = localStorage.getItem('userToken');
-
-    if (!token) {
-        alert("Session expired. Please log in again.");
-        window.location.href = "/login.html";
-        return;
-    }
-
-    // 4. UI Feedback
-    const btn = document.getElementById('payBtn');
-    btn.disabled = true;
-    btn.innerText = "Securing Payment Link...";
-
-    try {
-        const res = await fetch(`${API_BASE_URL}/initiate-payment`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${token}` 
-            },
-            body: JSON.stringify({
-                carrierName: carrier.name,
-                planAmount: cleanPlanAmount,
-                productType: 'eSIM_Activation',
-                mobileNumber: deviceName, 
-                // Metadata wrapper for backend consumption
-                metadata: { 
-                    firstName: firstName,
-                    lastName: lastName,
-                    address: address,
-                    zip: zip,
-                    email: email 
-                }
-            })
-        });
-
-        const data = await res.json();
-        
-        if(data.success && data.link) {
-            window.location.href = data.link; 
-        } else {
-            alert(data.message || "Failed to start activation.");
-            btn.disabled = false;
-            btn.innerText = `Pay ${getNairaPrice(rawPlan)} (Activate)`;
-        }
-    } catch (err) {
-        console.error("Payment Initiation Error:", err);
-        alert("Connection error. Please check your internet.");
-        btn.disabled = false;
-        btn.innerText = `Pay ${getNairaPrice(rawPlan)} (Activate)`;
-    }
-}
-
-async function verifyEsimPayment(tid, txRef) {
-    try {
-        const res = await fetch(`${API_BASE_URL}/verify-payment`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${localStorage.getItem('userToken')}` 
-            },
-            body: JSON.stringify({ transactionId: tid, txRef: txRef })
-        });
-        
-        const data = await res.json();
-        if (data.success) {
-            document.getElementById('selectionView').classList.add('hidden');
-            document.getElementById('formView').classList.add('hidden');
-            document.getElementById('receiptView').classList.remove('hidden');
-
-            const order = data.order || {};
-            document.getElementById('rCarrier').innerText = escapeHTML(order.nodeName || order.productId);
-            document.getElementById('rName').innerText = escapeHTML(`${order.metadata?.firstName || ''} ${order.metadata?.lastName || ''}`);
-            document.getElementById('rPlan').innerText = escapeHTML(order.planName || order.planAmount);
-            document.getElementById('rID').innerText = escapeHTML(order.paymentReference || tid);
-            
-            // Clean URL
-            window.history.replaceState({}, '', window.location.pathname);
-        }
-    } catch (e) { 
-        console.error("Verification Error:", e); 
-    }
-}
 
    function contactManagement() {
-    // 1. Get elements and their inner text safely
     const customerName = document.getElementById('rName')?.innerText?.trim() || "Valued Customer";
     const carrier = document.getElementById('rCarrier')?.innerText?.trim() || "N/A";
     const plan = document.getElementById('rPlan')?.innerText?.trim() || "Standard Plan";
@@ -596,18 +623,13 @@ async function verifyEsimPayment(tid, txRef) {
             }, 300);
         }
     }
-window.onload = async () => {
-    // Show a loading state on buttons if needed
-    NAIRA_RATE = await getLiveExchangeRate();
-    
-    initPage(); // Now it has the correct rate
-    updateButtonPrice(); // Set initial button text correctly
 
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('transaction_id')) {
-        verifyEsimPayment(urlParams.get('transaction_id'), urlParams.get('tx_ref'));
-    }
-};
+  // Initialize page
+    window.onload = () => {
+        fetchUserProfile();
+        initPage(); // Loads the carrier grid
+    };
+
 </script>
 </body>
 </html>

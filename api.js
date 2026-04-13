@@ -22,7 +22,6 @@ app.use(express.json());
 // --- 1. SERVE STATIC FILES ---
 app.use(express.static(__dirname, { extensions: ['html'] }));
 
-// This handles everything in the smsadmin folder automatically
 app.use('/smsadmin', express.static(path.join(__dirname, 'smsadmin'), {
     extensions: ['html', 'htm']
 }));
@@ -31,21 +30,17 @@ app.use('/smsuser', express.static(path.join(__dirname, 'smsuser'), {
     extensions: ['html', 'htm']
 }));
 
-// Manually serve sitemap.xml
 app.get('/sitemap.xml', (req, res) => {
     res.sendFile(path.join(__dirname, 'sitemap.xml'));
 });
 
-// Manually serve robots.txt
 app.get('/robots.txt', (req, res) => {
     res.sendFile(path.join(__dirname, 'robots.txt'));
 });
 
-// --- 2. CONFIGURATION & SCHEMA ---
 const JWT_SECRET = process.env.JWT_SECRET;
 const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET_KEY;
 
-// --- ADMIN SCHEMA ---
 const adminSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true, index: true },
@@ -164,8 +159,6 @@ const esimRefillSchema = new mongoose.Schema({
         number: { type: String, required: true }, // The phone number being topped up
         country: { type: String, required: true } // The coverage country
     },
-
-    // Financial Data
     amount: { type: Number, required: true }, // Total cost in NGN
     currency: { type: String, default: 'NGN' },
     mainBalanceUsed: { type: Number, default: 0 },
@@ -179,13 +172,47 @@ const esimRefillSchema = new mongoose.Schema({
     },
     confirmationNumber: { type: String }, // The ID admin provides after manual processing
     adminNote: { type: String },
-
-    // Extensibility
     metadata: { type: mongoose.Schema.Types.Mixed }
 }, { timestamps: true });
 
 esimRefillSchema.index({ createdAt: -1 });
 const EsimRefill = mongoose.models.EsimRefill || mongoose.model('EsimRefill', esimRefillSchema, 'esim_refills');
+
+// --- eSIM ACTIVATION SCHEMA ---
+const esimActivationSchema = new mongoose.Schema({
+    // User Identity
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    userEmail: { type: String, required: true, index: true },
+    
+    customerDetails: {
+        firstName: { type: String, required: true },
+        lastName: { type: String, required: true },
+        address: { type: String },
+        zipCode: { type: String },
+        email: { type: String } // The specific activation email provided in the form
+    },
+    carrier: {
+        name: { type: String, required: true }, // e.g., T-Mobile, AT&T
+        image: { type: String } 
+    },
+    activationType: { type: String, required: true }, // e.g., 'Prepaid', 'Data-Only'
+    deviceName: { type: String, required: true },    // The device name/model provided in 'targetNumber' field
+    amount: { type: Number, required: true }, 
+    mainBalanceUsed: { type: Number, default: 0 },
+    bonusBalanceUsed: { type: Number, default: 0 },
+    paymentReference: { type: String, unique: true, required: true }, // e.g., ACT-XXXXX
+    status: { 
+        type: String, 
+        enum: ['pending', 'processing', 'successful', 'failed', 'completed'], 
+        default: 'pending',
+        index: true 
+    },
+    adminNote: { type: String },    
+    metadata: { type: mongoose.Schema.Types.Mixed }
+}, { timestamps: true });
+
+esimActivationSchema.index({ createdAt: -1 });
+const EsimActivation = mongoose.models.EsimActivation || mongoose.model('EsimActivation', esimActivationSchema, 'esim_activations');
 
 
 // --- TRANSACTION SCHEMA ---
@@ -1422,6 +1449,31 @@ async function handlePurchaseWithWallet(req, res) {
         instructions: "Your refill request has been received and is being processed."
     };
 }
+
+else if (metadata?.activationEmail && metadata?.firstName) {
+    // This identifies an eSIM_Activation based on the presence of form metadata
+    itemType = "eSIM_Activation";
+    
+    // Clean price (₦50,000 -> 50000)
+    const cleanedPrice = planAmount.toString().replace(/[^0-9]/g, "");
+    costNGN = Math.round(Number(cleanedPrice));
+    
+    productDetails.name = carrierName || "Global eSIM";
+    productDetails.plan = planName || `₦${costNGN.toLocaleString()} Activation`;
+
+    orderSpecifics = {
+        carrier: { name: carrierName, image: productImage },
+        deviceName: mobileNumber, // In activation, mobileNumber field is used for Device Name
+        customerDetails: {
+            firstName: metadata.firstName,
+            lastName: metadata.lastName,
+            address: metadata.address,
+            zipCode: metadata.zip,
+            email: metadata.activationEmail
+        },
+        instructions: "Your eSIM activation request is being processed. You will be contacted via WhatsApp/Email."
+    };
+}
         const { useBonus } = req.body; // New field from frontend toggle
         const mainBal = Number(user.balance || 0);
         const bonusBal = Number(user.bonusBalance || 0);
@@ -1499,7 +1551,7 @@ async function handlePurchaseWithWallet(req, res) {
             mainBalanceUsed: mainDeduction,
             bonusBalanceUsed: bonusDeduction,
             currency: "NGN",            
-            status: itemType === "eSIM_Refill" ? "pending" : "successful",
+            status: (itemType === "eSIM_Refill" || itemType === "eSIM_Activation") ? "pending" : "successful",
             paymentReference: paymentReference,
             targetNumber: mobileNumber || orderSpecifics.target?.number,
             country: coverageCountry || orderSpecifics.target?.country,
@@ -1511,7 +1563,8 @@ async function handlePurchaseWithWallet(req, res) {
             ...orderSpecifics,
             metadata: { 
                 ...metadata,
-                carrierDetails: orderSpecifics.carrier || null 
+                carrierDetails: orderSpecifics.carrier || null,
+                isManualProcess: (itemType === "eSIM_Refill" || itemType === "eSIM_Activation")
             }
         });
 
@@ -1541,21 +1594,23 @@ async function handlePurchaseWithWallet(req, res) {
                 } : null
             }
         });
-
-        // 8. SEND DELIVERY EMAIL
         sendDeliveryEmail(user.email, { 
             ...orderSpecifics, 
+            type: itemType, // Explicitly pass product type
             amount: `₦${costNGN.toLocaleString()}`,
-            planName: productDetails.plan
-        }, newOrder).catch(err => console.error("Email Error:", err.message));
+            planName: productDetails.plan,
+            paymentReference: paymentReference
+        }, newOrder).catch(err => console.error("📧 Email Error:", err.message));
 
-        // 9. FINAL RESPONSE
         return res.json({ 
             success: true, 
-            message: itemType === "eSIM_Refill" ? "Refill request submitted!" : "Purchase successful!",
+            message: (itemType === "eSIM_Refill" || itemType === "eSIM_Activation") 
+                ? "Request submitted! Our team is processing your activation." 
+                : "Purchase successful!",
+            
             balance: balanceAfter,
             bonusBalance: updatedUser.bonusBalance,
-            order: newOrder,
+            order: newOrder,            
             rdpDetails: itemType === "RDP" ? {
                 ram: newOrder.ram,
                 cpu: newOrder.cpu,
@@ -1565,14 +1620,18 @@ async function handlePurchaseWithWallet(req, res) {
                 net: newOrder.net,
                 os: newOrder.os
             } : null,
-            credentials: {
+            credentials: (itemType === "VPN" || itemType === "Proxy") ? {
                 username: orderSpecifics.username || null,
                 password: orderSpecifics.password || null,
                 pcUsername: orderSpecifics.pcUsername || null,
                 pcPassword: orderSpecifics.pcPassword || null,
                 activationCode: orderSpecifics.activationCode || null,
                 instructions: orderSpecifics.instructions || null
-            }
+            } : null,
+            activationDetails: itemType === "eSIM_Activation" ? {
+                deviceName: orderSpecifics.deviceName,
+                carrier: orderSpecifics.carrier.name
+            } : null
         });
     } catch (err) {
         console.error("Wallet Purchase Error:", err);
@@ -2287,109 +2346,122 @@ async function handleAdminEsimActivationUpdate(req, res) {
 }
 
 async function handleCreateEsimActivation(req, res) {
-    // 1. Destructure 'email' from the request body
-    const { email, carrierName, mobileNumber, planAmount, metadata, productType } = req.body;
-    const userEmail = req.user?.email; 
+    const { amount, useBonus, details } = req.body;
+    const userId = req.user._id;
+    const userEmail = req.user.email;
 
-    // 2. Validation: Ensure the new email field is present
-    if (!userEmail || !email || !carrierName || !planAmount) {
-        return res.status(400).json({ success: false, message: "Missing required fields (including Email)" });
+    if (!amount || !details.carrier || !details.deviceName) {
+        return res.status(400).json({ success: false, message: "Missing required activation details" });
     }
 
     try {
-        const txRef = `ACT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        const user = await User.findById(userId);
+        const totalAmount = parseInt(amount);
 
-        // 3. Save to EsimActivation collection
-        const newActivation = new EsimActivation({
+        // 1. Calculate Balance Deduction (Main vs Bonus)
+        let mainToDeduct = totalAmount;
+        let bonusToDeduct = 0;
+
+        if (useBonus && user.bonusBalance > 0) {
+            bonusToDeduct = Math.min(user.bonusBalance, totalAmount);
+            mainToDeduct = totalAmount - bonusToDeduct;
+        }
+
+        if (user.balance < mainToDeduct) {
+            return res.status(400).json({ success: false, message: "Insufficient wallet balance" });
+        }
+
+        const txRef = `ACT-WAL-${Date.now()}`;
+
+        // 2. Create specialized eSIM Activation record
+        const activation = new EsimActivation({
+            userId,
             userEmail,
-            email, // <--- Added here
-            fullName: `${metadata?.firstName || ''} ${metadata?.lastName || ''}`.trim(),
-            nodeName: carrierName,
-            planName: planAmount,
-            amount: parseFloat(planAmount.replace(/[$,]/g, '')),
+            customerDetails: {
+                firstName: details.firstName,
+                lastName: details.lastName,
+                address: details.address,
+                zipCode: details.zip,
+                email: details.email // Activation specific email
+            },
+            carrier: { name: details.carrier },
+            activationType: details.activationType || 'Standard',
+            deviceName: details.deviceName,
+            amount: totalAmount,
+            mainBalanceUsed: mainToDeduct,
+            bonusBalanceUsed: bonusToDeduct,
             paymentReference: txRef,
             status: 'pending'
         });
 
-        await newActivation.save();
-
-        // 4. Save to General Order record
-        const newOrder = new Order({
+        // 3. Create General Order record for the main Dashboard
+        const order = new Order({
+            userId,
             userEmail,
             productType: 'eSIM_Activation',
-            nodeName: carrierName,
-            planName: planAmount,
-            amount: newActivation.amount,
+            nodeName: details.carrier,
+            targetNumber: details.deviceName,
+            planName: `₦${totalAmount.toLocaleString()} Plan`,
+            amount: totalAmount,
+            mainBalanceUsed: mainToDeduct,
+            bonusBalanceUsed: bonusToDeduct,
             status: 'pending',
             paymentReference: txRef,
-            metadata: {
-                email, // <--- Store in metadata for the general Order record
-                address: metadata?.address,
-                zip: metadata?.zip,
-                firstName: metadata?.firstName,
-                lastName: metadata?.lastName
-            }
+            metadata: { ...details }
         });
 
-        await newOrder.save();
+        // 4. Atomic Update: Deduct balances and save records
+        user.balance -= mainToDeduct;
+        user.bonusBalance -= bonusToDeduct;
+
+        await Promise.all([
+            user.save(),
+            activation.save(),
+            order.save()
+        ]);
 
         res.json({ 
             success: true, 
-            message: "Activation order initialized", 
-            tx_ref: txRef 
+            message: "Activation order received", 
+            order: activation 
         });
 
     } catch (error) {
-        console.error("eSIM Activation Order Error:", error);
-        res.status(500).json({ success: false, error: "Internal Server Error" });
+        console.error("eSIM Activation Error:", error);
+        res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 }
 
-// Renamed to match the switch case exactly
 async function handleGetEsimActivations(req, res) { 
     try {
-        const activations = await Order.find({ 
-            productType: 'eSIM_Activation' 
-        })
-        .sort({ createdAt: -1 })
-        .limit(100);
+        const activations = await Order.find({ productType: 'eSIM_Activation' })
+            .sort({ createdAt: -1 })
+            .limit(100);
 
-        const formattedActivations = activations.map(activation => {
-            const amountInUSD = activation.amount / 1380;
-            
-            // Check both activationDetails (new schema) and metadata (old schema)
-            const details = activation.activationDetails || activation.metadata || {};
+        const formattedActivations = activations.map(order => {
+            const details = order.metadata || {};
 
             return {
-                paymentReference: activation.paymentReference,
+                paymentReference: order.paymentReference,
                 productType: 'eSIM_Activation', 
-                createdAt: activation.createdAt,
-                userEmail: activation.userEmail, 
-                email: details.email || activation.userEmail || 'N/A',
-                fullName: `${details.firstName || ''} ${details.lastName || ''}`.trim() || activation.fullName || 'N/A',
-                amount: amountInUSD.toFixed(2), 
-                status: activation.status || 'pending',
-                nodeName: activation.targetNumber || activation.nodeName || activation.carrierName || 'eSIM Device',
-                
-                planName: activation.planName || 'Standard Plan',
-                confirmationNumber: activation.confirmationNumber || 'PENDING',
-                
+                createdAt: order.createdAt,
+                userEmail: order.userEmail, 
+                // Prioritize activation email from metadata
+                email: details.email || order.userEmail,
+                fullName: `${details.firstName || ''} ${details.lastName || ''}`.trim() || 'N/A',
+                amount: order.amount, // Now returns full Naira amount
+                status: order.status,
+                nodeName: order.targetNumber || order.nodeName, // Device Name
+                planName: order.planName,
+                confirmationNumber: order.confirmationNumber || 'PENDING',
                 address: details.address || 'N/A',
-                zipCode: details.zip || details.zipCode || 'N/A'
+                zipCode: details.zip || 'N/A'
             };
         });
 
-        return res.json({
-            success: true,
-            orders: formattedActivations 
-        });
-
+        return res.json({ success: true, orders: formattedActivations });
     } catch (error) {
-        console.error("❌ Admin Fetch Error:", error);
-        return res.status(500).json({ 
-            success: false, 
-            message: "Failed to fetch eSIM activation records" 
-        });
+        return res.status(500).json({ success: false, message: "Failed to fetch records" });
     }
 }
 

@@ -254,7 +254,12 @@
 
     <div id="paymentModal" class="fixed inset-0 z-[100] hidden flex items-center justify-center px-4">
     <div class="fixed inset-0 bg-brand-darkText/60 backdrop-blur-sm" onclick="closePaymentModal()"></div>
+    
     <div class="bg-white rounded-3xl p-8 max-w-sm w-full relative z-10 shadow-2xl scale-up overflow-hidden">
+        
+        <div id="modalIconContainer" class="flex justify-center mb-4">
+            </div>
+
         <div class="text-center mb-6">
             <h3 class="text-xl font-black text-brand-darkText uppercase tracking-tight">Confirm Refill</h3>
             <p class="text-[10px] text-brand-lightText mt-1">Review your balances before proceeding.</p>
@@ -301,6 +306,7 @@
         </div>
     </div>
 </div>
+
 
   <button onclick="toggleSupportMenu()" 
         id="supportTrigger"
@@ -410,12 +416,15 @@ async function loadUserData() {
         document.getElementById('formView').classList.add('hidden');
     }
 
-    async function initiatePayment() {
+   async function initiatePayment() {
     const num = document.getElementById('targetNumber').value.trim();
     const planString = document.getElementById('planSelector').value; 
     const carrier = window.currentSelectedCarrier;
     const payBtn = document.getElementById('payBtn');
+    
+    // Select both buttons
     const confirmBtn = document.getElementById('confirmPurchaseBtn');
+    const topupBtn = document.getElementById('topupBtn');
 
     if (!num) { alert("Please enter the eSIM mobile number"); return; }
     if (!carrier) return;
@@ -430,12 +439,16 @@ async function loadUserData() {
 
     const mainBal = Number(userBalances.ngn || 0);
     const bonusBal = Number(userBalances.bonusNGN || 0);
+    const totalAvailable = mainBal + bonusBal;
 
-    // --- FIX 1: UPDATE THE MODAL DISPLAYS ---
+    // --- LOGIC TO EXTRACT NUMBER FROM "₦40,000" ---
+    const planPrice = Number(planString.replace(/[^0-9.-]+/g, ""));
+
+    // Update the Modal UI
     document.getElementById('modalBalanceNGN').innerText = `₦${mainBal.toLocaleString()}`;
-    document.getElementById('modalTotalDue').innerText = planString; // Updates "Total Amount Due"
+    document.getElementById('modalTotalDue').innerText = planString;
     
-    // --- FIX 2: SHOW BONUS IF AVAILABLE ---
+    // Show/Hide Bonus Section
     const bonusSection = document.getElementById('esimBonusSection');
     if (bonusBal > 0) {
         bonusSection.classList.remove('hidden');
@@ -444,10 +457,20 @@ async function loadUserData() {
         bonusSection.classList.add('hidden');
     }
 
+    // --- THE BUTTON TOGGLE LOGIC ---
+    if (totalAvailable < planPrice) {
+        // Not enough money
+        confirmBtn.classList.add('hidden');
+        topupBtn.classList.remove('hidden');
+    } else {
+        // Balance is sufficient
+        confirmBtn.classList.remove('hidden');
+        topupBtn.classList.add('hidden');
+        confirmBtn.innerText = "Confirm & Pay Now";
+        confirmBtn.disabled = false;
+    }
+
     document.getElementById('paymentModal').classList.remove('hidden');
-    
-    confirmBtn.innerText = "Confirm & Pay Now";
-    confirmBtn.disabled = false;
 }
 
     async function purchaseEsimWithWallet() {

@@ -1335,32 +1335,36 @@ async function handlePurchaseWithWallet(req, res) {
             };
         }
 
-        // --- 4. BALANCE VALIDATION (REFACTORED FOR BONUS) ---
+       // --- 4. BALANCE VALIDATION (UPDATED FOR USER CHOICE) ---
+        const { useBonus } = req.body; // New field from frontend toggle
         const mainBal = Number(user.balance || 0);
         const bonusBal = Number(user.bonusBalance || 0);
         const isBonusUnlocked = user.hasDeposited || mainBal > 0;
-        
-        // Buying Power is combined ONLY if unlocked
-        const buyingPower = isBonusUnlocked ? (mainBal + bonusBal) : mainBal;
+        const canUseBonus = useBonus === true && isBonusUnlocked && bonusBal > 0;        
+        const buyingPower = canUseBonus ? (mainBal + bonusBal) : mainBal;
 
         if (buyingPower < costNGN) {
             // Revert stock
             if (vpnId) await VPN.findByIdAndUpdate(vpnId, { $inc: { stock: 1 } });
             if (proxyId) await Proxy.findByIdAndUpdate(proxyId, { $inc: { stock: 1 } });
 
-            const lockNote = (!isBonusUnlocked && bonusBal > 0) ? " (Bonus locked. Deposit to unlock)" : "";
-            return res.status(400).json({ 
-                success: false, 
-                message: `Insufficient Funds. Required: ₦${costNGN.toLocaleString()}. Your Buying Power: ₦${buyingPower.toLocaleString()}${lockNote}` 
-            });
+            let errorMsg = `Insufficient Funds. Required: ₦${costNGN.toLocaleString()}.`;
+            if (!useBonus && (mainBal + bonusBal) >= costNGN) {
+                errorMsg += " (Try enabling your Bonus Balance to complete this purchase)";
+            } else if (!isBonusUnlocked && bonusBal > 0) {
+                errorMsg += " (Bonus locked. Deposit to unlock)";
+            }
+
+            return res.status(400).json({ success: false, message: errorMsg });
         }
 
+        // --- 5. DEDUCTION LOGIC ---
         let remainingToPay = costNGN;
         let newMainBalance = mainBal;
         let newBonusBalance = bonusBal;
 
-        // Take from Bonus first if unlocked
-        if (isBonusUnlocked && newBonusBalance > 0) {
+        // ONLY deduct from Bonus if the user explicitly allowed it (canUseBonus)
+        if (canUseBonus) {
             if (newBonusBalance >= remainingToPay) {
                 newBonusBalance -= remainingToPay;
                 remainingToPay = 0;
@@ -1370,9 +1374,12 @@ async function handlePurchaseWithWallet(req, res) {
             }
         }
 
+        // The rest (or all, if useBonus was false) comes from Main Balance
         if (remainingToPay > 0) {
             newMainBalance -= remainingToPay;
         }
+
+        // Atomic update to prevent race conditions
         const updatedUser = await User.findOneAndUpdate(
             { _id: user._id, balance: mainBal, bonusBalance: bonusBal },
             { $set: { balance: newMainBalance, bonusBalance: newBonusBalance } },

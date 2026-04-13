@@ -198,15 +198,27 @@
                 </svg>
             </div>
             <h2 class="text-xl font-bold text-brand-darkText mb-2 uppercase tracking-tight">Confirm Purchase</h2>
-           <div class="space-y-3 mb-6">
+         <div class="space-y-3 mb-6">
     <div class="py-2 px-4 bg-gray-50 rounded-xl border border-brand-border text-left">
         <p class="text-[10px] font-bold text-brand-lightText uppercase tracking-tight">Main Wallet</p>
         <p id="modalUserBalance" class="text-lg font-black text-brand-blue">₦0</p>
     </div>
-    <div id="bonusSection" class="py-2 px-4 bg-emerald-50/50 rounded-xl border border-emerald-500/10 text-left">
-        <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-tight">Referral Bonus (Unlocked)</p>
-        <p id="modalBonusBalance" class="text-lg font-black text-emerald-600">₦0</p>
-    </div>
+
+    <label for="useBonusToggle" id="bonusSection" class="group block py-3 px-4 bg-emerald-50/50 rounded-xl border border-emerald-500/20 text-left cursor-pointer transition-all hover:bg-emerald-50 active-scale">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-tight">Referral Bonus (Unlocked)</p>
+                <p id="modalBonusBalance" class="text-lg font-black text-emerald-600">₦0</p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <span id="bonusStatusLabel" class="text-[9px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-md border border-emerald-200">USE FIRST</span>
+                
+                <input type="checkbox" id="useBonusToggle" checked 
+                    class="w-5 h-5 rounded-md border-emerald-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
+            </div>
+        </div>
+    </label>
     
     <div class="py-2 px-4 bg-blue-50/50 rounded-xl border border-brand-blue/10 text-left">
         <p class="text-[10px] font-bold text-brand-blue uppercase tracking-tight">Total Price</p>
@@ -408,6 +420,11 @@ async function buyVPN(vpnId) {
     const topupBtn = document.getElementById('modalTopupBtn');
     const btnLoader = document.getElementById('btnLoader');
     const btnText = document.getElementById('btnText');
+    
+    // UI Elements for Bonus Logic
+    const bonusSection = document.getElementById('bonusSection');
+    const bonusToggle = document.getElementById('useBonusToggle');
+    const bonusStatusLabel = document.getElementById('bonusStatusLabel');
 
     const formatNaira = (amt) => {
         return '₦' + parseFloat(amt || 0).toLocaleString('en-NG', {
@@ -423,32 +440,36 @@ async function buyVPN(vpnId) {
         const data = await res.json();
         
         if (data.success) {
-            // 1. GET ALL BALANCE COMPONENTS
             const user = data.user || data;
             const mainBalance = parseFloat(user.balance || 0);
             const bonusBalance = parseFloat(user.bonusBalance || 0);
             const isUnlocked = user.hasDeposited || mainBalance > 0;
-            
-            // 2. CALCULATE BUYING POWER (Matches Backend Logic)
-            const buyingPower = isUnlocked ? (mainBalance + bonusBalance) : mainBalance;
 
-            // 3. UPDATE MODAL UI WITH BREAKDOWN
+            // 1. UPDATE DISPLAY VALUES
             document.getElementById('modalUserBalance').innerText = formatNaira(mainBalance);
-            
-            // Optional: If you added modalBonusBalance to your HTML as suggested earlier
-            const bonusEl = document.getElementById('modalBonusBalance');
-            if (bonusEl) bonusEl.innerText = formatNaira(bonusBalance);
-            
             document.getElementById('modalPurchaseAmount').innerText = formatNaira(price);
 
-            // 4. CHECK AFFORDABILITY AGAINST BUYING POWER
-            if (buyingPower < price) {
+            // 2. LOGIC FOR BONUS TOGGLE VISIBILITY
+            if (bonusBalance > 0) {
+                bonusSection.classList.remove('hidden');
+                document.getElementById('modalBonusBalance').innerText = formatNaira(bonusBalance);
+                bonusToggle.checked = true; // Default to checked
+                bonusStatusLabel.innerText = "USE FIRST";
+                bonusStatusLabel.className = "text-[9px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-md border border-emerald-200";
+            } else {
+                bonusSection.classList.add('hidden');
+                bonusToggle.checked = false;
+            }
+
+            // 3. AFFORDABILITY CHECK (Initial Check)
+            // Backend logic: Buying power = Main + Bonus (if unlocked)
+            const initialBuyingPower = isUnlocked ? (mainBalance + bonusBalance) : mainBalance;
+
+            if (initialBuyingPower < price) {
                 confirmBtn.classList.add('hidden');
                 topupBtn.classList.remove('hidden');
-                
-                // If they have enough total but bonus is locked, explain why
-                if ((mainBalance + bonusBalance) >= price && !isUnlocked) {
-                     alert("You have enough total balance, but your Referral Bonus is locked. Please make a deposit to unlock it.");
+                if (!isUnlocked && (mainBalance + bonusBalance) >= price) {
+                    alert("Your Referral Bonus is locked. Please make a deposit to unlock it.");
                 }
             } else {
                 confirmBtn.classList.remove('hidden');
@@ -457,10 +478,36 @@ async function buyVPN(vpnId) {
                 if (btnText) btnText.innerText = "Confirm & Pay"; 
             }
 
+            // 4. DYNAMIC UI UPDATE ON TOGGLE
+            bonusToggle.onchange = (e) => {
+                const isUsingBonus = e.target.checked;
+                
+                // Update Label Visuals
+                if (isUsingBonus) {
+                    bonusStatusLabel.innerText = "USE FIRST";
+                    bonusStatusLabel.className = "text-[9px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-md border border-emerald-200";
+                } else {
+                    bonusStatusLabel.innerText = "SKIPPED";
+                    bonusStatusLabel.className = "text-[9px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-md border border-gray-200";
+                }
+
+                // Re-check affordability if they uncheck bonus
+                const currentBuyingPower = (isUsingBonus && isUnlocked) ? (mainBalance + bonusBalance) : mainBalance;
+                if (currentBuyingPower < price) {
+                    confirmBtn.classList.add('hidden');
+                    topupBtn.classList.remove('hidden');
+                } else {
+                    confirmBtn.classList.remove('hidden');
+                    topupBtn.classList.add('hidden');
+                }
+            };
+
+            // Show Modal
             if (successState) successState.classList.add('hidden');
             confirmState.classList.remove('hidden');
             modal.classList.remove('hidden');
 
+            // 5. FINAL CONFIRMATION & API CALL
             confirmBtn.onclick = async () => {
                 confirmBtn.disabled = true;
                 if (btnLoader) btnLoader.classList.remove('hidden');
@@ -473,14 +520,18 @@ async function buyVPN(vpnId) {
                             'Content-Type': 'application/json', 
                             'Authorization': `Bearer ${token}` 
                         },
-                        body: JSON.stringify({ vpnId, planIndex: parseInt(planIndex) })
+                        body: JSON.stringify({ 
+                            vpnId, 
+                            planIndex: parseInt(planIndex),
+                            useBonus: bonusToggle.checked // Sending the user's choice
+                        })
                     });
 
                     const pData = await purchaseRes.json();
                     
                     if (pData.success) {
-                        // Update local balance state
-                        userBalance = pData.balance; 
+                        // Update local balance if necessary
+                        if (typeof userBalance !== 'undefined') userBalance = pData.balance; 
                         
                         const credentials = pData.credentials || (pData.order ? {
                             username: pData.order.username || pData.order.vpnCredentials?.username,

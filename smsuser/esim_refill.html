@@ -308,7 +308,8 @@
     
     <span class="text-[7px] font-black uppercase leading-none text-brand-blue tracking-tighter">Support</span>
 </button>
-    <script>
+  
+  <script>
     const API_BASE_URL = '/api';
     let userBalances = { ngn: 0, bonusNGN: 0, hasDeposited: false };
 
@@ -324,23 +325,31 @@
     for (let i = 30; i <= 100; i += 5) { refillAmounts.push(`$${i}.00`); }
 
     async function fetchUserProfile() {
-    try {
-        const res = await fetch(`${API_BASE_URL}/user-details`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
-        });
-        const data = await res.json();
-        if (data.success) {
-            userBalances = {
-                ngn: data.user.ngn,
-                bonusNGN: data.user.bonusNGN,
-                hasDeposited: data.user.hasDeposited
-            };
-            return true;
-        }
-    } catch (err) { console.error(err); }
-    return false;
-}
+        try {
+            const res = await fetch(`${API_BASE_URL}/user-details`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
+            });
+            const data = await res.json();
+            if (data.success) {
+                userBalances = {
+                    ngn: data.user.ngn,
+                    bonusNGN: data.user.bonusNGN,
+                    hasDeposited: data.user.hasDeposited
+                };
+                return true;
+            }
+        } catch (err) { console.error(err); }
+        return false;
+    }
 
+    // Function to update local wallet display
+    async function loadUserData() {
+        const success = await fetchUserProfile();
+        if (success) {
+            const balDisplay = document.getElementById('walletBalanceDisplay');
+            if (balDisplay) balDisplay.innerText = `₦${userBalances.ngn.toLocaleString()}`;
+        }
+    }
 
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('-translate-x-full');
@@ -372,12 +381,12 @@
         updateButtonPrice();
     }
 
+    // Since we removed local math, the button just shows the USD selection 
+    // The actual NGN check happens in the initiatePayment step via backend verification
     function updateButtonPrice() {
         const plan = document.getElementById('planSelector').value;
-        document.getElementById('payBtn').innerText = `Pay ${getNairaPrice(plan)} (Refill)`;
+        document.getElementById('payBtn').innerText = `Pay for ${plan} Refill`;
     }
-
-   
 
     document.getElementById('planSelector').addEventListener('change', updateButtonPrice);
 
@@ -386,183 +395,97 @@
         document.getElementById('formView').classList.add('hidden');
     }
 
-    function escapeHTML(str) {
-        return str.replace(/[&<>"']/g, function(m) {
-            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
-        });
-    }
-
-   
     async function initiatePayment() {
-    const num = document.getElementById('targetNumber').value.trim();
-    const planString = document.getElementById('planSelector').value; // e.g., "$10.00"
-    const carrier = window.currentSelectedCarrier;
-    const payBtn = document.getElementById('payBtn');
-    
-    // We assume the confirmBtn exists in your payment modal
-    const confirmBtn = document.getElementById('confirmPurchaseBtn');
-    const bonusToggle = document.getElementById('esimUseBonusToggle');
+        const num = document.getElementById('targetNumber').value.trim();
+        const planString = document.getElementById('planSelector').value; 
+        const carrier = window.currentSelectedCarrier;
+        const payBtn = document.getElementById('payBtn');
+        const confirmBtn = document.getElementById('confirmPurchaseBtn');
+        const bonusToggle = document.getElementById('esimUseBonusToggle');
 
-    if (!num) { alert("Please enter the eSIM mobile number"); return; }
-    if (!carrier) return;
+        if (!num) { alert("Please enter the eSIM mobile number"); return; }
+        if (!carrier) return;
 
-    // 1. Convert the Plan selection to its final Naira value 
-    // (Using your NAIRA_RATE variable already in the file)
-    const usdValue = parseFloat(planString.replace(/[$,]/g, ''));
-    const numericPrice = usdValue * NAIRA_RATE;
+        payBtn.innerText = "Checking Wallet...";
+        payBtn.disabled = true;
+        
+        // Refresh balance
+        await loadUserData(); 
+        
+        payBtn.innerText = `Pay for ${planString} (Wallet)`;
+        payBtn.disabled = false;
 
-    // 2. Fetch latest balance to ensure accuracy
-    payBtn.innerText = "Verifying Wallet...";
-    payBtn.disabled = true;
-    
-    // Using your existing loadUserData logic to refresh userBalances object
-    await loadUserData(); 
-    
-    payBtn.innerText = `Pay ₦${numericPrice.toLocaleString()} (From Wallet)`;
-    payBtn.disabled = false;
+        // Balance definitions
+        const mainBal = Number(userBalances.ngn || 0);
+        const bonusBal = Number(userBalances.bonusNGN || 0);
+        const isUnlocked = userBalances.hasDeposited || mainBal > 0;
 
-    // 3. Balance definitions (Assuming userBalances is populated by loadUserData)
-    const mainBal = Number(userBalances.ngn || 0);
-    const bonusBal = Number(userBalances.bonusNGN || 0);
-    const isUnlocked = userBalances.hasDeposited || mainBal > 0;
-
-    // 4. Affordability Logic
-    const checkAffordability = () => {
-        const usingBonus = bonusToggle?.checked || false;
-        const buyingPower = (usingBonus && isUnlocked) ? (mainBal + bonusBal) : mainBal;
-
-        if (buyingPower < numericPrice) {
-            confirmBtn.innerText = "Insufficient Funds";
-            confirmBtn.classList.add('bg-red-500', 'cursor-not-allowed');
-            confirmBtn.disabled = true;
-        } else {
-            confirmBtn.innerText = "Confirm & Pay Now";
-            confirmBtn.classList.remove('bg-red-500', 'cursor-not-allowed');
-            confirmBtn.classList.add('bg-brand-blue');
-            confirmBtn.disabled = false;
-        }
-    };
-
-    // 5. Update Modal UI
-    document.getElementById('modalTotalDue').innerText = `₦${numericPrice.toLocaleString()}`;
-    document.getElementById('modalBalanceNGN').innerText = `₦${mainBal.toLocaleString()}`;
-    
-    if (bonusToggle) {
-        bonusToggle.onchange = checkAffordability;
-    }
-
-    checkAffordability();
-    
-    // Show the payment modal
-    document.getElementById('paymentModal').classList.remove('hidden');
-}
-
-async function purchaseEsimWithWallet() {
-    const confirmBtn = document.getElementById('confirmPurchaseBtn');
-    const num = document.getElementById('targetNumber').value.trim();
-    const plan = document.getElementById('planSelector').value; 
-    const carrier = window.currentSelectedCarrier;
-    const useBonus = document.getElementById('esimUseBonusToggle')?.checked || false;
-
-    if (confirmBtn.disabled) return;
-    
-    confirmBtn.disabled = true;
-    confirmBtn.innerHTML = `<span>Processing Refill...</span>`;
-
-    try {
-        const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('userToken')}`
-            },
-            body: JSON.stringify({
-                productType: 'eSIM',
-                carrierName: carrier.name,
-                mobileNumber: num,
-                planAmount: plan,
-                useBonus: useBonus,
-                productImage: carrier.image
-            })
-        });
-
-        const data = await res.json();
-
-        if (data.success) {
-            document.getElementById('paymentModal').classList.add('hidden');
-            showReceipt(data.order || {
-                nodeName: carrier.name,
-                targetNumber: num,
-                planName: plan,
-                paymentReference: data.ref || 'WALLET-TX'
-            });
-            loadUserData(); // Update balance display
-        } else {
-            alert(data.message || "Purchase failed");
-            confirmBtn.disabled = false;
-            confirmBtn.innerText = "Confirm & Pay Now";
-        }
-    } catch (err) {
-        console.error("Network Error:", err);
-        alert("Connection lost. Please check your history.");
-        confirmBtn.disabled = false;
+        // Update Modal UI - Note: price logic is now handled during final purchase
+        document.getElementById('modalBalanceNGN').innerText = `₦${mainBal.toLocaleString()}`;
+        document.getElementById('paymentModal').classList.remove('hidden');
+        
+        // Final purchase button remains active; backend will return "Insufficient Funds" if NGN is too low
         confirmBtn.innerText = "Confirm & Pay Now";
+        confirmBtn.disabled = false;
     }
-}
-   function contactManagement() {
-    const num = document.getElementById('rNumber').innerText;
-    const carrier = document.getElementById('rCarrier').innerText;
-    const plan = document.getElementById('rPlan').innerText;
-    const tid = document.getElementById('rID').innerText;
 
-    // Use a more specific message for Wallet transactions
-    const msg = `🚀 *SMSGlobe: NEW eSIM REFILL ORDER*\n` +
-                `__________________________________\n\n` +
-                `✅ *PAYMENT STATUS:* WALLET DEBITED\n` +
-                `📦 *PRODUCT:* eSIM Refill\n` +
-                `🆔 *REF ID:* ${tid}\n\n` +
-                `*CUSTOMER DETAILS:*\n` +
-                `━━━━━━━━━━━━━━━━━━\n` +
-                `📡 *CARRIER:* ${carrier}\n` +
-                `📞 *NUMBER:* ${num}\n` +
-                `💰 *PLAN:* ${plan}\n` +
-                `━━━━━━━━━━━━━━━━━━\n\n` +
-                `⚡ *ACTION REQUIRED:*\n` +
-                `The user has been successfully debited from their wallet. Please process this refill on the carrier portal now.\n\n` +
-                `_Automated message from SMSGlobe Dashboard_`;
+    async function purchaseEsimWithWallet() {
+        const confirmBtn = document.getElementById('confirmPurchaseBtn');
+        const num = document.getElementById('targetNumber').value.trim();
+        const plan = document.getElementById('planSelector').value; 
+        const carrier = window.currentSelectedCarrier;
+        const useBonus = document.getElementById('esimUseBonusToggle')?.checked || false;
 
-    window.open(`https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`, '_blank');
-}
-    function toggleSupportMenu() {
-        const menu = document.getElementById('supportMenu');
-        const isHidden = menu.classList.contains('hidden');
+        if (confirmBtn.disabled) return;
         
-        if (isHidden) {
-            menu.classList.remove('hidden');
-            setTimeout(() => {
-                menu.classList.remove('translate-y-10', 'opacity-0', 'scale-95');
-            }, 10);
-        } else {
-            menu.classList.add('translate-y-10', 'opacity-0', 'scale-95');
-            setTimeout(() => {
-                menu.classList.add('hidden');
-            }, 300);
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = `<span>Processing Refill...</span>`;
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+                },
+                body: JSON.stringify({
+                    productType: 'eSIM',
+                    carrierName: carrier.name,
+                    mobileNumber: num,
+                    planAmount: plan,
+                    useBonus: useBonus,
+                    productImage: carrier.image
+                })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                document.getElementById('paymentModal').classList.add('hidden');
+                // Backend provides the formatted receipt details
+                showReceipt(data.order);
+                loadUserData(); 
+            } else {
+                alert(data.message || "Purchase failed");
+                confirmBtn.disabled = false;
+                confirmBtn.innerText = "Confirm & Pay Now";
+            }
+        } catch (err) {
+            console.error("Network Error:", err);
+            alert("Connection lost. Check your history.");
+            confirmBtn.disabled = false;
+            confirmBtn.innerText = "Confirm & Pay Now";
         }
     }
+
+    function logout() {
+        localStorage.removeItem('userToken');
+        window.location.href = 'login.html';
+    }
+
     window.onload = async () => {
-        NAIRA_RATE = await getLiveExchangeRate();
-        console.log(`Processing payment at the rate of ₦${NAIRA_RATE}/$1`);
-
-        // 2. Initialize the rest of the page
         initPage(); 
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        const transactionId = urlParams.get('transaction_id');
-        const txRef = urlParams.get('tx_ref');
-        
-        if (transactionId) {
-            verifyEsimPayment(transactionId, txRef);
-        }
+        await loadUserData();
     };
 </script>
 </body>

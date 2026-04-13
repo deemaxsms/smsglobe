@@ -317,17 +317,17 @@
                         <span id="rRAM" class="text-[10px] md:text-xs font-black text-brand-darkText text-right"></span>
                     </div>
 
-                    <div class="flex justify-between items-center py-2.5 border-b border-gray-100">
-                        <span class="text-[8px] md:text-[10px] font-bold text-brand-lightText uppercase tracking-wider shrink-0 mr-4">Processor</span>
-                        <span id="rCPU" class="text-[10px] md:text-xs font-black text-brand-darkText text-right"></span>
-                    </div>
+                   <div class="flex justify-between items-center py-2.5 border-b border-gray-100">
+    <span class="text-[8px] md:text-[10px] font-bold text-brand-lightText uppercase tracking-wider shrink-0 mr-4">Processor</span>
+    <span id="rCPU" class="text-[10px] md:text-xs font-black text-brand-darkText text-right"></span>
+</div>
 
                     <div class="flex justify-between items-center py-2.5 border-b border-gray-100">
                         <span class="text-[8px] md:text-[10px] font-bold text-brand-lightText uppercase tracking-wider shrink-0 mr-4">Total Paid</span>
                         <span class="text-[10px] md:text-xs font-black text-emerald-600 text-right">₦<span id="displayRAmount">0.00</span></span>
                     </div>
 
-                   <div class="flex justify-between items-center py-2.5 border-b border-gray-100">
+                  <div class="flex justify-between items-center py-2.5 border-b border-gray-100">
     <span class="text-[8px] md:text-[10px] font-bold text-brand-lightText uppercase tracking-wider shrink-0 mr-4">Storage</span>
     <span id="rStorage" class="text-[10px] md:text-xs font-black text-brand-darkText text-right"></span>
 </div>
@@ -347,7 +347,7 @@
 
         <div class="mt-8 px-2 text-center">
             <p class="text-[10px] md:text-xs font-bold text-brand-darkText mb-4 bg-yellow-50 border border-yellow-100 p-3 rounded-xl">
-                ⚠️ IMPORTANT: You must click the whatsapp button below to finalize your RDP activation with our SmsGlobe Management.
+                IMPORTANT: You must click the whatsapp button below to finalize your RDP activation with our SmsGlobe Management.
             </p>
             
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-12">
@@ -700,6 +700,12 @@ async function purchaseRDPWithWallet() {
     `;
 
     try {
+        // 1. Define everything once at the top
+        const extraCPU = parseInt(document.getElementById('extraCPU')?.value) || 0;
+        const extraStorage = parseInt(document.getElementById('extraStorage')?.value) || 0;
+        const osChoice = document.getElementById('osSelector')?.value || "Windows Server";
+        const fullName = document.getElementById('userFullName')?.value || "Customer";
+
         const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
             method: 'POST',
             headers: {
@@ -707,29 +713,31 @@ async function purchaseRDPWithWallet() {
                 'Authorization': `Bearer ${localStorage.getItem('userToken')}`
             },
             body: JSON.stringify({
-               rdpId: selectedRDP._id, // or selectedRDP.id depending on your object structure
-    metadata: {
-        fullName: document.getElementById('userFullName')?.value || "Customer",
-        ram: selectedRDP.ram,
-        cpu: selectedRDP.cpu,        
-        storage: selectedRDP.storage || "60GB SSD", 
-        net: selectedRDP.net || "1Gbps", 
-        
-        extraCPU: parseInt(document.getElementById('extraCPU')?.value) || 0,
-        extraStorage: parseInt(document.getElementById('extraStorage')?.value) || 0,
-        osChoice: document.getElementById('osSelector')?.value || "Windows Server"
-    }
-})
+                rdpId: selectedRDP._id, 
+                extraCPU: extraCPU,
+                extraStorage: extraStorage,
+                os: osChoice,
+                metadata: {
+                    fullName: fullName, // Use the variable defined above
+                    ram: selectedRDP.ram,
+                    cpu: selectedRDP.cpu,        
+                    storage: selectedRDP.storage || "N/A", 
+                    net: selectedRDP.net || "N/A", 
+                    extraCPU: extraCPU, // Use the variable defined above
+                    extraStorage: extraStorage, // Use the variable defined above
+                    osChoice: osChoice // Use the variable defined above
+                }
+            })
         });
 
         const data = await res.json();
 
-        // Simulate processing delay for UX
         setTimeout(() => {
             if (data.success) {
-                document.getElementById('paymentModal').classList.add('hidden');
-                document.getElementById('selectionView').classList.add('hidden');
-                document.getElementById('checkoutView').classList.add('hidden');
+                // Success UI sequence
+                document.getElementById('paymentModal')?.classList.add('hidden');
+                document.getElementById('selectionView')?.classList.add('hidden');
+                document.getElementById('checkoutView')?.classList.add('hidden');
                 showReceipt(data.order);
             } else {
                 alert(data.message || "Purchase failed");
@@ -754,49 +762,54 @@ function closePaymentModal() {
     document.getElementById('paymentModal').classList.add('hidden');
 }
 
- function showReceipt(order) {
+function showReceipt(order) {
     selectionView?.classList.add('hidden');
     checkoutView?.classList.add('hidden');
     receiptView?.classList.remove('hidden');
     headerTitle.innerText = "Order Confirmed";
 
-    // Metadata is where our custom selections live
+    // 1. Extract Metadata (Where the custom extras live)
     const meta = order.metadata || {};
-    const planBaseName = order.nodeName || "USA RDP";
-    const ramValue = meta.ram || order.ram || "Standard";
-    headerTitle.innerText = "Order Confirmed";
     
     const setField = (id, value) => {
         const el = document.getElementById(id);
-        if (el) el.innerText = value || "Standard";
+        if (el) el.innerText = value || "N/A";
     };
-    const ramDisplay = meta.ram || order.ram || "Standard";    
-    const baseCPU = meta.cpu || order.cpu || "2 Cores";
-    const cpuDisplay = meta.extraCPU > 0 
-        ? `${baseCPU} (+${meta.extraCPU} Cores)` 
-        : baseCPU;        
-    const baseStorage = meta.storage || order.storage || "60GB SSD";
-    const storageDisplay = meta.extraStorage > 0 
-        ? `${baseStorage} (+${meta.extraStorage}GB)` 
-        : baseStorage;
-    const netDisplay = meta.net || order.net || "1Gbps";
-    setField('rPlan', order.planName || "RDP Plan");
-    setField('rOS', meta.osChoice || order.os || "Windows Server");
+
+    // 2. RAM Handling
+    const ramDisplay = order.ram || meta.ram || " ";     
+    const baseCPU = order.cpu || meta.cpu || " ";
+    const extraCPU = parseInt(order.extraCPU || meta.extraCPU || 0);
+    const cpuDisplay = extraCPU > 0 ? `${baseCPU} (+${extraCPU} Cores)` : baseCPU;
+    const baseStorage = order.storage || meta.storage || " ";
+    const extraStorage = parseInt(order.extraStorage || meta.extraStorage || 0);
+    const storageDisplay = extraStorage > 0 ? `${baseStorage} (+${extraStorage}GB)` : baseStorage;
+
+    // 5. Network Speed
+    const netDisplay = order.net || meta.net || " ";
+
+    // 6. Set the UI Fields
+    setField('rPlan', order.planName || " ");
+    setField('rOS', meta.osChoice || order.os || " ");
     setField('rRAM', ramDisplay);
     setField('rCPU', cpuDisplay);
     setField('rStorage', storageDisplay);
-    setField('rNet', netDisplay); // Now displays in the new HTML row
-    setField('rID', order.paymentReference || "N/A");         
+    setField('rNet', netDisplay); 
+    setField('rID', order.paymentReference || "N/A");
     
-    const formattedAmount = order.amount ? Number(order.amount).toLocaleString() : "0";
+    // 7. Amount Formatting
+    const formattedAmount = order.amount ? Number(order.amount).toLocaleString() : "0.00";
     setField('displayRAmount', formattedAmount);
     
-    setField('rFullName', meta.fullName || order.fullName || "Customer");
-    
+    // 8. User Info
+    setField('rEmail', order.userEmail || "N/A"); // Make sure this ID exists in your receipt
+    setField('rFullName', order.fullName || meta.fullName || "Customer");
+
     window.scrollTo(0, 0);
 }
 
 function contactRDPAdmin() {
+    // 1. Scrape all data from the Receipt UI
     const tid = document.getElementById('rID')?.innerText || "N/A";
     const plan = document.getElementById('rPlan')?.innerText || "N/A";
     const ram = document.getElementById('rRAM')?.innerText || "N/A";
@@ -813,10 +826,16 @@ function contactRDPAdmin() {
         timeStyle: 'short' 
     });
 
-    // 1. Define the logo link (Placing it at the top triggers the preview)
     const logoUrl = "https://imgur.com/8YeZgfx.png";
 
-    // 2. Construct the message with the logo at the top
+    // 2. Logic to highlight if extras were purchased
+    let extraSummary = "";
+    if (cpu.includes('+') || storage.includes('+')) {
+        extraSummary = ` *EXTRA ADD-ONS DETECTED*\n` +
+                       `__________________________________\n\n`;
+    }
+
+    // 3. Construct the message
     const msg = `${logoUrl}\n\n` + 
                 `🚀 *SMSGlobe: NEW RDP PROVISIONING*\n` +
                 `📅 *DATE:* ${timeSent}\n` +
@@ -826,6 +845,7 @@ function contactRDPAdmin() {
                 `💰 *AMOUNT PAID:* ₦${amount}\n` +
                 `👤 *CUSTOMER:* ${fullName}\n` +
                 `📧 *EMAIL:* ${userEmail}\n\n` +
+                extraSummary + // This injects the alert if they bought extras
                 `*SERVER CONFIGURATION:*\n` +
                 `━━━━━━━━━━━━━━━━━━\n` +
                 `🖥️ *PLAN:* ${plan}\n` +
@@ -835,7 +855,7 @@ function contactRDPAdmin() {
                 `💾 *STORAGE:* ${storage}\n` +
                 `🌐 *NETWORK:* ${net}\n` +
                 `━━━━━━━━━━━━━━━━━━\n\n` +
-                `⚡ *SmsGlobe Admin:* Please proceed with setup for this customer.`;
+                `*SmsGlobe Admin:* Please provision this high-spec RDP immediately.`;
 
     const whatsappUrl = `https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`;
     window.open(whatsappUrl, '_blank');

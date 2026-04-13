@@ -139,6 +139,8 @@ const rdpSchema = new mongoose.Schema({
     nodeName: String, 
     ram: String, cpu: String, storage: String, net: String, os: String,
     amount: Number,
+    extraCPU: { type: Number, default: 0 },
+    extraStorage: { type: Number, default: 0 },
     currency: { type: String, default: "NGN" },
     status: { type: String, default: "successful" },
     paymentReference: String,
@@ -178,10 +180,21 @@ const orderSchema = new mongoose.Schema({
     amount: { type: Number, required: true }, // Amount in NGN
     currency: { type: String, default: 'NGN' }, 
     status: { type: String, enum: ['pending', 'successful', 'failed', 'completed'], default: 'pending' }, 
-    paymentReference: { type: String, unique: true },
+    paymentReference: { type: String, unique: true },    
+    ram: String,
+    cpu: String,
+    storage: String,
+    net: String,
+    os: String,
+    extraCPU: { type: Number, default: 0 },
+    extraStorage: { type: Number, default: 0 },
     activationCode: String, 
     vpnCredentials: { username: String, password: { type: String } },
-    rdpDetails: { os: String, specs: String }
+    rdpDetails: { os: String, specs: String },
+    
+    // Metadata for any other flexible data
+    metadata: { type: mongoose.Schema.Types.Mixed } 
+    
 }, { timestamps: true });
 
 const Order = mongoose.models.Order || mongoose.model('Order', orderSchema);
@@ -1274,38 +1287,43 @@ async function handlePurchaseWithWallet(req, res) {
     orderSpecifics.instructions = item.instructions; // ADD THIS LINE
 }
 
-        else if (carrierName) {
-            itemType = metadata ? "eSIM_Activation" : "eSIM";
-            const priceMatch = String(planAmount || "").match(/(\d+\.?\d*)/);
-            costNGN = priceMatch ? Math.round(parseFloat(priceMatch[0])) : 0;
-            
-            productDetails.name = carrierName;
-            productDetails.plan = planAmount;
-        } 
-      else if (rdpId) {
+       else if (rdpId) {
             itemType = "RDP";
             const rdpPlans = {
-    tier1: { id: "tier1", name: "USA Tier 1", price: 45000, ram: "4GB", cpu: "2 Cores", hardware: "4GB RAM | 2 CPU Cores", storage: "60GB SSD", net: "1Gbps" },
-    tier2: { id: "tier2", name: "USA Tier 2", price: 55000, ram: "6GB", cpu: "3 Cores", hardware: "6GB RAM | 3 CPU Cores", storage: "100GB SSD", net: "1Gbps" },
-    tier3: { id: "tier3", name: "USA Tier 3", price: 65000, ram: "8GB", cpu: "4 Cores", hardware: "8GB RAM | 4 CPU Cores", storage: "140GB SSD", net: "1Gbps" },
-    tier4: { id: "tier4", name: "USA Tier 4", price: 80000, ram: "12GB", cpu: "6 Cores", hardware: "12GB RAM | 6 CPU Cores", storage: "180GB SSD", net: "2Gbps" },
-    tier5: { id: "tier5", name: "USA Tier 5", price: 90000, ram: "18GB", cpu: "8 Cores", hardware: "18GB RAM | 8 CPU Cores", storage: "240GB SSD", net: "2Gbps" },
-    tier6: { id: "tier6", name: "USA Tier 6", price: 130000, ram: "24GB", cpu: "8 Cores", hardware: "24GB RAM | 8 CPU Cores", storage: "280GB SSD", net: "2Gbps" }
-};
+                tier1: { id: "tier1", name: "USA Tier 1", price: 45000, ram: "4GB", cpu: "2 Cores", storage: "60GB SSD", net: "1Gbps" },
+                tier2: { id: "tier2", name: "USA Tier 2", price: 55000, ram: "6GB", cpu: "3 Cores", storage: "100GB SSD", net: "1Gbps" },
+                tier3: { id: "tier3", name: "USA Tier 3", price: 65000, ram: "8GB", cpu: "4 Cores", storage: "140GB SSD", net: "1Gbps" },
+                tier4: { id: "tier4", name: "USA Tier 4", price: 80000, ram: "12GB", cpu: "6 Cores", storage: "180GB SSD", net: "2Gbps" },
+                tier5: { id: "tier5", name: "USA Tier 5", price: 90000, ram: "18GB", cpu: "8 Cores", storage: "240GB SSD", net: "2Gbps" },
+                tier6: { id: "tier6", name: "USA Tier 6", price: 130000, ram: "24GB", cpu: "8 Cores", storage: "280GB SSD", net: "2Gbps" }
+            };
+
             const selectedTier = rdpPlans[rdpId];
             if (!selectedTier) return res.status(404).json({ success: false, message: "RDP Plan not found" });
-            costNGN = Math.round(Number(selectedTier.price) + (parseInt(metadata?.extraCPU || 0) * 5000) + (parseInt(metadata?.extraStorage || 0) * 200));
+
+            // 1. Capture Extras from metadata
+            const extraCPUCount = parseInt(metadata?.extraCPU || 0);
+            const extraStorageGB = parseInt(metadata?.extraStorage || 0);
+
+            // 2. Calculate Final Cost
+            costNGN = Math.round(
+                Number(selectedTier.price) + 
+                (extraCPUCount * 5000) + 
+                (extraStorageGB *2000)
+            );
             
             productDetails.name = selectedTier.name;
-            productDetails.plan = `${selectedTier.ram} RAM | ${metadata?.osChoice || 'Windows'}`;
+            productDetails.plan = `${selectedTier.ram} RAM | ${metadata?.osChoice || 'Windows Server'}`;
             
-            // MAP TO SCHEMA FIELDS: These will be spread into the Order.create call
+            // 3. MAP TO SCHEMA: explicitly include extraCPU and extraStorage
             orderSpecifics = {
                 ram: selectedTier.ram,
                 cpu: selectedTier.cpu,
                 storage: selectedTier.storage,
                 net: selectedTier.net,
-                os: metadata?.osChoice || "Windows Server"
+                os: metadata?.osChoice || "Windows Server",
+                extraCPU: extraCPUCount,
+                extraStorage: extraStorageGB
             };
         }
 
@@ -1339,7 +1357,7 @@ async function handlePurchaseWithWallet(req, res) {
         const balanceAfter = updatedUser.balance;
         const paymentReference = `WAL-${Date.now()}-${user._id.toString().slice(-4)}`;
 
-        // 6. CREATE ORDER RECORD
+       // 6. CREATE ORDER RECORD
         const newOrder = await Order.create({
             userId: user._id,
             userEmail: user.email,
@@ -1352,8 +1370,8 @@ async function handlePurchaseWithWallet(req, res) {
             currency: "NGN",
             status: "successful",
             paymentReference: paymentReference,
-            metadata: metadata,
-            ...orderSpecifics 
+            metadata: metadata, // Keep original metadata for logs
+            ...orderSpecifics   // This now contains extraCPU, extraStorage, ram, cpu, storage, net, os
         });
 
         // 7. CREATE TRANSACTION LOG
@@ -1367,41 +1385,58 @@ async function handlePurchaseWithWallet(req, res) {
             paymentMethod: 'wallet',
             balanceBefore: balanceBefore,
             balanceAfter: balanceAfter,
-            metadata: { orderId: newOrder._id, product: productDetails.name }
+            metadata: { 
+                orderId: newOrder._id, 
+                product: productDetails.name,
+                extras: itemType === "RDP" ? { 
+                    cpu: orderSpecifics.extraCPU, 
+                    storage: orderSpecifics.extraStorage 
+                } : null
+            }
         });
 
         // 8. SEND DELIVERY EMAIL
-        sendDeliveryEmail(user.email, { ...orderSpecifics, amount: `₦${costNGN.toLocaleString()}` }, newOrder)
+        // We pass the full newOrder so the email template can show (+ Extra) details
+        sendDeliveryEmail(user.email, { 
+            ...orderSpecifics, 
+            amount: `₦${costNGN.toLocaleString()}`,
+            planName: productDetails.plan
+        }, newOrder)
             .catch(err => console.error("Email Error:", err.message));
-// 9. FINAL RESPONSE
-return res.json({ 
-    success: true, 
-    message: "Purchase successful!", 
-    balance: balanceAfter,
-    order: newOrder,
-    // Add these fields so the frontend showReceipt(data.order) 
-    // can find them even if the metadata isn't fully expanded
-    rdpDetails: itemType === "RDP" ? {
-        ram: newOrder.ram,
-        cpu: newOrder.cpu,
-        storage: newOrder.storage,
-        net: newOrder.net,
-        os: newOrder.os
-    } : null,
-    credentials: {
-        username: orderSpecifics.username || null,
-        password: orderSpecifics.password || null,
-        pcUsername: orderSpecifics.pcUsername || null,
-        pcPassword: orderSpecifics.pcPassword || null,
-        activationCode: orderSpecifics.activationCode || null,
-        instructions: orderSpecifics.instructions || null
-    }
-});
+
+        // 9. FINAL RESPONSE
+        return res.json({ 
+            success: true, 
+            message: "Purchase successful!", 
+            balance: balanceAfter,
+            order: newOrder, // The frontend 'showReceipt' uses this!
+            
+            // Add these fields explicitly so the frontend receipt is 100% accurate
+            rdpDetails: itemType === "RDP" ? {
+                ram: newOrder.ram,
+                cpu: newOrder.cpu,
+                extraCPU: newOrder.extraCPU, // Added explicitly
+                storage: newOrder.storage,
+                extraStorage: newOrder.extraStorage, // Added explicitly
+                net: newOrder.net,
+                os: newOrder.os
+            } : null,
+            
+            credentials: {
+                username: orderSpecifics.username || null,
+                password: orderSpecifics.password || null,
+                pcUsername: orderSpecifics.pcUsername || null,
+                pcPassword: orderSpecifics.pcPassword || null,
+                activationCode: orderSpecifics.activationCode || null,
+                instructions: orderSpecifics.instructions || null
+            }
+        });
     } catch (err) {
         console.error("Wallet Purchase Error:", err);
         return res.status(500).json({ success: false, message: "Internal server error." });
     }
 }
+
 const sendDeliveryEmail = async (userEmail, credentials) => {
     const transporter = nodemailer.createTransport({
         service: 'gmail',

@@ -331,7 +331,7 @@ for (let i = 40000; i <= 150000; i += 5000) {
 
     async function fetchUserProfile() {
         try {
-            const res = await fetch(`${API_BASE_URL}/user-details`, {
+            const res = await fetch(`${API_BASE_URL}/user-profile`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
             });
             const data = await res.json();

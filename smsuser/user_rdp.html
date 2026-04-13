@@ -480,14 +480,14 @@
     const headerTitle = document.getElementById('headerTitle');
     const tableBody = document.getElementById('plansTableBody');
 
-    const plans = {
-        tier1: { id: "tier1", name: "USA Tier 1", price: 45000, hardware: "4GB RAM | 2 CPU Cores", storage: "60GB SSD", net: "100Mbps" },
-        tier2: { id: "tier2", name: "USA Tier 2", price: 55000, hardware: "6GB RAM | 3 CPU Cores", storage: "100GB SSD", net: "100Mbps" },
-        tier3: { id: "tier3", name: "USA Tier 3", price: 65000, hardware: "8GB RAM | 4 CPU Cores", storage: "140GB SSD", net: "200Mbps" },
-        tier4: { id: "tier4", name: "USA Tier 4", price: 80000, hardware: "12GB RAM | 6 CPU Cores", storage: "180GB SSD", net: "200Mbps" },
-        tier5: { id: "tier5", name: "USA Tier 5", price: 90000, hardware: "18GB RAM | 8 CPU Cores", storage: "240GB SSD", net: "300Mbps" },
-        tier6: { id: "tier6", name: "USA Tier 6", price: 130000, hardware: "24GB RAM | 8 CPU Cores", storage: "280GB SSD", net: "300Mbps" }
-    };
+ const plans = {
+    tier1: { id: "tier1", name: "USA Tier 1", price: 45000, ram: "4GB", cpu: "2 Cores", hardware: "4GB RAM | 2 CPU Cores", storage: "60GB SSD", net: "1Gbps" },
+    tier2: { id: "tier2", name: "USA Tier 2", price: 55000, ram: "6GB", cpu: "3 Cores", hardware: "6GB RAM | 3 CPU Cores", storage: "100GB SSD", net: "1Gbps" },
+    tier3: { id: "tier3", name: "USA Tier 3", price: 65000, ram: "8GB", cpu: "4 Cores", hardware: "8GB RAM | 4 CPU Cores", storage: "140GB SSD", net: "1Gbps" },
+    tier4: { id: "tier4", name: "USA Tier 4", price: 80000, ram: "12GB", cpu: "6 Cores", hardware: "12GB RAM | 6 CPU Cores", storage: "180GB SSD", net: "2Gbps" },
+    tier5: { id: "tier5", name: "USA Tier 5", price: 90000, ram: "18GB", cpu: "8 Cores", hardware: "18GB RAM | 8 CPU Cores", storage: "240GB SSD", net: "2Gbps" },
+    tier6: { id: "tier6", name: "USA Tier 6", price: 130000, ram: "24GB", cpu: "8 Cores", hardware: "24GB RAM | 8 CPU Cores", storage: "280GB SSD", net: "2Gbps" }
+};
 
     let activePlan = null;
 
@@ -690,19 +690,19 @@ async function purchaseRDPWithWallet() {
                 'Authorization': `Bearer ${localStorage.getItem('userToken')}`
             },
             body: JSON.stringify({
-                rdpId: selectedRDP._id,
-                metadata: {
-                    fullName: document.getElementById('userFullName')?.value || "Customer",
-                    ram: selectedRDP.ram,
-                    cpu: selectedRDP.cpu,
-                    // FIX: Ensure storage and net are pulled from activePlan
-                    storage: activePlan.storage, 
-                    net: activePlan.net,           
-                    extraCPU: parseInt(document.getElementById('extraCPU')?.value) || 0,
-                    extraStorage: parseInt(document.getElementById('extraStorage')?.value) || 0,
-                    osChoice: document.getElementById('osSelector')?.value || "Windows Server"
-                }
-            })
+               rdpId: selectedRDP._id, // or selectedRDP.id depending on your object structure
+    metadata: {
+        fullName: document.getElementById('userFullName')?.value || "Customer",
+        ram: selectedRDP.ram,
+        cpu: selectedRDP.cpu,        
+        storage: selectedRDP.storage || "60GB SSD", 
+        net: selectedRDP.net || "1Gbps", 
+        
+        extraCPU: parseInt(document.getElementById('extraCPU')?.value) || 0,
+        extraStorage: parseInt(document.getElementById('extraStorage')?.value) || 0,
+        osChoice: document.getElementById('osSelector')?.value || "Windows Server"
+    }
+})
         });
 
         const data = await res.json();
@@ -745,6 +745,9 @@ function closePaymentModal() {
 
     // Metadata is where our custom selections live
     const meta = order.metadata || {};
+    const planBaseName = order.nodeName || "USA RDP";
+    const ramValue = meta.ram || order.ram || "Standard";
+    headerTitle.innerText = "Order Confirmed";
     
     const setField = (id, value) => {
         const el = document.getElementById(id);
@@ -775,30 +778,30 @@ function closePaymentModal() {
     
     window.scrollTo(0, 0);
 }
- function contactRDPAdmin() {
-    // 1. Extract values from the UI (matching the IDs in your receipt HTML)
+
+function contactRDPAdmin() {
     const tid = document.getElementById('rID')?.innerText || "N/A";
     const plan = document.getElementById('rPlan')?.innerText || "N/A";
     const ram = document.getElementById('rRAM')?.innerText || "N/A";
     const cpu = document.getElementById('rCPU')?.innerText || "N/A";
-    const storage = document.getElementById('rStorage')?.innerText || "Standard";
-    const os = document.getElementById('rOS')?.innerText || "Windows Server";
-    const net = document.getElementById('rNet')?.innerText || "1Gbps"; // New Network Field
-    
-    // Updated ID to match your HTML 'displayRAmount'
+    const storage = document.getElementById('rStorage')?.innerText || "N/A";
+    const os = document.getElementById('rOS')?.innerText || "N/A";
+    const net = document.getElementById('rNet')?.innerText || "N/A";
     const amount = document.getElementById('displayRAmount')?.innerText || "0.00";
-    
     const userEmail = document.getElementById('rEmail')?.innerText || "N/A";
     const fullName = document.getElementById('rFullName')?.innerText || "Customer";
 
-    // 2. Generate current timestamp
     const timeSent = new Date().toLocaleString('en-NG', { 
         dateStyle: 'medium', 
         timeStyle: 'short' 
     });
 
-    // 3. Construct the Professional WhatsApp Message
-    const msg = `🚀 *SMSGlobe: NEW RDP PROVISIONING*\n` +
+    // 1. Define the logo link (Placing it at the top triggers the preview)
+    const logoUrl = "https://imgur.com/8YeZgfx.png";
+
+    // 2. Construct the message with the logo at the top
+    const msg = `${logoUrl}\n\n` + 
+                `🚀 *SMSGlobe: NEW RDP PROVISIONING*\n` +
                 `📅 *DATE:* ${timeSent}\n` +
                 `__________________________________\n\n` +
                 `✅ *PAYMENT STATUS:* CONFIRMED\n` +
@@ -813,11 +816,10 @@ function closePaymentModal() {
                 `🧠 *RAM:* ${ram}\n` +
                 `⚡ *CPU:* ${cpu}\n` +
                 `💾 *STORAGE:* ${storage}\n` +
-                `🌐 *NETWORK:* ${net}\n` + // Added Network Speed
+                `🌐 *NETWORK:* ${net}\n` +
                 `━━━━━━━━━━━━━━━━━━\n\n` +
                 `⚡ *SmsGlobe Admin:* Please proceed with setup for this customer.`;
 
-    // 4. Encode and Redirect
     const whatsappUrl = `https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`;
     window.open(whatsappUrl, '_blank');
 }

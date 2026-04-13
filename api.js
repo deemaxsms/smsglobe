@@ -1285,14 +1285,13 @@ async function handlePurchaseWithWallet(req, res) {
       else if (rdpId) {
             itemType = "RDP";
             const rdpPlans = {
-                tier1: { id: "tier1", name: "USA Tier 1", price: 45000, hardware: "4GB RAM | 2 CPU Cores", storage: "60GB SSD", net: "100Mbps" },
-        tier2: { id: "tier2", name: "USA Tier 2", price: 55000, hardware: "6GB RAM | 3 CPU Cores", storage: "100GB SSD", net: "100Mbps" },
-        tier3: { id: "tier3", name: "USA Tier 3", price: 65000, hardware: "8GB RAM | 4 CPU Cores", storage: "140GB SSD", net: "200Mbps" },
-        tier4: { id: "tier4", name: "USA Tier 4", price: 80000, hardware: "12GB RAM | 6 CPU Cores", storage: "180GB SSD", net: "200Mbps" },
-        tier5: { id: "tier5", name: "USA Tier 5", price: 90000, hardware: "18GB RAM | 8 CPU Cores", storage: "240GB SSD", net: "300Mbps" },
-        tier6: { id: "tier6", name: "USA Tier 6", price: 130000, hardware: "24GB RAM | 8 CPU Cores", storage: "280GB SSD", net: "300Mbps" }
-            };
-
+    tier1: { id: "tier1", name: "USA Tier 1", price: 45000, ram: "4GB", cpu: "2 Cores", hardware: "4GB RAM | 2 CPU Cores", storage: "60GB SSD", net: "1Gbps" },
+    tier2: { id: "tier2", name: "USA Tier 2", price: 55000, ram: "6GB", cpu: "3 Cores", hardware: "6GB RAM | 3 CPU Cores", storage: "100GB SSD", net: "1Gbps" },
+    tier3: { id: "tier3", name: "USA Tier 3", price: 65000, ram: "8GB", cpu: "4 Cores", hardware: "8GB RAM | 4 CPU Cores", storage: "140GB SSD", net: "1Gbps" },
+    tier4: { id: "tier4", name: "USA Tier 4", price: 80000, ram: "12GB", cpu: "6 Cores", hardware: "12GB RAM | 6 CPU Cores", storage: "180GB SSD", net: "2Gbps" },
+    tier5: { id: "tier5", name: "USA Tier 5", price: 90000, ram: "18GB", cpu: "8 Cores", hardware: "18GB RAM | 8 CPU Cores", storage: "240GB SSD", net: "2Gbps" },
+    tier6: { id: "tier6", name: "USA Tier 6", price: 130000, ram: "24GB", cpu: "8 Cores", hardware: "24GB RAM | 8 CPU Cores", storage: "280GB SSD", net: "2Gbps" }
+};
             const selectedTier = rdpPlans[rdpId];
             if (!selectedTier) return res.status(404).json({ success: false, message: "RDP Plan not found" });
             costNGN = Math.round(Number(selectedTier.price) + (parseInt(metadata?.extraCPU || 0) * 5000) + (parseInt(metadata?.extraStorage || 0) * 200));
@@ -1374,17 +1373,20 @@ async function handlePurchaseWithWallet(req, res) {
         // 8. SEND DELIVERY EMAIL
         sendDeliveryEmail(user.email, { ...orderSpecifics, amount: `₦${costNGN.toLocaleString()}` }, newOrder)
             .catch(err => console.error("Email Error:", err.message));
+// 9. FINAL RESPONSE
 return res.json({ 
     success: true, 
     message: "Purchase successful!", 
     balance: balanceAfter,
     order: newOrder,
+    // Add these fields so the frontend showReceipt(data.order) 
+    // can find them even if the metadata isn't fully expanded
     rdpDetails: itemType === "RDP" ? {
-        ram: orderSpecifics.ram,
-        cpu: orderSpecifics.cpu,
-        storage: orderSpecifics.storage,
-        net: orderSpecifics.net,
-        os: orderSpecifics.os
+        ram: newOrder.ram,
+        cpu: newOrder.cpu,
+        storage: newOrder.storage,
+        net: newOrder.net,
+        os: newOrder.os
     } : null,
     credentials: {
         username: orderSpecifics.username || null,
@@ -1395,7 +1397,6 @@ return res.json({
         instructions: orderSpecifics.instructions || null
     }
 });
-
     } catch (err) {
         console.error("Wallet Purchase Error:", err);
         return res.status(500).json({ success: false, message: "Internal server error." });

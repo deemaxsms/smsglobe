@@ -690,7 +690,9 @@ async function purchaseRDPWithWallet() {
                     fullName: document.getElementById('userFullName')?.value || "Customer",
                     ram: selectedRDP.ram,
                     cpu: selectedRDP.cpu,
-                    storage: selectedRDP.storage,
+                    // FIX: Ensure storage and net are pulled from activePlan
+                    storage: activePlan.storage, 
+                    net: activePlan.net,           
                     extraCPU: parseInt(document.getElementById('extraCPU')?.value) || 0,
                     extraStorage: parseInt(document.getElementById('extraStorage')?.value) || 0,
                     osChoice: document.getElementById('osSelector')?.value || "Windows Server"
@@ -700,6 +702,7 @@ async function purchaseRDPWithWallet() {
 
         const data = await res.json();
 
+        // Simulate processing delay for UX
         setTimeout(() => {
             if (data.success) {
                 document.getElementById('paymentModal').classList.add('hidden');
@@ -710,7 +713,7 @@ async function purchaseRDPWithWallet() {
                 alert(data.message || "Purchase failed");
                 resetPurchaseButton(confirmBtn);
             }
-        }, 3000);
+        }, 2000);
 
     } catch (err) {
         console.error("Network Error:", err);
@@ -737,16 +740,20 @@ function closePaymentModal() {
 
     const meta = order.metadata || {};
     const specParts = (order.rdpDetails?.specs || "").split(',').map(s => s.trim());
+    
     const setField = (id, value) => {
         const el = document.getElementById(id);
         if (el) el.innerText = value || "Standard";
     };
 
+    // Logical display for specs
     const ramDisplay = meta.ram || specParts[0] || "4GB RAM";
+    
     const cpuDisplay = meta.extraCPU > 0 
         ? `${meta.cpu || specParts[1] || "2 Cores"} (+${meta.extraCPU} Cores)` 
         : (meta.cpu || specParts[1] || "Standard");
         
+    // FIX: Correctly format storage display with metadata
     const storageDisplay = meta.extraStorage > 0 
         ? `${meta.storage || specParts[2] || "60GB"} (+${meta.extraStorage}GB)` 
         : (meta.storage || specParts[2] || "Standard");
@@ -758,13 +765,19 @@ function closePaymentModal() {
     setField('rStorage', storageDisplay);
     setField('rID', order.paymentReference || "N/A");         
     
-    // Always format as NGN
     const formattedAmount = order.amount ? Number(order.amount).toLocaleString() : "0";
     setField('displayRAmount', formattedAmount);
     setField('rAmount', formattedAmount);
     
     setField('rFullName', meta.fullName || order.fullName || "Customer");
     setField('rEmail', order.userEmail || "N/A");    
+    
+    // Hidden span for WhatsApp capture
+    const netSpan = document.createElement('span');
+    netSpan.id = 'rNet';
+    netSpan.className = 'hidden';
+    netSpan.innerText = meta.net || "100Mbps";
+    document.body.appendChild(netSpan);
     
     window.scrollTo(0, 0);
 }
@@ -776,6 +789,7 @@ function closePaymentModal() {
     const cpu = document.getElementById('rCPU')?.innerText || "N/A";
     const storage = document.getElementById('rStorage')?.innerText || "N/A";
     const os = document.getElementById('rOS')?.innerText || "N/A";
+    const net = document.getElementById('rNet')?.innerText || "Standard";
     const amount = document.getElementById('rAmount')?.innerText || "N/A";
     const userEmail = document.getElementById('rEmail')?.innerText || "N/A";
     const fullName = document.getElementById('rFullName')?.innerText || "Customer";
@@ -800,13 +814,13 @@ function closePaymentModal() {
                 `🧠 *RAM:* ${ram}\n` +
                 `⚡ *CPU:* ${cpu}\n` +
                 `💾 *STORAGE:* ${storage}\n` +
+                `🌐 *NETWORK:* ${net}\n` +
                 `━━━━━━━━━━━━━━━━━━\n\n` +
-                `⚡ *Admin:* Please proceed with setup for this customer.`;
+                `⚡ *SmsGlobe:* Please proceed with setup for this customer.`;
 
     const whatsappUrl = `https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`;
     window.open(whatsappUrl, '_blank');
 }
-
     function showSelectionView() {
         selectionView.classList.remove('hidden');
         checkoutView.classList.add('hidden');

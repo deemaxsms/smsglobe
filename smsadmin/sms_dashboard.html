@@ -153,11 +153,34 @@
     </main>
 
 <script>
-    const fmtNGN = (val) => `₦${(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    /**
+     * Helper to format numbers as Naira currency
+     */
+    const fmtNGN = (val) => `₦${(val || 0).toLocaleString(undefined, { 
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2 
+    })}`;
+
+    /**
+     * Helper to safely update text content of a UI element by ID
+     */
+    function updateUIElement(id, value) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.innerText = value;
+        } else {
+            console.warn(`UI Element not found: ${id}`);
+        }
+    }
 
     async function fetchDashboardData() {
         const token = localStorage.getItem('smsglobe_admin_token');
         const container = document.getElementById('sales-container');
+        
+        if (!token) {
+            console.error("No admin token found. Redirecting to login...");
+            return;
+        }
         
         try {
             const response = await fetch('/api/dashboard-stats', {
@@ -166,18 +189,20 @@
             const data = await response.json();
 
             if (data.success) {
+                // Update Stats
                 updateUIElement('total-users', (data.totalUsers || 0).toLocaleString());
                 
                 // Update Revenue Labels
-                updateUIElement('total-revenue', fmtNGN(data.revenue.totalRevenue));
-                updateUIElement('rev-daily', fmtNGN(data.revenue.daily));
-                updateUIElement('rev-weekly', fmtNGN(data.revenue.weekly));
-                updateUIElement('rev-monthly', fmtNGN(data.revenue.monthly));
-                updateUIElement('rev-yearly', fmtNGN(data.revenue.yearly));
+                const rev = data.revenue || {};
+                updateUIElement('total-revenue', fmtNGN(rev.totalRevenue));
+                updateUIElement('rev-daily', fmtNGN(rev.daily));
+                updateUIElement('rev-weekly', fmtNGN(rev.weekly));
+                updateUIElement('rev-monthly', fmtNGN(rev.monthly));
+                updateUIElement('rev-yearly', fmtNGN(rev.yearly));
 
                 // Table Render Logic
-                if (container && data.recentOrders) {
-                    if (data.recentOrders.length > 0) {
+                if (container) {
+                    if (data.recentOrders && data.recentOrders.length > 0) {
                         container.className = "overflow-x-auto"; 
                         container.innerHTML = `
                             <table class="w-full text-left text-[11px] md:text-xs">
@@ -208,14 +233,22 @@
                                 </tbody>
                             </table>`;
                     } else {
-                        container.innerHTML = `<div class="p-10 text-center text-brand-lightText italic">No successful sales recorded yet.</div>`;
+                        container.innerHTML = `
+                            <div class="p-10 text-center text-brand-lightText italic">
+                                No successful sales recorded yet.
+                            </div>`;
                     }
                 }
+            } else {
+                console.error("Dashboard error:", data.message);
             }
         } catch (err) {
-            console.error(err);
+            console.error("Network/Server Error:", err);
         }
     }
+
+    // Initialize dashboard on load
+    document.addEventListener('DOMContentLoaded', fetchDashboardData);
 </script>
 </body>
 </html>

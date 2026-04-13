@@ -131,15 +131,21 @@ const ProxySchema = new mongoose.Schema({
 const Proxy = mongoose.models.Proxy || mongoose.model('Proxy', ProxySchema);
 
 const rdpSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    ram: { type: String, required: true }, 
-    cpu: { type: String, required: true }, 
-    storage: { type: String, required: true }, 
-    price: { type: Number, required: true }, // Price in NGN
-    os: { type: String, default: "Windows Server 2022" }
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    userEmail: String,
+    fullName: String,
+    productType: { type: String, default: "RDP" },
+    planName: String,
+    nodeName: String, 
+    ram: String, cpu: String, storage: String, net: String, os: String,
+    amount: Number,
+    currency: { type: String, default: "NGN" },
+    status: { type: String, default: "successful" },
+    paymentReference: String,
+    metadata: { extraCPU: Number, extraStorage: Number, osChoice: String }
 }, { timestamps: true });
 
-const RDP = mongoose.models.RDP || mongoose.model('RDP', rdpSchema);
+const RDP = mongoose.models.RDP || mongoose.model('RDP', rdpSchema, 'rdp_orders');
 
 // --- TRANSACTION SCHEMA (USD fields removed) ---
 const transactionSchema = new mongoose.Schema({
@@ -2313,14 +2319,14 @@ async function handleGetRdpRequests(req, res) {
                 fullName: meta.fullName || 'N/A',
                 nodeName: order.nodeName || 'USA Tier 1',
                 planName: order.planName || 'RDP Server',
-                // Map nested metadata correctly
-                metadata: {
-                    osChoice: meta.osChoice || rdpDetails.os || 'Windows',
-                    baseRAM: meta.ram || 'Standard',
-                    extraCPU: meta.extraCPU || 0,
-                    extraStorage: meta.extraStorage || 0
-                },
-                // Return raw number for frontend processing
+               metadata: {
+        osChoice: meta.osChoice || rdpDetails.os || 'Windows',
+        ram: meta.ram || 'Standard',
+        storage: meta.storage || rdpDetails.specs?.split(',')[2] || 'Standard', // ADD THIS
+        net: order.net || 'N/A', // ADD THIS
+        extraCPU: meta.extraCPU || 0,
+        extraStorage: meta.extraStorage || 0
+    },
                 amount: nairaAmount, 
                 status: order.status || 'pending',
                 confirmationNumber: order.confirmationNumber || 'PENDING'

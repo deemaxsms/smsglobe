@@ -56,7 +56,6 @@ const adminSchema = new mongoose.Schema({
 
 const Admin = mongoose.models.Admin || mongoose.model('Admin', adminSchema);
 
-// --- USER SCHEMA ---
 const userSchema = new mongoose.Schema({
     fullName: { type: String, required: [true, "Full name is required"], trim: true },
     email: { 
@@ -67,9 +66,10 @@ const userSchema = new mongoose.Schema({
         trim: true,
         match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please fill a valid email address']
     },
-    password: { type: String, required: [true, "Password is required"], select: false },
-    // Primary balance in NGN
-    balance: { type: Number, default: 0, min: [0, "Balance cannot be negative"] },
+    password: { type: String, required: [true, "Password is required"], select: false },    
+    balance: { type: Number, default: 0, min: [0, "Balance cannot be negative"] },   
+    bonusBalance: { type: Number, default: 0 },    
+    hasDeposited: { type: Boolean, default: false },
     status: { type: String, enum: ['active', 'suspended'], default: 'active', index: true },
     referralCode: { type: String, unique: true, sparse: true, uppercase: true, trim: true },
     referredBy: { type: String, default: null, index: true },
@@ -884,13 +884,6 @@ async function handleUserLogin(req, res) {
         });
     }
 }
-
-
-/**
- * User Registration Handler
- * Handles: reCAPTCHA, Email Validation, Optional Referrals, 
- * and Unique Referral Code Generation.
- */
 async function handleUserRegister(req, res) {
     const { fullName, email, password, captchaToken, friendReferralCode } = req.body;
 
@@ -912,34 +905,40 @@ async function handleUserRegister(req, res) {
         if (existingUser) {
             return res.status(400).json({ success: false, message: "This email is already registered." });
         }
+
         let referredBy = null;
+
+        // 3. Handle Referral Logic
         if (friendReferralCode && friendReferralCode.trim().length > 0) {
             const cleanFriendCode = friendReferralCode.trim().toUpperCase();            
             const referrer = await User.findOne({ referralCode: cleanFriendCode });
             
             if (referrer) {
                 referredBy = referrer.referralCode;
-                // Increment referrer's count immediately
+                
+                // UPDATE: Add the $2,000 bonus to the REFERRER
+                referrer.bonusBalance = (referrer.bonusBalance || 0) + 2000;
                 referrer.referralCount = (referrer.referralCount || 0) + 1;
+                
                 await referrer.save();
             } else {
-                // If they provided a code but it's wrong, we notify them
                 return res.status(400).json({ 
                     success: false, 
                     message: "The referral code provided is invalid. Leave it blank if you don't have one." 
                 });
             }
         }
-
         const myNewReferralCode = await generateUniqueCode();
-        const hashedPassword = await bcrypt.hash(password, 12);        
+        const hashedPassword = await bcrypt.hash(password, 12);                
         const newUser = new User({ 
             fullName: fullName.trim(), 
             email: normalizedEmail, 
             password: hashedPassword,
-            balance: 0,
-            referralCode: myNewReferralCode, // This is their new 6-char code
-            referredBy: referredBy           // This stays null if no code was used
+            balance: 0,             // Main wallet (Real money)
+            bonusBalance: 0,        // Starting bonus for new user
+            hasDeposited: false,    // Bonus remains locked until this is true
+            referralCode: myNewReferralCode,
+            referredBy: referredBy           
         });
         
         await newUser.save();
@@ -955,6 +954,7 @@ async function handleUserRegister(req, res) {
         return res.status(500).json({ success: false, message: "Failed to create account. Please try again." });
     }
 }
+
 // Fetch profile for the logged-in user (NGN Only)
 async function handleGetUserProfile(req, res) {
     // 1. Verify token

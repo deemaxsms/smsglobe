@@ -203,7 +203,7 @@
 </header>
 
         <main class="p-3 md:p-6 max-w-6xl w-full mx-auto space-y-4">
-  <div class="relative overflow-hidden bg-brand-darkText rounded-[24px] md:rounded-[32px] p-6 md:p-10 shadow-2xl shadow-brand-blue/20 mb-8">
+ <div class="relative overflow-hidden bg-brand-darkText rounded-[24px] md:rounded-[32px] p-6 md:p-10 shadow-2xl shadow-brand-blue/20 mb-8">
     <div class="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-brand-blue opacity-10 rounded-full blur-3xl"></div>
     <div class="absolute bottom-0 left-0 -ml-16 -mb-16 w-48 h-48 bg-brand-orange opacity-10 rounded-full blur-3xl"></div>
 
@@ -212,18 +212,34 @@
             <p class="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] mb-1">
                 Welcome back, <span id="userDisplayName" class="text-white">User</span>
             </p>
-            <h2 class="text-white/80 text-[11px] md:text-base font-medium">Total Available Balance</h2>
             
-            <div class="flex flex-col">
-                <div class="flex items-baseline gap-3">
-                    <span class="text-2xl md:text-5xl font-black text-white tracking-tighter" id="mainBalanceDisplayNGN">₦0.00</span>
-                    
-                    <button onclick="toggleBalanceVisibility()" class="p-1 text-white/40 hover:text-white transition-colors focus:outline-none">
-                        <svg id="eyeIcon" class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
-                    </button>
-
-                    <span class="text-brand-orange text-[10px] md:text-sm font-black uppercase tracking-wider">NGN</span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-12 mt-4">
+                
+                <div class="flex flex-col">
+                    <h2 class="text-white/80 text-[11px] md:text-base font-medium mb-1">Main Wallet</h2>
+                    <div class="flex items-baseline gap-3">
+                        <span class="text-2xl md:text-5xl font-black text-white tracking-tighter" id="mainBalanceDisplayNGN">₦0.00</span>
+                        <button onclick="toggleBalanceVisibility()" class="p-1 text-white/40 hover:text-white transition-colors focus:outline-none">
+                            <svg id="eyeIcon" class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
+                        </button>
+                        <span class="text-brand-orange text-[10px] md:text-sm font-black uppercase tracking-wider">NGN</span>
+                    </div>
                 </div>
+
+                <div class="flex flex-col border-l border-white/10 pl-0 sm:pl-6">
+                    <div class="flex items-center gap-2 mb-1">
+                        <h2 class="text-white/80 text-[11px] md:text-base font-medium">Bonus Rewards</h2>
+                        <span id="bonusStatusBadge" class="text-[8px] uppercase px-2 py-0.5 rounded-full font-bold bg-orange-500/20 text-orange-500 border border-orange-500/30">
+                            Locked
+                        </span>
+                    </div>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-xl md:text-3xl font-black text-white/90 tracking-tighter" id="bonusBalanceDisplay">₦0.00</span>
+                        <span class="text-white/30 text-[9px] md:text-xs font-bold uppercase tracking-wider">Bonus</span>
+                    </div>
+                    <p id="bonusInstruction" class="text-[9px] text-white/40 mt-1 italic">Deposit funds to unlock bonus</p>
+                </div>
+
             </div>
         </div>
 
@@ -910,13 +926,10 @@
             </div>
         `;
     }
-
-  /**
+/**
  * Optimized Dashboard Initialization
- * Uses Stale-While-Revalidate pattern for instant loading
  */
 async function initDashboard() {
-    // 1. NON-BLOCKING: Start maintenance check in background
     checkMaintenance(); 
 
     const token = localStorage.getItem('userToken');
@@ -928,16 +941,12 @@ async function initDashboard() {
     const urlParams = new URLSearchParams(window.location.search);
     const isPostTopup = urlParams.get('status') === 'successful' || urlParams.has('transaction_id');
 
-    // 2. IMMEDIATE RENDER: Load from cache instantly
-    // We don't remove the cache on post-topup anymore, we just ignore it for the UI update
-    // to prevent the screen from looking "empty" while the new balance fetches.
     const cachedData = JSON.parse(localStorage.getItem('dashboard_cache'));
     if (cachedData && cachedData.user && !isPostTopup) {
         updateDashboardUI(cachedData.user);
     }
 
     try {
-        // 3. BACKGROUND FETCH: Get fresh NGN data
         const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
             headers: { 
                 'Authorization': `Bearer ${token}`, 
@@ -949,20 +958,20 @@ async function initDashboard() {
         
         const userData = await profileRes.json();
         
-        if (userData.status === 'suspended') {
+        // Ensure we extract the user object correctly from your API response
+        const user = userData.user || userData;
+
+        if (user.status === 'suspended') {
             showSuspendedNotice();
             return;
         }
 
-        // 4. SILENT UI UPDATE: Update with fresh data
-        updateDashboardUI(userData);
+        updateDashboardUI(user);
 
-        // 5. UPDATE CACHE
         localStorage.setItem('dashboard_cache', JSON.stringify({
-            user: userData
+            user: user
         }));
 
-        // Clean URL if coming from a payment redirect
         if (isPostTopup) {
             window.history.replaceState({}, document.title, window.location.pathname);
         }
@@ -973,29 +982,24 @@ async function initDashboard() {
 
 /**
  * UI Render Function
- * Optimized to prevent unnecessary DOM reflows
  */
 function updateDashboardUI(user) {
     if (!user) return;
-    
     const fullName = user.fullName || "User Account";    
     const balanceNGN = parseFloat(user.balance) || 0; 
+    const bonusBalance = parseFloat(user.bonusBalance) || 0;
+    const hasDeposited = user.hasDeposited || false;
 
-    // Helper to only update DOM if value actually changed
     const safeSetText = (id, value) => {
         const el = document.getElementById(id);
         if (el && el.innerText !== String(value)) {
             el.innerText = value;
         }
     };
-
-    // Update basic info
     safeSetText('userDisplayName', fullName);
     safeSetText('userName', fullName);
     safeSetText('userReferralCode', user.referralCode || "N/A");
-    safeSetText('userReferralCount', user.referralCount || 0);
-    
-    // Update Initials
+    safeSetText('userReferralCount', user.referralCount || 0);    
     const initialsEl = document.getElementById('userInitials');
     if (initialsEl && fullName) {
         const parts = fullName.trim().split(/\s+/);
@@ -1004,22 +1008,41 @@ function updateDashboardUI(user) {
             : parts[0][0].toUpperCase();
         if (initialsEl.innerText !== initials) initialsEl.innerText = initials;
     }
-
-    // Currency Formatting (NGN Only)
     const format = (val) => val.toLocaleString('en-NG', { 
         minimumFractionDigits: 2, 
         maximumFractionDigits: 2 
-    });
-    
-    // Set global cached string for the toggle-visibility logic (renderBalance)
+    });    
     cachedBalanceNGN = `₦${format(balanceNGN)}`;
-
-    // Trigger the actual balance display logic
     if (typeof renderBalance === 'function') {
         renderBalance();
     } else {
         const ngnEl = document.getElementById('mainBalanceDisplayNGN');
         if (ngnEl) ngnEl.innerText = cachedBalanceNGN;
+    }
+
+    safeSetText('bonusBalanceDisplay', `₦${format(bonusBalance)}`);
+
+    const statusBadge = document.getElementById('bonusStatusBadge');
+    const instruction = document.getElementById('bonusInstruction');
+    
+    if (hasDeposited || balanceNGN > 0) {
+        if (statusBadge) {
+            statusBadge.innerText = "Unlocked";
+            statusBadge.className = "text-[8px] uppercase px-2 py-0.5 rounded-full font-bold bg-green-500/20 text-green-500 border border-green-500/30";
+        }
+        if (instruction) {
+            instruction.innerText = "Your referral bonus is now active.";
+            instruction.className = "text-[9px] text-green-500/60 mt-1 italic";
+        }
+    } else {
+        if (statusBadge) {
+            statusBadge.innerText = "Locked";
+            statusBadge.className = "text-[8px] uppercase px-2 py-0.5 rounded-full font-bold bg-orange-500/20 text-orange-500 border border-orange-500/30";
+        }
+        if (instruction) {
+            instruction.innerText = "Deposit funds to unlock bonus rewards.";
+            instruction.className = "text-[9px] text-white/40 mt-1 italic";
+        }
     }
 }
 

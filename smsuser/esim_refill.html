@@ -514,7 +514,8 @@ async function loadUserData() {
                 'Authorization': `Bearer ${localStorage.getItem('userToken')}`
             },
             body: JSON.stringify({
-                productType: 'eSIM',
+               productType: 'eSIM_Refill',
+                carrierId: carrier.id, // Added this
                 carrierName: carrier.name,
                 coverageCountry: country,
                 mobileNumber: num,
@@ -547,12 +548,11 @@ function showReceipt(order) {
     document.getElementById('selectionView').classList.add('hidden');
     document.getElementById('formView').classList.add('hidden');
     document.getElementById('paymentModal').classList.add('hidden');
-    document.getElementById('rID').innerText = order.paymentReference || 'N/A';
-    document.getElementById('rCarrier').innerText = order.carrier?.name || order.carrierName || 'eSIM';
-    document.getElementById('rNumber').innerText = order.target?.number || order.mobileNumber || 'N/A';
-    document.getElementById('rPlan').innerText = order.planName || order.amount || 'Refill';    
-    document.getElementById('rCountry').innerText = order.target?.country || order.coverageCountry || 'N/A';
-
+    document.getElementById('rID').innerText = order.paymentReference || 'N/A';    
+    document.getElementById('rCarrier').innerText = order.carrier?.name || order.nodeName || 'eSIM';    
+    document.getElementById('rNumber').innerText = order.target?.number || order.targetNumber || 'N/A';    
+    document.getElementById('rPlan').innerText = order.planName || `₦${order.amount?.toLocaleString()}` || 'Refill';        
+    document.getElementById('rCountry').innerText = order.target?.country || order.country || 'N/A';
     const receiptView = document.getElementById('receiptView');
     receiptView.classList.remove('hidden');
     
@@ -566,20 +566,12 @@ function showReceipt(order) {
     const country = document.getElementById('rCountry')?.innerText || "N/A";
     const number = document.getElementById('rNumber')?.innerText || "N/A";
     const plan = document.getElementById('rPlan')?.innerText || "N/A"; 
-
-    // 2. USER DETAILS (Check these IDs match your HTML)
-    // If you are using your standard receipt layout, they are likely 'rUserEmail' or 'rFullName'
     const userEmail = document.getElementById('rEmail')?.innerText || 
                       document.getElementById('displayUserEmail')?.innerText || "N/A";
     const fullName = document.getElementById('rFullName')?.innerText || 
-                     document.getElementById('displayFullName')?.innerText || "Customer";
-
-    // 3. BALANCE BREAKDOWN
-    // Scrape the specific amounts used from the receipt UI
+                     document.getElementById('displayFullName')?.innerText || "N/A";
     const mainUsed = document.getElementById('rMainUsed')?.innerText || "₦0";
-    const bonusUsedAmount = document.getElementById('rBonusUsed')?.innerText || "₦0";
-    
-    // Determine the label
+    const bonusUsedAmount = document.getElementById('rBonusUsed')?.innerText || "₦0";    
     const paymentMethod = (bonusUsedAmount !== "₦0" && bonusUsedAmount !== "0") 
         ? `Split (Main: ${mainUsed} | Bonus: ${bonusUsedAmount})` 
         : `Main Wallet (${mainUsed})`;

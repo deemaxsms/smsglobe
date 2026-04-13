@@ -1375,24 +1375,31 @@ async function handlePurchaseWithWallet(req, res) {
                 extraStorage: extraStorageGB
             };
         }
-        else if (carrierName && mobileNumber) {
-            itemType = "eSIM_Refill";
-            
-            // Clean the string (e.g., "₦50,000" -> 50000)
-            const cleanedPrice = planAmount.toString().replace(/[^0-9]/g, "");
-            costNGN = Math.round(Number(cleanedPrice));
-            
-            productDetails.name = carrierName;
-            productDetails.plan = planAmount; // Display string
-
-            orderSpecifics = {
-                carrier: { id: carrierId || 'manual', name: carrierName, image: productImage },
-                target: { number: mobileNumber, country: coverageCountry },
-                instructions: "Your refill request has been received and is being processed."
-            };
-        }
-
-       // --- 4. BALANCE VALIDATION (UPDATED FOR USER CHOICE) ---
+       else if (carrierName && mobileNumber) {
+    itemType = "eSIM_Refill";
+    
+    // Clean the string (e.g., "₦50,000" -> 50000)
+    const cleanedPrice = planAmount.toString().replace(/[^0-9]/g, "");
+    costNGN = Math.round(Number(cleanedPrice));
+    
+    productDetails.name = carrierName;
+    productDetails.plan = planAmount; // Display string (e.g., "₦40,000")
+    orderSpecifics = {
+        carrier: { 
+            id: carrierId || 'manual', 
+            name: carrierName, 
+            image: productImage 
+        },
+        target: { 
+            number: mobileNumber, 
+            country: coverageCountry // Ensure this variable is defined in your scope
+        },
+        // We add these as top-level helpers to match the Order Schema update
+        targetNumber: mobileNumber,
+        country: coverageCountry, 
+        instructions: "Your refill request has been received and is being processed."
+    };
+}
         const { useBonus } = req.body; // New field from frontend toggle
         const mainBal = Number(user.balance || 0);
         const bonusBal = Number(user.bonusBalance || 0);
@@ -1988,34 +1995,22 @@ async function handleAllTransactions(req, res) {
 }
 
 async function handleCreateEsimOrder(req, res) {
-    const { email, carrierName, mobileNumber, planAmount, productImage, useBonus } = req.body;
+    // 1. Destructure data (Added coverageCountry from frontend)
+    const { email, carrierName, mobileNumber, planAmount, productImage, useBonus, coverageCountry, carrierId } = req.body;
 
     if (!email || !carrierName || !mobileNumber || !planAmount) {
         return res.status(400).json({ success: false, message: "Missing required eSIM data" });
     }
 
     try {
-        const [settings, user] = await Promise.all([
-            SystemSettings.findOne(),
-            User.findOne({ email: email.toLowerCase() })
-        ]);
-
+        const user = await User.findOne({ email: email.toLowerCase() });
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
+        const finalAmountNGN = Math.round(Number(planAmount.toString().replace(/[^0-9]/g, "")));
 
-        const LIVE_RATE = settings?.exchangeRate || 1380;
-        const MARKUP = settings?.globalMarkup || 0;
-
-        // 1. Price Calculation
-        const amountUSD = parseFloat(planAmount.replace(/[$,]/g, ''));
-        const basePriceNGN = amountUSD * LIVE_RATE;
-        const markupAmount = basePriceNGN * (MARKUP / 100);
-        const finalAmountNGN = Math.round(basePriceNGN + markupAmount);
-
-        // 2. Balance Logic
+        // 3. Balance Deduction Logic
         let remainingToPay = finalAmountNGN;
         let bonusUsed = 0;
         let mainUsed = 0;
-
         const canUseBonus = useBonus && (user.hasDeposited || user.ngn > 0);
 
         if (canUseBonus && user.bonusNGN > 0) {
@@ -2028,29 +2023,55 @@ async function handleCreateEsimOrder(req, res) {
         }
 
         mainUsed = remainingToPay;
-
-        // 3. Atomic Update: Deduct Balances
         user.ngn -= mainUsed;
         user.bonusNGN -= bonusUsed;
         await user.save();
 
-        // 4. Create Order (Using 'eSIM_Refill' to distinguish from new activations)
-        const refId = `ESIM-${Math.random().toString(36).toUpperCase().substring(2, 10)}`;
+        // 5. Create Unified Order Record
+        const refId = `ESIM-${Date.now()}-${user._id.toString().slice(-4)}`;
         
         const newOrder = await Order.create({
             userEmail: email.toLowerCase(),
-            userId: user._id, // Added for relationship consistency
+            userId: user._id,
             productType: 'eSIM_Refill', 
-            nodeName: carrierName,
-            planName: planAmount,
-            targetNumber: mobileNumber,
-            productImage: productImage,
+            nodeName: carrierName, // Top level for display
+            planName: `₦${finalAmountNGN.toLocaleString()}`, // Formatted string
             amount: finalAmountNGN,
             currency: 'NGN',
-            mainBalanceUsed: mainUsed, // Now tracking balance usage in Order
+            mainBalanceUsed: mainUsed,
             bonusBalanceUsed: bonusUsed,
             paymentReference: refId,
-            status: 'successful' // Marking as successful because payment was deducted
+            status: 'pending', // Set to pending so Admin sees it to process manually
+            carrier: {
+                id: carrierId || 'N/A',
+                name: carrierName,
+                image: productImage
+            },
+            target: {
+                number: mobileNumber,
+                country: coverageCountry || 'N/A'
+            },
+
+            // Top-level helpers for easier Admin filtering
+            targetNumber: mobileNumber,
+            country: coverageCountry || 'N/A'
+        });
+        await Transaction.create({
+            userId: user._id,
+            type: 'debit',
+            purpose: 'purchase',
+            amountNGN: finalAmountNGN,
+            status: 'successful',
+            reference: refId,
+            paymentMethod: 'wallet_combined',
+            balanceBefore: user.ngn + mainUsed,
+            balanceAfter: user.ngn,
+            bonusBefore: user.bonusNGN + bonusUsed,
+            bonusAfter: user.bonusNGN,
+            metadata: { 
+                orderId: newOrder._id, 
+                product: carrierName 
+            }
         });
 
         return res.status(201).json({ 

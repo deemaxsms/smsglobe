@@ -144,7 +144,10 @@
                             <label class="text-[9px] md:text-[10px] font-bold text-brand-blue uppercase tracking-wider mb-2 block mobile-label">eSIM Mobile Number</label>
                             <input type="text" id="targetNumber" placeholder="+1 (000) 000-0000" class="w-full bg-brand-background border border-brand-border p-3 md:p-4 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold focus:ring-2 focus:ring-brand-blue outline-none transition-all mobile-input">
                         </div>
-                        
+                        <div>
+                <label class="text-[9px] md:text-[10px] font-bold text-brand-blue uppercase tracking-wider mb-2 block mobile-label">Coverage Country</label>
+                <input type="text" id="coverageCountry" placeholder="e.g. United States, United Kingdom" class="w-full bg-brand-background border border-brand-border p-3 md:p-4 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold focus:ring-2 focus:ring-brand-blue outline-none transition-all mobile-input">
+            </div>
                         <div>
                             <label class="text-[9px] md:text-[10px] font-bold text-brand-blue uppercase tracking-wider mb-2 block mobile-label">Refill Amount (NGN)</label>
                             <select id="planSelector" class="w-full bg-brand-background border border-brand-border p-3 md:p-4 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold focus:ring-2 focus:ring-brand-blue outline-none appearance-none cursor-pointer mobile-input"></select>
@@ -321,8 +324,10 @@
         { id: '1year', name: 'One Year Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan' }
     ];
 
-    const refillAmounts = [];
-    for (let i = 30; i <= 100; i += 5) { refillAmounts.push(`$${i}.00`); }
+ const refillAmounts = [];
+for (let i = 40000; i <= 150000; i += 5000) { 
+    refillAmounts.push(`₦${i.toLocaleString()}`); 
+}
 
     async function fetchUserProfile() {
         try {
@@ -430,53 +435,73 @@
     }
 
     async function purchaseEsimWithWallet() {
-        const confirmBtn = document.getElementById('confirmPurchaseBtn');
-        const num = document.getElementById('targetNumber').value.trim();
-        const plan = document.getElementById('planSelector').value; 
-        const carrier = window.currentSelectedCarrier;
-        const useBonus = document.getElementById('esimUseBonusToggle')?.checked || false;
+    const confirmBtn = document.getElementById('confirmPurchaseBtn');
+    const country = document.getElementById('coverageCountry').value.trim(); // Captured Country
+    const num = document.getElementById('targetNumber').value.trim();
+    const plan = document.getElementById('planSelector').value; 
+    const carrier = window.currentSelectedCarrier;
+    const useBonus = document.getElementById('esimUseBonusToggle')?.checked || false;
 
-        if (confirmBtn.disabled) return;
-        
-        confirmBtn.disabled = true;
-        confirmBtn.innerHTML = `<span>Processing Refill...</span>`;
+    // 1. Validation Checks
+    if (!country) { 
+        alert("Please enter the coverage country."); 
+        return; 
+    }
+    if (!num) { 
+        alert("Please enter the eSIM mobile number."); 
+        return; 
+    }
+    if (!carrier) {
+        alert("Carrier selection missing. Please go back and select a carrier.");
+        return;
+    }
 
-        try {
-            const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('userToken')}`
-                },
-                body: JSON.stringify({
-                    productType: 'eSIM',
-                    carrierName: carrier.name,
-                    mobileNumber: num,
-                    planAmount: plan,
-                    useBonus: useBonus,
-                    productImage: carrier.image
-                })
-            });
+    // Prevent double submissions
+    if (confirmBtn.disabled) return;
+    
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = `<span class="flex items-center justify-center gap-2">
+                                <svg class="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                Processing Refill...
+                            </span>`;
 
-            const data = await res.json();
+    try {
+        const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+            },
+            body: JSON.stringify({
+                productType: 'eSIM',
+                carrierName: carrier.name,
+                coverageCountry: country,
+                mobileNumber: num,
+                planAmount: plan,        
+                useBonus: useBonus,
+                productImage: carrier.image
+            })
+        });
 
-            if (data.success) {
-                document.getElementById('paymentModal').classList.add('hidden');
-                // Backend provides the formatted receipt details
-                showReceipt(data.order);
-                loadUserData(); 
-            } else {
-                alert(data.message || "Purchase failed");
-                confirmBtn.disabled = false;
-                confirmBtn.innerText = "Confirm & Pay Now";
-            }
-        } catch (err) {
-            console.error("Network Error:", err);
-            alert("Connection lost. Check your history.");
+        const data = await res.json();
+
+        if (data.success) {
+            document.getElementById('paymentModal').classList.add('hidden');
+            showReceipt(data.order);
+            loadUserData(); // Refresh the NGN balance on UI
+        } else {
+            alert(data.message || "Purchase failed");
             confirmBtn.disabled = false;
             confirmBtn.innerText = "Confirm & Pay Now";
         }
+    } catch (err) {
+        console.error("Network Error:", err);
+        alert("Connection lost. Please check your transaction history.");
+        confirmBtn.disabled = false;
+        confirmBtn.innerText = "Confirm & Pay Now";
     }
+}
+
 
     function logout() {
         localStorage.removeItem('userToken');

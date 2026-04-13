@@ -149,6 +149,38 @@ const rdpSchema = new mongoose.Schema({
 
 const RDP = mongoose.models.RDP || mongoose.model('RDP', rdpSchema, 'rdp_orders');
 
+// --- eSIM REFILL SCHEMA ---
+const esimRefillSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    userEmail: { type: String, required: true, index: true },
+    fullName: { type: String },    
+    carrier: {
+        id: { type: String, required: true },
+        name: { type: String, required: true },
+        image: String
+    },
+    target: {
+        number: { type: String, required: true },
+        country: { type: String, required: true }
+    },
+    amount: { type: Number, required: true }, // Total in NGN
+    currency: { type: String, default: 'NGN' },
+    mainBalanceUsed: { type: Number, default: 0 },
+    bonusBalanceUsed: { type: Number, default: 0 },
+    status: { 
+        type: String, 
+        enum: ['pending', 'processing', 'successful', 'failed', 'completed'], 
+        default: 'pending',
+        index: true 
+    },
+    paymentReference: { type: String, unique: true, required: true },
+    adminNote: String,
+    metadata: { type: mongoose.Schema.Types.Mixed }
+}, { timestamps: true });
+
+esimRefillSchema.index({ createdAt: -1 });
+const EsimRefill = mongoose.models.EsimRefill || mongoose.model('EsimRefill', esimRefillSchema, 'esim_refills');
+
 // --- TRANSACTION SCHEMA ---
 const transactionSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
@@ -1221,10 +1253,12 @@ async function handleVerifyTopup(req, res) {
 }
 
 async function handlePurchaseWithWallet(req, res) {
-    const { 
-        vpnId, proxyId, rdpId, carrierName, 
-        mobileNumber, planAmount, planIndex, 
-        metadata, planName 
+   const { 
+        vpnId, proxyId, rdpId, 
+        carrierName, carrierId, productImage, // Added for eSIM
+        coverageCountry, mobileNumber,        // Added for eSIM
+        planAmount, planIndex, 
+        metadata, planName, useBonus 
     } = req.body;
     
     const authHeader = req.headers['authorization'];
@@ -1334,6 +1368,22 @@ async function handlePurchaseWithWallet(req, res) {
                 extraStorage: extraStorageGB
             };
         }
+        else if (carrierName && mobileNumber) {
+            itemType = "eSIM_Refill";
+            
+            // Clean the string (e.g., "₦50,000" -> 50000)
+            const cleanedPrice = planAmount.toString().replace(/[^0-9]/g, "");
+            costNGN = Math.round(Number(cleanedPrice));
+            
+            productDetails.name = carrierName;
+            productDetails.plan = planAmount; // Display string
+
+            orderSpecifics = {
+                carrier: { id: carrierId || 'manual', name: carrierName, image: productImage },
+                target: { number: mobileNumber, country: coverageCountry },
+                instructions: "Your refill request has been received and is being processed."
+            };
+        }
 
        // --- 4. BALANCE VALIDATION (UPDATED FOR USER CHOICE) ---
         const { useBonus } = req.body; // New field from frontend toggle
@@ -1343,8 +1393,8 @@ async function handlePurchaseWithWallet(req, res) {
         const canUseBonus = useBonus === true && isBonusUnlocked && bonusBal > 0;        
         const buyingPower = canUseBonus ? (mainBal + bonusBal) : mainBal;
 
-        if (buyingPower < costNGN) {
-            // Revert stock
+       if (buyingPower < costNGN) {
+            // Revert stock for inventory-based items
             if (vpnId) await VPN.findByIdAndUpdate(vpnId, { $inc: { stock: 1 } });
             if (proxyId) await Proxy.findByIdAndUpdate(proxyId, { $inc: { stock: 1 } });
 
@@ -1354,9 +1404,9 @@ async function handlePurchaseWithWallet(req, res) {
             } else if (!isBonusUnlocked && bonusBal > 0) {
                 errorMsg += " (Bonus locked. Deposit to unlock)";
             }
-
             return res.status(400).json({ success: false, message: errorMsg });
         }
+
         let remainingToPay = costNGN;
         let bonusDeduction = 0;
         let mainDeduction = 0;
@@ -1374,19 +1424,16 @@ async function handlePurchaseWithWallet(req, res) {
         if (remainingToPay > 0) {
             mainDeduction = remainingToPay;
         }
-       const updatedUser = await User.findOneAndUpdate(
-    { 
-        _id: user._id, 
-        balance: { $gte: mainDeduction } 
-    },
-    { 
-        $inc: { 
-            balance: -mainDeduction, 
-            bonusBalance: -bonusDeduction 
-        } 
-    },
-    { new: true }
-);
+      const updatedUser = await User.findOneAndUpdate(
+            { _id: user._id, balance: { $gte: mainDeduction } },
+            { 
+                $inc: { 
+                    balance: -mainDeduction, 
+                    bonusBalance: -bonusDeduction 
+                } 
+            },
+            { new: true }
+        );
 
         if (!updatedUser) {
             if (vpnId) await VPN.findByIdAndUpdate(vpnId, { $inc: { stock: 1 } });
@@ -1398,30 +1445,48 @@ async function handlePurchaseWithWallet(req, res) {
             });
         }
 
-        newMainBalance = updatedUser.balance;
-        newBonusBalance = updatedUser.bonusBalance;
+       const newMainBalance = updatedUser.balance;
+        const newBonusBalance = updatedUser.bonusBalance;
 
         const balanceBefore = mainBal; // For Transaction log
         const balanceAfter = updatedUser.balance;
         const paymentReference = `WAL-${Date.now()}-${user._id.toString().slice(-4)}`;
 
-        const newOrder = await Order.create({
-            userId: user._id,
-            userEmail: user.email,
-            fullName: user.fullName,
-            productType: itemType,
-            planName: productDetails.plan,
-            nodeName: productDetails.name,
-            targetNumber: mobileNumber || null,
-            amount: costNGN, // Total cost
-            mainBalanceUsed: mainBal - newMainBalance, // Record specific amount from main
-            bonusBalanceUsed: bonusBal - newBonusBalance, // Record specific amount from bonus
-            currency: "NGN",
-            status: "successful",
-            paymentReference: paymentReference,
-            metadata: metadata, 
-            ...orderSpecifics   
-        });
+       // --- 6. CREATE ORDER RECORDS ---
+        let newOrder;
+        if (itemType === "eSIM_Refill") {
+            // Save to the specialized EsimRefill collection
+            newOrder = await EsimRefill.create({
+                userId: user._id,
+                userEmail: user.email,
+                fullName: user.fullName,
+                carrier: orderSpecifics.carrier,
+                target: orderSpecifics.target,
+                amount: costNGN,
+                mainBalanceUsed: mainDeduction,
+                bonusBalanceUsed: bonusDeduction,
+                paymentReference: paymentReference,
+                status: 'pending' // Admin processes this manually
+            });
+        } else {
+            // Save to standard Order collection
+            newOrder = await Order.create({
+                userId: user._id,
+                userEmail: user.email,
+                fullName: user.fullName,
+                productType: itemType,
+                planName: productDetails.plan,
+                nodeName: productDetails.name,
+                amount: costNGN,
+                mainBalanceUsed: mainDeduction,
+                bonusBalanceUsed: bonusDeduction,
+                currency: "NGN",
+                status: "successful",
+                paymentReference: paymentReference,
+                metadata: metadata, 
+                ...orderSpecifics   
+            });
+        }
 
         // 7. CREATE TRANSACTION LOG
         await Transaction.create({
@@ -1460,7 +1525,7 @@ async function handlePurchaseWithWallet(req, res) {
         // 9. FINAL RESPONSE
         return res.json({ 
             success: true, 
-            message: "Purchase successful!", 
+            message: itemType === "eSIM_Refill" ? "Refill request submitted!" : "Purchase successful!",
             balance: balanceAfter,
             bonusBalance: updatedUser.bonusBalance,
             order: newOrder,

@@ -575,6 +575,19 @@ function contactManagement() {
     window.open(whatsappUrl, '_blank');
 }
 
+function closePaymentModal() {
+    const modal = document.getElementById('paymentModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }    
+    const payBtn = document.getElementById('payBtn');
+    if (payBtn) {
+        const plan = document.getElementById('planSelector').value;
+        payBtn.innerText = `Pay for ${plan} Refill`;
+        payBtn.disabled = false;
+    }
+}
+
 function closeReceipt() {
     document.getElementById('receiptModal').classList.add('hidden');
     document.getElementById('receiptModal').classList.remove('flex');

@@ -329,32 +329,41 @@ for (let i = 40000; i <= 150000; i += 5000) {
     refillAmounts.push(`₦${i.toLocaleString()}`); 
 }
 
-    async function fetchUserProfile() {
-        try {
-            const res = await fetch(`${API_BASE_URL}/user-profile`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
-            });
-            const data = await res.json();
-            if (data.success) {
-                userBalances = {
-                    ngn: data.user.ngn,
-                    bonusNGN: data.user.bonusNGN,
-                    hasDeposited: data.user.hasDeposited
-                };
-                return true;
-            }
-        } catch (err) { console.error(err); }
-        return false;
-    }
+async function fetchUserProfile() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/user-profile`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
+        });
+        
+        const data = await res.json();
 
-    // Function to update local wallet display
-    async function loadUserData() {
-        const success = await fetchUserProfile();
-        if (success) {
-            const balDisplay = document.getElementById('walletBalanceDisplay');
-            if (balDisplay) balDisplay.innerText = `₦${userBalances.ngn.toLocaleString()}`;
+        if (data.success) {
+            userBalances = {
+                ngn: data.balance || 0, 
+                bonusNGN: data.bonusBalance || 0,
+                hasDeposited: data.hasDeposited || false
+            };
+            return true;
+        } else {
+            console.error("Profile fetch failed:", data.message);
+        }
+    } catch (err) { 
+        console.error("Network/Auth Error:", err); 
+    }
+    return false;
+}
+
+// Keep your loadUserData as is, it will now work with the fixed object
+async function loadUserData() {
+    const success = await fetchUserProfile();
+    if (success) {
+        const balDisplay = document.getElementById('walletBalanceDisplay');
+        if (balDisplay) {
+            // Ensure we use the mapped 'ngn' property
+            balDisplay.innerText = `₦${userBalances.ngn.toLocaleString()}`;
         }
     }
+}
 
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('-translate-x-full');
@@ -512,6 +521,7 @@ for (let i = 40000; i <= 150000; i += 5000) {
         initPage(); 
         await loadUserData();
     };
+
 </script>
 </body>
 </html>

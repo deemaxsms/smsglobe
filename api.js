@@ -228,6 +228,17 @@ const orderSchema = new mongoose.Schema({
         default: 'pending' 
     }, 
     paymentReference: { type: String, unique: true },    
+    targetNumber: String, 
+    country: String,
+    target: {
+        number: String,
+        country: String
+    },
+    carrier: {
+        id: String,
+        name: String,
+        image: String
+    },
     confirmationNumber: { type: String }, // NEW: Store manual activation codes or IDs
     adminNote: String, // NEW: Internal notes for the order
     ram: String,
@@ -1479,8 +1490,13 @@ async function handlePurchaseWithWallet(req, res) {
             currency: "NGN",            
             status: itemType === "eSIM_Refill" ? "pending" : "successful",
             paymentReference: paymentReference,
-            targetNumber: orderSpecifics.target?.number || null,
-            country: orderSpecifics.target?.country || null,
+            targetNumber: mobileNumber || orderSpecifics.target?.number,
+            country: coverageCountry || orderSpecifics.target?.country,
+           target: {
+                number: mobileNumber || orderSpecifics.target?.number,
+                 country: coverageCountry || orderSpecifics.target?.country
+             },
+             carrier: orderSpecifics.carrier || { name: carrierName, image: productImage },
             ...orderSpecifics,
             metadata: { 
                 ...metadata,
@@ -2030,32 +2046,35 @@ async function handleCreateEsimOrder(req, res) {
         // 5. Create Unified Order Record
         const refId = `ESIM-${Date.now()}-${user._id.toString().slice(-4)}`;
         
-        const newOrder = await Order.create({
-            userEmail: email.toLowerCase(),
-            userId: user._id,
-            productType: 'eSIM_Refill', 
-            nodeName: carrierName, // Top level for display
-            planName: `₦${finalAmountNGN.toLocaleString()}`, // Formatted string
-            amount: finalAmountNGN,
-            currency: 'NGN',
-            mainBalanceUsed: mainUsed,
-            bonusBalanceUsed: bonusUsed,
-            paymentReference: refId,
-            status: 'pending', // Set to pending so Admin sees it to process manually
-            carrier: {
-                id: carrierId || 'N/A',
-                name: carrierName,
-                image: productImage
-            },
-            target: {
-                number: mobileNumber,
-                country: coverageCountry || 'N/A'
-            },
+      const newOrder = await Order.create({
+    userEmail: email.toLowerCase(),
+    userId: user._id,
+    productType: 'eSIM_Refill', 
+    nodeName: carrierName, 
+    planName: `₦${finalAmountNGN.toLocaleString()}`, 
+    amount: finalAmountNGN,
+    currency: 'NGN',
+    mainBalanceUsed: mainUsed,
+    bonusBalanceUsed: bonusUsed,
+    paymentReference: refId,
+    status: 'pending',
 
-            // Top-level helpers for easier Admin filtering
-            targetNumber: mobileNumber,
-            country: coverageCountry || 'N/A'
-        });
+    // NESTED OBJECTS (For showReceipt order.target.number)
+    carrier: {
+        id: carrierId || 'manual',
+        name: carrierName,
+        image: productImage
+    },
+    target: {
+        number: mobileNumber,
+        country: coverageCountry || 'Global' 
+    },
+
+    // TOP-LEVEL HELPERS (For showReceipt order.targetNumber)
+    targetNumber: mobileNumber,
+    country: coverageCountry || 'Global'
+});
+
         await Transaction.create({
             userId: user._id,
             type: 'debit',

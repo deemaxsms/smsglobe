@@ -648,7 +648,9 @@ async function purchaseEsimActivateWithWallet() {
     if (!btn) return;
 
     // 1. Capture Form Values
-    const amount = parseInt(document.getElementById('planSelector')?.value) || 0;
+    // NOTE: We grab the raw string value (e.g., "₦20,000.00 Activation") 
+    // so the backend can parse it accurately.
+    const planAmountRaw = document.getElementById('planSelector')?.value; 
     const useBonus = document.getElementById('esimUseBonusToggle')?.checked || false;
     const firstName = document.getElementById('firstName')?.value.trim();
     const lastName = document.getElementById('lastName')?.value.trim();
@@ -665,7 +667,6 @@ async function purchaseEsimActivateWithWallet() {
         const token = localStorage.getItem('userToken');
         if (!token) throw new Error("Authentication token missing. Please log in again.");
 
-        // 3. Use your existing API_BASE_URL variable
         const response = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
             method: 'POST',
             headers: { 
@@ -673,10 +674,10 @@ async function purchaseEsimActivateWithWallet() {
                 'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
-                productType: 'ESIM_ACTIVATION', // Add this line!
-                carrierName: window.currentSelectedCarrier?.name,
+                productType: 'ESIM_ACTIVATION',
+                carrierName: window.currentSelectedCarrier?.name || "Global eSIM",
                 mobileNumber: deviceName,
-                planAmount: amountValue,
+                planAmount: planAmountRaw, // FIXED: Changed from amountValue to planAmountRaw
                 useBonus: useBonus,
                 metadata: {
                     firstName,
@@ -689,17 +690,20 @@ async function purchaseEsimActivateWithWallet() {
             })
         });
 
-        // 4. Validate Response Format
         const contentType = response.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
-            throw new Error("Server returned an invalid response. Check backend logs.");
+            throw new Error("Server returned an invalid response.");
         }
 
         const data = await response.json();
 
         if (data.success) {
-            // Success Logic
-            if (typeof closeModal === 'function') closeModal('esimPaymentModal');
+            // Use the specific modal ID you're using in your HTML
+            if (typeof closePaymentModal === 'function') {
+                closePaymentModal();
+            } else if (typeof closeModal === 'function') {
+                closeModal('paymentModal');
+            }
             
             if (typeof showReceipt === 'function') {
                 showReceipt(data.order);
@@ -708,18 +712,15 @@ async function purchaseEsimActivateWithWallet() {
                 window.location.reload();
             }
         } else {
-            // Backend error (e.g., Insufficient funds)
             alert(data.message || "Activation Failed");
             resetButton(btn);
         }
     } catch (err) {
-        // Network or Script error
         console.error("Critical Purchase Error:", err);
         alert(`Error: ${err.message}`);
         resetButton(btn);
     }
 }
-
 function resetButton(btn) {
     btn.disabled = false;
     btn.innerText = "Confirm & Pay Now";

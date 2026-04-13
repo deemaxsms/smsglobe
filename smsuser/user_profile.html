@@ -144,13 +144,24 @@
                         </div>
                     </section>
 
-                    <section class="bg-white rounded-2xl border border-brand-border overflow-hidden shadow-sm">
+                  <section class="bg-white rounded-2xl border border-brand-border overflow-hidden shadow-sm">
     <div class="p-4 border-b border-brand-border bg-gray-50/50 flex justify-between items-center">
         <h3 class="text-[10px] font-bold text-brand-darkText uppercase tracking-wider">Referral Program</h3>
         <span id="displayReferralCount" class="text-[9px] bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-bold border border-green-100">0 Referrals</span>
     </div>
     <div class="p-5">
-        <p class="text-[10px] text-brand-lightText mb-4">Share your code with friends. Once they make their first deposit, you both get a bonus!</p>
+        <p class="text-[10px] text-brand-lightText mb-2">Get <span class="font-bold text-green-600">₦3,000 bonus</span> for every 10 friends you refer!</p>
+        
+        <div class="mb-4">
+            <div class="flex justify-between items-center mb-1">
+                <span id="milestoneHint" class="text-[9px] text-brand-blue font-medium italic">Loading progress...</span>
+                <span id="milestonePercent" class="text-[9px] font-bold text-brand-darkText">0%</span>
+            </div>
+            <div class="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                <div id="referralProgressBar" class="bg-brand-blue h-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+        </div>
+
         <div class="flex items-center gap-2">
             <div class="flex-grow relative">
                 <input type="text" id="referralCodeInput" readonly 
@@ -318,13 +329,16 @@
             `;
         }
 
-    async function initProfile() {
+  async function initProfile() {
     const token = localStorage.getItem('userToken');
     if (!token) { window.location.href = 'user_login.html'; return; }
 
     try {
         const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Cache-Control': 'no-cache' 
+            }
         });
         const userData = await profileRes.json();
 
@@ -336,6 +350,8 @@
         // --- Standard Profile Data ---
         const name = userData.fullName || "User";
         const email = userData.email || "";
+        const referralCount = parseInt(userData.referralCount) || 0;
+
         document.getElementById('displayFullName').innerText = name;
         document.getElementById('displayEmail').innerText = email;
         document.getElementById('pfpInitials').innerText = name.charAt(0).toUpperCase();
@@ -343,15 +359,41 @@
         document.getElementById('inputEmail').value = email;
         document.getElementById('inputID').value = userData._id || 'N/A';
         
-        // --- NEW: Referral Data ---
+        // --- Referral & Milestone Logic ---
         document.getElementById('referralCodeInput').value = userData.referralCode || "N/A";
-        document.getElementById('displayReferralCount').innerText = `${userData.referralCount || 0} Referrals`;
+        document.getElementById('displayReferralCount').innerText = `${referralCount} Referrals`;
 
-        if (userData.balance !== undefined) {
-             const statusText = document.getElementById('walletStatusText');
-             statusText.innerText = `Active (₦${userData.balance.toLocaleString()})`;
+        // Logic: Calculate next 10th milestone
+        const nextMilestone = Math.ceil((referralCount + 1) / 10) * 10 || 10;
+        const remaining = nextMilestone - referralCount;
+        const progressPercent = (referralCount % 10) * 10; // e.g. 7 referrals = 70%
+
+        // Update the Milestone Hint text
+        const hintEl = document.getElementById('milestoneHint');
+        if (hintEl) {
+            hintEl.innerText = `Invite ${remaining} more people to earn your next ₦3,000!`;
         }
 
+        // Update Progress Bar (If you added the HTML from the previous step)
+        const progressBar = document.getElementById('referralProgressBar');
+        if (progressBar) {
+            progressBar.style.width = `${progressPercent}%`;
+        }
+        
+        const percentText = document.getElementById('milestonePercent');
+        if (percentText) {
+            percentText.innerText = `${progressPercent}%`;
+        }
+
+        // --- Wallet Display ---
+        if (userData.balance !== undefined) {
+             const statusText = document.getElementById('walletStatusText');
+             const mainBal = userData.balance.toLocaleString();
+             const bonusBal = (userData.bonusBalance || 0).toLocaleString();
+             statusText.innerText = `Active (Wallet: ₦${mainBal} | Bonus: ₦${bonusBal})`;
+        }
+
+        // --- Orders ---
         const ordersRes = await fetch(`${API_BASE_URL}/user-orders`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -360,9 +402,10 @@
 
     } catch (err) {
         console.error("Profile load error:", err);
-        document.getElementById('transactionsBody').innerHTML = `
-            <tr><td colspan="4" class="px-5 py-6 text-center text-red-500 text-[10px]">Failed to load transactions.</td></tr>
-        `;
+        const tableBody = document.getElementById('transactionsBody');
+        if (tableBody) {
+            tableBody.innerHTML = `<tr><td colspan="4" class="px-5 py-6 text-center text-red-500 text-[10px]">Failed to load transactions.</td></tr>`;
+        }
     }
 }
 

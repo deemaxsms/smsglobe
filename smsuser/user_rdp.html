@@ -520,25 +520,30 @@
 
 async function fetchUserProfile() {
     try {
-        const token = localStorage.getItem('userToken');
-        if (!token) return false;
-
         const res = await fetch(`${API_BASE_URL}/user-profile`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 
+                'Authorization': `Bearer ${localStorage.getItem('userToken')}`,
+                'Cache-Control': 'no-cache' 
+            }
         });
         
         const data = await res.json();
         
         if (data.success) {
-            // Treat the base balance as NGN directly
-            userBalances.ngn = Number(data.balance) || 0; 
-            console.log("Naira Balance Sync:", userBalances.ngn);
-            return true;
-        }
+            userBalance = data.balance || 0; 
+            userBonusBalance = data.bonusBalance || 0; // NEW: Capture the bonus            
+            const balEl = document.getElementById('displayBalance');
+            if (balEl) balEl.innerText = `₦${userBalance.toLocaleString()}`;
+            const bonusEl = document.getElementById('displayBonus');
+            if (bonusEl) bonusEl.innerText = `₦${userBonusBalance.toLocaleString()}`;
+            const refCountEl = document.getElementById('userReferralCount');
+            if (refCountEl) refCountEl.innerText = data.referralCount || 0;
+            
+            console.log("Profile Sync: Main Wallet and Bonus Balance updated.");
+       }
     } catch (err) {
-        console.error("Failed to fetch balance", err);
+        console.error("Failed to fetch balance and bonus", err);
     }
-    return false;
 }
 
   function renderPlans() {

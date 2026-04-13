@@ -981,7 +981,7 @@ async function initDashboard() {
 }
 
 /**
- * UI Render Function
+ * UI Render Function - Updated for Milestone Progress
  */
 function updateDashboardUI(user) {
     if (!user) return;
@@ -989,6 +989,7 @@ function updateDashboardUI(user) {
     const balanceNGN = parseFloat(user.balance) || 0; 
     const bonusBalance = parseFloat(user.bonusBalance) || 0;
     const hasDeposited = user.hasDeposited || false;
+    const referralCount = parseInt(user.referralCount) || 0;
 
     const safeSetText = (id, value) => {
         const el = document.getElementById(id);
@@ -996,10 +997,13 @@ function updateDashboardUI(user) {
             el.innerText = value;
         }
     };
+
     safeSetText('userDisplayName', fullName);
     safeSetText('userName', fullName);
     safeSetText('userReferralCode', user.referralCode || "N/A");
-    safeSetText('userReferralCount', user.referralCount || 0);    
+    safeSetText('userReferralCount', referralCount);    
+
+    // --- Initials Logic ---
     const initialsEl = document.getElementById('userInitials');
     if (initialsEl && fullName) {
         const parts = fullName.trim().split(/\s+/);
@@ -1008,19 +1012,26 @@ function updateDashboardUI(user) {
             : parts[0][0].toUpperCase();
         if (initialsEl.innerText !== initials) initialsEl.innerText = initials;
     }
+
+    // --- Currency Formatting ---
     const format = (val) => val.toLocaleString('en-NG', { 
         minimumFractionDigits: 2, 
         maximumFractionDigits: 2 
     });    
-    cachedBalanceNGN = `₦${format(balanceNGN)}`;
+
     if (typeof renderBalance === 'function') {
         renderBalance();
     } else {
         const ngnEl = document.getElementById('mainBalanceDisplayNGN');
-        if (ngnEl) ngnEl.innerText = cachedBalanceNGN;
+        if (ngnEl) ngnEl.innerText = `₦${format(balanceNGN)}`;
     }
 
     safeSetText('bonusBalanceDisplay', `₦${format(bonusBalance)}`);
+
+    // --- MILESTONE CALCULATION ---
+    // Calculates how many left to reach the next 10 (10, 20, 30...)
+    const nextMilestone = Math.ceil((referralCount + 1) / 10) * 10;
+    const remaining = nextMilestone - referralCount;
 
     const statusBadge = document.getElementById('bonusStatusBadge');
     const instruction = document.getElementById('bonusInstruction');
@@ -1031,8 +1042,9 @@ function updateDashboardUI(user) {
             statusBadge.className = "text-[8px] uppercase px-2 py-0.5 rounded-full font-bold bg-green-500/20 text-green-500 border border-green-500/30";
         }
         if (instruction) {
-            instruction.innerText = "Your referral bonus is now active.";
-            instruction.className = "text-[9px] text-green-500/60 mt-1 italic";
+            // Updated instruction to show progress
+            instruction.innerText = `Invite ${remaining} more friend(s) to earn your next ₦3,000 bonus!`;
+            instruction.className = "text-[9px] text-green-500/60 mt-1 italic font-medium";
         }
     } else {
         if (statusBadge) {
@@ -1040,7 +1052,7 @@ function updateDashboardUI(user) {
             statusBadge.className = "text-[8px] uppercase px-2 py-0.5 rounded-full font-bold bg-orange-500/20 text-orange-500 border border-orange-500/30";
         }
         if (instruction) {
-            instruction.innerText = "Deposit funds to unlock bonus rewards.";
+            instruction.innerText = "Deposit funds to unlock your milestone rewards.";
             instruction.className = "text-[9px] text-white/40 mt-1 italic";
         }
     }

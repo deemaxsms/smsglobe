@@ -880,27 +880,27 @@ async function handleDeleteVPN(req, res) {
 }
 
 async function handleUserLogin(req, res) {
-    console.log("Incoming Login Data:", req.body);
     const { email, password, captchaToken } = req.body;
+    
+    // 1. Basic Validation
     if (!email || typeof email !== 'string') {
         return res.status(400).json({ success: false, message: "Valid email is required." });
     }
     if (!password || typeof password !== 'string') {
         return res.status(400).json({ success: false, message: "Password is required." });
     }
-
     if (!captchaToken) {
         return res.status(400).json({ success: false, message: "reCAPTCHA token missing." });
     }
+
     try {
+        // 2. Security Check
         const isHuman = await verifyRecaptcha(captchaToken);
         if (!isHuman) {
             return res.status(400).json({ success: false, message: "Security verification failed." });
         }
-    } catch (recaptchaErr) {
-        console.error("reCAPTCHA Service Error:", recaptchaErr.message);
-    }
-    try {
+
+        // 3. Maintenance Check
         const settings = await SystemSettings.findOne(); 
         if (settings && settings.maintenanceMode === true) {
             return res.status(503).json({ 
@@ -908,19 +908,23 @@ async function handleUserLogin(req, res) {
                 message: "SMSGlobe is currently under maintenance. Please try again later." 
             });
         }
-    const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');        
+
+        // 4. Find User (Include password for comparison)
+        const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');        
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ success: false, message: "Invalid email or password." });
         }
+
+        // 5. Check Account Status
         if (user.status === 'suspended') {
             return res.status(403).json({ 
                 success: false, 
-                message: "Your account has been suspended for violating SMSGlobe rules. Contact support." 
+                message: "Your account has been suspended. Contact support." 
             });
         }
-        if (!JWT_SECRET) {
-            throw new Error("JWT_SECRET is not defined in environment variables.");
-        }
+
+        // 6. Generate Token
+        if (!JWT_SECRET) throw new Error("JWT_SECRET is not defined.");
 
         const token = jwt.sign(
             { id: user._id, email: user.email, type: 'user' }, 
@@ -928,6 +932,7 @@ async function handleUserLogin(req, res) {
             { expiresIn: '24h' }
         );
 
+        // 7. RETURN UPDATED USER OBJECT
         return res.json({ 
             success: true, 
             token,
@@ -936,44 +941,43 @@ async function handleUserLogin(req, res) {
                 email: user.email, 
                 balance: user.balance || 0,
                 bonusBalance: user.bonusBalance || 0,
-                hasDeposited: user.hasDeposited || false
+                hasDeposited: user.hasDeposited || false,
+                // --- ADDED THIS LINE ---
+                referralCount: user.referralCount || 0,
+                referralCode: user.referralCode
             } 
         });
 
     } catch (err) {
-        // Log the stack trace so you know exactly which line failed in your terminal
         console.error("========== LOGIN ERROR ==========");
-        console.error("Message:", err.message);
-        console.error("Stack:", err.stack);
-        console.error("=================================");
-        
-        return res.status(500).json({ 
-            success: false, 
-            message: "Internal server error.",
-            // Only send error details to frontend if in development mode
-            dev_hint: err.message 
-        });
+        console.error(err.message);
+        return res.status(500).json({ success: false, message: "Internal server error." });
     }
 }
 
 async function handleUserRegister(req, res) {
     const { fullName, email, password, captchaToken, friendReferralCode } = req.body;
+
     if (!captchaToken) {
         return res.status(400).json({ success: false, message: "reCAPTCHA token missing." });
     }
+
     const isHuman = await verifyRecaptcha(captchaToken);
     if (!isHuman) {
         return res.status(400).json({ success: false, message: "reCAPTCHA verification failed." });
     }
+
     try {
         const normalizedEmail = email.toLowerCase().trim();
         const existingUser = await User.findOne({ email: normalizedEmail });
+
         if (existingUser) {
             return res.status(400).json({ success: false, message: "This email is already registered." });
         }
+
         let referredBy = null;
 
-        // 3. Handle Referral Logic
+        // --- 3. UPDATED REFERRAL LOGIC ---
         if (friendReferralCode && friendReferralCode.trim().length > 0) {
             const cleanFriendCode = friendReferralCode.trim().toUpperCase();            
             const referrer = await User.findOne({ referralCode: cleanFriendCode });
@@ -981,9 +985,13 @@ async function handleUserRegister(req, res) {
             if (referrer) {
                 referredBy = referrer.referralCode;
                 
-                // UPDATE: Add the $2,000 bonus to the REFERRER
-                referrer.bonusBalance = (referrer.bonusBalance || 0) + 3000;
-                referrer.referralCount = (referrer.referralCount || 0) + 10;
+                // Increment count by exactly 1 for this new registration
+                referrer.referralCount = (referrer.referralCount || 0) + 1;
+
+                // Check if they just hit a milestone of 10 (10, 20, 30, etc.)
+                if (referrer.referralCount % 10 === 0) {
+                    referrer.bonusBalance = (referrer.bonusBalance || 0) + 3000;
+                }
                 
                 await referrer.save();
             } else {
@@ -993,17 +1001,20 @@ async function handleUserRegister(req, res) {
                 });
             }
         }
+
         const myNewReferralCode = await generateUniqueCode();
         const hashedPassword = await bcrypt.hash(password, 12);                
+        
         const newUser = new User({ 
             fullName: fullName.trim(), 
             email: normalizedEmail, 
             password: hashedPassword,
-            balance: 0,             // Main wallet (Real money)
-            bonusBalance: 0,        // Starting bonus for new user
-            hasDeposited: false,    // Bonus remains locked until this is true
+            balance: 0,
+            bonusBalance: 0,
+            hasDeposited: false,
             referralCode: myNewReferralCode,
-            referredBy: referredBy           
+            referredBy: referredBy,
+            referralCount: 0 // Initialize new user count at zero
         });
         
         await newUser.save();

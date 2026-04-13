@@ -299,14 +299,28 @@
 async function fetchUserProfile() {
     try {
         const res = await fetch(`${API_BASE_URL}/user-profile`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
+            headers: { 
+                'Authorization': `Bearer ${localStorage.getItem('userToken')}`,
+                'Cache-Control': 'no-cache' // Ensures you get the latest referral count
+            }
         });
         const data = await res.json();
         if (data.success) {
-        userBalance = data.balance;     
-       }
+            userBalance = data.balance || 0; 
+            userBonusBalance = data.bonusBalance || 0;             
+            if (document.getElementById('displayBalance')) {
+                document.getElementById('displayBalance').innerText = `₦${userBalance.toLocaleString()}`;
+            }
+            
+            if (document.getElementById('displayBonus')) {
+                document.getElementById('displayBonus').innerText = `₦${userBonusBalance.toLocaleString()}`;
+            }
+            if (document.getElementById('userReferralCount')) {
+                document.getElementById('userReferralCount').innerText = data.referralCount || 0;
+            }
+        }
     } catch (err) {
-        console.error("Failed to fetch balance", err);
+        console.error("Failed to fetch profile details:", err);
     }
 }
 

@@ -1661,15 +1661,14 @@ async function handlePurchaseWithWallet(req, res) {
             metadata: { orderId: newOrder._id, product: productDetails.name }
         });
 
-        // DELIVERY EMAIL
-        sendDeliveryEmail(user.email, { 
-            ...orderSpecifics, 
-            type: itemType, 
-            amount: `₦${costNGN.toLocaleString()}`,
-            planName: productDetails.plan,
-            paymentReference: paymentReference,
-            metadata: newOrder.metadata
-        }, newOrder).catch(err => console.error("📧 Email Error:", err.message));
+sendDeliveryEmail(user.email, { 
+    ...orderSpecifics, // Contains details like username/password or activation code
+    productType: newOrder.productType, // Change 'type: itemType' to 'productType'
+    amount: `₦${costNGN.toLocaleString()}`,
+    planName: productDetails.plan || newOrder.planName,
+    paymentReference: paymentReference,
+    metadata: newOrder.metadata
+}, newOrder).catch(err => console.error("📧 Email Error:", err.message));
 
         return res.json({ 
             success: true, 
@@ -1696,8 +1695,15 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
         }
     });
 
-    // 1. Define types using the credentials object passed in
-    const type = credentials.type; 
+    // --- FIX: Normalize the type variable ---
+    // This ensures it works whether you pass 'type' or 'productType'
+    const type = credentials.type || credentials.productType; 
+    
+    if (!type) {
+        console.error("📧 Email Error: No product type provided in credentials object.");
+        return;
+    }
+
     const isVPN = type === "VPN";
     const isRDP = type === "RDP";
     const isESIM_Refill = type === "eSIM_Refill";
@@ -1727,9 +1733,10 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
             ? "Your eSIM has been successfully topped up." 
             : "We have received your refill request and are processing it.";
     } else {
-        subject = "🌐 Your Proxy Activation Code";
-        headerTitle = "Proxy Ready! 🌐";
-        subHeader = "Your Proxy activation details are below.";
+        // This is the fallback for Proxy and other services
+        subject = `🌐 Your ${type} Activation Details`;
+        headerTitle = `${type} Ready! 🌐`;
+        subHeader = `Your ${type} details are provided below.`;
     }
     
     let dataTableHtml = '';
@@ -1925,16 +1932,16 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
     </body>
     </html>`;
 
-    try {
+  try {
         await transporter.sendMail({
             from: `"SMSGlobe Support" <${process.env.EMAIL_USER}>`,
             to: userEmail,
             subject: `${subject} - SMSGlobe`,
-            html: htmlContent
+            html: htmlContent 
         });
-        console.log(` Delivery email sent to: ${userEmail}`);
+        console.log(`✅ Delivery email sent to: ${userEmail} (${type})`);
     } catch (error) {
-        console.error(" Nodemailer Error:", error);
+        console.error("❌ Nodemailer Error:", error);
     }
 };
 

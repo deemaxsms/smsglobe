@@ -174,7 +174,7 @@
 <script>
 
       let allTransactions = [];
-      
+
     /**
      * Helper to format numbers as Naira currency
      */
@@ -276,7 +276,7 @@
 
         try {
             // Replace '/api/all-transactions' with your actual route path
-            const res = await fetch('/api/all-transactions', {
+            const res = await fetch('/api/transactions', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();

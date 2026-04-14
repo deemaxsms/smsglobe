@@ -273,8 +273,8 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
         </button>
     </div>
-</div>
 
+    
 <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end space-y-4">
     
     <div id="supportMenu" class="hidden flex flex-col space-y-3 mb-2 transition-all duration-300 transform translate-y-10 opacity-0 scale-95">
@@ -662,40 +662,41 @@ function showSuccessModal(data) {
     const modalCode = document.getElementById('modalCode');
     const modalInstructions = document.getElementById('modalInstructions');
 
-    // 1. Toggle Visibility
     if (confirmState) confirmState.classList.add('hidden');
     
     if (successState) {
         successState.classList.remove('hidden');
-        // Add animation and ensure it's at the top of the modal scroll
         successState.classList.add('animate-in', 'fade-in', 'zoom-in', 'duration-500');
-        modal.scrollTop = 0; 
+        if (modal) modal.scrollTop = 0; 
     }
-
-    // 2. Robust Data Parsing
-    // Checks for credentials object, top-level activationCode, or generic 'code'
     const credentials = data.credentials || {};
-    const code = credentials.activationCode || data.activationCode || data.code || "SUCCESSFUL";
-    const info = credentials.instructions || data.instructions || data.message || "Your service is now active.";
-
-    if (modalCode) modalCode.innerText = code;
-    if (modalInstructions) modalInstructions.innerText = info;
-
-    // 3. Dynamic Copy Button Logic
+    const activationCode = credentials.activationCode || data.activationCode || data.code || "SUCCESSFUL";    
+    const info = credentials.instructions || data.instructions || data.message || "Your proxy is now active. Use the code above to connect.";
+    if (modalCode) {
+        modalCode.innerText = activationCode;
+    }
+    
+    if (modalInstructions) {
+        modalInstructions.innerText = info;
+    }
     const copyBtn = document.querySelector('[onclick*="copyToClipboard"]') || document.getElementById('copyCodeBtn');
     if (copyBtn) {
         copyBtn.onclick = (e) => {
             e.preventDefault();
-            navigator.clipboard.writeText(code).then(() => {
+            navigator.clipboard.writeText(activationCode).then(() => {
                 const originalContent = copyBtn.innerHTML;
+                // emerald-500 matches your UI feedback for success
                 copyBtn.innerHTML = '<span class="text-[9px] text-emerald-500 font-bold uppercase">Copied!</span>';
                 setTimeout(() => { copyBtn.innerHTML = originalContent; }, 2000);
             });
         };
     }
 
-    // 4. Final Reveal
-    if (modal) modal.classList.remove('hidden');
+    // 5. FINAL REVEAL
+    // Crucial: ensure the main modal container is visible
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
 }
 
 // Helper to close modal and reset for next time

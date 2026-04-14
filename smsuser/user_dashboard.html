@@ -956,13 +956,24 @@ async function initDashboard() {
             }
         });
 
+        // 1. Handle Expired/Unauthorized Tokens
         if (profileRes.status === 401) return logout();
-        
+
         const userData = await profileRes.json();
+
+        // 2. NEW: Handle Unverified Users
+        // If the backend returns 403 and the isUnverified flag
+        if (profileRes.status === 403 && userData.isUnverified) {
+            alert("Verification required. Redirecting...");
+            // Redirect to registration/signup page to complete verification
+            window.location.href = `signup.html?verify_email=${encodeURIComponent(userData.email || '')}`;
+            return;
+        }
         
-        // Ensure we extract the user object correctly from your API response
+        // Ensure we extract the user object correctly
         const user = userData.user || userData;
 
+        // 3. Handle Suspended Users
         if (user.status === 'suspended') {
             showSuspendedNotice();
             return;

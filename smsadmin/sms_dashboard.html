@@ -150,9 +150,31 @@
         </div>
     </div>
 
+
+  <div class="mt-12 bg-white rounded-2xl border border-brand-border shadow-sm overflow-hidden">
+        <div class="p-6 border-b border-brand-border flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h3 class="font-bold text-lg text-brand-darkText">Master Transaction Ledger</h3>
+                <p class="text-brand-lightText text-xs">All successful activities across the platform</p>
+            </div>
+            <div class="flex gap-2">
+                <input type="text" id="txSearch" onkeyup="filterTransactions()" placeholder="Search email or product..." class="text-xs border border-brand-border rounded-lg px-4 py-2 focus:ring-2 focus:ring-brand-blue outline-none w-full md:w-64">
+            </div>
+        </div>
+        
+        <div id="global-transactions-container" class="overflow-x-auto">
+            <div class="p-10 text-center text-brand-lightText animate-pulse">
+                Fetching master records...
+            </div>
+        </div>
+    </div>
+
     </main>
 
 <script>
+
+      let allTransactions = [];
+      
     /**
      * Helper to format numbers as Naira currency
      */
@@ -246,6 +268,91 @@
             console.error("Network/Server Error:", err);
         }
     }
+
+  
+    async function fetchAllTransactions() {
+        const token = localStorage.getItem('smsglobe_admin_token');
+        const container = document.getElementById('global-transactions-container');
+
+        try {
+            // Replace '/api/all-transactions' with your actual route path
+            const res = await fetch('/api/all-transactions', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                allTransactions = data.transactions;
+                renderTransactionTable(allTransactions);
+            }
+        } catch (err) {
+            console.error("Master Fetch Error:", err);
+            container.innerHTML = `<p class="p-10 text-center text-red-500">Error loading master ledger.</p>`;
+        }
+    }
+
+    function renderTransactionTable(transactions) {
+        const container = document.getElementById('global-transactions-container');
+        
+        if (!transactions || transactions.length === 0) {
+            container.innerHTML = `<div class="p-10 text-center text-brand-lightText">No transactions found.</div>`;
+            return;
+        }
+
+        container.innerHTML = `
+            <table class="w-full text-left text-[11px] md:text-xs">
+                <thead class="bg-gray-50 text-brand-lightText uppercase border-b border-brand-border">
+                    <tr>
+                        <th class="px-6 py-4 font-bold">Ref ID</th>
+                        <th class="px-6 py-4 font-bold">Date</th>
+                        <th class="px-6 py-4 font-bold">Customer</th>
+                        <th class="px-6 py-4 font-bold">Product & Details</th>
+                        <th class="px-6 py-4 font-bold text-right">Amount Paid</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    ${transactions.map(t => `
+                        <tr class="hover:bg-gray-50/50 transition-colors tx-row">
+                            <td class="px-6 py-4 font-mono text-brand-lightText">#${t.id.slice(-6)}</td>
+                            <td class="px-6 py-4 text-brand-lightText whitespace-nowrap">
+                                ${new Date(t.date).toLocaleDateString()}
+                            </td>
+                            <td class="px-6 py-4 font-medium text-brand-darkText">${t.email}</td>
+                            <td class="px-6 py-4">
+                                <div class="flex flex-col">
+                                    <span class="font-bold text-brand-blue uppercase">${t.product.replace('_', ' ')}</span>
+                                    <span class="text-[10px] text-brand-lightText">${t.details}</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <span class="font-bold ${t.currency === 'NGN' ? 'text-brand-darkText' : 'text-green-600'}">
+                                    ${t.currency === 'NGN' ? '₦' : '$'}${Number(t.amount).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                                </span>
+                                <span class="text-[9px] font-bold text-brand-lightText ml-1">${t.currency}</span>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>`;
+    }
+
+    // Client-side search function
+    function filterTransactions() {
+        const query = document.getElementById('txSearch').value.toLowerCase();
+        const filtered = allTransactions.filter(t => 
+            t.email.toLowerCase().includes(query) || 
+            t.product.toLowerCase().includes(query) ||
+            t.details.toLowerCase().includes(query)
+        );
+        renderTransactionTable(filtered);
+    }
+
+    // Update fetchDashboardData to also trigger this fetch
+    const originalFetchDashboardData = fetchDashboardData;
+    fetchDashboardData = async function() {
+        await originalFetchDashboardData();
+        await fetchAllTransactions();
+    };
 
     // Initialize dashboard on load
     document.addEventListener('DOMContentLoaded', fetchDashboardData);

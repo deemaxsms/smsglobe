@@ -1455,32 +1455,41 @@ async function handlePurchaseWithWallet(req, res) {
         let productDetails = { name: "", plan: "" };
         let orderSpecifics = {};
 
-        // 3. PRODUCT LOGIC & STOCK MANAGEMENT
         if (vpnId) {
-            const item = await VPN.findOneAndUpdate(
-                { _id: vpnId, stock: { $gt: 0 } },
-                { $inc: { stock: -1 } },
-                { returnDocument: 'after', select: '+password +pcPassword +activationCode' }
-            );
-            
-            if (!item || !item.plans[planIndex]) {
-                return res.status(404).json({ success: false, message: "VPN unavailable or out of stock" });
-            }
+    // We use .select('+password...') because these fields are likely hidden in your schema
+    const item = await VPN.findOneAndUpdate(
+        { _id: vpnId, stock: { $gt: 0 } },
+        { $inc: { stock: -1 } },
+        { 
+            returnDocument: 'after', 
+            // CRITICAL: Ensure we explicitly select the hidden credentials
+            select: '+password +pcPassword +activationCode' 
+        }
+    );
+    
+    if (!item || !item.plans[planIndex]) {
+        return res.status(404).json({ success: false, message: "VPN unavailable or out of stock" });
+    }
 
-            itemType = "VPN";
-            costNGN = Math.round(Number(item.plans[planIndex].price));
-            productDetails.name = item.name;
-            productDetails.plan = item.plans[planIndex].duration;
-            
-            orderSpecifics = {
-                username: item.username || null,
-                password: item.password || null,
-                pcUsername: item.pcUsername || null,
-                pcPassword: item.pcPassword || null,
-                activationCode: item.activationCode || null,
-                pcMethod: item.pcMethod || null,
-                instructions: item.instructions || "Follow the setup guide provided in your dashboard."
-            };
+    itemType = "VPN";
+    costNGN = Math.round(Number(item.plans[planIndex].price));
+    productDetails.name = item.name;
+    productDetails.plan = item.plans[planIndex].duration;
+    
+    // MATCHING YOUR ORDER SCHEMA:
+    // Your schema uses 'vpnCredentials: { username, password }'
+    orderSpecifics = {
+        vpnCredentials: {
+            username: item.username || "",
+            password: item.password || ""
+        },
+        // These fields are flat in your Order schema
+        pcUsername: item.pcUsername || "",
+        pcPassword: item.pcPassword || "",
+        activationCode: item.activationCode || "",
+        pcMethod: item.pcMethod || "",
+        instructions: item.instructions || "Follow the setup guide provided in your dashboard."
+    };
         } 
         else if (proxyId) {
             const item = await Proxy.findOneAndUpdate(

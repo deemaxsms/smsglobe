@@ -629,34 +629,44 @@ function showSuccessDetails(creds, vpnData) {
     const userWrap = document.getElementById('wrapUser');
     const passWrap = document.getElementById('wrapPass');
     const codeWrap = document.getElementById('wrapCode');
+    
+    // Hide all rows initially
     [userWrap, passWrap, codeWrap].forEach(el => el?.classList.add('hidden'));
 
     if (!creds) {
         console.error("No credentials provided.");
         return;
     }
-    const finalUser = creds.username || creds.pcUsername;
-    const finalPass = creds.password || creds.pcPassword;
 
-    if (finalUser) {
+    const vpnCreds = creds.vpnCredentials || {};
+    
+    const finalUser = vpnCreds.username || creds.username || creds.pcUsername;
+    const finalPass = vpnCreds.password || creds.password || creds.pcPassword;
+    const finalCode = creds.activationCode;
+    if (finalUser && finalUser.trim() !== "") {
         document.getElementById('resUser').innerText = finalUser;
         userWrap.classList.remove('hidden');
     }
-    if (finalPass) {
+    
+    if (finalPass && finalPass.trim() !== "") {
         document.getElementById('resPass').innerText = finalPass;
         passWrap.classList.remove('hidden');
     }
-    if (creds.activationCode && creds.activationCode.trim() !== "") {
-        document.getElementById('resCode').innerText = creds.activationCode;
+    
+    if (finalCode && finalCode.trim() !== "") {
+        document.getElementById('resCode').innerText = finalCode;
         codeWrap.classList.remove('hidden');
     }
-
-    // 4. Handle Instructions and Metadata
     const defaultInstr = "Download the app from the official store and use the details above to log in.";
     const finalInstructions = creds.instructions || vpnData?.instructions || defaultInstr;
     
-    document.getElementById('resLimit').innerText = `${vpnData?.deviceLimit || 1} Device(s)`;
-    document.getElementById('resInstructions').innerText = finalInstructions;
+    if (document.getElementById('resLimit')) {
+        document.getElementById('resLimit').innerText = `${vpnData?.deviceLimit || 1} Device(s)`;
+    }
+    
+    if (document.getElementById('resInstructions')) {
+        document.getElementById('resInstructions').innerText = finalInstructions;
+    }
 }
 
         function copyText(id) {

@@ -20,6 +20,13 @@ app.use(cors());
 app.use(express.json());
 
 // --- 1. SERVE STATIC FILES ---
+
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
+
+app.get('/style.css', (req, res) => {
+    res.sendFile(path.join(__dirname, 'style.css'));
+});
+
 app.use(express.static(__dirname, { extensions: ['html'] }));
 
 app.use('/smsadmin', express.static(path.join(__dirname, 'smsadmin'), {

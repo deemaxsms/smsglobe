@@ -22,10 +22,7 @@
     {
       "source": "/smsadmin/(.*)",
       "destination": "/smsadmin/$1.html"
-    },
-   {
-      "source": "/((?!.*\\.(?:css|js|png|jpg|jpeg|gif|svg|ico)$).* )",
-      "destination": "/$1"
     }
+    
   ]
 }

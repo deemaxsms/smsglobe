@@ -22,6 +22,10 @@
     {
       "source": "/smsadmin/(.*)",
       "destination": "/smsadmin/$1.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/$1"
     }
   ]
 }

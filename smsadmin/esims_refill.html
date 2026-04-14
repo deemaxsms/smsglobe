@@ -142,7 +142,7 @@
         overlay.classList.toggle('hidden');
     }
 
-  async function fetchRefills() {
+ async function fetchRefills() {
     const token = localStorage.getItem('smsglobe_admin_token');
     const tbody = document.getElementById('refills-body');
 
@@ -233,7 +233,6 @@
         tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-red-500 font-bold">Error loading data.</td></tr>`;
     }
 }
-
 
     async function processRefill(tid) {
         const confInput = document.getElementById(`conf-${tid}`);

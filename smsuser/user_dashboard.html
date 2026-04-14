@@ -939,15 +939,12 @@ async function initDashboard() {
         window.location.href = 'user_login.html'; 
         return; 
     }
-
     const urlParams = new URLSearchParams(window.location.search);
     const isPostTopup = urlParams.get('status') === 'successful' || urlParams.has('transaction_id');
-
     const cachedData = JSON.parse(localStorage.getItem('dashboard_cache'));
     if (cachedData && cachedData.user && !isPostTopup) {
         updateDashboardUI(cachedData.user);
     }
-
     try {
         const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
             headers: { 
@@ -955,32 +952,19 @@ async function initDashboard() {
                 'Cache-Control': 'no-cache' 
             }
         });
-
-        // 1. Handle Expired/Unauthorized Tokens
         if (profileRes.status === 401) return logout();
-
         const userData = await profileRes.json();
-
-        // 2. NEW: Handle Unverified Users
-        // If the backend returns 403 and the isUnverified flag
         if (profileRes.status === 403 && userData.isUnverified) {
             alert("Verification required. Redirecting...");
-            // Redirect to registration/signup page to complete verification
-            window.location.href = `signup.html?verify_email=${encodeURIComponent(userData.email || '')}`;
+            window.location.href = `user_create.html?verify_email=${encodeURIComponent(userData.email || '')}`;
             return;
-        }
-        
-        // Ensure we extract the user object correctly
+        }        
         const user = userData.user || userData;
-
-        // 3. Handle Suspended Users
         if (user.status === 'suspended') {
             showSuspendedNotice();
             return;
         }
-
         updateDashboardUI(user);
-
         localStorage.setItem('dashboard_cache', JSON.stringify({
             user: user
         }));
@@ -1043,7 +1027,7 @@ function updateDashboardUI(user) {
     safeSetText('bonusBalanceDisplay', `₦${format(bonusBalance)}`);
     
     // --- Milestone Calculation ---
-    const nextMilestone = Math.ceil((referralCount + 1) / 10) * 10;
+    const nextMilestone = Math.ceil((referralCount + 1) / 1) * 1;
     const remaining = nextMilestone - referralCount;
 
     const statusBadge = document.getElementById('bonusStatusBadge');

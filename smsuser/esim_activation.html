@@ -485,27 +485,34 @@ for (let i = 20000; i <= 150000; i += 10000) {
                 'Cache-Control': 'no-cache' 
             }
         });
+        if (res.status === 401) {
+            return logout(); 
+        }
         const data = await res.json();
-        
+        if (res.status === 403 && data.isUnverified) {
+            console.warn("User is unverified. Redirecting to verification...");
+            window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
+            return;
+        }
         if (data.success) {
-            userBalance = data.balance || 0; 
-            userBonusBalance = data.bonusBalance || 0;             
-            const formattedBalance = `₦${userBalance.toLocaleString()}`;
-            const formattedBonus = `₦${userBonusBalance.toLocaleString()}`;
-            const balElements = document.querySelectorAll('#displayBalance');
-            balElements.forEach(el => el.innerText = formattedBalance);
-            const bonusElements = document.querySelectorAll('#displayBonus');
-            bonusElements.forEach(el => el.innerText = formattedBonus);
-            const refCountEl = document.getElementById('userReferralCount');
-            if (refCountEl) refCountEl.innerText = data.referralCount || 0;
-            
-            console.log("Profile Sync: Main Wallet (" + formattedBalance + ") updated.");
-       }
+            const userData = data.user || data;
+            userBalance = userData.balance || 0; 
+            userBonusBalance = userData.bonusBalance || 0;             
+            if (document.getElementById('displayBalance')) {
+                document.getElementById('displayBalance').innerText = `₦${userBalance.toLocaleString()}`;
+            }
+            if (document.getElementById('displayBonus')) {
+               document.getElementById('displayBonus').innerText = `₦${userBonusBalance.toLocaleString()}`;
+            }
+            if (document.getElementById('userReferralCount')) {
+                document.getElementById('userReferralCount').innerText = userData.referralCount || 0;
+            }
+            localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
+        }
     } catch (err) {
-        console.error("Failed to fetch balance and bonus", err);
+        console.error("Failed to fetch profile details:", err);
     }
 }
-
     function initPage() {
         const grid = document.getElementById('carrierGrid');
         grid.innerHTML = carriers.map(c => `

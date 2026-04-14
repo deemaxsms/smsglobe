@@ -1124,22 +1124,30 @@ async function handleVerifyOTP(req, res) {
             return res.status(400).json({ success: false, message: "Invalid or expired verification code." });
         }
 
-        user.isVerified = true;
-        user.otpCode = undefined;
-        user.otpExpires = undefined;
+        // CRITICAL: Only process referral rewards if the user is not already verified
+        if (!user.isVerified) {
+            user.isVerified = true;
+            user.otpCode = undefined;
+            user.otpExpires = undefined;
 
-        if (user.referredBy) {
-            const referrer = await User.findOne({ referralCode: user.referredBy });
-            if (referrer) {
-                referrer.referralCount = (referrer.referralCount || 0) + 1;
-                if (referrer.referralCount % 10 === 0) {
-                    referrer.bonusBalance = (referrer.bonusBalance || 0) + 3000;
+            if (user.referredBy) {
+                const cleanReferralCode = user.referredBy.trim().toUpperCase();
+                const referrer = await User.findOne({ referralCode: cleanReferralCode });
+                
+                if (referrer) {
+                    referrer.referralCount = (referrer.referralCount || 0) + 1;
+                    
+                    // The 10th, 20th, 30th... referral gets ₦3,000
+                    if (referrer.referralCount % 1 === 0) {
+                        referrer.bonusBalance = (referrer.bonusBalance || 0) + 3000;
+                    }
+                    await referrer.save();
                 }
-                await referrer.save();
             }
+            
+            // Save the verified status and cleaned OTP fields
+            await user.save();
         }
-
-        await user.save();
 
         return res.status(200).json({ 
             success: true, 
@@ -1147,6 +1155,7 @@ async function handleVerifyOTP(req, res) {
         });
 
     } catch (err) {
+        console.error("OTP Verification Error:", err);
         return res.status(500).json({ success: false, message: "Verification failed." });
     }
 }

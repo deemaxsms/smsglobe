@@ -280,21 +280,52 @@
         overlay.classList.toggle('hidden');
     }
 
-    async function syncWithBackend() {
-        if (!token) { window.location.href = 'user_login.html'; return; }
-        try {
-            const userRes = await fetch('/api/user-profile', { 
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const userData = await userRes.json();
-            if (userRes.ok && userData) {
-                document.getElementById('userName').innerText = userData.fullName || "User";
-                document.getElementById('currentBalance').innerText = `Bal: ₦${(userData.balance || 0).toLocaleString()}`;
-                document.getElementById('userInitials').innerText = userData.fullName?.charAt(0).toUpperCase() || "U";
+   async function syncWithBackend() {
+    if (!token) { window.location.href = 'user_login.html'; return; }
+    
+    try {
+        const userRes = await fetch('/api/user-profile', { 
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Cache-Control': 'no-cache'
             }
-            verifyPaymentOnLoad(); 
-        } catch (err) { console.error("Sync Error:", err); }
+        });
+
+        // 1. Handle unauthorized
+        if (userRes.status === 401) {
+            localStorage.removeItem('userToken');
+            window.location.href = 'user_login.html';
+            return;
+        }
+
+        const userData = await userRes.json();
+
+        if (userRes.status === 403) {
+            if (userData.isUnverified) {
+                alert("Please verify your account before making a deposit.");
+                window.location.href = `user_create.html?verify_email=${encodeURIComponent(userData.email || '')}`;
+            } else {
+                alert("Your account is restricted. Please contact support.");
+                window.location.href = 'user_dashboard.html';
+            }
+            return;
+        }
+        if (userRes.ok && userData) {
+            const user = userData.user || userData;
+
+            document.getElementById('userName').innerText = user.fullName || "User";
+            document.getElementById('currentBalance').innerText = `Bal: ₦${(user.balance || 0).toLocaleString()}`;
+            document.getElementById('userInitials').innerText = user.fullName?.charAt(0).toUpperCase() || "U";            
+            localStorage.setItem('dashboard_cache', JSON.stringify({ user: user }));
+        }
+
+        // Proceed with payment verification logic
+        verifyPaymentOnLoad(); 
+
+    } catch (err) { 
+        console.error("Sync Error:", err); 
     }
+}
 
     function updateDisplay() {
         const amount = parseFloat(document.getElementById('ngnInput').value) || 0;

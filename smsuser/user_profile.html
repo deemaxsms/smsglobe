@@ -329,7 +329,7 @@
             `;
         }
 
-  async function initProfile() {
+async function initProfile() {
     const token = localStorage.getItem('userToken');
     if (!token) { window.location.href = 'user_login.html'; return; }
 
@@ -340,57 +340,66 @@
                 'Cache-Control': 'no-cache' 
             }
         });
-        const userData = await profileRes.json();
 
-        if (profileRes.status === 403 || userData.status === 'suspended') {
-            showSuspendedNotice();
+        // 1. Handle unauthorized
+        if (profileRes.status === 401) {
+            localStorage.removeItem('userToken');
+            window.location.href = 'user_login.html';
             return;
         }
 
-        // --- Standard Profile Data ---
-        const name = userData.fullName || "User";
-        const email = userData.email || "";
-        const referralCount = parseInt(userData.referralCount) || 0;
+        const userData = await profileRes.json();
+
+        if (profileRes.status === 403) {
+            if (userData.isUnverified) {
+                alert("Please verify your email to access your profile.");
+                window.location.href = `user_create.html?verify_email=${encodeURIComponent(userData.email || '')}`;
+            } else {
+                // Scenario B: Actually Suspended
+                showSuspendedNotice();
+            }
+            return;
+        }
+        const user = userData.user || userData;
+        
+        const name = user.fullName || "User";
+        const email = user.email || "";
+        const referralCount = parseInt(user.referralCount) || 0;
 
         document.getElementById('displayFullName').innerText = name;
         document.getElementById('displayEmail').innerText = email;
         document.getElementById('pfpInitials').innerText = name.charAt(0).toUpperCase();
         document.getElementById('inputName').value = name;
         document.getElementById('inputEmail').value = email;
-        document.getElementById('inputID').value = userData._id || 'N/A';
+        document.getElementById('inputID').value = user._id || 'N/A';
         
         // --- Referral & Milestone Logic ---
-        document.getElementById('referralCodeInput').value = userData.referralCode || "N/A";
+        document.getElementById('referralCodeInput').value = user.referralCode || "N/A";
         document.getElementById('displayReferralCount').innerText = `${referralCount} Referrals`;
 
-        // Logic: Calculate next 10th milestone
         const nextMilestone = Math.ceil((referralCount + 1) / 10) * 10 || 10;
         const remaining = nextMilestone - referralCount;
-        const progressPercent = (referralCount % 10) * 10; // e.g. 7 referrals = 70%
+        const progressPercent = (referralCount % 10) * 10;
 
-        // Update the Milestone Hint text
         const hintEl = document.getElementById('milestoneHint');
         if (hintEl) {
             hintEl.innerText = `Invite ${remaining} more people to earn your next ₦3,000!`;
         }
 
-        // Update Progress Bar (If you added the HTML from the previous step)
         const progressBar = document.getElementById('referralProgressBar');
-        if (progressBar) {
-            progressBar.style.width = `${progressPercent}%`;
-        }
+        if (progressBar) progressBar.style.width = `${progressPercent}%`;
         
         const percentText = document.getElementById('milestonePercent');
-        if (percentText) {
-            percentText.innerText = `${progressPercent}%`;
-        }
+        if (percentText) percentText.innerText = `${progressPercent}%`;
 
         // --- Wallet Display ---
-        if (userData.balance !== undefined) {
+        if (user.balance !== undefined) {
              const statusText = document.getElementById('walletStatusText');
-             const mainBal = userData.balance.toLocaleString();
-             const bonusBal = (userData.bonusBalance || 0).toLocaleString();
-             statusText.innerText = `Active (Wallet: ₦${mainBal} | Bonus: ₦${bonusBal})`;
+             const mainBal = user.balance.toLocaleString();
+             const bonusBal = (user.bonusBalance || 0).toLocaleString();
+             if (statusText) {
+                statusText.innerText = `Active (Wallet: ₦${mainBal} | Bonus: ₦${bonusBal})`;
+             }
         }
 
         // --- Orders ---

@@ -316,29 +316,37 @@ async function fetchUserProfile() {
         const res = await fetch(`${API_BASE_URL}/user-profile`, {
             headers: { 
                 'Authorization': `Bearer ${localStorage.getItem('userToken')}`,
-                'Cache-Control': 'no-cache' // Ensures you get the latest referral count
+                'Cache-Control': 'no-cache' 
             }
         });
+        if (res.status === 401) {
+            return logout(); 
+        }
         const data = await res.json();
+        if (res.status === 403 && data.isUnverified) {
+            console.warn("User is unverified. Redirecting to verification...");
+            window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
+            return;
+        }
         if (data.success) {
-            userBalance = data.balance || 0; 
-            userBonusBalance = data.bonusBalance || 0;             
+            const userData = data.user || data;
+            userBalance = userData.balance || 0; 
+            userBonusBalance = userData.bonusBalance || 0;             
             if (document.getElementById('displayBalance')) {
                 document.getElementById('displayBalance').innerText = `₦${userBalance.toLocaleString()}`;
             }
-            
             if (document.getElementById('displayBonus')) {
-                document.getElementById('displayBonus').innerText = `₦${userBonusBalance.toLocaleString()}`;
+               document.getElementById('displayBonus').innerText = `₦${userBonusBalance.toLocaleString()}`;
             }
             if (document.getElementById('userReferralCount')) {
-                document.getElementById('userReferralCount').innerText = data.referralCount || 0;
+                document.getElementById('userReferralCount').innerText = userData.referralCount || 0;
             }
+            localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
         }
     } catch (err) {
         console.error("Failed to fetch profile details:", err);
     }
 }
-
         async function fetchVPNs() {
             try {
                 const res = await fetch(`${API_BASE_URL}/products`);

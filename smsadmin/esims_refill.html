@@ -154,13 +154,21 @@
 
         if (data.success && data.refills.length > 0) {
             tbody.innerHTML = data.refills.map(refill => {
-                const status = refill.status.toLowerCase();
-                const tid = refill.paymentReference;
+                const status = (refill.status || 'pending').toLowerCase();
+                const tid = refill.paymentReference || 'N/A';
+                
+                // --- IMPROVED AMOUNT LOGIC ---
+                // We check 'amount' first, then 'planName' (which is "30000" in your DB)
+                const rawAmount = refill.amount || refill.planName || 0;
+                const finalAmount = Number(rawAmount); 
+                
+                // Ensure displayAmount handles the number properly
+                const displayAmount = !isNaN(finalAmount) && finalAmount > 0 
+                    ? finalAmount.toLocaleString() 
+                    : '0.00';
 
-                // --- CORRECT PLACEMENT OF AMOUNT LOGIC ---
-                // This checks both 'amount' and 'price' fields in case your database varies
-                const finalAmount = refill.amount || refill.price || 0;
-                const displayAmount = !isNaN(finalAmount) ? Number(finalAmount).toLocaleString() : '0.00';
+                // Handle Currency: Database uses "NGN", convert to "₦"
+                const currencySymbol = (refill.currency === 'NGN' || !refill.currency) ? '₦' : refill.currency;
                 
                 let actionArea = '';
 
@@ -205,7 +213,7 @@
                             </div>
                         </td>
                         <td class="px-4 py-4 text-center font-bold text-brand-blue">
-                            ${refill.currency || '₦'} ${displayAmount}
+                            ${currencySymbol} ${displayAmount}
                         </td>
                         <td class="px-4 py-4">
                             <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getStatusClass(refill.status)}">
@@ -225,6 +233,7 @@
         tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-red-500 font-bold">Error loading data.</td></tr>`;
     }
 }
+
 
     async function processRefill(tid) {
         const confInput = document.getElementById(`conf-${tid}`);

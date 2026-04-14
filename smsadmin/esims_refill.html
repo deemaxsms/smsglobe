@@ -142,7 +142,6 @@
         overlay.classList.toggle('hidden');
     }
 
-    // --- FETCH FUNCTION: Handles data display for both eSIM and eSIM_Refill types ---
     async function fetchRefills() {
         const token = localStorage.getItem('smsglobe_admin_token');
         const tbody = document.getElementById('refills-body');
@@ -223,7 +222,6 @@
         }
     }
 
-    // --- PROCESS FUNCTION: Matches handleAdminEsimUpdate payload ---
     async function processRefill(tid) {
         const confInput = document.getElementById(`conf-${tid}`);
         const confirmationNumber = confInput.value.trim();

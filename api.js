@@ -2292,7 +2292,7 @@ async function getEsimRefills(req, res) {
         });
 
     } catch (error) {
-        console.error("❌ Admin Fetch Error:", error);
+        console.error("Admin Fetch Error:", error);
         return res.status(500).json({ 
             success: false, 
             message: "Failed to fetch eSIM refill records" 

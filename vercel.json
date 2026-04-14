@@ -2,6 +2,24 @@
   "version": 2,
   "cleanUrls": true,
   "trailingSlash": false,
+  "builds": [
+    {
+      "src": "api.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "public/**/*",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "smsuser/**/*.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "smsadmin/**/*.html",
+      "use": "@vercel/static"
+    }
+  ],
   "rewrites": [
     {
       "source": "/sitemap.xml",
@@ -23,6 +41,5 @@
       "source": "/smsadmin/(.*)",
       "destination": "/smsadmin/$1.html"
     }
-    
   ]
 }

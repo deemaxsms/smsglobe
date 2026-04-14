@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+/* Your custom styles for SMSGlobe */
+@theme {
+  --color-primary: #2563eb;
+}

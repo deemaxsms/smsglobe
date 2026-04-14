@@ -144,16 +144,14 @@ const rdpSchema = new mongoose.Schema({
 
 const RDP = mongoose.models.RDP || mongoose.model('RDP', rdpSchema, 'rdp_orders');
 
-// --- eSIM REFILL SCHEMA ---
 const esimRefillSchema = new mongoose.Schema({
-    // User Identity
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     userEmail: { type: String, required: true, index: true },
     fullName: { type: String },    
     carrier: {
-        id: { type: String, required: true }, // Internal ID or 'manual'
-        name: { type: String, required: true }, // e.g., T-Mobile
-        image: { type: String } // URL to carrier logo
+        id: { type: String, required: true }, 
+        name: { type: String, required: true }, 
+        image: { type: String } 
     },
     target: {
         number: { type: String, required: true }, // The phone number being topped up
@@ -365,7 +363,6 @@ const verifyToken = async (req, res, next) => {
 };
 
 async function getReferrals(user) {
-    // This only works after 'User' is defined above
     const count = await User.countDocuments({ referredBy: user.referralCode });
     return count;
 }
@@ -373,7 +370,6 @@ async function generateUniqueCode() {
     let isUnique = false;
     let code = "";
     while (!isUnique) {
-        // Generates 3 random bytes -> 6 hex characters (e.g., 7F2A9B)
         code = crypto.randomBytes(3).toString('hex').toUpperCase();
         const existing = await User.findOne({ referralCode: code });
         if (!existing) isUnique = true;
@@ -499,35 +495,25 @@ case 'system-status': // Public route for the frontend to check
 // --- 7. LOGIC HANDLERS ---
 async function handleLogin(req, res) {
     const { email, password, captchaToken } = req.body;
-
-    // 1. RECAPTCHA VERIFICATION
-    const isHuman = await verifyRecaptcha(captchaToken);
-    
+    const isHuman = await verifyRecaptcha(captchaToken);    
     if (!isHuman) {
-        // This is where your 400 error is coming from. 
-        // Ensure your frontend is sending 'captchaToken' in the JSON body.
         console.log(`Admin login blocked: reCAPTCHA failed for ${email}`); 
         return res.status(400).json({ 
             success: false, 
             message: "reCAPTCHA verification failed. Please refresh and try again." 
         });
     }
-
     try {
-        // 2. ADMIN AUTHENTICATION
         const admin = await Admin.findOne({ email });
         
         if (!admin || !(await bcrypt.compare(password, admin.password))) {
             return res.status(401).json({ success: false, message: "Invalid admin credentials" });
         }
-
-        // 3. TOKEN GENERATION
         const token = jwt.sign(
             { id: admin._id, email: admin.email, role: 'admin' }, 
             JWT_SECRET, 
             { expiresIn: '24h' }
         );
-
         return res.json({ success: true, token });
     } catch (err) {
         console.error("Admin Login Error:", err);
@@ -535,39 +521,29 @@ async function handleLogin(req, res) {
     }
 }
 
-// --- Updated Google Login Handler ---
 async function handleGoogleLogin(req, res) {
     const { idToken, loginType } = req.body; // 'admin' or 'user'
-    
     try {
         const ticket = await googleClient.verifyIdToken({
             idToken,
             audience: process.env.GOOGLE_CLIENT_ID
         });
         const { email, name } = ticket.getPayload();
-
         let Model = (loginType === 'admin') ? Admin : User;
         let targetAccount = await Model.findOne({ email: email.toLowerCase() });
-        
         if (!targetAccount) {
-            // Create a new account if it doesn't exist
             targetAccount = new Model({
                 fullName: name,
                 email: email.toLowerCase(),
-                // Secure random password for social login users
                 password: await bcrypt.hash(Math.random().toString(36), 12)
-                // Balance logic removed from here
             });
             await targetAccount.save();
         }
-
-        // Generate Token
         const token = jwt.sign(
             { id: targetAccount._id, email: targetAccount.email, role: loginType }, 
             JWT_SECRET, 
             { expiresIn: '24h' }
         );
-
         return res.json({ 
             success: true, 
             token,

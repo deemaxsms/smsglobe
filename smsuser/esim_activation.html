@@ -200,14 +200,33 @@
                                 <input type="text" id="prepaidType" placeholder="e.g. Prepaid" class="w-full bg-brand-background border border-brand-border p-3 rounded-xl text-xs font-bold focus:ring-2 focus:ring-brand-blue outline-none mobile-input">
                             </div>
                             <div>
-                                <label class="text-[9px] md:text-[10px] font-bold text-brand-blue uppercase tracking-wider mb-2 block">Subscription Plan (USD)</label>
+                                <label class="text-[9px] md:text-[10px] font-bold text-brand-blue uppercase tracking-wider mb-2 block">Subscription Plan (NGN)</label>
                                 <select id="planSelector" class="w-full bg-brand-background border border-brand-border p-3 rounded-xl text-xs font-bold focus:ring-2 focus:ring-brand-blue outline-none cursor-pointer mobile-input"></select>
                             </div>
                         </div>
 
-                        <button onclick="initiatePayment()" id="payBtn" class="w-full py-4 md:py-5 bg-brand-blue text-white rounded-xl md:rounded-2xl text-xs md:text-sm font-bold shadow-xl hover:bg-blue-700 transition-all active:scale-[0.98]">
-                            Proceed to Activation
-                        </button>
+                     <div class="bg-blue-50/50 border border-brand-blue/10 rounded-xl p-4 flex gap-3 items-start">
+    <div class="bg-brand-blue/10 p-2 rounded-lg">
+        <svg class="w-4 h-4 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+    </div>
+    <div class="space-y-1">
+        <h4 class="text-[10px] font-black text-brand-blue uppercase tracking-tight">Recurring Refill Requirement</h4>
+        <p class="text-[10px] leading-relaxed text-gray-600 font-medium">
+            <span id="noticeCarrierName" class="font-bold text-brand-darkText">The Carrier</span> will require you to pay 
+            <span id="refillAmount" class="font-black text-brand-blue">$0.00</span> 
+            every month for refill to keep your number active after the first activation. 
+            You can refill or renew this number anytime on our 
+            <a href="/smsuser/esim_refill" class="text-brand-blue font-bold underline decoration-brand-blue/30 hover:decoration-brand-blue transition-all">eSIM Refill page</a>.
+        </p>
+    </div>
+</div>
+
+<button onclick="initiatePayment()" id="payBtn" class="w-full py-4 md:py-5 bg-brand-blue text-white rounded-xl md:rounded-2xl text-xs md:text-sm font-bold shadow-xl hover:bg-blue-700 transition-all active:scale-[0.98]">
+    Proceed to Activation
+</button>
+
                     </div>
                 </div>
 
@@ -472,13 +491,12 @@
     const API_BASE_URL = '/api';
     let userBalance = 0;
     let userBonusBalance = 0;
-    
-  const carriers = [
-    { id: 'tmobile', name: 'T-Mobile $45 (Prepaid)', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Carrier', p: 50000, lbl: 'One Month' },
-    { id: 'att', name: 'AT&T $80 (Prepaid)', image: 'https://i.imgur.com/WDCo1gM.png', type: 'Carrier', p: 80000, lbl: 'One Month' },
-    { id: '1month', name: 'One Month Carrier eSIM ($15)', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan', p: 30000, lbl: 'One Month' },
-    { id: '3months', name: '3 Months Carrier eSIM ($65)', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan', p: 65000, lbl: 'One Months' },
-    { id: '1year', name: 'One Year Carrier eSIM ($150)', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan', p: 150000, lbl: 'One Year' }
+const carriers = [
+    { id: 'tmobile', name: 'T-Mobile (Prepaid)', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Carrier', p: 50000, usd: "15.00", lbl: 'One Month' },
+    { id: 'att', name: 'AT&T (Prepaid)', image: 'https://i.imgur.com/WDCo1gM.png', type: 'Carrier', p: 80000, usd: "35.00", lbl: 'One Month' },
+    { id: '1month', name: 'One Month Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan', p: 30000, lbl: 'One Month' },
+    { id: '3months', name: '3 Months Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan', p: 65000, lbl: 'One Months' },
+    { id: '1year', name: 'One Year Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan', p: 150000, lbl: 'One Year' }
 ];
 
     function toggleSidebar() {
@@ -798,21 +816,44 @@ function selectCarrier(id) {
     if (!carrier) return;
     window.currentSelectedCarrier = carrier; 
 
-    // Update Form View
+    // 1. Switch Views
     document.getElementById('selectionView').classList.add('hidden');
     document.getElementById('formView').classList.remove('hidden');    
     document.getElementById('formCarrierName').innerText = carrier.name;
     document.getElementById('formCarrierLogo').src = carrier.image;
 
-    // DYNAMIC PRICE INJECTION
+    // 2. Manage the Notice Boxes
+    const refillBox = document.getElementById('refillNoticeBox');
+    const renewalBox = document.getElementById('renewalNoticeBox'); // The Amber Box
+    const noticeAmount = document.getElementById('refillAmount');
+    const noticeName = document.getElementById('noticeCarrierName');
+    
+    // Always show the boxes for every selection
+    if (refillBox) refillBox.classList.remove('hidden');
+    if (renewalBox) renewalBox.classList.remove('hidden');
+    if (noticeName) noticeName.innerText = carrier.name;
+
+    if (carrier.type === 'Carrier') {
+        // Show actual USD price for T-Mobile and AT&T
+        if (noticeAmount) noticeAmount.innerText = `$${carrier.usd}`;
+    } else {
+        // Show "CONTACT SUPPORT" for Term Plans (1 month, 3 months, 1 year)
+        if (noticeAmount) {
+            noticeAmount.innerHTML = `
+                <span class="text-[9px] bg-brand-blue text-white px-2 py-0.5 rounded-full font-bold shadow-sm">
+                    CONTACT SUPPORT
+                </span>`;
+        }
+    }
+
+    // 3. Update NGN Dropdown
     const selector = document.getElementById('planSelector');
     if (selector) {
-        // Formats the number: e.g., 50000 becomes ₦50,000.00
         const formattedPrice = `₦${carrier.p.toLocaleString()}.00 ${carrier.lbl} Activation`;
         selector.innerHTML = `<option value="${formattedPrice}">${formattedPrice}</option>`;
     }
 }
-    
+
     function goBackToGrid() {
         document.getElementById('selectionView').classList.remove('hidden');
         document.getElementById('formView').classList.add('hidden');

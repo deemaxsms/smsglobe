@@ -1787,19 +1787,12 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
                 </td>
             </tr>`;
     } else if (isVPN) {
-    // 1. EXTRACT CREDENTIALS (handling the nested vpnCredentials object)
-    const vpnCreds = credentials.vpnCredentials || {};
-    
-    // Check for Mobile Credentials (nested or flat)
+    const vpnCreds = credentials.vpnCredentials || {};    
     const displayUser = vpnCreds.username || credentials.username;
-    const displayPass = vpnCreds.password || credentials.password;
-    
-    // Check for PC/Code Credentials (usually flat in your schema)
+    const displayPass = vpnCreds.password || credentials.password;    
     const displayPCUser = credentials.pcUsername;
     const displayPCPass = credentials.pcPassword;
     const displayCode = credentials.activationCode;
-
-    // 2. BOOLEAN FLAGS FOR UI
     const hasMobile = !!(displayUser && displayUser.trim() !== "");
     const hasPC = !!(displayPCUser && displayPCUser.trim() !== "");
     const hasCode = !!(displayCode && displayCode.trim() !== "");
@@ -1850,33 +1843,39 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
                 </div>
             </td>
         </tr>`;
-   } else if (isESIM_Activation) {
-    // For Activation: credentials.targetNumber holds the device (e.g., "iPhone 15")
-    // Use .toLocaleString() for the amount to ensure proper formatting
+   } if (isESIM_Activation) {
+    // LAYOUT FOR ESIM ACTIVATION
     dataTableHtml = `
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation Email</span><br>
-                <strong style="font-size: 13px; color: #0F54C6;">${userEmail}</strong>
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier / Network</span><br>
+                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || 'Global eSIM'}</strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
-                <strong style="font-size: 13px; color: #101828;">${credentials.nodeName || 'Global eSIM'}</strong>
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Device Model</span><br>
+                <strong style="font-size: 13px; color: #101828;">${credentials.targetNumber || 'N/A'}</strong>
             </td>
         </tr>
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Device Model</span><br>
-                <strong style="font-size: 12px; color: #344054;">${credentials.targetNumber || 'Compatible Device'}</strong>
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Address / Zip</span><br>
+                <strong style="font-size: 12px; color: #344054;">${credentials.metadata?.address || 'N/A'} (${credentials.metadata?.zip || ''})</strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
                 <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount).toLocaleString()}</strong>
             </td>
-        </tr>`;
+        </tr>
+        ${credentials.confirmationNumber ? `
+        <tr>
+            <td colspan="2" style="padding-top: 10px; border-top: 1px solid #EAECF0;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Confirmation Number</span><br>
+                <strong style="font-size: 15px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.confirmationNumber}</strong>
+            </td>
+        </tr>` : ''}`;
+
 } else if (isESIM_Refill) {
-    // For Refill: credentials.targetNumber holds the phone number
-    // credentials.planName holds the amount string
+    // LAYOUT FOR ESIM REFILL
     dataTableHtml = `
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
@@ -1884,35 +1883,43 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
                 <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName}</strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Number</span><br>
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Refill Number</span><br>
                 <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.targetNumber}</strong>
             </td>
         </tr>
         <tr>
             <td class="mobile-full" width="50%" valign="top">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Refill Plan</span><br>
-                <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount).toLocaleString()} Refill</strong>
+                <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount).toLocaleString()} (${credentials.planName || 'Refill'})</strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Country</span><br>
                 <strong style="font-size: 13px; color: #101828;">${credentials.country || 'USA'}</strong>
             </td>
         </tr>`;
-    } else {
-        dataTableHtml = `
-            <tr>
-                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">ID / Code</span><br>
-                    <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #0F54C6;">
-                        ${credentials.activationCode || credentials.confirmationNumber || 'N/A'}
-                    </strong>
-                </td>
-                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 10px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Price Paid</span><br>
-                    <strong style="font-size: 14px; color: #101828;">₦${credentials.amount || '0'}</strong>
-                </td>
-            </tr>`;
-    }
+
+} else {
+    // DEFAULT LAYOUT (VPN, SMS, ETC)
+    dataTableHtml = `
+        <tr>
+            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Product</span><br>
+                <strong style="font-size: 14px; color: #0F54C6;">${credentials.nodeName || 'Service'}</strong>
+            </td>
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 10px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Price Paid</span><br>
+                <strong style="font-size: 14px; color: #101828;">₦${Number(credentials.amount).toLocaleString()}</strong>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" style="padding-top: 10px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Credentials / Code</span><br>
+                <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #101828;">
+                    ${credentials.activationCode || credentials.confirmationNumber || 'N/A'}
+                </strong>
+            </td>
+        </tr>`;
+}
 
     const htmlContent = `
     <!DOCTYPE html>
@@ -1968,9 +1975,9 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
             subject: `${subject} - SMSGlobe`,
             html: htmlContent 
         });
-        console.log(`✅ Delivery email sent to: ${userEmail} (${type})`);
+        console.log(`Delivery email sent to: ${userEmail} (${type})`);
     } catch (error) {
-        console.error("❌ Nodemailer Error:", error);
+        console.error("Nodemailer Error:", error);
     }
 };
 

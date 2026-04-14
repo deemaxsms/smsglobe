@@ -1704,9 +1704,7 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
         }
     });
 
-    // --- FIX: Normalize the type variable ---
-    // This ensures it works whether you pass 'type' or 'productType'
-    const type = credentials.type || credentials.productType; 
+const type = (credentials.type || credentials.productType || "").toUpperCase();
     
     if (!type) {
         console.error("📧 Email Error: No product type provided in credentials object.");
@@ -1714,6 +1712,11 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
     }
 
     const isVPN = type === "VPN";
+    const vpnCreds = credentials.vpnCredentials || {};
+    const user = vpnCreds.username || credentials.username || "";
+    const pass = vpnCreds.password || credentials.password || "";
+    const code = credentials.activationCode || "";
+
     const isRDP = type === "RDP";
     const isESIM_Refill = type === "eSIM_Refill";
     const isESIM_Activation = type === "eSIM_Activation";
@@ -1783,57 +1786,70 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
                     <strong style="font-size: 12px; color: #101828;">${storageValue}</strong>
                 </td>
             </tr>`;
-    } else if (isVPN) { // FIXED: Use isVPN instead of productType
-        const hasMobile = !!credentials.username;
-        const hasPC = !!credentials.pcUsername;
-        const hasCode = !!credentials.activationCode;
+    } else if (isVPN) {
+    // 1. EXTRACT CREDENTIALS (handling the nested vpnCredentials object)
+    const vpnCreds = credentials.vpnCredentials || {};
+    
+    // Check for Mobile Credentials (nested or flat)
+    const displayUser = vpnCreds.username || credentials.username;
+    const displayPass = vpnCreds.password || credentials.password;
+    
+    // Check for PC/Code Credentials (usually flat in your schema)
+    const displayPCUser = credentials.pcUsername;
+    const displayPCPass = credentials.pcPassword;
+    const displayCode = credentials.activationCode;
 
-        dataTableHtml = `
-            <tr>
-                <td colspan="2" valign="top" style="padding-bottom: 20px;">
-                    <div style="background: #f9fafb; border: 1px solid #eaecf0; padding: 12px; border-radius: 8px; text-align: center;">
-                        <span style="font-size: 10px; color: #667085; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;">Connection Limit</span><br>
-                        <strong style="font-size: 15px; color: #0F54C6;">${credentials.deviceLimit || 1} Device(s) Allowed</strong>
-                    </div>
-                </td>
-            </tr>
-            ${hasMobile ? `
-            <tr>
-                <td width="50%" valign="top" style="padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile/Email User</span><br>
-                    <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #101828;">${credentials.username}</strong>
-                </td>
-                <td width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Password</span><br>
-                    <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.password}</strong>
-                </td>
-            </tr>` : ''}
-            ${hasPC ? `
-            <tr>
-                <td width="50%" valign="top" style="padding-bottom: 15px; border-top: 1px solid #f2f4f7; padding-top: 10px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">PC Username</span><br>
-                    <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #101828;">${credentials.pcUsername}</strong>
-                </td>
-                <td width="50%" valign="top" style="text-align: right; padding-bottom: 15px; border-top: 1px solid #f2f4f7; padding-top: 10px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">PC Password</span><br>
-                    <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.pcPassword}</strong>
-                </td>
-            </tr>` : ''}
-            ${hasCode ? `
-            <tr>
-                <td colspan="2" valign="top" style="padding: 15px; background-color: #f0f5ff; border-radius: 8px; margin-bottom: 15px;">
-                    <span style="font-size: 9px; color: #0F54C6; text-transform: uppercase; font-weight: bold;">Activation Code ${credentials.pcMethod ? `(${credentials.pcMethod})` : ''}</span><br>
-                    <strong style="font-size: 16px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${credentials.activationCode}</strong>
-                </td>
-            </tr>` : ''}
-            <tr>
-                <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">How to Setup</span><br>
-                    <p style="font-size: 12px; color: #344054; line-height: 1.6; margin: 5px 0;">
-                        ${credentials.instructions || 'Login to your SMSGlobe dashboard to download the apps for your device.'}
-                    </p>
-                </td>
-            </tr>`;
+    // 2. BOOLEAN FLAGS FOR UI
+    const hasMobile = !!(displayUser && displayUser.trim() !== "");
+    const hasPC = !!(displayPCUser && displayPCUser.trim() !== "");
+    const hasCode = !!(displayCode && displayCode.trim() !== "");
+
+    dataTableHtml = `
+        <tr>
+            <td colspan="2" valign="top" style="padding-bottom: 20px;">
+                <div style="background: #f9fafb; border: 1px solid #eaecf0; padding: 12px; border-radius: 8px; text-align: center;">
+                    <span style="font-size: 10px; color: #667085; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;">Connection Limit</span><br>
+                    <strong style="font-size: 15px; color: #0F54C6;">${credentials.deviceLimit || 1} Device(s) Allowed</strong>
+                </div>
+            </td>
+        </tr>
+        ${hasMobile ? `
+        <tr>
+            <td width="50%" valign="top" style="padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile/Email User</span><br>
+                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #101828;">${displayUser}</strong>
+            </td>
+            <td width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Password</span><br>
+                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #0F54C6;">${displayPass}</strong>
+            </td>
+        </tr>` : ''}
+        ${hasPC ? `
+        <tr>
+            <td width="50%" valign="top" style="padding-bottom: 15px; border-top: 1px solid #f2f4f7; padding-top: 10px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">PC Username</span><br>
+                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #101828;">${displayPCUser}</strong>
+            </td>
+            <td width="50%" valign="top" style="text-align: right; padding-bottom: 15px; border-top: 1px solid #f2f4f7; padding-top: 10px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">PC Password</span><br>
+                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #0F54C6;">${displayPCPass}</strong>
+            </td>
+        </tr>` : ''}
+        ${hasCode ? `
+        <tr>
+            <td colspan="2" valign="top" style="padding: 15px; background-color: #f0f5ff; border-radius: 8px; margin-bottom: 15px; text-align: center;">
+                <span style="font-size: 9px; color: #0F54C6; text-transform: uppercase; font-weight: bold;">Activation Code ${credentials.pcMethod ? `(${credentials.pcMethod})` : ''}</span><br>
+                <strong style="font-size: 18px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${displayCode}</strong>
+            </td>
+        </tr>` : ''}
+        <tr>
+            <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">How to Setup</span><br>
+                <div style="font-size: 12px; color: #344054; line-height: 1.6; margin: 5px 0;">
+                    ${credentials.instructions || 'Login to your SMSGlobe dashboard to download the apps for your device.'}
+                </div>
+            </td>
+        </tr>`;
     } else if (isESIM_Activation) {
         dataTableHtml = `
             <tr>

@@ -481,15 +481,19 @@ function updateButtonPrice() {
     document.getElementById('paymentModal').classList.remove('hidden');
 }
 
-    async function purchaseEsimWithWallet() {
+  async function purchaseEsimWithWallet() {
     const confirmBtn = document.getElementById('confirmPurchaseBtn');
-    const country = document.getElementById('coverageCountry').value.trim(); // Captured Country
+    const country = document.getElementById('coverageCountry').value.trim();
     const num = document.getElementById('targetNumber').value.trim();
-    const plan = document.getElementById('planSelector').value; 
+    const planRaw = document.getElementById('planSelector').value; 
     const carrier = window.currentSelectedCarrier;
     const useBonus = document.getElementById('esimUseBonusToggle')?.checked || false;
 
-    // 1. Validation Checks
+    // 1. Data Sanitization: Convert "₦30,000.00 One Month..." into 30000
+    // We split by space to get the price part, then remove currency symbols and commas.
+    const cleanAmount = Number(planRaw.split(' ')[0].replace(/[^0-9.]/g, ""));
+
+    // 2. Validation Checks
     if (!country) { 
         alert("Please enter the coverage country."); 
         return; 
@@ -507,10 +511,14 @@ function updateButtonPrice() {
     if (confirmBtn.disabled) return;
     
     confirmBtn.disabled = true;
-    confirmBtn.innerHTML = `<span class="flex items-center justify-center gap-2">
-                                <svg class="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                Processing Refill...
-                            </span>`;
+    confirmBtn.innerHTML = `
+        <span class="flex items-center justify-center gap-2">
+            <svg class="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Processing Refill...
+        </span>`;
 
     try {
         const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
@@ -520,12 +528,12 @@ function updateButtonPrice() {
                 'Authorization': `Bearer ${localStorage.getItem('userToken')}`
             },
             body: JSON.stringify({
-               productType: 'eSIM_Refill',
-                carrierId: carrier.id, // Added this
+                productType: 'eSIM_Refill',
+                carrierId: carrier.id,
                 carrierName: carrier.name,
                 coverageCountry: country,
                 mobileNumber: num,
-                planAmount: plan,        
+                planAmount: cleanAmount, // Now sending the clean number (e.g., 30000)
                 useBonus: useBonus,
                 productImage: carrier.image
             })
@@ -536,7 +544,7 @@ function updateButtonPrice() {
         if (data.success) {
             document.getElementById('paymentModal').classList.add('hidden');
             showReceipt(data.order);
-            loadUserData(); // Refresh the NGN balance on UI
+            await loadUserData(); // Refresh the balance
         } else {
             alert(data.message || "Purchase failed");
             confirmBtn.disabled = false;

@@ -248,86 +248,104 @@
                 </div>
             </div>
 
-      <div id="receiptView" class="hidden max-w-2xl mx-auto py-10 px-4">
-    <div class="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
-        <div class="bg-blue-600 p-8 text-center text-white relative">
-            <div class="mb-4">
-                <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe Logo" class="h-10 mx-auto brightness-0 invert">
+    <div id="receiptView" class="hidden max-w-3xl mx-auto py-12 px-4 md:px-0">
+    <div class="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100">
+        <div class="bg-blue-600 p-10 text-center text-white relative">
+            <div class="mb-6">
+                <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe Logo" class="h-12 mx-auto brightness-0 invert">
             </div>
-            <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            <div class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-6 backdrop-blur-sm">
+                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7"></path>
                 </svg>
             </div>
-            <h2 class="text-2xl font-black uppercase tracking-tight">Activation Pending</h2>
-            <p class="text-white/80 text-[10px] font-bold mt-1 uppercase tracking-widest">
-                Order Ref: <span id="rID" class="select-all">---</span>
+            <h2 class="text-3xl font-black uppercase tracking-tighter">Activation Pending</h2>
+            <p class="text-white/80 text-xs font-bold mt-2 uppercase tracking-[0.2em]">
+                Order Ref: <span id="rID" class="select-all font-mono">---</span>
             </p>
         </div>
 
-        <div class="p-6 md:p-8">
-            <div class="space-y-6">
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4 pb-6 border-b border-dashed border-gray-200">
+        <div class="p-8 md:p-12">
+            <div class="space-y-10">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-10 pb-10 border-b border-dashed border-gray-200">
                     <div>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Customer</p>
-                        <p id="rFullName" class="text-sm font-black text-gray-800 break-words">---</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Carrier</p>
-                        <p id="rCarrier" class="text-sm font-black text-gray-800 uppercase">---</p>
+                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1">Customer</p>
+                        <p id="rFullName" class="text-base font-black text-gray-900 break-words">---</p>
                     </div>
                     <div>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Device/Number</p>
-                        <p id="rNumber" class="text-sm font-black text-blue-600 uppercase">---</p>
+                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1">Carrier</p>
+                        <p id="rCarrier" class="text-base font-black text-gray-900 uppercase">---</p>
                     </div>
-                    <div class="col-span-2 md:col-span-1">
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Email</p>
-                        <p id="rEmail" class="text-xs font-bold text-gray-800 break-all">---</p>
+                    <div>
+                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1">Device/Number</p>
+                        <p id="rNumber" class="text-base font-black text-blue-600 uppercase">---</p>
                     </div>
-                    <div class="col-span-2 md:col-span-1">
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Physical Address</p>
-                        <p id="rAddress" class="text-xs font-bold text-gray-800 break-words">---</p>
+                    <div class="md:col-span-2">
+                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1">Activation Email</p>
+                        <p id="rEmail" class="text-sm font-bold text-gray-800 break-all">---</p>
                     </div>
-                    <div class="col-span-2 md:col-span-1">
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Zip Code</p>
-                        <p id="rZip" class="text-sm font-black text-gray-800 uppercase">---</p>
+                    <div>
+                        <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1">Zip & State</p>
+                        <p id="rZip" class="text-base font-black text-gray-900 uppercase">---</p>
                     </div>
                 </div>
 
-                <div class="py-2 space-y-3">
-                    <div class="flex justify-between text-xs font-bold">
-                        <span class="text-gray-500">Activation Plan</span>
-                        <span id="rPlan" class="text-gray-800">₦0.00</span>
+                <div class="space-y-4 px-2">
+                    <div class="flex justify-between items-center text-sm font-bold">
+                        <span class="text-gray-500 uppercase tracking-tight">Activation Plan</span>
+                        <span id="rPlan" class="text-gray-900">₦0.00</span>
                     </div>
-                    <div class="flex justify-between text-xs font-bold">
-                        <span class="text-gray-500">Paid from Main Wallet</span>
-                        <span id="rMainUsed" class="text-gray-800">₦0.00</span>
+                    <div class="flex justify-between items-center text-sm font-bold">
+                        <span class="text-gray-500 uppercase tracking-tight">Paid from Main Wallet</span>
+                        <span id="rMainUsed" class="text-gray-900">₦0.00</span>
                     </div>
-                    <div class="flex justify-between text-xs font-bold">
-                        <span class="text-emerald-600">Paid from Referral Bonus</span>
+                    <div class="flex justify-between items-center text-sm font-bold">
+                        <span class="text-emerald-600 uppercase tracking-tight">Referral Bonus Applied</span>
                         <span id="rBonusUsed" class="text-emerald-600">₦0.00</span>
                     </div>
                 </div>
 
-                <div class="bg-gray-50 p-5 rounded-2xl flex justify-between items-center border border-gray-100">
-                    <span class="text-xs font-black text-gray-500 uppercase">Total Paid</span>
-                    <span id="rTotalPaid" class="text-2xl font-black text-blue-600">₦0.00</span>
+                <div class="bg-gray-50 p-8 rounded-[2rem] flex flex-col md:flex-row justify-between items-center border border-gray-100 gap-4">
+                    <span class="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Total Amount Paid</span>
+                    <span id="rTotalPaid" class="text-4xl font-black text-blue-600 tracking-tighter">₦0.00</span>
                 </div>
             </div>
 
-            <div class="mt-8 space-y-3">
-                <button onclick="contactManagement()" class="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-green-100">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.316 1.592 5.448 0 9.886-4.438 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.718-.975z"/></svg>
+            <div class="mt-12 space-y-4">
+                <button onclick="contactManagement()" class="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all transform hover:scale-[1.02] shadow-xl shadow-green-100">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.316 1.592 5.448 0 9.886-4.438 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.718-.975z"/></svg>
                     Notify SMSGlobe Support
                 </button>
-                <button onclick="location.reload()" class="w-full py-3 text-[10px] font-black text-gray-400 hover:text-gray-600 uppercase tracking-widest transition-colors">
-                    Done / Close
+                <button onclick="location.reload()" class="w-full py-4 text-xs font-black text-gray-400 hover:text-gray-600 uppercase tracking-[0.3em] transition-colors">
+                    Done / Close Window
                 </button>
             </div>
         </div>
     </div>
 </div>
 
+<div class="mt-8 border-t border-gray-100 pt-8">
+    <div class="bg-blue-50 rounded-3xl p-6 border border-blue-100 flex flex-col md:flex-row items-center gap-5">
+        <div class="w-12 h-12 bg-blue-600 rounded-2xl flex-shrink-0 flex items-center justify-center shadow-lg shadow-blue-200">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+        </div>
+        <div class="text-center md:text-left">
+            <h4 class="text-sm font-black text-blue-900 uppercase tracking-tight">Final Step Required!</h4>
+            <p class="text-[11px] leading-relaxed font-bold text-blue-700/80 mt-1 uppercase">
+                Payment verified. To ensure <span class="text-blue-600">Instant Activation</span>, you must click the WhatsApp button above to send your receipt to our support team.
+            </p>
+        </div>
+        <div class="hidden md:block ml-auto">
+             <div class="flex gap-1">
+                <span class="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></span>
+                <span class="w-2 h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                <span class="w-2 h-2 bg-blue-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+             </div>
+        </div>
+    </div>
+</div>
         </main>
     </div>
 
@@ -729,6 +747,7 @@ function resetButton(btn) {
 
 // This function remains as you have it, which is correct
 function showReceipt(order) {
+    // Hide previous views
     const viewsToHide = ['paymentModal', 'selectionView', 'formView', 'esimPaymentModal'];
     viewsToHide.forEach(id => {
         const el = document.getElementById(id);
@@ -744,27 +763,30 @@ function showReceipt(order) {
 
     const formatCurr = (num) => `₦${(num || 0).toLocaleString()}`;
 
-    // Populate the new fields
+    // Map Backend Data to UI
     safeSet('rID', order.paymentReference || order.id);
-    safeSet('rFullName', `${details.firstName || ''} ${details.lastName || ''}`.trim() || 'Customer');
+    safeSet('rFullName', `${details.firstName || ''} ${details.lastName || ''}`.trim() || 'Valued Customer');
     safeSet('rCarrier', order.carrierName || details.carrier || 'Global eSIM');
     safeSet('rEmail', details.activationEmail || details.email);
     safeSet('rNumber', order.targetNumber || order.mobileNumber || details.deviceName);
-    safeSet('rAddress', details.address); // From metadata
-    safeSet('rZip', details.zip);         // From metadata
     
+    // Logic for Zip + State/Location
+    const locationInfo = details.zip ? `${details.zip} ${details.address !== 'N/A' ? '- ' + details.address : ''}` : 'N/A';
+    safeSet('rZip', locationInfo); 
+    
+    // Financials
     safeSet('rPlan', formatCurr(order.planAmount || order.amount));
     safeSet('rMainUsed', formatCurr(order.mainBalanceUsed));
     safeSet('rBonusUsed', formatCurr(order.bonusBalanceUsed));
     safeSet('rTotalPaid', formatCurr(order.planAmount || order.amount));
 
+    // Show the view
     const receiptView = document.getElementById('receiptView');
     if (receiptView) {
         receiptView.classList.remove('hidden');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 }
-
   
     function selectCarrier(id) {
         const carrier = carriers.find(c => c.id === id);

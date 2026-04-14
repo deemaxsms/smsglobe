@@ -1559,10 +1559,10 @@ async function handlePurchaseWithWallet(req, res) {
                     zipCode: metadata.zip,
                     email: metadata.activationEmail
                 },
-                instructions: "Your eSIM activation request is being processed. You will be contacted via WhatsApp/Email."
+                instructions: "Payment Confirmed. SMSGlobe is verifying your activation details."
             };
         }
-        else if (carrierName && mobileNumber) {
+       else if (carrierName && mobileNumber) {
             itemType = "eSIM_Refill";
             const cleanedPrice = planAmount.toString().replace(/[^0-9]/g, "");
             costNGN = Math.round(Number(cleanedPrice));
@@ -1574,7 +1574,7 @@ async function handlePurchaseWithWallet(req, res) {
                 target: { number: mobileNumber, country: coverageCountry },
                 targetNumber: mobileNumber,
                 country: coverageCountry, 
-                instructions: "Your refill request has been received and is being processed."
+                instructions: "Payment Confirmed. Your refill is being processed by the technical team."
             };
         }
 
@@ -1638,7 +1638,7 @@ async function handlePurchaseWithWallet(req, res) {
             mainBalanceUsed: mainDeduction,
             bonusBalanceUsed: bonusDeduction,
             currency: "NGN",            
-            status: (itemType === "eSIM_Refill" || itemType === "eSIM_Activation") ? "pending" : "successful",
+            status: "successful",
             paymentReference: paymentReference,
             targetNumber: mobileNumber || orderSpecifics.target?.number,
             country: coverageCountry || orderSpecifics.target?.country,

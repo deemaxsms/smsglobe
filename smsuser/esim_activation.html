@@ -459,18 +459,13 @@
     let userBalance = 0;
     let userBonusBalance = 0;
     
-    const carriers = [
-        { id: 'tmobile', name: 'T-Mobile (Prepaid)', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Carrier' },
-        { id: 'att', name: 'AT&T (Prepaid)', image: 'https://i.imgur.com/WDCo1gM.png', type: 'Carrier' },
-        { id: '1month', name: 'One Month Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan' },
-        { id: '3months', name: '3 Months Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan' },
-        { id: '1year', name: 'One Year Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan' }
-    ];
-
- const activationPlans = [];
-for (let i = 20000; i <= 150000; i += 10000) { 
-    activationPlans.push(`₦${i.toLocaleString()}.00 Activation`); 
-}
+  const carriers = [
+    { id: 'tmobile', name: 'T-Mobile (Prepaid)', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Carrier', p: 50000, lbl: 'One Month' },
+    { id: 'att', name: 'AT&T (Prepaid)', image: 'https://i.imgur.com/WDCo1gM.png', type: 'Carrier', p: 80000, lbl: 'One Month' },
+    { id: '1month', name: 'One Month Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan', p: 30000, lbl: 'One Month' },
+    { id: '3months', name: '3 Months Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan', p: 65000, lbl: 'One Months' },
+    { id: '1year', name: 'One Year Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan', p: 150000, lbl: 'One Year' }
+];
 
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('-translate-x-full');
@@ -513,21 +508,25 @@ for (let i = 20000; i <= 150000; i += 10000) {
         console.error("Failed to fetch profile details:", err);
     }
 }
-    function initPage() {
-        const grid = document.getElementById('carrierGrid');
+function initPage() {
+    const grid = document.getElementById('carrierGrid');
+    if (grid) {
         grid.innerHTML = carriers.map(c => `
-            <div onclick="selectCarrier('${c.id}')" class="bg-white border border-brand-border p-4 md:p-6 rounded-2xl md:rounded-3xl cursor-pointer hover:shadow-xl transition-all group text-center relative overflow-hidden">
+            <div onclick="selectCarrier('${c.id}')" class="bg-white border border-brand-border p-4 md:p-6 rounded-2xl md:rounded-3xl cursor-pointer hover:shadow-xl transition-all group text-center relative overflow-hidden active-scale">
                 <span class="absolute top-2 right-2 bg-brand-blue text-white text-[7px] font-bold px-2 py-0.5 rounded-full uppercase">${c.type}</span>
                 <div class="h-12 md:h-16 mb-3 flex items-center justify-center transition-all">
-                    <img src="${c.image}" class="max-h-full object-contain">
+                    <img src="${c.image}" class="max-h-full object-contain group-hover:scale-110 transition-transform">
                 </div>
                 <h3 class="text-[9px] md:text-[10px] font-bold text-brand-darkText uppercase group-hover:text-brand-blue leading-tight">${c.name}</h3>
             </div>
         `).join('');
-        
-        const selector = document.getElementById('planSelector');
-        selector.innerHTML = activationPlans.map(amt => `<option value="${amt}">${amt}</option>`).join('');
+    }    
+    const selector = document.getElementById('planSelector');
+    if (selector) {
+        selector.innerHTML = '<option value="" disabled selected>Select a carrier to see pricing</option>';
     }
+}
+
 
     async function handleZipLookup(zip) {
         const addressInput = document.getElementById('fullAddress');
@@ -780,17 +779,24 @@ function showReceipt(order) {
     }
 }
 
-  function selectCarrier(id) {
+function selectCarrier(id) {
     const carrier = carriers.find(c => c.id === id);
     if (!carrier) return;
     window.currentSelectedCarrier = carrier; 
-    
+
+    // Update Form View
     document.getElementById('selectionView').classList.add('hidden');
     document.getElementById('formView').classList.remove('hidden');    
-    const nameEl = document.getElementById('formCarrierName');
-    const logoEl = document.getElementById('formCarrierLogo');
-    if (nameEl) nameEl.innerText = carrier.name;
-    if (logoEl) logoEl.src = carrier.image;
+    document.getElementById('formCarrierName').innerText = carrier.name;
+    document.getElementById('formCarrierLogo').src = carrier.image;
+
+    // DYNAMIC PRICE INJECTION
+    const selector = document.getElementById('planSelector');
+    if (selector) {
+        // Formats the number: e.g., 50000 becomes ₦50,000.00
+        const formattedPrice = `₦${carrier.p.toLocaleString()}.00 ${carrier.lbl} Activation`;
+        selector.innerHTML = `<option value="${formattedPrice}">${formattedPrice}</option>`;
+    }
 }
     
     function goBackToGrid() {

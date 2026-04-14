@@ -333,8 +333,6 @@
     { id: '3months', name: '3 Months Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan', p: 65000, lbl: 'One Months' },
 ];
 
-
-
 async function fetchUserProfile() {
     try {
         const res = await fetch(`${API_BASE_URL}/user-profile`, {
@@ -352,7 +350,6 @@ async function fetchUserProfile() {
             window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
             return;
         }
-        // Replace the balance lines in fetchUserProfile with this:
 if (data.success) {
     const userData = data.user || data;
     userBalances.ngn = userData.balance || 0; 
@@ -380,7 +377,6 @@ async function loadUserData() {
         }
     }
 }
-
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('-translate-x-full');
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
@@ -414,9 +410,7 @@ function selectCarrier(id) {
     const selector = document.getElementById('planSelector');
     if (selector) {
         const formattedPrice = `₦${carrier.p.toLocaleString()}.00 ${carrier.lbl} Activation`;
-        selector.innerHTML = `<option value="${formattedPrice}">${formattedPrice}</option>`;
-        
-        // Auto-update the action button text
+        selector.innerHTML = `<option value="${formattedPrice}">${formattedPrice}</option>`;        
         const payBtn = document.getElementById('payBtn');
         if (payBtn) payBtn.innerText = `Proceed with ${formattedPrice}`;
     }
@@ -438,9 +432,7 @@ function updateButtonPrice() {
     const num = document.getElementById('targetNumber').value.trim();
     const planString = document.getElementById('planSelector').value; 
     const carrier = window.currentSelectedCarrier;
-    const payBtn = document.getElementById('payBtn');
-    
-    // Select both buttons
+    const payBtn = document.getElementById('payBtn');    
     const confirmBtn = document.getElementById('confirmPurchaseBtn');
     const topupBtn = document.getElementById('topupBtn');
 
@@ -458,8 +450,6 @@ function updateButtonPrice() {
     const mainBal = Number(userBalances.ngn || 0);
     const bonusBal = Number(userBalances.bonusNGN || 0);
     const totalAvailable = mainBal + bonusBal;
-
-    // --- LOGIC TO EXTRACT NUMBER FROM "₦40,000" ---
     const planPrice = Number(planString.replace(/[^0-9.-]+/g, ""));
 
     // Update the Modal UI

@@ -428,7 +428,7 @@ function updateButtonPrice() {
         document.getElementById('formView').classList.add('hidden');
     }
 
-   async function initiatePayment() {
+  async function initiatePayment() {
     const num = document.getElementById('targetNumber').value.trim();
     const planString = document.getElementById('planSelector').value; 
     const carrier = window.currentSelectedCarrier;
@@ -450,7 +450,9 @@ function updateButtonPrice() {
     const mainBal = Number(userBalances.ngn || 0);
     const bonusBal = Number(userBalances.bonusNGN || 0);
     const totalAvailable = mainBal + bonusBal;
-    const planPrice = Number(planString.replace(/[^0-9.-]+/g, ""));
+
+    // FIX APPLIED HERE:
+    const planPrice = Number(planString.split(' ')[0].replace(/[^0-9.]/g, ""));
 
     // Update the Modal UI
     document.getElementById('modalBalanceNGN').innerText = `₦${mainBal.toLocaleString()}`;
@@ -465,13 +467,11 @@ function updateButtonPrice() {
         bonusSection.classList.add('hidden');
     }
 
-    // --- THE BUTTON TOGGLE LOGIC ---
+    // Toggle Logic
     if (totalAvailable < planPrice) {
-        // Not enough money
         confirmBtn.classList.add('hidden');
         topupBtn.classList.remove('hidden');
     } else {
-        // Balance is sufficient
         confirmBtn.classList.remove('hidden');
         topupBtn.classList.add('hidden');
         confirmBtn.innerText = "Confirm & Pay Now";

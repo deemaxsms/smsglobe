@@ -153,6 +153,25 @@
    <script>
     let userEmail = ""; // To store email for verification step
 
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const refCode = urlParams.get('ref');
+
+        if (refCode) {
+            const refInput = document.getElementById('friendReferralCode');
+            if (refInput) {
+                refInput.value = refCode.trim().toUpperCase();                
+                refInput.classList.add('bg-blue-50', 'border-brand-blue', 'text-brand-blue');                
+                refInput.readOnly = true;                
+                const label = refInput.previousElementSibling;
+                if (label) {
+                    label.innerHTML = `Referral Code <span class="text-green-600 font-bold">(Applied ✓)</span>`;
+                }
+            }
+        }
+    });
+
     // --- Google Signup Handler ---
     async function handleGoogleSignup(response) {
         try {

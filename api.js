@@ -1138,7 +1138,7 @@ async function handleVerifyOTP(req, res) {
                     referrer.referralCount = (referrer.referralCount || 0) + 1;
                     
                     // The 10th, 20th, 30th... referral gets ₦3,000
-                    if (referrer.referralCount % 1 === 0) {
+                    if (referrer.referralCount % 10 === 0) {
                         referrer.bonusBalance = (referrer.bonusBalance || 0) + 3000;
                     }
                     await referrer.save();

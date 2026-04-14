@@ -1027,7 +1027,7 @@ function updateDashboardUI(user) {
     safeSetText('bonusBalanceDisplay', `₦${format(bonusBalance)}`);
     
     // --- Milestone Calculation ---
-    const nextMilestone = Math.ceil((referralCount + 1) / 1) * 1;
+    const nextMilestone = Math.ceil((referralCount + 1) / 10) * 10;
     const remaining = nextMilestone - referralCount;
 
     const statusBadge = document.getElementById('bonusStatusBadge');

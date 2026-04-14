@@ -144,11 +144,12 @@
                         </div>
                     </section>
 
-                  <section class="bg-white rounded-2xl border border-brand-border overflow-hidden shadow-sm">
+                <section class="bg-white rounded-2xl border border-brand-border overflow-hidden shadow-sm">
     <div class="p-4 border-b border-brand-border bg-gray-50/50 flex justify-between items-center">
         <h3 class="text-[10px] font-bold text-brand-darkText uppercase tracking-wider">Referral Program</h3>
         <span id="displayReferralCount" class="text-[9px] bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-bold border border-green-100">0 Referrals</span>
     </div>
+    
     <div class="p-5">
         <p class="text-[10px] text-brand-lightText mb-2">Get <span class="font-bold text-green-600">₦3,000 bonus</span> for every 10 friends you refer!</p>
         
@@ -162,14 +163,30 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-2">
-            <div class="flex-grow relative">
-                <input type="text" id="referralCodeInput" readonly 
-                    class="w-full bg-gray-50 border border-brand-border rounded-lg px-3 py-2.5 text-[11px] font-mono font-bold text-brand-blue outline-none" 
-                    value="LOADING...">
-                <button onclick="copyReferralCode()" class="absolute right-2 top-1/2 -translate-y-1/2 text-brand-blue hover:bg-brand-blue/10 p-1.5 rounded-md transition-colors">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
-                </button>
+        <div class="space-y-4">
+            <div>
+                <label class="text-[9px] font-bold text-brand-lightText uppercase mb-1 block">Your Unique Code</label>
+                <div class="relative">
+                    <input type="text" id="referralCodeInput" readonly 
+                        class="w-full bg-gray-50 border border-brand-border rounded-lg px-3 py-2.5 text-[11px] font-mono font-bold text-brand-blue outline-none" 
+                        value="LOADING...">
+                    <button onclick="copyReferralCode()" class="absolute right-2 top-1/2 -translate-y-1/2 text-brand-blue hover:bg-brand-blue/10 p-1.5 rounded-md transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <label class="text-[9px] font-bold text-brand-lightText uppercase mb-1 block">Quick Share Link</label>
+                <div class="flex gap-2">
+                    <input type="text" id="referralLinkInput" readonly 
+                        class="flex-grow bg-gray-50 border border-brand-border rounded-lg px-3 py-2 text-[10px] text-brand-midText outline-none truncate" 
+                        value="Generating link...">
+                    <button id="copyLinkBtn" onclick="copyReferralLink()" 
+                        class="bg-brand-blue text-white px-4 py-2 rounded-lg text-[10px] font-bold hover:bg-blue-700 transition-all shadow-sm active:scale-95">
+                        Copy Link
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -341,7 +358,6 @@ async function initProfile() {
             }
         });
 
-        // 1. Handle unauthorized
         if (profileRes.status === 401) {
             localStorage.removeItem('userToken');
             window.location.href = 'user_login.html';
@@ -355,17 +371,19 @@ async function initProfile() {
                 alert("Please verify your email to access your profile.");
                 window.location.href = `user_create.html?verify_email=${encodeURIComponent(userData.email || '')}`;
             } else {
-                // Scenario B: Actually Suspended
                 showSuspendedNotice();
             }
             return;
         }
+
         const user = userData.user || userData;
         
         const name = user.fullName || "User";
         const email = user.email || "";
+        const referralCode = user.referralCode || "N/A";
         const referralCount = parseInt(user.referralCount) || 0;
 
+        // --- Standard Profile Data ---
         document.getElementById('displayFullName').innerText = name;
         document.getElementById('displayEmail').innerText = email;
         document.getElementById('pfpInitials').innerText = name.charAt(0).toUpperCase();
@@ -374,9 +392,18 @@ async function initProfile() {
         document.getElementById('inputID').value = user._id || 'N/A';
         
         // --- Referral & Milestone Logic ---
-        document.getElementById('referralCodeInput').value = user.referralCode || "N/A";
+        document.getElementById('referralCodeInput').value = referralCode;
         document.getElementById('displayReferralCount').innerText = `${referralCount} Referrals`;
 
+        // 1. GENERATE REFERRAL LINK
+        // Adjust the URL to your actual deployment domain
+        const referralLink = `https://smsglobe.net/smsuser/user_create.html?ref=${referralCode}`;
+        const refLinkInput = document.getElementById('referralLinkInput');
+        if (refLinkInput) {
+            refLinkInput.value = referralLink;
+        }
+
+        // 2. MILESTONE CALCULATIONS (Keeping your 10-user logic)
         const nextMilestone = Math.ceil((referralCount + 1) / 10) * 10 || 10;
         const remaining = nextMilestone - referralCount;
         const progressPercent = (referralCount % 10) * 10;
@@ -411,11 +438,22 @@ async function initProfile() {
 
     } catch (err) {
         console.error("Profile load error:", err);
-        const tableBody = document.getElementById('transactionsBody');
-        if (tableBody) {
-            tableBody.innerHTML = `<tr><td colspan="4" class="px-5 py-6 text-center text-red-500 text-[10px]">Failed to load transactions.</td></tr>`;
-        }
     }
+}
+
+function copyReferralLink() {
+    const linkInput = document.getElementById('referralLinkInput');
+    linkInput.select();
+    linkInput.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(linkInput.value);
+    
+    const btn = document.getElementById('copyLinkBtn');
+    btn.innerText = "Copied!";
+    btn.classList.replace('bg-brand-blue', 'bg-green-600');
+    setTimeout(() => {
+        btn.innerText = "Copy Link";
+        btn.classList.replace('bg-green-600', 'bg-brand-blue');
+    }, 2000);
 }
 
 function renderOrders(orders) {

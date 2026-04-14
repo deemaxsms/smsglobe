@@ -326,18 +326,14 @@
     let userBalances = { ngn: 0, bonusNGN: 0, hasDeposited: false };
     let currentOrderData = null;
 
-    const carriers = [
-        { id: 'tmobile', name: 'T-Mobile (Prepaid)', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Carrier' },
-        { id: 'att', name: 'AT&T (Prepaid)', image: 'https://i.imgur.com/WDCo1gM.png', type: 'Carrier' },
-        { id: '1month', name: 'One Month Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan' },
-        { id: '3months', name: '3 Months Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan' },
-        { id: '1year', name: 'One Year Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan' }
-    ];
+     const carriers = [
+    { id: 'tmobile', name: 'T-Mobile (Prepaid)', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Carrier', p: 50000, lbl: 'One Month' },
+    { id: 'att', name: 'AT&T (Prepaid)', image: 'https://i.imgur.com/WDCo1gM.png', type: 'Carrier', p: 80000, lbl: 'One Month' },
+    { id: '1month', name: 'One Month Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan', p: 30000, lbl: 'One Month' },
+    { id: '3months', name: '3 Months Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan', p: 65000, lbl: 'One Months' },
+];
 
- const refillAmounts = [];
-for (let i = 40000; i <= 150000; i += 5000) { 
-    refillAmounts.push(`₦${i.toLocaleString()}`); 
-}
+
 
 async function fetchUserProfile() {
     try {
@@ -356,21 +352,18 @@ async function fetchUserProfile() {
             window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
             return;
         }
-        if (data.success) {
-            const userData = data.user || data;
-            userBalance = userData.balance || 0; 
-            userBonusBalance = userData.bonusBalance || 0;             
-            if (document.getElementById('displayBalance')) {
-                document.getElementById('displayBalance').innerText = `₦${userBalance.toLocaleString()}`;
-            }
-            if (document.getElementById('displayBonus')) {
-               document.getElementById('displayBonus').innerText = `₦${userBonusBalance.toLocaleString()}`;
-            }
-            if (document.getElementById('userReferralCount')) {
-                document.getElementById('userReferralCount').innerText = userData.referralCount || 0;
-            }
-            localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
-        }
+        // Replace the balance lines in fetchUserProfile with this:
+if (data.success) {
+    const userData = data.user || data;
+    userBalances.ngn = userData.balance || 0; 
+    userBalances.bonusNGN = userData.bonusBalance || 0; 
+    
+    // Update Displays
+    const elBal = document.getElementById('displayBalance');
+    const elBonus = document.getElementById('displayBonus');
+    if (elBal) elBal.innerText = `₦${userBalances.ngn.toLocaleString()}`;
+    if (elBonus) elBonus.innerText = `₦${userBalances.bonusNGN.toLocaleString()}`;
+}
     } catch (err) {
         console.error("Failed to fetch profile details:", err);
     }
@@ -393,34 +386,43 @@ async function loadUserData() {
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
 
-    function initPage() {
-        const grid = document.getElementById('carrierGrid');
+   function initPage() {
+    const grid = document.getElementById('carrierGrid');
+    if (grid) {
         grid.innerHTML = carriers.map(c => `
-            <div onclick="selectCarrier('${c.id}')" class="bg-white border border-brand-border p-4 md:p-6 rounded-2xl md:rounded-3xl cursor-pointer hover:shadow-xl transition-all group text-center">
+            <div onclick="selectCarrier('${c.id}')" class="bg-white border border-brand-border p-4 md:p-6 rounded-2xl md:rounded-3xl cursor-pointer hover:shadow-xl transition-all group text-center relative overflow-hidden">
+                <span class="absolute top-2 right-2 bg-brand-blue text-white text-[7px] font-bold px-2 py-0.5 rounded-full uppercase">${c.type}</span>
                 <div class="h-12 md:h-16 mb-3 flex items-center justify-center transition-all">
-                    <img src="${c.image}" class="max-h-full object-contain">
+                    <img src="${c.image}" class="max-h-full object-contain group-hover:scale-105 transition-transform">
                 </div>
-                <h3 class="text-[10px] md:text-xs font-bold text-brand-darkText uppercase group-hover:text-brand-blue">${c.name}</h3>
+                <h3 class="text-[9px] md:text-[10px] font-bold text-brand-darkText uppercase group-hover:text-brand-blue leading-tight">${c.name}</h3>
             </div>
         `).join('');
+    }    
+    const selector = document.getElementById('planSelector');
+    if (selector) selector.innerHTML = '<option value="" disabled selected>Select Carrier First</option>';
+}
+
+function selectCarrier(id) {
+    const carrier = carriers.find(c => c.id === id);
+    if (!carrier) return;
+    window.currentSelectedCarrier = carrier; 
+    document.getElementById('selectionView')?.classList.add('hidden');
+    document.getElementById('formView')?.classList.remove('hidden');        
+    if(document.getElementById('formCarrierName')) document.getElementById('formCarrierName').innerText = carrier.name;
+    if(document.getElementById('formCarrierLogo')) document.getElementById('formCarrierLogo').src = carrier.image;
+    const selector = document.getElementById('planSelector');
+    if (selector) {
+        const formattedPrice = `₦${carrier.p.toLocaleString()}.00 ${carrier.lbl} Activation`;
+        selector.innerHTML = `<option value="${formattedPrice}">${formattedPrice}</option>`;
         
-        const selector = document.getElementById('planSelector');
-        selector.innerHTML = refillAmounts.map(amt => `<option value="${amt}">${amt}</option>`).join('');
+        // Auto-update the action button text
+        const payBtn = document.getElementById('payBtn');
+        if (payBtn) payBtn.innerText = `Proceed with ${formattedPrice}`;
     }
+}
 
-    function selectCarrier(id) {
-        const carrier = carriers.find(c => c.id === id);
-        window.currentSelectedCarrier = carrier; 
-        document.getElementById('selectionView').classList.add('hidden');
-        document.getElementById('formView').classList.remove('hidden');
-        document.getElementById('formCarrierName').innerText = carrier.name;
-        document.getElementById('formCarrierLogo').src = carrier.image;
-        updateButtonPrice();
-    }
-
-    // Since we removed local math, the button just shows the USD selection 
-    // The actual NGN check happens in the initiatePayment step via backend verification
-    function updateButtonPrice() {
+function updateButtonPrice() {
         const plan = document.getElementById('planSelector').value;
         document.getElementById('payBtn').innerText = `Pay for ${plan} Refill`;
     }

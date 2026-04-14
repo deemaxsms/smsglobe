@@ -142,87 +142,89 @@
         overlay.classList.toggle('hidden');
     }
 
-    async function fetchRefills() {
-        const token = localStorage.getItem('smsglobe_admin_token');
-        const tbody = document.getElementById('refills-body');
-      const finalAmount = refill.amount || refill.price || 0;
-        const displayAmount = !isNaN(finalAmount) ? Number(finalAmount).toLocaleString() : '0.00';
-    
+  async function fetchRefills() {
+    const token = localStorage.getItem('smsglobe_admin_token');
+    const tbody = document.getElementById('refills-body');
 
-        try {
-            const response = await fetch('/api/esim-refills', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await response.json();
+    try {
+        const response = await fetch('/api/esim-refills', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
 
-            if (data.success && data.refills.length > 0) {
-                tbody.innerHTML = data.refills.map(refill => {
-                    const status = refill.status.toLowerCase();
-                    const tid = refill.paymentReference;
-                    
-                    let actionArea = '';
+        if (data.success && data.refills.length > 0) {
+            tbody.innerHTML = data.refills.map(refill => {
+                const status = refill.status.toLowerCase();
+                const tid = refill.paymentReference;
 
-                    if (['pending', 'successful', 'processing'].includes(status)) {
-                        actionArea = `
-                            <div class="flex flex-col gap-2 items-end">
-                                <input type="text" id="conf-${tid}" 
-                                       placeholder="Enter Confirmation #" 
-                                       class="border border-brand-border rounded px-2 py-1.5 text-[10px] w-40 focus:ring-1 focus:ring-brand-blue outline-none shadow-sm font-medium">
-                                <button onclick="processRefill('${tid}')" 
-                                        class="bg-green-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold hover:bg-green-700 transition-all shadow-md">
-                                    Mark as Done
-                                </button>
-                            </div>`;
-                    } 
-                    else if (status === 'completed') {
-                        actionArea = `
-                            <div class="text-right">
-                                <div class="text-green-600 font-bold text-[10px] flex items-center justify-end gap-1 mb-1">
-                                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                                    Applied
-                                </div>
-                                <div class="text-[9px] text-brand-lightText font-mono">CODE: ${refill.confirmationNumber || 'N/A'}</div>
-                            </div>`;
-                    } else {
-                        actionArea = `<span class="text-gray-400 text-[10px] italic uppercase">${status}</span>`;
-                    }
+                // --- CORRECT PLACEMENT OF AMOUNT LOGIC ---
+                // This checks both 'amount' and 'price' fields in case your database varies
+                const finalAmount = refill.amount || refill.price || 0;
+                const displayAmount = !isNaN(finalAmount) ? Number(finalAmount).toLocaleString() : '0.00';
+                
+                let actionArea = '';
 
-                    return `
-                        <tr class="hover:bg-gray-50/50 transition-colors">
-                            <td class="px-4 py-4">
-                                <div class="font-bold text-brand-darkText">#${tid.slice(-8)}</div>
-                                <div class="text-[9px] text-brand-lightText">${new Date(refill.createdAt).toLocaleDateString()}</div>
-                            </td>
-                            <td class="px-4 py-4">
-                                <div class="font-medium text-[12px]">${refill.userEmail}</div>
-                            </td>
-                            <td class="px-4 py-4">
-                                <div class="font-bold text-brand-orange uppercase text-[10px]">${refill.nodeName || refill.carrier || 'eSIM'}</div>
-                                <div class="text-[10px] font-mono bg-gray-100 px-1.5 py-0.5 rounded inline-block mt-1">
-                                    ${refill.targetNumber || refill.esimIdentifier || 'N/A'}
-                                </div>
-                            </td>
-<td class="px-4 py-4 text-center font-bold text-brand-blue">
-    ${refill.currency || '₦'} ${refill.amount && !isNaN(refill.amount) ? Number(refill.amount).toLocaleString() : '0.00'}
-</td>
-                            <td class="px-4 py-4">
-                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getStatusClass(refill.status)}">
-                                    ${refill.status}
-                                </span>
-                            </td>
-                            <td class="px-4 py-4 text-right">
-                                ${actionArea}
-                            </td>
-                        </tr>`;
-                }).join('');
-            } else {
-                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-brand-lightText italic">No requests found.</td></tr>`;
-            }
-        } catch (err) {
-            console.error("Fetch error:", err);
-            tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-red-500 font-bold">Error loading data.</td></tr>`;
+                if (['pending', 'successful', 'processing'].includes(status)) {
+                    actionArea = `
+                        <div class="flex flex-col gap-2 items-end">
+                            <input type="text" id="conf-${tid}" 
+                                   placeholder="Enter Confirmation #" 
+                                   class="border border-brand-border rounded px-2 py-1.5 text-[10px] w-40 focus:ring-1 focus:ring-brand-blue outline-none shadow-sm font-medium">
+                            <button onclick="processRefill('${tid}')" 
+                                    class="bg-green-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold hover:bg-green-700 transition-all shadow-md">
+                                Mark as Done
+                            </button>
+                        </div>`;
+                } 
+                else if (status === 'completed') {
+                    actionArea = `
+                        <div class="text-right">
+                            <div class="text-green-600 font-bold text-[10px] flex items-center justify-end gap-1 mb-1">
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                                Applied
+                            </div>
+                            <div class="text-[9px] text-brand-lightText font-mono">CODE: ${refill.confirmationNumber || 'N/A'}</div>
+                        </div>`;
+                } else {
+                    actionArea = `<span class="text-gray-400 text-[10px] italic uppercase">${status}</span>`;
+                }
+
+                return `
+                    <tr class="hover:bg-gray-50/50 transition-colors">
+                        <td class="px-4 py-4">
+                            <div class="font-bold text-brand-darkText">#${tid.slice(-8)}</div>
+                            <div class="text-[9px] text-brand-lightText">${new Date(refill.createdAt).toLocaleDateString()}</div>
+                        </td>
+                        <td class="px-4 py-4">
+                            <div class="font-medium text-[12px]">${refill.userEmail}</div>
+                        </td>
+                        <td class="px-4 py-4">
+                            <div class="font-bold text-brand-orange uppercase text-[10px]">${refill.nodeName || refill.carrier || 'eSIM'}</div>
+                            <div class="text-[10px] font-mono bg-gray-100 px-1.5 py-0.5 rounded inline-block mt-1">
+                                ${refill.targetNumber || refill.esimIdentifier || 'N/A'}
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 text-center font-bold text-brand-blue">
+                            ${refill.currency || '₦'} ${displayAmount}
+                        </td>
+                        <td class="px-4 py-4">
+                            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getStatusClass(refill.status)}">
+                                ${refill.status}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 text-right">
+                            ${actionArea}
+                        </td>
+                    </tr>`;
+            }).join('');
+        } else {
+            tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-brand-lightText italic">No requests found.</td></tr>`;
         }
+    } catch (err) {
+        console.error("Fetch error:", err);
+        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-red-500 font-bold">Error loading data.</td></tr>`;
     }
+}
 
     async function processRefill(tid) {
         const confInput = document.getElementById(`conf-${tid}`);

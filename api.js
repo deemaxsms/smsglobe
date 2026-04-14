@@ -1843,39 +1843,9 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
                 </div>
             </td>
         </tr>`;
-   } if (isESIM_Activation) {
+   } 
+  if (isESIM_Activation) {
     // LAYOUT FOR ESIM ACTIVATION
-    dataTableHtml = `
-        <tr>
-            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier / Network</span><br>
-                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || 'Global eSIM'}</strong>
-            </td>
-            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Device Model</span><br>
-                <strong style="font-size: 13px; color: #101828;">${credentials.targetNumber || 'N/A'}</strong>
-            </td>
-        </tr>
-        <tr>
-            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Address / Zip</span><br>
-                <strong style="font-size: 12px; color: #344054;">${credentials.metadata?.address || 'N/A'} (${credentials.metadata?.zip || ''})</strong>
-            </td>
-            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
-                <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount).toLocaleString()}</strong>
-            </td>
-        </tr>
-        ${credentials.confirmationNumber ? `
-        <tr>
-            <td colspan="2" style="padding-top: 10px; border-top: 1px solid #EAECF0;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Confirmation Number</span><br>
-                <strong style="font-size: 15px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.confirmationNumber}</strong>
-            </td>
-        </tr>` : ''}`;
-
-} else if (isESIM_Refill) {
-    // LAYOUT FOR ESIM REFILL
     dataTableHtml = `
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
@@ -1883,23 +1853,48 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
                 <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName}</strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Refill Number</span><br>
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Device Model</span><br>
+                <strong style="font-size: 13px; color: #101828;">${credentials.targetNumber}</strong>
+            </td>
+        </tr>
+        <tr>
+            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation Details</span><br>
+                <strong style="font-size: 11px; color: #344054;">
+                    ${credentials.metadata?.address || 'N/A'}<br>
+                    ZIP: ${credentials.metadata?.zip || 'N/A'} | Type: ${credentials.metadata?.activationType || 'Prepaid'}
+                </strong>
+            </td>
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
+                <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount).toLocaleString()}</strong>
+            </td>
+        </tr>`;
+} 
+else if (isESIM_Refill) {
+    dataTableHtml = `
+        <tr>
+            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
+                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName}</strong>
+            </td>
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Number</span><br>
                 <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.targetNumber}</strong>
             </td>
         </tr>
         <tr>
             <td class="mobile-full" width="50%" valign="top">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Refill Plan</span><br>
-                <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount).toLocaleString()} (${credentials.planName || 'Refill'})</strong>
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Plan Paid</span><br>
+                <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount).toLocaleString()} Refill</strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Country</span><br>
-                <strong style="font-size: 13px; color: #101828;">${credentials.country || 'USA'}</strong>
+                <strong style="font-size: 13px; color: #101828;">${credentials.country || 'United States'}</strong>
             </td>
         </tr>`;
 
 } else {
-    // DEFAULT LAYOUT (VPN, SMS, ETC)
     dataTableHtml = `
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">

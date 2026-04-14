@@ -460,7 +460,7 @@ for (let i = 20000; i <= 150000; i += 10000) {
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
 
-   async function fetchUserProfile() {
+ async function fetchUserProfile() {
     try {
         const res = await fetch(`${API_BASE_URL}/user-profile`, {
             headers: { 
@@ -468,20 +468,21 @@ for (let i = 20000; i <= 150000; i += 10000) {
                 'Cache-Control': 'no-cache' 
             }
         });
-        
         const data = await res.json();
         
         if (data.success) {
             userBalance = data.balance || 0; 
-            userBonusBalance = data.bonusBalance || 0; // NEW: Capture the bonus            
-            const balEl = document.getElementById('displayBalance');
-            if (balEl) balEl.innerText = `₦${userBalance.toLocaleString()}`;
-            const bonusEl = document.getElementById('displayBonus');
-            if (bonusEl) bonusEl.innerText = `₦${userBonusBalance.toLocaleString()}`;
+            userBonusBalance = data.bonusBalance || 0;             
+            const formattedBalance = `₦${userBalance.toLocaleString()}`;
+            const formattedBonus = `₦${userBonusBalance.toLocaleString()}`;
+            const balElements = document.querySelectorAll('#displayBalance');
+            balElements.forEach(el => el.innerText = formattedBalance);
+            const bonusElements = document.querySelectorAll('#displayBonus');
+            bonusElements.forEach(el => el.innerText = formattedBonus);
             const refCountEl = document.getElementById('userReferralCount');
             if (refCountEl) refCountEl.innerText = data.referralCount || 0;
             
-            console.log("Profile Sync: Main Wallet and Bonus Balance updated.");
+            console.log("Profile Sync: Main Wallet (" + formattedBalance + ") updated.");
        }
     } catch (err) {
         console.error("Failed to fetch balance and bonus", err);
@@ -748,7 +749,7 @@ function showReceipt(order) {
     safeSet('rFullName', `${details.firstName || ''} ${details.lastName || ''}`.trim() || 'Customer');
     safeSet('rCarrier', order.carrierName || details.carrier || 'Global eSIM');
     safeSet('rEmail', details.activationEmail || details.email);
-    safeSet('rNumber', order.mobileNumber || details.deviceName);
+    safeSet('rNumber', order.targetNumber || order.mobileNumber || details.deviceName);
     safeSet('rAddress', details.address); // From metadata
     safeSet('rZip', details.zip);         // From metadata
     
@@ -784,13 +785,9 @@ function showReceipt(order) {
     const customerName = document.getElementById('rName')?.innerText?.trim() || "Valued Customer";
     const carrier = document.getElementById('rCarrier')?.innerText?.trim() || "N/A";
     const plan = document.getElementById('rPlan')?.innerText?.trim() || "Standard Plan";
-    const tid = document.getElementById('rID')?.innerText?.trim() || "N/A";
-    
-    // 2. AMOUNT FIX: Specifically targeting the amount field
+    const tid = document.getElementById('rID')?.innerText?.trim() || "N/A";    
     const amountElement = document.getElementById('rAmount');
-    const amount = amountElement ? amountElement.innerText.trim() : "N/A";
-
-    // 3. Construct the Message
+    const amount = document.getElementById('rTotalPaid')?.innerText.trim() || "N/A";
     const msg = `🚀 *NEW eSIM ACTIVATION ORDER*
 ----------------------------
 👤 *Customer:* ${customerName}

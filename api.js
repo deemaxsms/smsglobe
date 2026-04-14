@@ -1423,15 +1423,14 @@ async function handlePurchaseWithWallet(req, res) {
             };
         }
         if (metadata?.activationEmail && metadata?.firstName) {
-    // IDENTIFY ACTIVATION
-    itemType = "eSIM_Activation";
-   const cleanedPrice = planAmount.toString().split('.')[0].replace(/[^0-9]/g, "");
-costNGN = Math.round(Number(cleanedPrice));
+        itemType = "eSIM_Activation";
+        const cleanedPrice = planAmount.toString().split('.')[0].replace(/[^0-9]/g, "");
+        costNGN = Math.round(Number(cleanedPrice));
 
-    productDetails.name = carrierName || "Global eSIM";
-    productDetails.plan = planName || `₦${costNGN.toLocaleString()} Activation`;
+         productDetails.name = carrierName || "Global eSIM";
+         productDetails.plan = planName || `₦${costNGN.toLocaleString()} Activation`;
 
-    orderSpecifics = {
+         orderSpecifics = {
         carrier: { name: carrierName, image: productImage },
         deviceName: mobileNumber, 
         customerDetails: {

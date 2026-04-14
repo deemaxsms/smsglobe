@@ -248,86 +248,80 @@
                 </div>
             </div>
 
-  <div id="receiptView" class="hidden max-w-lg mx-auto py-4 px-4 md:py-12 md:px-0">
-    <div class="bg-white rounded-[1.2rem] md:rounded-[2.5rem] shadow-xl overflow-hidden border border-gray-100">
+  <div id="receiptView" class="hidden max-w-lg mx-auto py-2 px-4 md:py-8">
+    
+    <div class="bg-white/95 backdrop-blur-sm rounded-[1rem] p-4 md:p-8 border border-gray-100 shadow-sm">
         
-        <div class="bg-blue-600 p-5 md:p-10 text-center text-white relative">
-            <div class="mb-3 md:mb-6">
-                <img src="/assets/logo.png" alt="SMSGlobe Logo" class="h-7 md:h-12 mx-auto brightness-0 invert">
+        <div class="text-center border-b border-dashed border-gray-200 pb-4 mb-4">
+            <img src="/assets/logo.png" alt="SMSGlobe Logo" class="h-6 md:h-10 mx-auto mb-3 grayscale opacity-80">
+            
+            <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 rounded-full mb-2">
+                <div class="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse"></div>
+                <span class="text-[9px] md:text-[11px] font-black text-blue-600 uppercase tracking-wider">Activation Pending</span>
             </div>
             
-            <div class="w-12 h-12 md:w-20 md:h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-6 backdrop-blur-sm">
-                <svg class="w-5 h-5 md:w-10 md:h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7"></path>
-                </svg>
-            </div>
-            
-            <h2 class="text-lg md:text-3xl font-black uppercase tracking-tight">Activation Pending</h2>
-            <p class="text-white/80 text-[9px] md:text-xs font-bold mt-1 uppercase tracking-widest">
-                Ref: <span id="rID" class="select-all font-mono">---</span>
+            <p class="text-gray-400 text-[8px] md:text-[10px] font-bold uppercase tracking-widest">
+                ID: <span id="rID" class="text-gray-900 font-mono">---</span>
             </p>
         </div>
 
-        <div class="p-5 md:p-12">
-            <div class="space-y-5 md:space-y-10">
-                
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-10 pb-5 md:pb-10 border-b border-dashed border-gray-200">
-                    <div>
-                        <p class="text-[8px] md:text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Customer</p>
-                        <p id="rFullName" class="text-[11px] md:text-base font-black text-gray-900 truncate">---</p>
-                    </div>
-                    <div>
-                        <p class="text-[8px] md:text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Carrier</p>
-                        <p id="rCarrier" class="text-[11px] md:text-base font-black text-gray-900 uppercase">---</p>
-                    </div>
-                    <div>
-                        <p class="text-[8px] md:text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Device</p>
-                        <p id="rNumber" class="text-[11px] md:text-base font-black text-blue-600 uppercase">---</p>
-                    </div>
-                    <div class="col-span-2">
-                        <p class="text-[8px] md:text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Email</p>
-                        <p id="rEmail" class="text-[10px] md:text-sm font-bold text-gray-800 break-all leading-tight">---</p>
-                    </div>
-                    <div class="col-span-1">
-                        <p class="text-[8px] md:text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Zip/State</p>
-                        <p id="rZip" class="text-[11px] md:text-base font-black text-gray-900 uppercase">---</p>
-                    </div>
-                </div>
-
-                <div class="space-y-2 md:space-y-4 px-1">
-                    <div class="flex justify-between items-center text-[10px] md:text-sm font-bold">
-                        <span class="text-gray-500 uppercase">Plan Amount</span>
-                        <span id="rPlan" class="text-gray-900">₦0.00</span>
-                    </div>
-                    <div class="flex justify-between items-center text-[10px] md:text-sm font-bold">
-                        <span class="text-gray-500 uppercase">Main Wallet</span>
-                        <span id="rMainUsed" class="text-gray-900">₦0.00</span>
-                    </div>
-                    <div class="flex justify-between items-center text-[10px] md:text-sm font-bold">
-                        <span class="text-emerald-600 uppercase">Referral Bonus</span>
-                        <span id="rBonusUsed" class="text-emerald-600">-₦0.00</span>
-                    </div>
-                </div>
-
-                <div class="bg-gray-50 p-4 md:p-8 rounded-[1rem] md:rounded-[2rem] flex justify-between items-center border border-gray-100">
-                    <span class="text-[9px] md:text-xs font-black text-gray-400 uppercase tracking-widest">Total Paid</span>
-                    <span id="rTotalPaid" class="text-xl md:text-4xl font-black text-blue-600 tracking-tighter">₦0.00</span>
-                </div>
+        <div class="grid grid-cols-2 gap-y-4 gap-x-2 mb-6">
+            <div>
+                <p class="text-[7px] md:text-[10px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">Account Owner</p>
+                <p id="rAccountName" class="text-[10px] md:text-sm font-bold text-gray-900 truncate">---</p>
             </div>
-
-            <div class="mt-6 md:mt-12 space-y-2">
-                <button onclick="contactManagement()" class="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white py-3.5 md:py-5 rounded-xl md:rounded-2xl font-black text-sm md:text-lg flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg">
-                    <svg class="w-4 h-4 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.316 1.592 5.448 0 9.886-4.438 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.718-.975z"/></svg>
-                    Notify Support
-                </button>
-                <button onclick="location.reload()" class="w-full py-2 text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                    Done / Close
-                </button>
+            <div>
+                <p class="text-[7px] md:text-[10px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">Form Name</p>
+                <p id="rFullName" class="text-[10px] md:text-sm font-bold text-gray-900 truncate">---</p>
             </div>
+            <div>
+                <p class="text-[7px] md:text-[10px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">Carrier</p>
+                <p id="rCarrier" class="text-[10px] md:text-sm font-bold text-gray-900 uppercase">---</p>
+            </div>
+            <div>
+                <p class="text-[7px] md:text-[10px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">Device</p>
+                <p id="rNumber" class="text-[10px] md:text-sm font-bold text-blue-600 uppercase">---</p>
+            </div>
+            <div class="col-span-2">
+                <p class="text-[7px] md:text-[10px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">Full Address</p>
+                <p id="rAddress" class="text-[9px] md:text-xs font-bold text-gray-800 leading-tight">---</p>
+            </div>
+            <div>
+                <p class="text-[7px] md:text-[10px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">Zip/State</p>
+                <p id="rZip" class="text-[10px] md:text-sm font-bold text-gray-900 uppercase">---</p>
+            </div>
+            <div>
+                <p class="text-[7px] md:text-[10px] font-black text-gray-400 uppercase tracking-tighter mb-0.5">Type</p>
+                <p id="rType" class="text-[10px] md:text-sm font-bold text-gray-900 uppercase">---</p>
+            </div>
+        </div>
+
+        <div class="border-t border-gray-100 pt-4 space-y-2">
+            <div class="flex justify-between text-[9px] md:text-xs">
+                <span class="text-gray-500 font-bold uppercase">Main Wallet</span>
+                <span id="rMainUsed" class="text-gray-900 font-black">₦0.00</span>
+            </div>
+            <div class="flex justify-between text-[9px] md:text-xs">
+                <span class="text-emerald-600 font-bold uppercase">Referral Bonus</span>
+                <span id="rBonusUsed" class="text-emerald-600 font-black">-₦0.00</span>
+            </div>
+            <div class="flex justify-between items-center pt-2 mt-2 border-t border-gray-200">
+                <span class="text-[10px] md:text-xs font-black text-gray-400 uppercase">Total Paid</span>
+                <span id="rTotalPaid" class="text-lg md:text-2xl font-black text-blue-600 tracking-tighter">₦0.00</span>
+            </div>
+        </div>
+
+        <div class="mt-6 space-y-2">
+            <button onclick="contactManagement()" class="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white py-3 md:py-4 rounded-lg font-black text-xs md:text-sm flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-md">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.316 1.592 5.448 0 9.886-4.438 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.718-.975z"/></svg>
+                NOTIFY SMSGLOBE SUPPORT
+            </button>
+            <button onclick="location.reload()" class="w-full py-2 text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-600">
+                Close & Return
+            </button>
         </div>
     </div>
 </div>
-
 
 <div class="mt-8 border-t border-gray-100 pt-8">
     <div class="bg-blue-50 rounded-3xl p-6 border border-blue-100 flex flex-col md:flex-row items-center gap-5">
@@ -757,17 +751,21 @@ function showReceipt(order) {
     };
     const formatCurr = (num) => `₦${(num || 0).toLocaleString()}`;
     const carrierName = order.nodeName || (order.carrier && order.carrier.name) || 'Global eSIM';
+    safeSet('rAccountName', order.fullName);     
+    const formName = `${order.metadata?.firstName || ''} ${order.metadata?.lastName || ''}`.trim();
+    safeSet('rFullName', formName || 'N/A');
     safeSet('rCarrier', carrierName);
-    safeSet('rFullName', order.fullName || 'Valued Customer');
     safeSet('rID', order.paymentReference);
-    safeSet('rNumber', order.targetNumber || 'Iphone 15');
-    safeSet('rEmail', order.userEmail || 'N/A');
-    const zip = order.zipCode || (order.metadata && order.metadata.zip) || '---';
-    safeSet('rZip', zip); 
+    safeSet('rNumber', order.targetNumber || 'N/A'); // This shows "iPhone"
+    safeSet('rEmail', order.metadata?.activationEmail || order.userEmail);
+    safeSet('rZip', order.metadata?.zip || 'N/A');
+    safeSet('rAddress', order.metadata?.address || 'N/A');
+    safeSet('rType', order.metadata?.activationType || 'eSIM');
     safeSet('rPlan', formatCurr(order.amount));
     safeSet('rMainUsed', formatCurr(order.mainBalanceUsed));
     safeSet('rBonusUsed', formatCurr(order.bonusBalanceUsed));
     safeSet('rTotalPaid', formatCurr(order.amount));
+
     const receiptView = document.getElementById('receiptView');
     if (receiptView) {
         receiptView.classList.remove('hidden');
@@ -794,35 +792,39 @@ function showReceipt(order) {
     }
 
 function contactManagement() {
-    // 1. Fetch Basic Info - Using the IDs from your Receipt UI
-    const customerName = document.getElementById('rFullName')?.innerText?.trim() || "Valued Customer";
+    // Fetching both names from the Receipt UI
+    const accountProfile = document.getElementById('rAccountName')?.innerText?.trim() || "N/A";
+    const activationName = document.getElementById('rFullName')?.innerText?.trim() || "N/A";
+    
+    const device = document.getElementById('rNumber')?.innerText?.trim() || "N/A";
+    const zip = document.getElementById('rZip')?.innerText?.trim() || "N/A";
+    const address = document.getElementById('rAddress')?.innerText?.trim() || "N/A";
+    const type = document.getElementById('rType')?.innerText?.trim() || "N/A";
+    
     const carrier = document.getElementById('rCarrier')?.innerText?.trim() || "N/A";
-    const plan = document.getElementById('rPlan')?.innerText?.trim() || "N/A";
     const tid = document.getElementById('rID')?.innerText?.trim() || "N/A";
-    const totalAmount = document.getElementById('rTotalPaid')?.innerText?.trim() || "N/A";
+    const total = document.getElementById('rTotalPaid')?.innerText?.trim() || "₦0.00";
 
-    // 2. Fetch Payment Breakdown (Main vs Bonus)
-    const mainPaid = document.getElementById('rMainUsed')?.innerText?.trim() || "₦0.00";
-    const bonusPaid = document.getElementById('rBonusUsed')?.innerText?.trim() || "₦0.00";
-
-    // 3. Construct the WhatsApp Message
     const msg = `🚀 *NEW eSIM ACTIVATION ORDER*
 ----------------------------
-👤 *Customer:* ${customerName}
-📶 *Carrier:* ${carrier}
-📦 *Plan:* ${plan}
-🆔 *REF ID:* ${tid}
+👤 *CUSTOMER IDENTITY:*
+• Account Profile: ${accountProfile} 
+• Name on Form: ${activationName} 
 
-💰 *PAYMENT BREAKDOWN:*
-• Main Wallet: ${mainPaid}
-• Referral Bonus: ${bonusPaid}
-----------------------------
-💵 *TOTAL PAID:* ${totalAmount}
-----------------------------
-✅ *Action:* Please generate and send the QR Code for this activation.`;
+📱 *DEVICE & LOCATION:*
+• Device: ${device}
+• Zipcode: ${zip}
+• Address: ${address}
 
-    // 4. Open WhatsApp
-    // Note: Use the international format without the '+' for wa.me
+📶 *SERVICE INFO:*
+• Type: ${type}
+• Carrier: ${carrier}
+• REF ID: ${tid}
+
+💰 *TOTAL PAID:* ${total}
+----------------------------
+✅ *Action:* Admin, please process activation for ${activationName}.`;
+
     const whatsappUrl = `https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`;
     window.open(whatsappUrl, '_blank');
 }

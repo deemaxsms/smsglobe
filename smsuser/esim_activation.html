@@ -667,7 +667,7 @@ async function purchaseEsimActivateWithWallet() {
     const firstName = document.getElementById('firstName')?.value.trim();
     const lastName = document.getElementById('lastName')?.value.trim();
     const email = document.getElementById('emailAddress')?.value.trim();
-    const address = document.getElementById('physicalAddress')?.value.trim() || "N/A";
+    const address = document.getElementById('fullAddress')?.value.trim() || "N/A";
     const zip = document.getElementById('zipCode')?.value.trim() || "N/A";
     const deviceName = document.getElementById('targetNumber')?.value.trim();
 
@@ -823,7 +823,7 @@ function contactManagement() {
 
 💰 *TOTAL PAID:* ${total}
 ----------------------------
-✅ *Action:* Admin, please process activation for ${activationName}.`;
+✅ *Action:* SmsGlobe, please process activation for ${activationName}.`;
 
     const whatsappUrl = `https://wa.me/2347059450227?text=${encodeURIComponent(msg)}`;
     window.open(whatsappUrl, '_blank');

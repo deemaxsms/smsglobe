@@ -236,6 +236,21 @@
             </div>
         </div>
 
+
+        <div id="processingState" class="hidden p-10 text-center">
+    <div class="relative w-24 h-24 mx-auto mb-6">
+        <div class="absolute inset-0 bg-brand-blue/20 rounded-full animate-ping"></div>
+        <div class="relative w-24 h-24 border-4 border-gray-100 border-t-brand-blue rounded-full animate-spin"></div>
+        <div class="absolute inset-0 flex items-center justify-center">
+            <svg class="w-10 h-10 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+            </svg>
+        </div>
+    </div>
+    <h2 class="text-xl font-black text-brand-darkText mb-2 uppercase tracking-tighter">Securing Connection</h2>
+    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest animate-pulse">Provisioning your VPN Credentials...</p>
+</div>
+
         <div id="successState" class="hidden">
             <div class="bg-brand-blue p-6 text-center">
                 <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -529,59 +544,68 @@ async function buyVPN(vpnId) {
             confirmState.classList.remove('hidden');
             modal.classList.remove('hidden');
 
-            // --- 5. FINAL CONFIRMATION & API CALL ---
-            confirmBtn.onclick = async () => {
-                confirmBtn.disabled = true;
-                if (btnLoader) btnLoader.classList.remove('hidden');
-                if (btnText) btnText.innerText = "Processing...";
-                
-                try {
-                    const purchaseRes = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
-                        method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json', 
-                            'Authorization': `Bearer ${token}` 
-                        },
-                        body: JSON.stringify({ 
-                            vpnId, 
-                            planIndex: parseInt(planIndex),
-                            useBonus: bonusToggle.checked // Sending the current toggle state
-                        })
-                    });
+          // Inside your buyVPN function, update Section 5:
+confirmBtn.onclick = async () => {
+    // 1. Get references to the UI states
+    const processingState = document.getElementById('processingState');
+    const confirmState = document.getElementById('confirmState');
 
-                    const pData = await purchaseRes.json();
-                    
-                    if (pData.success) {
-                        // Success: Pass credentials to details view
-                        const creds = pData.credentials || (pData.order ? {
-                            username: pData.order.username || pData.order.vpnCredentials?.username,
-                            password: pData.order.password || pData.order.vpnCredentials?.password,
-                            pcUsername: pData.order.pcUsername,
-                            pcPassword: pData.order.pcPassword,
-                            activationCode: pData.order.activationCode,
-                            instructions: pData.order.instructions
-                        } : null);
+    // 2. Switch UI to Processing mode
+    confirmState.classList.add('hidden');
+    processingState.classList.remove('hidden');
 
-                        if (typeof userBalance !== 'undefined') userBalance = pData.balance; 
-                        showSuccessDetails(creds, vpnData);
-                    } else {
-                        alert(pData.message || "Purchase failed");
-                        // Don't close modal on insufficient funds so they can toggle bonus if needed
-                        if (pData.message && pData.message.includes("Insufficient")) {
-                           checkAffordability();
-                        } else {
-                           closeModal();
-                        }
-                    }
-                } catch (err) {
-                    alert("Connection Error. Please check your network.");
-                    closeModal();
-                } finally {
-                    confirmBtn.disabled = false;
-                    if (btnLoader) btnLoader.classList.add('hidden');
-                    if (btnText) btnText.innerText = "Confirm & Pay";
-                }
-            };
+    try {
+        // 3. Start BOTH the API call and a 5-second timer
+        const apiPromise = fetch(`${API_BASE_URL}/purchase-with-wallet`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({ 
+                vpnId, 
+                planIndex: parseInt(planIndex),
+                useBonus: bonusToggle.checked 
+            })
+        });
+
+        // Forced delay of 5000ms (5 seconds)
+        const timerPromise = new Promise(resolve => setTimeout(resolve, 5000));
+
+        // 4. Wait for both to complete
+        const [purchaseRes] = await Promise.all([apiPromise, timerPromise]);
+        const pData = await purchaseRes.json();
+        
+        if (pData.success) {
+            // Logic for credentials
+            const creds = pData.credentials || (pData.order ? {
+                username: pData.order.username || pData.order.vpnCredentials?.username,
+                password: pData.order.password || pData.order.vpnCredentials?.password,
+                pcUsername: pData.order.pcUsername,
+                pcPassword: pData.order.pcPassword,
+                activationCode: pData.order.activationCode,
+                instructions: pData.order.instructions
+            } : null);
+
+            if (typeof userBalance !== 'undefined') userBalance = pData.balance; 
+
+            // IMPORTANT: Hide processing state before showing success details
+            processingState.classList.add('hidden');
+            showSuccessDetails(creds, vpnData);
+        } else {
+            // If error, revert back to confirmation state
+            alert(pData.message || "Purchase failed");
+            processingState.classList.add('hidden');
+            confirmState.classList.remove('hidden');
+            checkAffordability();
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Connection Error. Please check your network.");
+        processingState.classList.add('hidden');
+        confirmState.classList.remove('hidden');
+    }
+};
         }
     } catch (err) {
         console.error("Verification Error:", err);

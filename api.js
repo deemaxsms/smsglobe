@@ -1576,7 +1576,8 @@ async function handlePurchaseWithWallet(req, res) {
             type: itemType, // Explicitly pass product type
             amount: `₦${costNGN.toLocaleString()}`,
             planName: productDetails.plan,
-            paymentReference: paymentReference
+            paymentReference: paymentReference,
+            metadata: newOrder.metadata
         }, newOrder).catch(err => console.error("📧 Email Error:", err.message));
 
         return res.json({ 
@@ -1625,11 +1626,12 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
         }
     });
 
-    const isVPN = credentials.type === "VPN";
-    const isRDP = credentials.type === "RDP";
-    const isESIM_Refill = credentials.type === "eSIM";
-    const isESIM_Activation = credentials.type === "eSIM_Activation";
-    const isProxy = credentials.type === "Proxy";
+    const type = credentials.type; 
+    const isVPN = type === "VPN";
+    const isRDP = type === "RDP";
+    const isESIM_Refill = type === "eSIM_Refill";
+    const isESIM_Activation = type === "eSIM_Activation";
+    const isProxy = type === "Proxy";
     
     let subject, headerTitle, subHeader;
 
@@ -1854,12 +1856,17 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
     </body>
     </html>`;
 
-    await transporter.sendMail({
-        from: `"SMSGlobe Support" <${process.env.EMAIL_USER}>`,
-        to: userEmail,
-        subject: `${subject} - SMSGlobe`,
-        html: htmlContent
-    });
+ try {
+        await transporter.sendMail({
+            from: `"SMSGlobe Support" <${process.env.EMAIL_USER}>`,
+            to: userEmail, // THIS sends it to the customer (e.g., filadron17@gmail.com)
+            subject: `${subject} - SMSGlobe`,
+            html: htmlContent
+        });
+        console.log(`✅ Delivery email sent to: ${userEmail}`);
+    } catch (error) {
+        console.error("📧 Nodemailer Error:", error);
+    }
 };
 
 const sendResetPasswordEmail = async (userEmail, resetLink, isAdmin = false) => {

@@ -23,8 +23,8 @@
       "source": "/smsadmin/(.*)",
       "destination": "/smsadmin/$1.html"
     },
-    {
-      "source": "/(.*)",
+   {
+      "source": "/((?!.*\\.(?:css|js|png|jpg|jpeg|gif|svg|ico)$).* )",
       "destination": "/$1"
     }
   ]

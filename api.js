@@ -490,21 +490,33 @@ app.all('/api/:action', async (req, res) => {
         case 'create-esim-order': return handleCreateEsimOrder(req, res);
         case 'esim-refills': return getEsimRefills(req, res);
 
-     case 'update-esim-status':
+  case 'update-esim-status':
+    console.log("--- VERCEL UPLOAD DEBUG ---");
+    console.log("Method:", req.method);
+    console.log("Content-Type:", req.headers['content-type']);
+
     try {
         await new Promise((resolve, reject) => {
+            console.log("Invoking Multer...");
             upload.single('receipt')(req, res, (err) => {
-                if (err) reject(err);
-                else resolve();
+                if (err) {
+                    console.error("MULTER ERROR:", err);
+                    return reject(err);
+                }
+                resolve();
             });
-        });        
+        });
+
+        console.log("Multer finished. File caught:", !!req.file);
+        if (req.file) console.log("Cloudinary URL:", req.file.path);
+        
         return await handleAdminEsimUpdate(req, res);
-    } catch (multerError) {
-        console.error("Vercel Multer Error:", multerError);
+    } catch (error) {
+        console.error("CATCH BLOCK ERROR:", error);
         return res.status(500).json({ 
             success: false, 
-            message: "File upload failed", 
-            error: multerError.message 
+            message: "Upload Failed", 
+            error: error.message 
         });
     }
 
@@ -2665,7 +2677,7 @@ async function handleAdminEsimUpdate(req, res) {
     const OrderModel = mongoose.models.Order || mongoose.model('Order');
     
     // 2. Consistent variable extraction
-    const tid = req.body.tid;
+    const tid = req.body.tid || req.body.paymentReference;
     const confirmationNumber = req.body.confirmationNumber;
     const adminNote = req.body.adminNote || '';
     
@@ -3667,3 +3679,9 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = app;
 
+// This tells Vercel NOT to parse the body, allowing Multer to take over
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};

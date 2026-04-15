@@ -1718,27 +1718,30 @@ if (manualProducts.includes(itemType)) {
     }
 }
 
-
-// Move transporter outside for faster execution
-const adminTransporter = nodemailer.createTransport({
-    service: 'gmail',
-    pool: true,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
-
 const sendAdminNotification = async (orderData) => {
+    // 1. Create Transporter inside the function
+    const adminTransporter = nodemailer.createTransport({
+        service: 'gmail',
+        pool: true,
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        }
+    });
+
     const { type, email, amount, product, reference, target, metadata, orderSpecifics, country } = orderData;
     
-    // Use a smaller base font for mobile optimization
+    // Styles
     const labelStyle = "font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 2px; display: block;";
     const valueStyle = "font-size: 13px; color: #1e293b; font-weight: 600;";
     
     let specificDetailsHtml = '';
 
-    if (type === "RDP") {
+    // Normalize type for comparison
+    const orderType = type ? type.toLowerCase() : "";
+
+    // --- RDP DETAILS ---
+    if (orderType === "rdp") {
         specificDetailsHtml = `
             <div style="background: #f8fafc; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; margin: 12px 0;">
                 <p style="font-size: 12px; margin:0 0 8px 0; color: #0F54C6;"><b>🖥️ RDP CONFIG</b></p>
@@ -1749,18 +1752,43 @@ const sendAdminNotification = async (orderData) => {
                     </tr>
                 </table>
             </div>`;
-    } else if (type === "eSIM_Refill") {
+    } 
+    // --- ESIM REFILL DETAILS ---
+    else if (orderType === "esim_refill") {
         specificDetailsHtml = `
             <div style="background: #f0fdf4; padding: 10px; border: 1px solid #bbf7d0; border-radius: 8px; margin: 12px 0;">
                 <p style="font-size: 12px; margin:0 0 8px 0; color: #166534;"><b>📲 REFILL DETAILS</b></p>
                 <table width="100%" cellspacing="0" cellpadding="2">
                     <tr>
-                        <td width="50%"><span style="${labelStyle}">Target Number</span><span style="${valueStyle}">${target}</span></td>
-                        <td width="50%"><span style="${labelStyle}">Carrier</span><span style="${valueStyle}">${product}</span></td>
+                        <td width="50%"><span style="${labelStyle}">Target Number</span><span style="${valueStyle}">${target || 'N/A'}</span></td>
+                        <td width="50%"><span style="${labelStyle}">Carrier</span><span style="${valueStyle}">${product || 'eSIM'}</span></td>
                     </tr>
                     <tr>
                         <td width="50%" style="padding-top:8px;"><span style="${labelStyle}">Country</span><span style="${valueStyle}">${country || 'N/A'}</span></td>
                         <td width="50%" style="padding-top:8px;"><span style="${labelStyle}">Plan</span><span style="${valueStyle}">${orderData.planName || 'Standard'}</span></td>
+                    </tr>
+                </table>
+            </div>`;
+    }
+    // --- ESIM ACTIVATION DETAILS (NEW) ---
+    else if (orderType === "esim_activation") {
+        specificDetailsHtml = `
+            <div style="background: #fff7ed; padding: 10px; border: 1px solid #ffedd5; border-radius: 8px; margin: 12px 0;">
+                <p style="font-size: 12px; margin:0 0 8px 0; color: #9a3412;"><b>📶 ACTIVATION REQUEST</b></p>
+                <table width="100%" cellspacing="0" cellpadding="2">
+                    <tr>
+                        <td width="50%"><span style="${labelStyle}">Subscriber</span><span style="${valueStyle}">${metadata?.firstName || ''} ${metadata?.lastName || ''}</span></td>
+                        <td width="50%"><span style="${labelStyle}">Device</span><span style="${valueStyle}">${target || 'N/A'}</span></td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="padding-top:8px;">
+                            <span style="${labelStyle}">Address</span>
+                            <span style="${valueStyle}">${metadata?.address || 'N/A'}, ${metadata?.zip || ''}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td width="50%" style="padding-top:8px;"><span style="${labelStyle}">Carrier</span><span style="${valueStyle}">${product || 'N/A'}</span></td>
+                        <td width="50%" style="padding-top:8px;"><span style="${labelStyle}">Type</span><span style="${valueStyle}">${metadata?.activationType || 'Prepaid'}</span></td>
                     </tr>
                 </table>
             </div>`;
@@ -1811,9 +1839,10 @@ const sendAdminNotification = async (orderData) => {
         await adminTransporter.sendMail({
             from: `"SMSGlobe Alert" <${process.env.EMAIL_USER}>`,
             to: process.env.ADMIN_EMAIL,
-            subject: `🚨 ${type}: ${amount} from ${email}`,
+            subject: `🚨 ${type.toUpperCase()}: ${amount} from ${email}`,
             html: htmlContent
         });
+        console.log(`Admin alert sent for ${type}`);
     } catch (error) {
         console.error("Admin Mail Error:", error.message);
     }
@@ -1969,10 +1998,19 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
             </td>
         </tr>`;
    } 
-  if (isESIM_Activation) {
-    const isFinal = !!(credentials.activationCode || credentials.confirmationNumber);
+ if (isESIM_Activation) {
+    // 1. Correctly identify if the order is finished (Check top level and metadata)
+    const confNo = credentials.confirmationNumber || credentials.activationCode;
+    const isFinal = !!confNo;
+    
+    // 2. Extract metadata safely
     const meta = credentials.metadata || {};
     
+    // 3. Extract names (In your log, it's inside metadata)
+    const fName = meta.firstName || credentials.firstName || "";
+    const lName = meta.lastName || credentials.lastName || "";
+    const subscriberName = `${fName} ${lName}`.trim() || "Customer";
+
     dataTableHtml = `
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
@@ -1992,7 +2030,7 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
-                <strong style="font-size: 13px; color: #101828;">${credentials.amount}</strong>
+                <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount).toLocaleString()}</strong>
             </td>
         </tr>
 
@@ -2000,10 +2038,10 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
             <td colspan="2" style="border-top: 1px solid #f2f4f7; padding-top: 15px; padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Subscriber Details</span><br>
                 <div style="font-size: 12px; color: #344054; line-height: 1.6; background: #f9fafb; padding: 10px; border-radius: 6px; margin-top: 5px;">
-                    <strong>Name:</strong> ${credentials.firstName || ''} ${credentials.lastName || ''}<br>
-                    <strong>Email:</strong> ${credentials.email || 'N/A'}<br>
-                    <strong>Address:</strong> ${credentials.address || 'N/A'}<br>
-                    <strong>ZIP Code:</strong> ${credentials.zip || 'N/A'} | <strong>Type:</strong> ${credentials.activationType || 'Prepaid'}
+                    <strong>Name:</strong> ${subscriberName}<br>
+                    <strong>Email:</strong> ${meta.activationEmail || credentials.userEmail || 'N/A'}<br>
+                    <strong>Address:</strong> ${meta.address || 'N/A'}<br>
+                    <strong>ZIP Code:</strong> ${meta.zip || 'N/A'} | <strong>Type:</strong> ${meta.activationType || 'Prepaid'}
                 </div>
             </td>
         </tr>
@@ -2013,7 +2051,7 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
                 ${isFinal ? `
                 <div style="background: #ECFDF3; border: 1px solid #ABEFC6; padding: 15px; border-radius: 8px;">
                     <span style="font-size: 9px; color: #067647; text-transform: uppercase; font-weight: bold;">eSIM Activation Code / ID</span><br>
-                    <strong style="font-size: 18px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${credentials.activationCode || credentials.confirmationNumber}</strong>
+                    <strong style="font-size: 20px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${confNo}</strong>
                 </div>` : `
                 <div style="background: #FFF9F2; border: 1px solid #FFE4C4; padding: 15px; border-radius: 8px;">
                     <span style="font-size: 10px; color: #B45309; text-transform: uppercase; font-weight: bold;">Status: Provisioning eSIM</span><br>
@@ -2023,18 +2061,27 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
         </tr>`;
 }
 else if (isESIM_Refill) {
-    const isFinal = !!credentials.confirmationNumber;
+    // 1. Identify if finalized (Check for the confirmation number from your log)
+    const confNo = credentials.confirmationNumber;
+    const isFinal = !!confNo;
     
-    // 1. Extract and Clean Variables
-    const displayAmount = credentials.amount || credentials.totalPaid || 0;
-    const displayCountry = credentials.country || credentials.coverage || 'International';
-    const displayPayment = credentials.paymentMethod || credentials.gateway || 'Wallet/Flutterwave';
+    // 2. Extract and Clean Variables based on your specific Data Object
+    const displayAmount = credentials.amount || 0;
+    const displayCountry = credentials.country || (credentials.target && credentials.target.country) || 'United States';
+    
+    // Determine payment method label based on balance used
+    let displayPayment = "Flutterwave / Card";
+    if (credentials.mainBalanceUsed > 0) {
+        displayPayment = "Wallet Balance";
+    } else if (credentials.bonusBalanceUsed > 0) {
+        displayPayment = "Referral Bonus";
+    }
 
     dataTableHtml = `
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
-                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || 'Global eSIM'}</strong>
+                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || 'eSIM Carrier'}</strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Target Number</span><br>
@@ -2063,11 +2110,11 @@ else if (isESIM_Refill) {
         <tr>
             <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px; text-align: center;">
                 ${isFinal ? `
-                <div style="background: #ECFDF3; border: 1px solid #ABEFC6; padding: 12px; border-radius: 8px;">
+                <div style="background: #ECFDF3; border: 1px solid #ABEFC6; padding: 15px; border-radius: 8px;">
                     <span style="font-size: 9px; color: #067647; text-transform: uppercase; font-weight: bold;">Refill Confirmation Number</span><br>
-                    <strong style="font-size: 18px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${credentials.confirmationNumber}</strong>
+                    <strong style="font-size: 20px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${confNo}</strong>
                 </div>` : `
-                <div style="background: #FFF9F2; border: 1px solid #FFE4C4; padding: 12px; border-radius: 8px;">
+                <div style="background: #FFF9F2; border: 1px solid #FFE4C4; padding: 15px; border-radius: 8px;">
                     <span style="font-size: 10px; color: #B45309; text-transform: uppercase; font-weight: bold;">Status: Processing Request</span><br>
                     <p style="font-size: 11px; color: #667085; margin: 5px 0 0 0;">Your refill is being processed by our team. You'll receive another email once it's completed.</p>
                 </div>`}

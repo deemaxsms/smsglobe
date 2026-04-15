@@ -9,14 +9,30 @@ const { OAuth2Client } = require('google-auth-library');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
 const crypto = require('crypto');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
-const upload = multer({ dest: 'temp/' });
 
 dotenv.config();
 const app = express();
 
-// Initialize Google OAuth Client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_NAME,
+    api_key: process.env.CLOUDINARY_KEY,
+    api_secret: process.env.CLOUDINARY_SECRET
+});
+
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'smsglobe_receipts', // Name of the folder in Cloudinary
+        allowed_formats: ['jpg', 'png', 'pdf'],
+    },
+});
+
+const upload = multer({ storage: storage });
 
 app.use(cors());
 app.use(express.json());
@@ -2620,28 +2636,23 @@ async function getEsimRefills(req, res) {
 }
 
 async function handleAdminEsimUpdate(req, res) {
-    // 1. Extract TID from Query or Body
+    // 1. Extract TID
     const tid = req.query.tid || req.body.tid;
     const { confirmationNumber, adminNote } = req.body;
     
-    // 2. Extract file path (Works with Multer or Cloudinary middleware)
-    // For Render/Netlify, ensure you use a storage provider like Cloudinary
+    // 2. Extract file path (Multer + Cloudinary)
     let receiptPath = null;
     if (req.file) {
-        // If using Cloudinary: req.file.path
-        // If using local storage: req.file.filename or req.file.path
-        receiptPath = req.file.path || req.file.location || req.file.url; 
+        // req.file.path is provided by cloudinary-multer
+        receiptPath = req.file.path; 
     }
 
     if (!tid) {
-        return res.status(400).json({ 
-            success: false, 
-            message: "Transaction ID (TID) is required" 
-        });
+        return res.status(400).json({ success: false, message: "TID is required" });
     }
 
     try {
-        // 3. Construct Update Object
+        // 3. Prepare Update
         const updateData = {
             status: 'completed',
             confirmationNumber: confirmationNumber,
@@ -2649,56 +2660,46 @@ async function handleAdminEsimUpdate(req, res) {
             updatedAt: new Date()
         };
 
-        // Only append receiptUrl if a file was actually uploaded
         if (receiptPath) {
             updateData.receiptUrl = receiptPath;
         }
 
-        // 4. Update Database
-        // We use the EsimRefill model (as defined in your schema)
-        const updatedOrder = await EsimRefill.findOneAndUpdate(
+        // 4. Update Database (Using 'Order' model to match your creation logic)
+        const updatedOrder = await Order.findOneAndUpdate(
             { paymentReference: tid }, 
             { $set: updateData },
-            { new: true } // returns the updated document
+            { new: true } 
         );
 
         if (!updatedOrder) {
-            return res.status(404).json({ 
-                success: false, 
-                message: "eSIM Refill record not found." 
-            });
+            return res.status(404).json({ success: false, message: "Order not found." });
         }
 
         // 5. Send Delivery Email
         try {
             await sendDeliveryEmail(updatedOrder.userEmail, {
                 productType: "eSIM_Refill",
-                nodeName: updatedOrder.carrier?.name || updatedOrder.nodeName || "eSIM Carrier",
-                targetNumber: updatedOrder.target?.number || updatedOrder.targetNumber || 'N/A',
-                country: updatedOrder.target?.country || updatedOrder.country || 'N/A',
+                nodeName: updatedOrder.nodeName || "eSIM Carrier",
+                targetNumber: updatedOrder.targetNumber || 'N/A',
+                country: updatedOrder.country || 'N/A',
                 amount: updatedOrder.amount, 
                 confirmationNumber: confirmationNumber,
-                receiptUrl: updatedOrder.receiptUrl || null, // Ensure your email template handles this link
-                instructions: "Your eSIM refill is now active. You can view or download your receipt via the link below."
+                receiptUrl: updatedOrder.receiptUrl || null,
+                instructions: "Your eSIM refill is now active. See attached receipt."
             });
         } catch (emailErr) {
-            console.error("Email notification failed:", emailErr.message);
-            // We don't return error here because the DB update was successful
+            console.error("Email failed:", emailErr.message);
         }
 
-        // 6. Final Response
         return res.json({ 
             success: true, 
-            message: "Order completed and receipt attached successfully.",
+            message: "Order completed successfully.",
             data: updatedOrder 
         });
 
     } catch (error) {
-        console.error("CRITICAL ADMIN UPDATE ERROR:", error);
-        return res.status(500).json({ 
-            success: false, 
-            message: "Internal server error during order update" 
-        });
+        console.error("ADMIN UPDATE ERROR:", error);
+        return res.status(500).json({ success: false, message: "Server error during update" });
     }
 }
 

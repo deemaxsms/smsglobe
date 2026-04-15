@@ -276,55 +276,56 @@
         document.getElementById(id).classList.add('hidden');
     }
 
-    function viewOrderDetails(order) {
-        const container = document.getElementById('detailContent');
-        const date = new Date(order.createdAt).toLocaleString();
-        
-        container.innerHTML = `
-            <div class="grid grid-cols-2 gap-4">
-                <div class="col-span-2 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                    <p class="text-[10px] text-blue-600 font-bold uppercase">Transaction ID</p>
-                    <p class="font-mono font-bold text-brand-darkText break-all">${order.paymentReference}</p>
-                </div>
-                <div>
-                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Customer</p>
-                    <p class="font-medium">${order.userEmail}</p>
-                </div>
-                <div>
-                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Date</p>
-                    <p class="font-medium">${date}</p>
-                </div>
-                <div>
-                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Carrier / Node</p>
-                    <p class="text-brand-orange font-bold">${order.nodeName || order.carrier || 'N/A'}</p>
-                </div>
-                <div>
-                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Target eSIM/Number</p>
-                    <p class="font-mono font-bold text-brand-blue">${order.targetNumber || order.esimIdentifier || 'N/A'}</p>
-                </div>
-                <div class="col-span-2 border-t pt-3">
-                    <p class="text-[10px] text-brand-lightText font-bold uppercase mb-2">Refill Summary</p>
-                    <div class="bg-gray-50 p-3 rounded-xl border border-dashed border-brand-border">
-                        <div class="flex justify-between mb-1">
-                            <span>Amount Paid:</span>
-                            <span class="font-bold">₦${(order.amount || order.amountNGN || 0).toLocaleString()}</span>
-                        </div>
-                        <div class="flex justify-between text-[11px] text-brand-lightText">
-                            <span>Order Status:</span>
-                            <span class="uppercase font-bold">${order.status}</span>
-                        </div>
+   function viewOrderDetails(order) {
+    const container = document.getElementById('detailContent');
+    const date = new Date(order.createdAt).toLocaleString();
+    
+    container.innerHTML = `
+        <div class="grid grid-cols-2 gap-4">
+            <div class="col-span-2 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                <p class="text-[10px] text-blue-600 font-bold uppercase">Transaction ID</p>
+                <p class="font-mono font-bold text-brand-darkText break-all">${order.paymentReference}</p>
+            </div>
+            <div>
+                <p class="text-[10px] text-brand-lightText font-bold uppercase">Customer</p>
+                <p class="font-medium">${order.userEmail}</p>
+            </div>
+            <div>
+                <p class="text-[10px] text-brand-lightText font-bold uppercase">Date</p>
+                <p class="font-medium">${date}</p>
+            </div>
+
+            ${order.receiptUrl ? `
+            <div class="col-span-2">
+                <a href="${order.receiptUrl}" target="_blank" 
+                   class="flex items-center justify-center gap-2 w-full py-2 bg-gray-800 text-white rounded-lg text-[11px] font-bold hover:bg-black transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Download / View Uploaded Receipt
+                </a>
+            </div>` : ''}
+
+            <div class="col-span-2 border-t pt-3">
+                <p class="text-[10px] text-brand-lightText font-bold uppercase mb-2">Refill Summary</p>
+                <div class="bg-gray-50 p-3 rounded-xl border border-dashed border-brand-border">
+                    <div class="flex justify-between mb-1">
+                        <span>Amount Paid:</span>
+                        <span class="font-bold">₦${(order.amount || order.amountNGN || 0).toLocaleString()}</span>
+                    </div>
+                    <div class="flex justify-between text-[11px] text-brand-lightText">
+                        <span>Order Status:</span>
+                        <span class="uppercase font-bold">${order.status}</span>
                     </div>
                 </div>
-                ${order.confirmationNumber ? `
-                <div class="col-span-2 bg-green-50 p-3 rounded-lg border border-green-200">
-                    <p class="text-[10px] text-green-600 font-bold uppercase">Applied Code / Reference</p>
-                    <p class="font-mono font-bold text-green-700">${order.confirmationNumber}</p>
-                </div>` : ''}
             </div>
-        `;
-        document.getElementById('detailModal').classList.remove('hidden');
-    }
-
+            ${order.confirmationNumber ? `
+            <div class="col-span-2 bg-green-50 p-3 rounded-lg border border-green-200">
+                <p class="text-[10px] text-green-600 font-bold uppercase">Applied Code / Reference</p>
+                <p class="font-mono font-bold text-green-700">${order.confirmationNumber}</p>
+            </div>` : ''}
+        </div>
+    `;
+    document.getElementById('detailModal').classList.remove('hidden');
+}
     
     function updateFileName(input) {
     const display = document.getElementById('fileNameDisplay');

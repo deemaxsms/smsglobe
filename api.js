@@ -1949,9 +1949,9 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
     
     let dataTableHtml = '';
 if (isRDP) {
-    // 1. Extract values (Checking root, then metadata)
+    // 1. Extract Hardware Values (Root Level priority)
     const ramValue = credentials.ram || credentials.metadata?.ram || "4GB";
-    const osValue = credentials.os || credentials.osChoice || 'Windows Server';
+    const osValue = credentials.os || credentials.osChoice || credentials.metadata?.osChoice || 'Windows Server';
     const netValue = credentials.net || credentials.metadata?.net || '1Gbps';
     
     // 2. Extra Calculations
@@ -1963,45 +1963,84 @@ if (isRDP) {
     const baseStorage = credentials.storage || credentials.metadata?.storage || "60GB SSD";
 
     // 4. Final Display Strings
-    const displayCpu = extraCPU > 0 ? `${baseCPU} (+${extraCPU} Extra)` : baseCPU;
-    const displayStorage = extraStorage > 0 ? `${baseStorage} (+${extraStorage}GB Extra)` : baseStorage;
+    const displayCpu = extraCPU > 0 ? `${baseCPU} (+${extraCPU} vCPU)` : baseCPU;
+    const displayStorage = extraStorage > 0 ? `${baseStorage} (+${extraStorage}GB)` : baseStorage;
 
+    // 5. Build the HTML
     dataTableHtml = `
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Confirmation Number</span><br>
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Confirmation ID</span><br>
                 <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6;">
-                    ${credentials.confirmationNumber || 'Check Dashboard'}
+                    ${credentials.confirmationNumber || 'N/A'}
                 </strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Operating System</span><br>
-                <strong style="font-size: 13px; color: #101828;">
-                    ${osValue}
-                </strong>
+                <strong style="font-size: 13px; color: #101828;">${osValue}</strong>
             </td>
         </tr>
+
         <tr>
-            <td class="mobile-full" width="33%" valign="top" style="padding-bottom: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">RAM</span><br>
-                <strong style="font-size: 12px; color: #101828;">${ramValue}</strong>
-            </td>
-            <td class="mobile-full" width="33%" valign="top" style="text-align: center; padding-bottom: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">CPU</span><br>
-                <strong style="font-size: 12px; color: #101828;">${displayCpu}</strong>
-            </td>
-            <td class="mobile-full" width="33%" valign="top" style="text-align: right; padding-bottom: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Storage</span><br>
-                <strong style="font-size: 12px; color: #101828;">${displayStorage}</strong>
+            <td colspan="2" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 20px;">
+                <div style="margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">
+                    <span style="font-size: 10px; color: #0F54C6; text-transform: uppercase; font-weight: bold;">Login Credentials</span>
+                </div>
+                <table width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td width="50%" style="padding-bottom: 8px;">
+                            <span style="font-size: 9px; color: #667085; text-transform: uppercase;">IP Address:</span><br>
+                            <strong style="font-size: 12px; font-family: monospace;">${credentials.ipAddress || 'Check Dashboard'}</strong>
+                        </td>
+                        <td width="50%" style="padding-bottom: 8px;">
+                            <span style="font-size: 9px; color: #667085; text-transform: uppercase;">Port:</span><br>
+                            <strong style="font-size: 12px; font-family: monospace;">${credentials.port || '3389'}</strong>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span style="font-size: 9px; color: #667085; text-transform: uppercase;">Username:</span><br>
+                            <strong style="font-size: 12px; font-family: monospace;">${credentials.rdpUsername || 'Administrator'}</strong>
+                        </td>
+                        <td>
+                            <span style="font-size: 9px; color: #667085; text-transform: uppercase;">Password:</span><br>
+                            <strong style="font-size: 12px; font-family: monospace; color: #d946ef;">${credentials.rdpPassword || '********'}</strong>
+                        </td>
+                    </tr>
+                </table>
             </td>
         </tr>
+
         <tr>
-            <td colspan="3" style="border-top: 1px dashed #e2e8f0; padding-top: 10px;">
+            <td colspan="2" style="padding-top: 15px;">
+                <table width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td width="33%" valign="top">
+                            <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">RAM</span><br>
+                            <strong style="font-size: 12px; color: #101828;">${ramValue}</strong>
+                        </td>
+                        <td width="33%" valign="top" style="text-align: center;">
+                            <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">CPU</span><br>
+                            <strong style="font-size: 12px; color: #101828;">${displayCpu}</strong>
+                        </td>
+                        <td width="33%" valign="top" style="text-align: right;">
+                            <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Storage</span><br>
+                            <strong style="font-size: 12px; color: #101828;">${displayStorage}</strong>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+
+        <tr>
+            <td colspan="2" style="border-top: 1px dashed #e2e8f0; padding-top: 10px; margin-top: 10px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Network Speed</span><br>
                 <strong style="font-size: 12px; color: #101828;">${netValue}</strong>
             </td>
-        </tr>`;
+        </tr>
+    `;
 }
+
 else if (isVPN) {
         const vpnCreds = credentials.vpnCredentials || {};    
         const displayUser = vpnCreds.username || credentials.username;
@@ -2802,18 +2841,31 @@ async function handleAddRDP(req, res) {
 }
 
 async function handleCompleteRDPOrder(req, res) {
-    const { tid, status, confirmationNumber } = req.body;
+    const { 
+        tid, 
+        status, 
+        confirmationNumber, 
+        ipAddress, 
+        port, 
+        rdpUsername, 
+        rdpPassword 
+    } = req.body;
 
     try {
         // 1. Update the order in MongoDB
+        // We include ipAddress, port, etc., in case you want to store them as individual fields
         const order = await Order.findOneAndUpdate(
             { paymentReference: tid },
             { 
                 status: status || 'completed',
-                confirmationNumber: confirmationNumber, // Stores IP/Login Details
+                confirmationNumber: confirmationNumber, // General notes/logs
+                ipAddress: ipAddress,
+                port: port || '3389',
+                rdpUsername: rdpUsername,
+                rdpPassword: rdpPassword,
                 deliveredAt: new Date()
             },
-            { new: true } // 'new: true' is the standard for returning the updated doc
+            { new: true } 
         );
 
         if (!order) {
@@ -2821,37 +2873,44 @@ async function handleCompleteRDPOrder(req, res) {
         }
 
         // 2. Trigger the Email Notification
-     try {
-    await sendDeliveryEmail(order.userEmail, { 
-        productType: 'RDP', 
-        confirmationNumber: confirmationNumber,         
-        os: order.os || order.metadata?.osChoice || 'Windows Server',
-        ram: order.ram || order.metadata?.ram || 'Standard',
-        cpu: order.cpu || order.metadata?.cpu || 'Standard',
-        storage: order.storage || order.metadata?.storage || 'Standard',        
-        net: order.net || order.metadata?.net || '1Gbps',
-        extraCPU: order.extraCPU || order.metadata?.extraCPU || 0,
-        extraStorage: order.extraStorage || order.metadata?.extraStorage || 0,
-        
-        planName: order.planName || "RDP Service",
-        amount: order.amount,
-        instructions: order.instructions || "Your RDP server is now active. Use the credentials below to connect via Remote Desktop Connection."
-    });
-} catch (mailError) {
-    console.error("Email failed to send, but order was updated:", mailError);
-}
+        try {
+            await sendDeliveryEmail(order.userEmail, { 
+                productType: 'RDP', 
+                fullName: order.fullName, // Added for personalized email greeting
+                confirmationNumber: confirmationNumber,         
+                os: order.os || 'Windows Server',
+                ram: order.ram || 'N/A',
+                cpu: order.cpu || 'N/A',
+                storage: order.storage || 'N/A',        
+                net: order.net || '1Gbps',
+                extraCPU: order.extraCPU || 0,
+                extraStorage: order.extraStorage || 0,
+                // Connection details for the email template
+                ipAddress: ipAddress || order.ipAddress,
+                port: port || order.port || '3389',
+                rdpUsername: rdpUsername || order.rdpUsername,
+                rdpPassword: rdpPassword || order.rdpPassword,
 
-        res.json({ 
+                planName: order.planName || "RDP Service",
+                amount: order.amount,
+                instructions: order.instructions || "Your RDP server is now active. Use the credentials below to connect via Remote Desktop Connection."
+            });
+        } catch (mailError) {
+            console.error("Email failed to send, but order was updated:", mailError);
+        }
+
+        return res.status(200).json({ 
             success: true, 
-            message: "RDP marked as delivered and email sent.", 
+            message: "RDP Provisioned successfully", 
             order 
         });
 
     } catch (error) {
-        console.error("RDP Completion Error:", error);
-        res.status(500).json({ success: false, message: "Server error during RDP completion" });
+        console.error("Fulfillment Error:", error);
+        return res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 }
+
 
 // DELETE: Remove an RDP plan
 async function handleDeleteRDP(req, res) {

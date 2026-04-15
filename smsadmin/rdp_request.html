@@ -236,7 +236,7 @@ function viewOrderDetails(ref) {
     const order = allOrders.find(o => o.paymentReference === ref);
     if (!order) return;
 
-    // Use metadata as the primary source for hardware specs
+    // Standardize status and extract metadata
     const meta = order.metadata || {};
     const status = order.status.toLowerCase();
     const modal = document.getElementById('viewModal');
@@ -251,79 +251,75 @@ function viewOrderDetails(ref) {
     let actionHTML = '';
 
     // Administrative Log Form Logic
-    if (['successful', 'processing', 'pending'].includes(status)) {
-        actionHTML = `
-            <div class="mt-6 p-5 bg-blue-50 rounded-2xl border border-blue-100 text-left">
-                <div class="flex items-center gap-2 mb-4">
-                    <div class="w-1.5 h-4 bg-brand-blue rounded-full"></div>
-                    <h4 class="text-[11px] font-bold text-brand-blue uppercase tracking-wider">RDP Access Logs (Fulfillment)</h4>
-                </div>
-                
-                <div class="grid grid-cols-2 gap-3 mb-4">
-                    <div>
-                        <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Primary IP Address</label>
-                        <input type="text" id="log-ip-${order.paymentReference}" placeholder="0.0.0.0" 
-                               class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
+    if (['successful', 'processing', 'pending', 'completed'].includes(status)) {
+        // Show fulfillment form if status is not 'completed' or show details if it is
+        if (status !== 'completed') {
+            actionHTML = `
+                <div class="mt-6 p-5 bg-blue-50 rounded-2xl border border-blue-100 text-left">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-1.5 h-4 bg-brand-blue rounded-full"></div>
+                        <h4 class="text-[11px] font-bold text-brand-blue uppercase tracking-wider">RDP Access Logs (Fulfillment)</h4>
                     </div>
-                    <div>
-                        <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Access Port</label>
-                        <input type="text" id="log-port-${order.paymentReference}" placeholder="3389" 
-                               class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
+                    
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Primary IP Address</label>
+                            <input type="text" id="log-ip-${order.paymentReference}" placeholder="0.0.0.0" 
+                                   class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
+                        </div>
+                        <div>
+                            <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Access Port</label>
+                            <input type="text" id="log-port-${order.paymentReference}" placeholder="3389" 
+                                   class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
+                        </div>
                     </div>
-                </div>
 
-                <div class="grid grid-cols-2 gap-3 mb-4">
-                    <div>
-                        <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Login Username</label>
-                        <input type="text" id="log-user-${order.paymentReference}" placeholder="Administrator" 
-                               class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Login Username</label>
+                            <input type="text" id="log-user-${order.paymentReference}" placeholder="Administrator" 
+                                   class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
+                        </div>
+                        <div>
+                            <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Login Password</label>
+                            <input type="text" id="log-pass-${order.paymentReference}" placeholder="********" 
+                                   class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
+                        </div>
                     </div>
-                    <div>
-                        <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Login Password</label>
-                        <input type="text" id="log-pass-${order.paymentReference}" placeholder="********" 
-                               class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
+
+                    <button onclick="processRDPDeployment('${order.paymentReference}', event)" 
+                            class="bg-brand-blue text-white w-full py-3.5 rounded-xl text-xs font-bold hover:bg-blue-700 transition-all shadow-lg">
+                        Deploy RDP & Mark Completed
+                    </button>
+                </div>`;
+        } else {
+            actionHTML = `
+                <div class="mt-6 p-5 bg-green-50 rounded-2xl border border-green-100 text-left">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-1.5 h-4 bg-green-500 rounded-full"></div>
+                        <h4 class="text-[11px] font-bold text-green-700 uppercase tracking-wider">Active Credentials</h4>
                     </div>
-                </div>
-
-                <div class="mb-4">
-                    <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Additional Notes</label>
-                    <textarea id="log-conf-${order.paymentReference}" 
-                              placeholder="Any extra info for the customer..." 
-                              class="w-full border border-brand-border rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white h-20 font-mono"></textarea>
-                </div>
-
-                <button onclick="processRDPDeployment('${order.paymentReference}', event)" 
-                        class="bg-brand-blue text-white w-full py-3.5 rounded-xl text-xs font-bold hover:bg-blue-700 transition-all shadow-lg">
-                    Deploy RDP & Mark Completed
-                </button>
-            </div>`;
-    } else {
-        actionHTML = `
-            <div class="mt-6 p-5 bg-green-50 rounded-2xl border border-green-100 text-left">
-                <div class="flex items-center gap-2 mb-4">
-                    <div class="w-1.5 h-4 bg-green-500 rounded-full"></div>
-                    <h4 class="text-[11px] font-bold text-green-700 uppercase tracking-wider">Active Credentials</h4>
-                </div>
-                <div class="grid grid-cols-2 gap-4 bg-white p-4 rounded-xl border border-green-100 shadow-sm mb-4">
-                    <div><p class="text-[9px] text-gray-400 uppercase font-bold">IP Address</p><p class="text-xs font-mono font-bold">${order.ipAddress || 'N/A'}</p></div>
-                    <div><p class="text-[9px] text-gray-400 uppercase font-bold">Port</p><p class="text-xs font-mono font-bold">${order.port || '3389'}</p></div>
-                    <div><p class="text-[9px] text-gray-400 uppercase font-bold">Username</p><p class="text-xs font-mono font-bold">${order.rdpUsername || 'Admin'}</p></div>
-                    <div><p class="text-[9px] text-gray-400 uppercase font-bold">Password</p><p class="text-xs font-mono font-bold">${order.rdpPassword || '********'}</p></div>
-                </div>
-                <div class="bg-white p-3 rounded-xl border border-green-100">
-                    <p class="text-[9px] text-gray-400 uppercase font-bold mb-1">Confirmation Note</p>
-                    <p class="text-[11px] font-mono text-brand-darkText break-all">${order.confirmationNumber || 'No notes.'}</p>
-                </div>
-            </div>`;
+                    <div class="grid grid-cols-2 gap-4 bg-white p-4 rounded-xl border border-green-100 shadow-sm mb-4">
+                        <div><p class="text-[9px] text-gray-400 uppercase font-bold">IP Address</p><p class="text-xs font-mono font-bold">${order.ipAddress || 'N/A'}</p></div>
+                        <div><p class="text-[9px] text-gray-400 uppercase font-bold">Port</p><p class="text-xs font-mono font-bold">${order.port || '3389'}</p></div>
+                        <div><p class="text-[9px] text-gray-400 uppercase font-bold">Username</p><p class="text-xs font-mono font-bold">${order.rdpUsername || 'Admin'}</p></div>
+                        <div><p class="text-[9px] text-gray-400 uppercase font-bold">Password</p><p class="text-xs font-mono font-bold">${order.rdpPassword || '********'}</p></div>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl border border-green-100">
+                        <p class="text-[9px] text-gray-400 uppercase font-bold mb-1">Confirmation Note</p>
+                        <p class="text-[11px] font-mono text-brand-darkText break-all">${order.confirmationNumber || 'No notes.'}</p>
+                    </div>
+                </div>`;
+        }
     }
 
     document.getElementById('modalContent').innerHTML = `
         <div class="mb-6 bg-brand-blue/5 p-4 rounded-2xl border border-brand-blue/10 flex items-center gap-4">
              <div class="h-12 w-12 rounded-full bg-brand-blue text-white flex items-center justify-center font-bold text-lg">
-                ${(order.fullName || "C").charAt(0)}
+                ${(order.fullName || "U").charAt(0)}
              </div>
              <div class="text-left">
-                <h3 class="text-sm font-bold text-brand-darkText">${order.fullName || 'Customer'}</h3>
+                <h3 class="text-sm font-bold text-brand-darkText">${order.fullName || 'User'}</h3>
                 <p class="text-[11px] text-brand-lightText">${order.userEmail}</p>
              </div>
         </div>
@@ -332,7 +328,7 @@ function viewOrderDetails(ref) {
             <div class="bg-gray-50 p-4 rounded-2xl border border-brand-border">
                 <h4 class="text-[9px] font-bold text-brand-lightText uppercase mb-2">Configuration</h4>
                 <p class="text-xs font-bold">${order.planName}</p>
-                <p class="text-[11px] text-brand-orange font-bold">${meta.osChoice || order.os || 'Windows Server'}</p>
+                <p class="text-[11px] text-brand-orange font-bold">${order.os || 'Windows Server'}</p>
                 <div class="mt-3 pt-3 border-t border-gray-200 flex justify-between">
                     <span class="text-[10px] text-brand-lightText">Region</span>
                     <span class="text-[10px] font-bold uppercase">${order.nodeName}</span>
@@ -342,18 +338,18 @@ function viewOrderDetails(ref) {
             <div class="bg-gray-50 p-4 rounded-2xl border border-brand-border">
                 <h4 class="text-[9px] font-bold text-brand-lightText uppercase mb-2">Hardware Specs</h4>
                 <div class="space-y-1 text-[11px]">
-                    <div class="flex justify-between"><span>RAM:</span> <span class="font-bold">${meta.ram || order.ram || 'N/A'}</span></div>
-                    <div class="flex justify-between"><span>Base CPU:</span> <span class="font-bold text-brand-blue">${meta.cpu || order.cpu || 'N/A'}</span></div>
-                    <div class="flex justify-between"><span>Base Disk:</span> <span class="font-bold">${meta.storage || order.storage || 'N/A'}</span></div>
+                    <div class="flex justify-between"><span>RAM:</span> <span class="font-bold">${order.ram}</span></div>
+                    <div class="flex justify-between"><span>Base CPU:</span> <span class="font-bold text-brand-blue">${order.cpu}</span></div>
+                    <div class="flex justify-between"><span>Base Disk:</span> <span class="font-bold">${order.storage}</span></div>
                 </div>
                 <div class="mt-2 pt-2 border-t border-dashed border-gray-300">
                     <div class="flex justify-between items-center text-[10px] text-brand-orange font-bold">
                         <span>Extra Cores:</span> 
-                        <span class="bg-orange-100 px-1.5 py-0.5 rounded">+${meta.extraCPU || order.extraCPU || 0} vCPU</span>
+                        <span class="bg-orange-100 px-1.5 py-0.5 rounded">+${order.extraCPU || 0} vCPU</span>
                     </div>
                     <div class="flex justify-between items-center text-[10px] text-brand-orange font-bold mt-1">
                         <span>Extra Disk:</span> 
-                        <span class="bg-orange-100 px-1.5 py-0.5 rounded">+${meta.extraStorage || order.extraStorage || 0} GB</span>
+                        <span class="bg-orange-100 px-1.5 py-0.5 rounded">+${order.extraStorage || 0} GB</span>
                     </div>
                 </div>
             </div>

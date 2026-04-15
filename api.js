@@ -2471,8 +2471,6 @@ async function handleAdminEsimActivationUpdate(req, res) {
     }
 
     try {
-        // 1. Update the General Order record
-        // We ensure we match the specific productType to avoid accidental updates
         const updatedOrder = await Order.findOneAndUpdate(
             { paymentReference: tid, productType: 'eSIM_Activation' }, 
             { 
@@ -2488,8 +2486,6 @@ async function handleAdminEsimActivationUpdate(req, res) {
         if (!updatedOrder) {
             return res.status(404).json({ success: false, message: "Activation record not found in Orders" });
         }
-
-        // 2. Sync the update to the specialized EsimActivation collection
         await EsimActivation.findOneAndUpdate(
             { paymentReference: tid },
             { 
@@ -2501,31 +2497,19 @@ async function handleAdminEsimActivationUpdate(req, res) {
             }
         );
 
-        const isFinished = status.toLowerCase() === 'completed' || status.toLowerCase() === 'successful';
-        
-        // 3. Trigger Email for successful activations with Address and Zip included
-       // 3. Trigger Email for successful activations with CORRECT mapping
+        const isFinished = status.toLowerCase() === 'completed' || status.toLowerCase() === 'successful';        
         if (isFinished) {
             try {
-                // We create the 'credentials' object using the EXACT keys 
-                // that your sendDeliveryEmail function expects.
                 await sendDeliveryEmail(updatedOrder.userEmail, {
-                    type: "eSIM_Activation", // Must match your template check
-                    
-                    // Display Fields
+                    type: "eSIM_Activation", // Must match your template check                    
                     nodeName: updatedOrder.nodeName || "Global eSIM",
                     planName: updatedOrder.planName,
-                    amount: `${updatedOrder.currency} ${updatedOrder.amount}`, // Show real price
-                    
-                    // Metadata Fields (Must match credentials.address, credentials.zip)
+                    amount: `${updatedOrder.currency} ${updatedOrder.amount}`, // Show real price                    
                     address: updatedOrder.metadata?.address || "Digital Delivery",
                     zip: updatedOrder.metadata?.zip || "N/A",
                     mobileNumber: updatedOrder.targetNumber || "eSIM Device", // Device Model
-                    email: updatedOrder.metadata?.email || updatedOrder.userEmail,
-                    
-                    // Activation Data
+                    email: updatedOrder.metadata?.email || updatedOrder.userEmail,                    
                     activationCode: confirmationNumber || updatedOrder.confirmationNumber,
-                    
                     instructions: "Your eSIM activation is complete. Please use the Activation code provided to set up your device."
                 });
             } catch (emailError) {

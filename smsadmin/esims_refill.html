@@ -154,18 +154,25 @@
 
         if (data.success && data.refills.length > 0) {
             tbody.innerHTML = data.refills.map(refill => {
-                const status = (refill.status || 'pending').toLowerCase();
-                const tid = refill.paymentReference || 'N/A';
-                
-const mainBal = Number(refill.mainBalanceUsed) || 0;
-const bonusBal = Number(refill.bonusBalanceUsed) || 0;
-const rawAmount = refill.amount || (mainBal + bonusBal) || refill.planName || 0;
-const finalAmount = Number(rawAmount); 
-const displayAmount = (!isNaN(finalAmount) && finalAmount !== 0) 
-    ? finalAmount.toLocaleString() 
+
+const status = (refill.status || 'pending').toLowerCase();
+const tid = refill.paymentReference || 'N/A';
+
+let numericAmount = 0;
+if (refill.amount !== undefined && refill.amount !== null) {
+    const cleanAmount = String(refill.amount).replace(/[₦,]/g, '');
+    numericAmount = parseFloat(cleanAmount) || 0;
+} 
+else if (refill.amountNGN) {
+    const cleanAmountNGN = String(refill.amountNGN).replace(/[₦,]/g, '');
+    numericAmount = parseFloat(cleanAmountNGN) || 0;
+}
+const displayAmount = numericAmount > 0 
+    ? numericAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) 
     : '0.00';
+
 const currencySymbol = (refill.currency === 'NGN' || !refill.currency) ? '₦' : refill.currency;
-                let actionArea = '';
+let actionArea = '';
 
                 if (['pending', 'successful', 'processing'].includes(status)) {
                     actionArea = `

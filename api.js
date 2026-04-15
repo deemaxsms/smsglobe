@@ -763,7 +763,7 @@ async function handleManageUser(req, res) {
         const updatedUser = await User.findByIdAndUpdate(
             userId, 
             { $set: { status: newStatus } }, 
-            { new: true }
+          { returnDocument: 'after' }
         );
 
         if (!updatedUser) {
@@ -1616,7 +1616,7 @@ async function handlePurchaseWithWallet(req, res) {
         const updatedUser = await User.findOneAndUpdate(
             { _id: user._id, balance: { $gte: mainDeduction } },
             { $inc: { balance: -mainDeduction, bonusBalance: -bonusDeduction } },
-            { new: true }
+           { returnDocument: 'after' }
         );
 
         if (!updatedUser) {
@@ -1671,18 +1671,41 @@ async function handlePurchaseWithWallet(req, res) {
         });
 
 sendDeliveryEmail(user.email, { 
-    ...orderSpecifics, // Contains details like username/password or activation code
-    productType: newOrder.productType, // Change 'type: itemType' to 'productType'
-    amount: `₦${costNGN.toLocaleString()}`,
-    planName: productDetails.plan || newOrder.planName,
-    paymentReference: paymentReference,
-    metadata: newOrder.metadata
-}, newOrder).catch(err => console.error("📧 Email Error:", err.message));
+            ...orderSpecifics, 
+            productType: itemType, 
+            amount: `₦${costNGN.toLocaleString()}`,
+            planName: productDetails.plan || newOrder.planName,
+            paymentReference: paymentReference,
+            metadata: newOrder.metadata,
+            nodeName: productDetails.name,   // Required for eSIM labels
+            targetNumber: mobileNumber        // Required for eSIM labels
+        }).catch(err => console.error("📧 Customer Email Error:", err.message));
+
+        // 2. Send Notification to ADMIN (Only for manual products)
+        const manualProducts = ["eSIM_Refill", "eSIM_Activation", "RDP"];
+
+        if (manualProducts.includes(itemType)) {
+            sendAdminNotification({
+                type: itemType,
+                email: user.email,
+                product: productDetails.name,
+                amount: `₦${costNGN.toLocaleString()}`,
+                reference: paymentReference,
+                target: mobileNumber || metadata?.activationEmail,
+                metadata: metadata,
+                orderSpecifics: orderSpecifics,
+                planName: productDetails.plan || newOrder.planName
+
+            }).catch(err => console.error("📧 Admin Notification Error:", err.message));
+        }
+
+        // 3. Final Response to Frontend
+        const isManual = manualProducts.includes(itemType);
 
         return res.json({ 
             success: true, 
-            message: (itemType === "eSIM_Refill" || itemType === "eSIM_Activation") 
-                ? "Request submitted! Our team is processing your activation." 
+            message: isManual 
+                ? "Request submitted! Our team is processing your order." 
                 : "Purchase successful!",
             balance: updatedUser.balance,
             bonusBalance: updatedUser.bonusBalance,
@@ -1694,6 +1717,92 @@ sendDeliveryEmail(user.email, {
         return res.status(500).json({ success: false, message: "Internal server error." });
     }
 }
+
+
+const sendAdminNotification = async (orderData) => {
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        }
+    });
+    const { type, email, amount, product, reference, target, metadata, orderSpecifics } = orderData;
+    let specificDetailsHtml = '';
+    if (type === "RDP") {
+        specificDetailsHtml = `
+            <div style="background: #f8fafc; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; margin: 15px 0;">
+                <p style="margin:0 0 5px 0;"><b>🖥️ RDP CONFIGURATION:</b></p>
+                <ul style="margin:0; padding-left:20px; font-size: 13px;">
+                    <li><b>OS:</b> ${orderSpecifics?.os || 'Windows Server'}</li>
+                    <li><b>RAM:</b> ${orderSpecifics?.ram || 'N/A'}</li>
+                    <li><b>CPU:</b> ${orderSpecifics?.cpu || 'N/A'} (+${orderSpecifics?.extraCPU || 0} Extra)</li>
+                    <li><b>Storage:</b> ${orderSpecifics?.storage || 'N/A'} (+${orderSpecifics?.extraStorage || 0}GB)</li>
+                </ul>
+            </div>`;
+    } else if (type === "eSIM_Activation") {
+        specificDetailsHtml = `
+            <div style="background: #fdf2f2; padding: 12px; border: 1px solid #fecaca; border-radius: 6px; margin: 15px 0;">
+                <p style="margin:0 0 5px 0;"><b>📶 ACTIVATION DETAILS:</b></p>
+                <ul style="margin:0; padding-left:20px; font-size: 13px;">
+                    <li><b>Carrier:</b> ${product}</li>
+                    <li><b>Registered Name:</b> ${metadata?.firstName} ${metadata?.lastName}</li>
+                    <li><b>Activation Email:</b> ${metadata?.activationEmail}</li>
+                    <li><b>Address:</b> ${metadata?.address}, ${metadata?.zip}</li>
+                </ul>
+            </div>`;
+    } else if (type === "eSIM_Refill") {
+        specificDetailsHtml = `
+            <div style="background: #f0fdf4; padding: 12px; border: 1px solid #bbf7d0; border-radius: 6px; margin: 15px 0;">
+                <p style="margin:0 0 5px 0;"><b>📲 REFILL DETAILS:</b></p>
+                <ul style="margin:0; padding-left:20px; font-size: 13px;">
+                    <li><b>Target Number:</b> ${target}</li>
+                    <li><b>Carrier:</b> ${product}</li>
+                    <li><b>Plan:</b> ${orderData.planName || 'N/A'}</li>
+                </ul>
+            </div>`;
+    }
+    const htmlContent = `
+        <div style="font-family: sans-serif; border: 2px solid #0F54C6; padding: 25px; border-radius: 12px; color: #1e293b;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" width="140">
+            </div>
+            <h2 style="color: #0F54C6; margin-top: 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+                🚨 Action Required: ${type.replace('_', ' ')}
+            </h2>
+            <p>A new manual fulfillment request has been received via <b>Wallet Payment</b>.</p>
+            
+            <p><b>User:</b> ${email}</p>
+            <p><b>Total Paid:</b> ${amount}</p>
+            <p><b>Reference:</b> <code style="background:#f1f5f9; padding:2px 5px;">${reference}</code></p>
+
+            ${specificDetailsHtml}
+
+            <div style="text-align: center; margin-top: 25px;">
+                <a href="https://smsglobe.netlify.app/admin" 
+                   style="background: #0F54C6; color: white; padding: 14px 25px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+                   Open Admin Panel to Complete Order
+                </a>
+            </div>
+            <p style="font-size: 11px; color: #64748b; text-align: center; margin-top: 20px;">
+                This is an automated priority alert from the SMSGlobe Backend.
+            </p>
+        </div>
+    `;
+
+    try {
+        await transporter.sendMail({
+            from: `"SMSGlobe System" <${process.env.EMAIL_USER}>`,
+            to: process.env.ADMIN_EMAIL,
+            subject: `[URGENT] New ${type} Order - ${email}`,
+            html: htmlContent
+        });
+        console.log(`Admin alerted for ${type} order: ${reference}`);
+    } catch (error) {
+        console.error("Admin Mail Error:", error.message);
+    }
+};
+
 
 const sendDeliveryEmail = async (userEmail, credentials) => {
     const transporter = nodemailer.createTransport({
@@ -2319,7 +2428,7 @@ async function handleAdminEsimUpdate(req, res) {
                     updatedAt: new Date() 
                 } 
             },
-            { new: true }
+            { returnDocument: 'after' }
         );
 
         if (!updatedOrder) {
@@ -2373,7 +2482,7 @@ async function handleAdminEsimActivationUpdate(req, res) {
                     updatedAt: new Date() 
                 } 
             },
-            { new: true } 
+           { returnDocument: 'after' }
         );
 
         if (!updatedOrder) {
@@ -2601,7 +2710,7 @@ async function handleCompleteRDPOrder(req, res) {
                 confirmationNumber: confirmationNumber, // Stores IP/Login Details
                 deliveredAt: new Date()
             },
-            { new: true }
+           { returnDocument: 'after' }
         );
 
         if (!order) {

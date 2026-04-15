@@ -167,7 +167,8 @@
             overlay.classList.toggle('hidden');
         }
 
-      async function fetchRDPRequests() {
+
+async function fetchRDPRequests() {
     const token = localStorage.getItem('smsglobe_admin_token');
     const tbody = document.getElementById('rdp-body');
 
@@ -178,48 +179,14 @@
         const data = await response.json();
 
         if (data.success && data.orders.length > 0) {
-            // Save to global variable for the modal to access without another API call
             allOrders = data.orders; 
 
             tbody.innerHTML = data.orders.map(order => {
                 const status = order.status.toLowerCase();
                 const meta = order.metadata || {}; 
                 const formattedPrice = `₦${Number(order.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-                const baseStorage = meta.storage || "60GB SSD";
-                const netSpeed = meta.net || "100Mbps";
-
-                // View Button Template
-                const viewBtn = `
-                    <button onclick="viewOrderDetails('${order.paymentReference}')" class="text-brand-blue hover:text-blue-800 font-bold text-[10px] flex items-center gap-1 mb-2">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                        View Details
-                    </button>`;
                 
-                let actionArea = '';
-                if (['successful', 'processing', 'pending'].includes(status)) {
-                    actionArea = `
-                        <div class="flex flex-col items-end">
-                            ${viewBtn}
-                            <input type="text" id="conf-${order.paymentReference}" 
-                                   placeholder="IP / Login Details" 
-                                   class="border border-brand-border rounded px-2 py-1.5 text-[10px] w-40 mb-2 focus:ring-1 focus:ring-brand-blue outline-none shadow-sm font-medium">
-                            <button onclick="processRDP('${order.paymentReference}')" 
-                                    class="bg-brand-blue text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-blue-700 transition-all shadow-md">
-                                Mark Delivered
-                            </button>
-                        </div>`;
-                } else if (status === 'completed') {
-                    actionArea = `
-                        <div class="text-right">
-                            ${viewBtn}
-                            <div class="text-green-600 font-bold text-[10px] flex items-center justify-end gap-1 mb-1">
-                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                                Delivered
-                            </div>
-                            <div class="text-[9px] text-brand-lightText font-mono truncate max-w-[120px] ml-auto" title="${order.confirmationNumber}">${order.confirmationNumber}</div>
-                        </div>`;
-                }
-
+                // Main Table row now only contains info and the "View Details" trigger
                 return `
                     <tr class="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
                         <td class="px-4 py-4">
@@ -233,16 +200,10 @@
                         <td class="px-4 py-4">
                             <div class="font-bold text-brand-darkText uppercase text-[10px]">${order.planName}</div>
                             <div class="text-[10px] text-brand-orange font-bold">${meta.osChoice || 'N/A'}</div>
-                            <div class="text-[9px] text-green-600 font-bold uppercase mt-1">🌐 ${netSpeed}</div>
                         </td>
                         <td class="px-4 py-4">
                             <div class="text-[10px] text-brand-darkText font-medium">RAM: ${meta.baseRAM || 'N/A'}</div>
-                            <div class="text-[10px] text-brand-darkText font-medium">Disk: ${baseStorage}</div>
-                            <div class="text-[9px] text-brand-lightText font-bold">Ref: ${order.paymentReference}</div>
-                        </td>
-                        <td class="px-4 py-4">
-                            <div class="text-[10px] text-brand-blue font-bold">+ ${meta.extraCPU || 0} CPU</div>
-                            <div class="text-[10px] text-brand-blue font-bold">+ ${meta.extraStorage || 0}GB Disk</div>
+                            <div class="text-[10px] text-brand-darkText font-medium">Disk: ${meta.storage || '60GB'}</div>
                         </td>
                         <td class="px-4 py-4 font-bold text-brand-darkText">
                             ${formattedPrice}
@@ -253,91 +214,98 @@
                             </span>
                         </td>
                         <td class="px-4 py-4 text-right">
-                            ${actionArea}
+                            <button onclick="viewOrderDetails('${order.paymentReference}')" 
+                                    class="bg-gray-100 text-brand-darkText px-4 py-2 rounded-lg text-[10px] font-bold hover:bg-brand-blue hover:text-white transition-all shadow-sm flex items-center gap-2 ml-auto">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                Manage Request
+                            </button>
                         </td>
                     </tr>`;
             }).join('');
         } else {
-            tbody.innerHTML = `<tr><td colspan="8" class="px-6 py-12 text-center text-brand-lightText italic">No RDP requests found.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center text-brand-lightText italic">No RDP requests found.</td></tr>`;
         }
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="8" class="px-6 py-12 text-center text-red-500 font-bold">Error loading RDP data.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center text-red-500 font-bold">Error loading RDP data.</td></tr>`;
     }
 }
 
-
-        function viewOrderDetails(ref) {
+function viewOrderDetails(ref) {
     const order = allOrders.find(o => o.paymentReference === ref);
     if (!order) return;
 
     const meta = order.metadata || {};
+    const status = order.status.toLowerCase();
     const modal = document.getElementById('viewModal');
-    const container = document.getElementById('modalContainer');
     
-    // Header Info
     document.getElementById('m-ref').innerText = `Order #${order.paymentReference.slice(-8)}`;
     document.getElementById('m-date').innerText = `Customer: ${order.fullName} | ${order.userEmail}`;
 
-    // Detailed Application Layout
+    // Action Section Logic: Show input if not completed, show data if it is.
+    let fulfillmentHTML = '';
+    if (['successful', 'processing', 'pending'].includes(status)) {
+        fulfillmentHTML = `
+            <div class="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                <h4 class="text-[10px] font-bold text-brand-blue uppercase mb-3">Fulfill Request</h4>
+                <div class="flex flex-col gap-3">
+                    <textarea id="conf-${order.paymentReference}" 
+                              placeholder="Paste IP Address, Username, and Password here..." 
+                              class="w-full border border-brand-border rounded-lg p-3 text-xs focus:ring-2 focus:ring-brand-blue outline-none shadow-sm h-24 font-mono"></textarea>
+                    <button onclick="processRDP('${order.paymentReference}')" 
+                            class="bg-brand-blue text-white w-full py-3 rounded-xl text-xs font-bold hover:bg-blue-700 transition-all shadow-lg">
+                        Confirm Delivery & Send Details
+                    </button>
+                </div>
+            </div>`;
+    } else if (status === 'completed') {
+        fulfillmentHTML = `
+            <div class="mt-6 p-4 bg-green-50 rounded-xl border border-green-100">
+                <h4 class="text-[10px] font-bold text-green-700 uppercase mb-2">Delivered Details</h4>
+                <div class="bg-white p-3 rounded border border-green-200 text-xs font-mono text-brand-darkText break-all">
+                    ${order.confirmationNumber || 'No details recorded.'}
+                </div>
+                <p class="text-[9px] text-green-600 mt-2 font-bold uppercase italic">✓ Successfully sent to customer</p>
+            </div>`;
+    }
+
     document.getElementById('modalContent').innerHTML = `
-        <div class="grid grid-cols-2 gap-6">
-            <div class="space-y-4">
-                <h4 class="text-[10px] font-bold text-brand-blue uppercase tracking-widest">Server Configuration</h4>
-                <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                    <p class="text-xs text-brand-lightText mb-1">Plan Name</p>
-                    <p class="font-bold text-sm mb-3">${order.planName}</p>
-                    <p class="text-xs text-brand-lightText mb-1">Operating System</p>
-                    <p class="font-bold text-sm text-brand-orange">${meta.osChoice || 'Windows Server'}</p>
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="bg-gray-50 p-4 rounded-xl border border-brand-border">
+                <h4 class="text-[9px] font-bold text-brand-lightText uppercase mb-2">Configuration</h4>
+                <p class="text-xs font-bold">${order.planName}</p>
+                <p class="text-[11px] text-brand-orange font-bold">${meta.osChoice || 'Windows Server'}</p>
+                <div class="mt-3 pt-3 border-t border-gray-200 flex justify-between">
+                    <span class="text-[10px] text-brand-lightText">Region</span>
+                    <span class="text-[10px] font-bold">${meta.region || 'Global'}</span>
                 </div>
             </div>
-            <div class="space-y-4">
-                <h4 class="text-[10px] font-bold text-brand-blue uppercase tracking-widest">Hardware Extras</h4>
-                <div class="bg-gray-50 p-4 rounded-xl border border-brand-border">
-                    <div class="flex justify-between mb-2">
-                        <span class="text-xs text-brand-lightText">Extra CPU</span>
-                        <span class="text-xs font-bold">+${meta.extraCPU || 0} Cores</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-xs text-brand-lightText">Extra Storage</span>
-                        <span class="text-xs font-bold">+${meta.extraStorage || 0}GB</span>
-                    </div>
+            <div class="bg-gray-50 p-4 rounded-xl border border-brand-border">
+                <h4 class="text-[9px] font-bold text-brand-lightText uppercase mb-2">Specifications</h4>
+                <div class="flex justify-between text-[11px] mb-1">
+                    <span>RAM:</span> <span class="font-bold">${meta.baseRAM || 'Standard'}</span>
                 </div>
-            </div>
-        </div>
-
-        <div class="space-y-4">
-            <h4 class="text-[10px] font-bold text-brand-blue uppercase tracking-widest">Performance Profile</h4>
-            <div class="grid grid-cols-3 gap-3">
-                <div class="border border-brand-border p-3 rounded-xl text-center">
-                    <p class="text-[10px] text-brand-lightText">RAM</p>
-                    <p class="font-bold text-xs">${meta.baseRAM || 'Standard'}</p>
+                <div class="flex justify-between text-[11px] mb-1">
+                    <span>Disk:</span> <span class="font-bold">${meta.storage || '60GB'}</span>
                 </div>
-                <div class="border border-brand-border p-3 rounded-xl text-center">
-                    <p class="text-[10px] text-brand-lightText">Disk</p>
-                    <p class="font-bold text-xs">${meta.storage || '60GB SSD'}</p>
-                </div>
-                <div class="border border-brand-border p-3 rounded-xl text-center">
-                    <p class="text-[10px] text-brand-lightText">Network</p>
-                    <p class="font-bold text-xs text-green-600">${meta.net || '1Gbps'}</p>
+                <div class="flex justify-between text-[11px]">
+                    <span>CPU:</span> <span class="font-bold">+${meta.extraCPU || 0} Cores</span>
                 </div>
             </div>
         </div>
 
-        <div class="pt-4 border-t border-brand-border">
-             <h4 class="text-[10px] font-bold text-brand-blue uppercase mb-3">Billing Information</h4>
-             <div class="flex justify-between items-center bg-brand-darkText p-4 rounded-xl text-white">
-                <div>
-                    <p class="text-[10px] opacity-70">Total Amount Paid</p>
-                    <p class="text-xl font-bold">₦${Number(order.amount).toLocaleString()}</p>
-                </div>
-                <div class="text-right">
-                    <p class="text-[10px] opacity-70">Payment Ref</p>
-                    <p class="text-[10px] font-mono">${order.paymentReference}</p>
-                </div>
-             </div>
+        <div class="bg-brand-darkText p-4 rounded-xl text-white flex justify-between items-center mb-4">
+            <div>
+                <p class="text-[10px] opacity-70 uppercase font-bold">Total Revenue</p>
+                <p class="text-lg font-bold">₦${Number(order.amount).toLocaleString()}</p>
+            </div>
+            <div class="text-right">
+                <p class="text-[10px] opacity-70 uppercase">Payment Ref</p>
+                <p class="text-[10px] font-mono opacity-90">${order.paymentReference}</p>
+            </div>
         </div>
+
+        ${fulfillmentHTML}
     `;
-
     // Show Modal with animation
     modal.classList.remove('hidden');
     setTimeout(() => {

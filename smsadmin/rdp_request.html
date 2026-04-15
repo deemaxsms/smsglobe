@@ -238,14 +238,15 @@
 
         const ramVal = order.ram || order.metadata?.ram || 'N/A';
         const cpuVal = order.cpu || order.metadata?.cpu || 'N/A';
+        const netVal = order.net || order.metadata?.net || 'N/A';
         const storageVal = order.storage || order.metadata?.storage || 'N/A';
         const osVal = order.os || order.metadata?.osChoice || '';
 
         const ipVal = order.ipAddress || '';
-const portVal = order.port || '';
-const userVal = order.rdpUsername || '';
-const passVal = order.rdpPassword || '';
-const confVal = order.confirmationNumber || '.';
+        const portVal = order.port || '';
+        const userVal = order.rdpUsername || '';
+        const passVal = order.rdpPassword || '';
+        const confVal = order.confirmationNumber || '.';
         
         const extraCPUVal = order.extraCPU ?? order.metadata?.extraCPU ?? 0;
         const extraStorageVal = order.extraStorage ?? order.metadata?.extraStorage ?? 0;
@@ -362,24 +363,25 @@ const confVal = order.confirmationNumber || '.';
                     </div>
                 </div>
 
-                <div class="bg-gray-50 p-4 rounded-2xl border border-brand-border">
-                    <h4 class="text-[9px] font-bold text-brand-lightText uppercase mb-2">Hardware Specs</h4>
-                    <div class="space-y-1 text-[11px]">
-                        <div class="flex justify-between"><span>RAM:</span> <span class="font-bold">${ramVal}</span></div>
-                        <div class="flex justify-between"><span>Base CPU:</span> <span class="font-bold text-brand-blue">${cpuVal}</span></div>
-                        <div class="flex justify-between"><span>Base Disk:</span> <span class="font-bold">${storageVal}</span></div>
-                    </div>
-                    <div class="mt-2 pt-2 border-t border-dashed border-gray-300">
-                        <div class="flex justify-between items-center text-[10px] text-brand-orange font-bold">
-                            <span>Extra Cores:</span> 
-                            <span class="bg-orange-100 px-1.5 py-0.5 rounded">+${extraCPUVal} vCPU</span>
-                        </div>
-                        <div class="flex justify-between items-center text-[10px] text-brand-orange font-bold mt-1">
-                            <span>Extra Disk:</span> 
-                            <span class="bg-orange-100 px-1.5 py-0.5 rounded">+${extraStorageVal} GB</span>
-                        </div>
-                    </div>
-                </div>
+<div class="bg-gray-50 p-4 rounded-2xl border border-brand-border">
+    <h4 class="text-[9px] font-bold text-brand-lightText uppercase mb-2">Hardware Specs</h4>
+    <div class="space-y-1 text-[11px]">
+        <div class="flex justify-between"><span>RAM:</span> <span class="font-bold">${ramVal}</span></div>
+        <div class="flex justify-between"><span>Base CPU:</span> <span class="font-bold text-brand-blue">${cpuVal}</span></div>
+        <div class="flex justify-between"><span>Base Disk:</span> <span class="font-bold">${storageVal}</span></div>
+        <div class="flex justify-between"><span>Network:</span> <span class="font-bold text-green-600">${netVal}</span></div>
+    </div>
+    <div class="mt-2 pt-2 border-t border-dashed border-gray-300">
+        <div class="flex justify-between items-center text-[10px] text-brand-orange font-bold">
+            <span>Extra Cores:</span> 
+            <span class="bg-orange-100 px-1.5 py-0.5 rounded">+${extraCPUVal} vCPU</span>
+        </div>
+        <div class="flex justify-between items-center text-[10px] text-brand-orange font-bold mt-1">
+            <span>Extra Disk:</span> 
+            <span class="bg-orange-100 px-1.5 py-0.5 rounded">+${extraStorageVal} GB</span>
+        </div>
+    </div>
+</div>
             </div>
 
             <div class="bg-brand-darkText p-4 rounded-2xl text-white flex justify-between items-center mb-4 shadow-xl">

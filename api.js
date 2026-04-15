@@ -152,7 +152,6 @@ const rdpSchema = new mongoose.Schema({
     currency: { type: String, default: "NGN" },
     status: { type: String, default: "successful" },
     paymentReference: String,
-    // Add these new fields for credentials
     ipAddress: { type: String, default: "N/A" },
     port: { type: String, default: "3389" },
     rdpUsername: { type: String, default: "Admin" },

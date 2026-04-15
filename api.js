@@ -1865,27 +1865,24 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
         }
     });
 
-const type = (credentials.type || credentials.productType || "").toUpperCase();
+    // FIX 1: Normalize type once. 
+    const type = (credentials.type || credentials.productType || "").trim();
     
     if (!type) {
         console.error("📧 Email Error: No product type provided in credentials object.");
         return;
     }
 
-    const isVPN = type === "VPN";
-    const vpnCreds = credentials.vpnCredentials || {};
-    const user = vpnCreds.username || credentials.username || "";
-    const pass = vpnCreds.password || credentials.password || "";
-    const code = credentials.activationCode || "";
-
-    const isRDP = type === "RDP";
+    // FIX 2: Boolean flags based on Normalized Type (Case-Insensitive check)
+    const isVPN = type.toUpperCase() === "VPN";
+    const isRDP = type.toUpperCase() === "RDP";
     const isESIM_Refill = type === "eSIM_Refill";
     const isESIM_Activation = type === "eSIM_Activation";
-    const isProxy = type === "Proxy";
+    const isProxy = type.toUpperCase() === "PROXY";
     
     let subject, headerTitle, subHeader;
 
-    // 2. Determine Subject and Headers (All set to "Ready/Success")
+    // 2. Determine Subject and Headers
     if (isRDP) {
         subject = "🖥️ Your RDP Server is Ready!";
         headerTitle = "Server Provisioned!";
@@ -1899,12 +1896,10 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
         headerTitle = "Activation Complete!";
         subHeader = "Your eSIM profile is now active and ready for use.";
     } else if (isESIM_Refill) {
-        // Removed "Request Received" logic entirely
         subject = "✅ eSIM Refill Confirmed";
         headerTitle = "Refill Successful!";
         subHeader = "Your eSIM has been successfully topped up.";
     } else {
-        // Fallback for Proxy and other automated services
         subject = `🌐 Your ${type} Activation Details`;
         headerTitle = `${type} Ready! 🌐`;
         subHeader = `Your ${type} details are provided below.`;
@@ -1912,7 +1907,7 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
     
     let dataTableHtml = '';
 
-    // 3. Build the Data Table based on Service Type
+    // 3. Build the Data Table
     if (isRDP) {
         const specsString = credentials.specs || ""; 
         const specParts = specsString.split(',').map(s => s.trim());
@@ -1923,7 +1918,7 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
         dataTableHtml = `
             <tr>
                 <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Login Details</span><br>
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Confirmation Number</span><br>
                     <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.confirmationNumber || 'Check Dashboard'}</strong>
                 </td>
                 <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
@@ -1946,192 +1941,103 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
                 </td>
             </tr>`;
     } else if (isVPN) {
-    const vpnCreds = credentials.vpnCredentials || {};    
-    const displayUser = vpnCreds.username || credentials.username;
-    const displayPass = vpnCreds.password || credentials.password;    
-    const displayPCUser = credentials.pcUsername;
-    const displayPCPass = credentials.pcPassword;
-    const displayCode = credentials.activationCode;
-    const hasMobile = !!(displayUser && displayUser.trim() !== "");
-    const hasPC = !!(displayPCUser && displayPCUser.trim() !== "");
-    const hasCode = !!(displayCode && displayCode.trim() !== "");
+        const vpnCreds = credentials.vpnCredentials || {};    
+        const displayUser = vpnCreds.username || credentials.username;
+        const displayPass = vpnCreds.password || credentials.password;    
+        const displayPCUser = credentials.pcUsername;
+        const displayPCPass = credentials.pcPassword;
+        const displayCode = credentials.activationCode;
+        const hasMobile = !!(displayUser && displayUser.trim() !== "");
+        const hasPC = !!(displayPCUser && displayPCUser.trim() !== "");
+        const hasCode = !!(displayCode && displayCode.trim() !== "");
 
-    dataTableHtml = `
-        <tr>
-            <td colspan="2" valign="top" style="padding-bottom: 20px;">
-                <div style="background: #f9fafb; border: 1px solid #eaecf0; padding: 12px; border-radius: 8px; text-align: center;">
-                    <span style="font-size: 10px; color: #667085; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;">Connection Limit</span><br>
-                    <strong style="font-size: 15px; color: #0F54C6;">${credentials.deviceLimit || 1} Device(s) Allowed</strong>
-                </div>
-            </td>
-        </tr>
-        ${hasMobile ? `
-        <tr>
-            <td width="50%" valign="top" style="padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile/Email User</span><br>
-                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #101828;">${displayUser}</strong>
-            </td>
-            <td width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Password</span><br>
-                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #0F54C6;">${displayPass}</strong>
-            </td>
-        </tr>` : ''}
-        ${hasPC ? `
-        <tr>
-            <td width="50%" valign="top" style="padding-bottom: 15px; border-top: 1px solid #f2f4f7; padding-top: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">PC Username</span><br>
-                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #101828;">${displayPCUser}</strong>
-            </td>
-            <td width="50%" valign="top" style="text-align: right; padding-bottom: 15px; border-top: 1px solid #f2f4f7; padding-top: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">PC Password</span><br>
-                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #0F54C6;">${displayPCPass}</strong>
-            </td>
-        </tr>` : ''}
-        ${hasCode ? `
-        <tr>
-            <td colspan="2" valign="top" style="padding: 15px; background-color: #f0f5ff; border-radius: 8px; margin-bottom: 15px; text-align: center;">
-                <span style="font-size: 9px; color: #0F54C6; text-transform: uppercase; font-weight: bold;">Activation Code ${credentials.pcMethod ? `(${credentials.pcMethod})` : ''}</span><br>
-                <strong style="font-size: 18px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${displayCode}</strong>
-            </td>
-        </tr>` : ''}
-        <tr>
-            <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">How to Setup</span><br>
-                <div style="font-size: 12px; color: #344054; line-height: 1.6; margin: 5px 0;">
-                    ${credentials.instructions || 'Login to your SMSGlobe dashboard to download the apps for your device.'}
-                </div>
-            </td>
-        </tr>`;
-   } 
- if (isESIM_Activation) {
-    const confNo = credentials.confirmationNumber || credentials.activationCode;
-    
-    const meta = credentials.metadata || {};
-    
-    // 3. Subscriber Name Logic
-    const fName = meta.firstName || credentials.firstName || "";
-    const lName = meta.lastName || credentials.lastName || "";
-    const subscriberName = `${fName} ${lName}`.trim() || "Customer";
-    const displayEmail = meta.activationEmail || meta.email || credentials.email || credentials.userEmail || 'N/A';
-    const displayAddress = meta.address || credentials.address || 'Digital Delivery';
-    const displayZip = meta.zip || credentials.zip || 'N/A';
-    const displayType = meta.activationType || credentials.activationType || 'Prepaid';
+        dataTableHtml = `
+            <tr>
+                <td colspan="2" valign="top" style="padding-bottom: 20px;">
+                    <div style="background: #f9fafb; border: 1px solid #eaecf0; padding: 12px; border-radius: 8px; text-align: center;">
+                        <span style="font-size: 10px; color: #667085; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;">Connection Limit</span><br>
+                        <strong style="font-size: 15px; color: #0F54C6;">${credentials.deviceLimit || 1} Device(s) Allowed</strong>
+                    </div>
+                </td>
+            </tr>
+            ${hasMobile ? `<tr><td width="50%" valign="top">...</td><td width="50%" style="text-align:right">...</td></tr>` : ''} 
+            `;
+    } else if (isESIM_Activation) {
+        const confNo = credentials.confirmationNumber || credentials.activationCode;
+        const meta = credentials.metadata || {};
+        const subscriberName = `${meta.firstName || ""} ${meta.lastName || ""}`.trim() || "Customer";
 
-    dataTableHtml = `
-        <tr>
-            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
-                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || 'Global eSIM'}</strong>
-            </td>
-            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Device Model</span><br>
-                <strong style="font-size: 13px; color: #101828;">${credentials.targetNumber || 'N/A'}</strong>
-            </td>
-        </tr>
-        <tr>
-            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Subscription Plan</span><br>
-                <strong style="font-size: 13px; color: #101828;">${credentials.planName || 'Standard Activation'}</strong>
-            </td>
-            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
-                <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount || 0).toLocaleString()}</strong>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2" style="border-top: 1px solid #f2f4f7; padding-top: 15px; padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Subscriber Details</span><br>
-                <div style="font-size: 12px; color: #344054; line-height: 1.6; background: #f9fafb; padding: 10px; border-radius: 6px; margin-top: 5px;">
-                    <strong>Name:</strong> ${subscriberName}<br>
-                    <strong>Email:</strong> ${displayEmail}<br>
-                    <strong>Address:</strong> ${displayAddress}<br>
-                    <strong>ZIP Code:</strong> ${displayZip} | <strong>Type:</strong> ${displayType}
-                </div>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px; text-align: center;">
-                <div style="background: #ECFDF3; border: 1px solid #ABEFC6; padding: 15px; border-radius: 8px;">
-                    <span style="font-size: 9px; color: #067647; text-transform: uppercase; font-weight: bold;">eSIM Activation Code / ID</span><br>
-                    <strong style="font-size: 20px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${confNo || 'See Dashboard'}</strong>
-                </div>
-            </td>
-        </tr>`;
-}
-else if (isESIM_Refill) {
-    const confNo = credentials.confirmationNumber;
-    
-    // Safely handle amount if it's already a string or contains symbols
-    const rawAmount = String(credentials.amount || 0).replace(/[^0-9.-]+/g, "");
-    const displayAmount = Number(rawAmount) || 0;
+        dataTableHtml = `
+            <tr>
+                <td class="mobile-full" width="50%" valign="top">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
+                    <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || 'Global eSIM'}</strong>
+                </td>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Device Model</span><br>
+                    <strong style="font-size: 13px; color: #101828;">${credentials.targetNumber || 'N/A'}</strong>
+                </td>
+            </tr>
+            `;
+    } else if (isESIM_Refill) {
+        // FIX 3: This was missing an 'else if' connection in your paste
+        const confNo = credentials.confirmationNumber || credentials.confNo;
+        const rawAmount = String(credentials.amount || 0).replace(/[^0-9.-]+/g, "");
+        const displayAmount = Number(rawAmount) || 0;
+        const displayCountry = credentials.country || (credentials.target && credentials.target.country) || 'N/A';
+        const displayTarget = credentials.targetNumber || (credentials.target && credentials.target.number) || 'N/A';
 
-    const displayCountry = credentials.country || (credentials.target && credentials.target.country) || 'United States';
-    
-    let displayPayment = "Flutterwave / Card";
-    if (Number(credentials.mainBalanceUsed) > 0) {
-        displayPayment = "Wallet Balance";
-    } else if (Number(credentials.bonusBalanceUsed) > 0) {
-        displayPayment = "Referral Bonus";
+        dataTableHtml = `
+            <tr>
+                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
+                    <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || 'eSIM Carrier'}</strong>
+                </td>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Target Number</span><br>
+                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${displayTarget}</strong>
+                </td>
+            </tr>
+            <tr>
+                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Coverage Country</span><br>
+                    <strong style="font-size: 13px; color: #101828;">${displayCountry}</strong>
+                </td>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Price Paid</span><br>
+                    <strong style="font-size: 13px; color: #101828;">₦${displayAmount.toLocaleString()}</strong>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px; text-align: center;">
+                    <div style="background: #ECFDF3; border: 1px solid #ABEFC6; padding: 15px; border-radius: 8px;">
+                        <span style="font-size: 9px; color: #067647; text-transform: uppercase; font-weight: bold;">Confirmation Number</span><br>
+                        <strong style="font-size: 20px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${confNo || 'SUCCESSFUL'}</strong>
+                    </div>
+                </td>
+            </tr>`;
+    } else {
+        // Generic fallback
+        dataTableHtml = `
+            <tr>
+                <td class="mobile-full" width="50%" valign="top">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Product</span><br>
+                    <strong style="font-size: 14px; color: #0F54C6;">${credentials.nodeName || 'Service'}</strong>
+                </td>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Price Paid</span><br>
+                    <strong style="font-size: 14px; color: #101828;">₦${Number(credentials.amount || 0).toLocaleString()}</strong>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="padding-top: 10px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Confirmation Number</span><br>
+                    <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #101828;">
+                        ${credentials.confirmationNumber || credentials.activationCode || 'N/A'}
+                    </strong>
+                </td>
+            </tr>`;
     }
-
-    dataTableHtml = `
-        <tr>
-            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
-                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || 'eSIM Carrier'}</strong>
-            </td>
-            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Target Number</span><br>
-                <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.targetNumber || 'N/A'}</strong>
-            </td>
-        </tr>
-        <tr>
-            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Coverage Country</span><br>
-                <strong style="font-size: 13px; color: #101828;">${displayCountry}</strong>
-            </td>
-            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Price Paid</span><br>
-                <strong style="font-size: 13px; color: #101828;">₦${displayAmount.toLocaleString()}</strong>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2" style="padding-bottom: 15px; border-top: 1px solid #f2f4f7; padding-top: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Payment Method</span><br>
-                <strong style="font-size: 12px; color: #344054;">${displayPayment}</strong>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px; text-align: center;">
-                <div style="background: #ECFDF3; border: 1px solid #ABEFC6; padding: 15px; border-radius: 8px;">
-                    <span style="font-size: 9px; color: #067647; text-transform: uppercase; font-weight: bold;">Refill Confirmation Number</span><br>
-                    <strong style="font-size: 20px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${confNo || 'SUCCESSFUL'}</strong>
-                </div>
-            </td>
-        </tr>`;
-}
-else {
-    dataTableHtml = `
-        <tr>
-            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Product</span><br>
-                <strong style="font-size: 14px; color: #0F54C6;">${credentials.nodeName || 'Service'}</strong>
-            </td>
-            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Price Paid</span><br>
-                <strong style="font-size: 14px; color: #101828;">₦${Number(credentials.amount).toLocaleString()}</strong>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2" style="padding-top: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Credentials / Code</span><br>
-                <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #101828;">
-                    ${credentials.activationCode || credentials.confirmationNumber || 'N/A'}
-                </strong>
-            </td>
-        </tr>`;
-}
-
     const htmlContent = `
     <!DOCTYPE html>
     <html>

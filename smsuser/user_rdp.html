@@ -677,7 +677,7 @@ async function initiateRDPPayment() {
     payBtn.innerText = "Verifying Wallet...";
     payBtn.disabled = true;
     
-    // This call updates the global userBalances object
+    // This function MUST update userBalances.ngn and userBalances.bonusNGN
     const success = await fetchUserProfile();     
     
     payBtn.innerText = "Pay Securely Now";
@@ -689,7 +689,7 @@ async function initiateRDPPayment() {
     }
 
     // 3. UI SYNC: Update Modal with fresh data from userBalances
-    // We use userBalances.ngn because your fetchUserProfile sets that specific key
+    // Ensure we use 'userBalances.ngn' to match your profile fetcher
     const mainBal = Number(userBalances.ngn || 0);
     const bonusBal = Number(userBalances.bonusNGN || 0);
     const isUnlocked = userBalances.hasDeposited === true || mainBal > 0;
@@ -699,7 +699,7 @@ async function initiateRDPPayment() {
     const totalRequiredText = document.getElementById('summaryTotal')?.innerText || "₦0.00";
 
     if (modalBalanceNGN) {
-        // This line forces the ₦219,000.00 into the modal display
+        // This forces the ₦219,000.00 into the display seen in your screenshot
         modalBalanceNGN.innerText = '₦' + mainBal.toLocaleString('en-NG', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
@@ -731,11 +731,11 @@ async function initiateRDPPayment() {
     const checkRDPaffordability = () => {
         const usingBonus = bonusToggle?.checked || false;
         
-        // Re-parse numeric price in case of customizations
+        // Re-parse numeric price (e.g., 45000)
         const currentPriceText = document.getElementById('summaryTotal')?.innerText || "0";
         const numericPrice = parseFloat(currentPriceText.replace(/[^\d.]/g, '')) || 0;
 
-        // Buying Power calculation
+        // Buying Power: Sum balances only if bonus is toggled AND user is eligible
         const buyingPower = (usingBonus && isUnlocked) ? (mainBal + bonusBal) : mainBal;
 
         if (buyingPower < numericPrice) {
@@ -766,7 +766,7 @@ async function initiateRDPPayment() {
         };
     }
 
-    // 7. Execute initial check and open modal
+    // 7. Final step: check funds one last time and open modal
     checkRDPaffordability();
     
     const modal = document.getElementById('paymentModal');

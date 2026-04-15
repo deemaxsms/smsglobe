@@ -8,7 +8,7 @@
       "use": "@vercel/node"
     },
     {
-      "src": "public/**/*",
+      "src": "assets/**/*",
       "use": "@vercel/static"
     },
     {
@@ -32,6 +32,10 @@
     {
       "source": "/api/(.*)",
       "destination": "/api.js"
+    },
+    {
+      "source": "/assets/(.*)",
+      "destination": "/assets/$1"
     },
     {
       "source": "/smsuser/(.*)",

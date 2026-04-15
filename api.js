@@ -1747,43 +1747,50 @@ const sendAdminNotification = async (orderData) => {
     // Normalize type for comparison
     const orderType = type ? type.toLowerCase() : "";
 
-   // --- RDP DETAILS ---
-    if (orderType === "rdp") {
-        specificDetailsHtml = `
-            <div style="background: #f8fafc; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; margin: 12px 0;">
-                <p style="font-size: 12px; margin:0 0 10px 0; color: #0F54C6; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px;">
-                    <b>🖥️ RDP PROVISIONING SPECS</b>
-                </p>
-                <table width="100%" cellspacing="0" cellpadding="0">
-                    <tr>
-                        <td width="50%" style="padding-bottom: 10px;">
-                            <span style="${labelStyle}">OS</span>
-                            <span style="${valueStyle}">${orderSpecifics?.os || metadata?.osChoice || 'Windows'}</span>
-                        </td>
-                        <td width="50%" style="padding-bottom: 10px;">
-                            <span style="${labelStyle}">RAM</span>
-                            <span style="${valueStyle}">${orderSpecifics?.ram || metadata?.ram || 'N/A'}</span>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td width="50%">
-                            <span style="${labelStyle}">CPU</span>
-                            <span style="${valueStyle}">${orderSpecifics?.cpu || metadata?.cpu || 'N/A'}</span>
-                        </td>
-                        <td width="50%">
-                            <span style="${labelStyle}">Storage</span>
-                            <span style="${valueStyle}">${orderSpecifics?.storage || metadata?.storage || 'N/A'}</span>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td colspan="2" style="padding-top: 10px;">
-                            <span style="${labelStyle}">Network Speed</span>
-                            <span style="${valueStyle}">${orderSpecifics?.net || metadata?.net || '1Gbps'}</span>
-                        </td>
-                    </tr>
-                </table>
-            </div>`;
-    }
+  // --- RDP DETAILS ---
+if (orderType === "rdp") {
+    // Extract extras from orderData or metadata
+    const extraCPU = orderData.extraCPU || metadata?.extraCPU || 0;
+    const extraStorage = orderData.extraStorage || metadata?.extraStorage || 0;
+
+    specificDetailsHtml = `
+        <div style="background: #f8fafc; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; margin: 12px 0;">
+            <p style="font-size: 12px; margin:0 0 10px 0; color: #0F54C6; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px;">
+                <b>🖥️ RDP PROVISIONING SPECS</b>
+            </p>
+            <table width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                    <td width="50%" style="padding-bottom: 10px;">
+                        <span style="${labelStyle}">OS</span>
+                        <span style="${valueStyle}">${orderSpecifics?.os || metadata?.osChoice || 'Windows'}</span>
+                    </td>
+                    <td width="50%" style="padding-bottom: 10px;">
+                        <span style="${labelStyle}">RAM</span>
+                        <span style="${valueStyle}">${orderSpecifics?.ram || metadata?.ram || 'N/A'}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td width="50%" style="padding-bottom: 10px;">
+                        <span style="${labelStyle}">Base CPU</span>
+                        <span style="${valueStyle}">${orderSpecifics?.cpu || metadata?.cpu || 'N/A'}</span>
+                        ${extraCPU > 0 ? `<br><span style="color: #dc2626; font-size: 11px;">🔥 +${extraCPU} Extra Cores</span>` : ''}
+                    </td>
+                    <td width="50%" style="padding-bottom: 10px;">
+                        <span style="${labelStyle}">Base Storage</span>
+                        <span style="${valueStyle}">${orderSpecifics?.storage || metadata?.storage || 'N/A'}</span>
+                        ${extraStorage > 0 ? `<br><span style="color: #dc2626; font-size: 11px;">🔥 +${extraStorage}GB Extra</span>` : ''}
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="padding-top: 5px; border-top: 1px dashed #cbd5e1; padding-top: 10px;">
+                        <span style="${labelStyle}">Network Speed</span>
+                        <span style="${valueStyle}">${orderSpecifics?.net || metadata?.net || '1Gbps'}</span>
+                    </td>
+                </tr>
+            </table>
+        </div>`;
+}
+
     // --- ESIM REFILL DETAILS ---
     else if (orderType === "esim_refill") {
         specificDetailsHtml = `
@@ -1931,17 +1938,23 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
     
     let dataTableHtml = '';
 if (isRDP) {
-    // 1. Prioritize direct fields, fallback to metadata, then fallback to specs string
-    const ramValue = credentials.ram || credentials.metadata?.ram || "";
-    const cpuValue = credentials.cpu || credentials.metadata?.cpu || "";
-    const storageValue = credentials.storage || credentials.metadata?.storage || "";
+    // 1. Core Specs
+    const ramValue = credentials.ram || credentials.metadata?.ram || "4GB";
+    const osValue = credentials.os || credentials.osChoice || 'Windows Server';
     
-    // 2. Fallback logic: If fields are still empty, try parsing the specs string
-    const specParts = (credentials.specs || "").split(',').map(s => s.trim());
-    
-    const displayRam = ramValue || specParts[0] || 'N/A';
-    const displayCpu = cpuValue || specParts[1] || 'N/A';
-    const displayStorage = storageValue || specParts[2] || 'N/A';
+    // 2. Extra Calculations
+    const extraCPU = parseInt(credentials.extraCPU || credentials.metadata?.extraCPU || 0);
+    const extraStorage = parseInt(credentials.extraStorage || credentials.metadata?.extraStorage || 0);
+
+    // 3. Display Formatting
+    // Pull base values
+    const baseCPU = credentials.cpu || credentials.metadata?.cpu || "2 Cores";
+    const baseStorage = credentials.storage || credentials.metadata?.storage || "60GB SSD";
+
+    // Combine Base + Extras for the Final Display
+    const displayRam = ramValue;
+    const displayCpu = extraCPU > 0 ? `${baseCPU} (+${extraCPU} Extra)` : baseCPU;
+    const displayStorage = extraStorage > 0 ? `${baseStorage} (+${extraStorage}GB Extra)` : baseStorage;
 
     dataTableHtml = `
         <tr>
@@ -1954,7 +1967,7 @@ if (isRDP) {
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Operating System</span><br>
                 <strong style="font-size: 13px; color: #101828;">
-                    ${credentials.os || credentials.osChoice || 'Windows Server'}
+                    ${osValue}
                 </strong>
             </td>
         </tr>

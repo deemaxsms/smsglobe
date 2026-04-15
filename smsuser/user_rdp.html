@@ -522,31 +522,39 @@ async function fetchUserProfile() {
                 'Cache-Control': 'no-cache' 
             }
         });
-        if (res.status === 401) {
-            return logout(); 
-        }
+        if (res.status === 401) return logout();
+        
         const data = await res.json();
+        
         if (res.status === 403 && data.isUnverified) {
-            console.warn("User is unverified. Redirecting to verification...");
             window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
-            return;
+            return false;
         }
+
 if (data.success) {
     const userData = data.user || data;
-    userBalances.ngn = userData.balance || 0; 
-    userBalances.bonusNGN = userData.bonusBalance || 0; 
+    userBalances = {
+        ngn: userData.balance || 0,
+        bonusNGN: userData.bonusBalance || 0,
+        hasDeposited: userData.hasDeposited || (userData.balance > 0)
+    };
+    window.userBalances = userBalances;
+    if (document.getElementById('displayBalance')) {
+        document.getElementById('displayBalance').innerText = `₦${userBalances.ngn.toLocaleString()}`;
+    }
+    if (document.getElementById('displayBonus')) {
+       document.getElementById('displayBonus').innerText = `₦${userBalances.bonusNGN.toLocaleString()}`;
+    }
     
-    // Update Displays
-    const elBal = document.getElementById('displayBalance');
-    const elBonus = document.getElementById('displayBonus');
-    if (elBal) elBal.innerText = `₦${userBalances.ngn.toLocaleString()}`;
-    if (elBonus) elBonus.innerText = `₦${userBalances.bonusNGN.toLocaleString()}`;
+    localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
+    return true; 
 }
+        return false;
     } catch (err) {
         console.error("Failed to fetch profile details:", err);
+        return false;
     }
 }
-
 
   function renderPlans() {
     if(!tableBody) return;
@@ -677,18 +685,14 @@ async function initiateRDPPayment() {
         return;
     }
 
-    // 3. UI SYNC: Update Modal with fresh data from userBalances
-    // Ensure we use 'userBalances.ngn' to match your profile fetcher
     const mainBal = Number(userBalances.ngn || 0);
     const bonusBal = Number(userBalances.bonusNGN || 0);
     const isUnlocked = userBalances.hasDeposited === true || mainBal > 0;
-
     const modalBalanceNGN = document.getElementById('modalBalanceNGN');
     const modalTotalDisplay = document.getElementById('modalTotalDue');
     const totalRequiredText = document.getElementById('summaryTotal')?.innerText || "₦0.00";
 
     if (modalBalanceNGN) {
-        // This forces the ₦219,000.00 into the display seen in your screenshot
         modalBalanceNGN.innerText = '₦' + mainBal.toLocaleString('en-NG', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
@@ -724,7 +728,6 @@ async function initiateRDPPayment() {
         const currentPriceText = document.getElementById('summaryTotal')?.innerText || "0";
         const numericPrice = parseFloat(currentPriceText.replace(/[^\d.]/g, '')) || 0;
 
-        // Buying Power: Sum balances only if bonus is toggled AND user is eligible
         const buyingPower = (usingBonus && isUnlocked) ? (mainBal + bonusBal) : mainBal;
 
         if (buyingPower < numericPrice) {
@@ -741,8 +744,6 @@ async function initiateRDPPayment() {
             if (topupBtn) topupBtn.classList.add('hidden');
         }
     };
-
-    // 6. Toggle listener for Bonus
     if (bonusToggle) {
         bonusToggle.onchange = () => {
             if (bonusLabel) {

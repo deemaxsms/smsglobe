@@ -677,7 +677,7 @@ async function initiateRDPPayment() {
     payBtn.innerText = "Verifying Wallet...";
     payBtn.disabled = true;
     
-    // This function must update the global 'userBalances' object
+    // This call updates the global userBalances object
     const success = await fetchUserProfile();     
     
     payBtn.innerText = "Pay Securely Now";
@@ -688,8 +688,8 @@ async function initiateRDPPayment() {
         return;
     }
 
-    // 3. UI: Update Balance Displays in the Modal using the FRESHLY fetched data
-    // Accessing directly from the global object updated by fetchUserProfile
+    // 3. UI SYNC: Update Modal with fresh data from userBalances
+    // We use userBalances.ngn because your fetchUserProfile sets that specific key
     const mainBal = Number(userBalances.ngn || 0);
     const bonusBal = Number(userBalances.bonusNGN || 0);
     const isUnlocked = userBalances.hasDeposited === true || mainBal > 0;
@@ -699,6 +699,7 @@ async function initiateRDPPayment() {
     const totalRequiredText = document.getElementById('summaryTotal')?.innerText || "₦0.00";
 
     if (modalBalanceNGN) {
+        // This line forces the ₦219,000.00 into the modal display
         modalBalanceNGN.innerText = '₦' + mainBal.toLocaleString('en-NG', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
@@ -728,14 +729,13 @@ async function initiateRDPPayment() {
 
     // 5. Affordability Logic
     const checkRDPaffordability = () => {
-        // Re-calculate based on current toggle state
         const usingBonus = bonusToggle?.checked || false;
         
-        // Parse current price
+        // Re-parse numeric price in case of customizations
         const currentPriceText = document.getElementById('summaryTotal')?.innerText || "0";
         const numericPrice = parseFloat(currentPriceText.replace(/[^\d.]/g, '')) || 0;
 
-        // Buying Power: Sum balances only if bonus is toggled AND user is eligible
+        // Buying Power calculation
         const buyingPower = (usingBonus && isUnlocked) ? (mainBal + bonusBal) : mainBal;
 
         if (buyingPower < numericPrice) {

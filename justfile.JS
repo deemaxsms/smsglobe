@@ -20,9 +20,15 @@ app.use(cors());
 app.use(express.json());
 
 // --- 1. SERVE STATIC FILES ---
+
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
+
+app.get('/style.css', (req, res) => {
+    res.sendFile(path.join(__dirname, 'style.css'));
+});
+
 app.use(express.static(__dirname, { extensions: ['html'] }));
 
-// This handles everything in the smsadmin folder automatically
 app.use('/smsadmin', express.static(path.join(__dirname, 'smsadmin'), {
     extensions: ['html', 'htm']
 }));
@@ -31,21 +37,17 @@ app.use('/smsuser', express.static(path.join(__dirname, 'smsuser'), {
     extensions: ['html', 'htm']
 }));
 
-// Manually serve sitemap.xml
 app.get('/sitemap.xml', (req, res) => {
     res.sendFile(path.join(__dirname, 'sitemap.xml'));
 });
 
-// Manually serve robots.txt
 app.get('/robots.txt', (req, res) => {
     res.sendFile(path.join(__dirname, 'robots.txt'));
 });
 
-// --- 2. CONFIGURATION & SCHEMA ---
 const JWT_SECRET = process.env.JWT_SECRET;
 const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET_KEY;
 
-// --- ADMIN SCHEMA ---
 const adminSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
     email: { type: String, required: true, unique: true, index: true },
@@ -67,6 +69,9 @@ const userSchema = new mongoose.Schema({
         match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please fill a valid email address']
     },
     password: { type: String, required: [true, "Password is required"], select: false },    
+    isVerified: { type: Boolean, default: false },
+    otpCode: { type: String },
+    otpExpires: { type: Date },
     balance: { type: Number, default: 0, min: [0, "Balance cannot be negative"] },   
     bonusBalance: { type: Number, default: 0 },    
     hasDeposited: { type: Boolean, default: false },
@@ -149,23 +154,19 @@ const rdpSchema = new mongoose.Schema({
 
 const RDP = mongoose.models.RDP || mongoose.model('RDP', rdpSchema, 'rdp_orders');
 
-// --- eSIM REFILL SCHEMA ---
 const esimRefillSchema = new mongoose.Schema({
-    // User Identity
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     userEmail: { type: String, required: true, index: true },
     fullName: { type: String },    
     carrier: {
-        id: { type: String, required: true }, // Internal ID or 'manual'
-        name: { type: String, required: true }, // e.g., T-Mobile
-        image: { type: String } // URL to carrier logo
+        id: { type: String, required: true }, 
+        name: { type: String, required: true }, 
+        image: { type: String } 
     },
     target: {
         number: { type: String, required: true }, // The phone number being topped up
         country: { type: String, required: true } // The coverage country
     },
-
-    // Financial Data
     amount: { type: Number, required: true }, // Total cost in NGN
     currency: { type: String, default: 'NGN' },
     mainBalanceUsed: { type: Number, default: 0 },
@@ -179,13 +180,47 @@ const esimRefillSchema = new mongoose.Schema({
     },
     confirmationNumber: { type: String }, // The ID admin provides after manual processing
     adminNote: { type: String },
-
-    // Extensibility
     metadata: { type: mongoose.Schema.Types.Mixed }
 }, { timestamps: true });
 
 esimRefillSchema.index({ createdAt: -1 });
 const EsimRefill = mongoose.models.EsimRefill || mongoose.model('EsimRefill', esimRefillSchema, 'esim_refills');
+
+// --- eSIM ACTIVATION SCHEMA ---
+const esimActivationSchema = new mongoose.Schema({
+    // User Identity
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    userEmail: { type: String, required: true, index: true },
+    
+    customerDetails: {
+        firstName: { type: String, required: true },
+        lastName: { type: String, required: true },
+        address: { type: String },
+        zipCode: { type: String },
+        email: { type: String } // The specific activation email provided in the form
+    },
+    carrier: {
+        name: { type: String, required: true }, // e.g., T-Mobile, AT&T
+        image: { type: String } 
+    },
+    activationType: { type: String, required: true }, // e.g., 'Prepaid', 'Data-Only'
+    deviceName: { type: String, required: true },    // The device name/model provided in 'targetNumber' field
+    amount: { type: Number, required: true }, 
+    mainBalanceUsed: { type: Number, default: 0 },
+    bonusBalanceUsed: { type: Number, default: 0 },
+    paymentReference: { type: String, unique: true, required: true }, // e.g., ACT-XXXXX
+    status: { 
+        type: String, 
+        enum: ['pending', 'processing', 'successful', 'failed', 'completed'], 
+        default: 'pending',
+        index: true 
+    },
+    adminNote: { type: String },    
+    metadata: { type: mongoose.Schema.Types.Mixed }
+}, { timestamps: true });
+
+esimActivationSchema.index({ createdAt: -1 });
+const EsimActivation = mongoose.models.EsimActivation || mongoose.model('EsimActivation', esimActivationSchema, 'esim_activations');
 
 
 // --- TRANSACTION SCHEMA ---
@@ -228,6 +263,17 @@ const orderSchema = new mongoose.Schema({
         default: 'pending' 
     }, 
     paymentReference: { type: String, unique: true },    
+    targetNumber: String, 
+    country: String,
+    target: {
+        number: String,
+        country: String
+    },
+    carrier: {
+        id: String,
+        name: String,
+        image: String
+    },
     confirmationNumber: { type: String }, // NEW: Store manual activation codes or IDs
     adminNote: String, // NEW: Internal notes for the order
     ram: String,
@@ -327,7 +373,6 @@ const verifyToken = async (req, res, next) => {
 };
 
 async function getReferrals(user) {
-    // This only works after 'User' is defined above
     const count = await User.countDocuments({ referredBy: user.referralCode });
     return count;
 }
@@ -335,7 +380,6 @@ async function generateUniqueCode() {
     let isUnique = false;
     let code = "";
     while (!isUnique) {
-        // Generates 3 random bytes -> 6 hex characters (e.g., 7F2A9B)
         code = crypto.randomBytes(3).toString('hex').toUpperCase();
         const existing = await User.findOne({ referralCode: code });
         if (!existing) isUnique = true;
@@ -351,6 +395,14 @@ function normalizeDeviceType(type) {
     if (t === 'both') return 'Both';
     return 'Phone'; // Default fallback
 }
+
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
 
 app.all('/api/:action', async (req, res) => {
     await connectDB();
@@ -371,6 +423,7 @@ app.all('/api/:action', async (req, res) => {
             if (req.method === 'DELETE') return handleDeleteVPN(req, res);
             break;
         case 'user-register': return handleUserRegister(req, res);
+        case 'verify-otp': return handleVerifyOTP(req, res);
         case 'user-login': return handleUserLogin(req, res);
         case 'user-profile': return handleGetUserProfile(req, res);
         case 'user-messages': return handleGetUserMessages(req, res);
@@ -461,35 +514,25 @@ case 'system-status': // Public route for the frontend to check
 // --- 7. LOGIC HANDLERS ---
 async function handleLogin(req, res) {
     const { email, password, captchaToken } = req.body;
-
-    // 1. RECAPTCHA VERIFICATION
-    const isHuman = await verifyRecaptcha(captchaToken);
-    
+    const isHuman = await verifyRecaptcha(captchaToken);    
     if (!isHuman) {
-        // This is where your 400 error is coming from. 
-        // Ensure your frontend is sending 'captchaToken' in the JSON body.
         console.log(`Admin login blocked: reCAPTCHA failed for ${email}`); 
         return res.status(400).json({ 
             success: false, 
             message: "reCAPTCHA verification failed. Please refresh and try again." 
         });
     }
-
     try {
-        // 2. ADMIN AUTHENTICATION
         const admin = await Admin.findOne({ email });
         
         if (!admin || !(await bcrypt.compare(password, admin.password))) {
             return res.status(401).json({ success: false, message: "Invalid admin credentials" });
         }
-
-        // 3. TOKEN GENERATION
         const token = jwt.sign(
             { id: admin._id, email: admin.email, role: 'admin' }, 
             JWT_SECRET, 
             { expiresIn: '24h' }
         );
-
         return res.json({ success: true, token });
     } catch (err) {
         console.error("Admin Login Error:", err);
@@ -497,39 +540,29 @@ async function handleLogin(req, res) {
     }
 }
 
-// --- Updated Google Login Handler ---
 async function handleGoogleLogin(req, res) {
     const { idToken, loginType } = req.body; // 'admin' or 'user'
-    
     try {
         const ticket = await googleClient.verifyIdToken({
             idToken,
             audience: process.env.GOOGLE_CLIENT_ID
         });
         const { email, name } = ticket.getPayload();
-
         let Model = (loginType === 'admin') ? Admin : User;
         let targetAccount = await Model.findOne({ email: email.toLowerCase() });
-        
         if (!targetAccount) {
-            // Create a new account if it doesn't exist
             targetAccount = new Model({
                 fullName: name,
                 email: email.toLowerCase(),
-                // Secure random password for social login users
                 password: await bcrypt.hash(Math.random().toString(36), 12)
-                // Balance logic removed from here
             });
             await targetAccount.save();
         }
-
-        // Generate Token
         const token = jwt.sign(
             { id: targetAccount._id, email: targetAccount.email, role: loginType }, 
             JWT_SECRET, 
             { expiresIn: '24h' }
         );
-
         return res.json({ 
             success: true, 
             token,
@@ -730,7 +763,7 @@ async function handleManageUser(req, res) {
         const updatedUser = await User.findByIdAndUpdate(
             userId, 
             { $set: { status: newStatus } }, 
-            { new: true }
+          { returnDocument: 'after' }
         );
 
         if (!updatedUser) {
@@ -869,27 +902,24 @@ async function handleDeleteVPN(req, res) {
 }
 
 async function handleUserLogin(req, res) {
-    console.log("Incoming Login Data:", req.body);
     const { email, password, captchaToken } = req.body;
+    
     if (!email || typeof email !== 'string') {
         return res.status(400).json({ success: false, message: "Valid email is required." });
     }
     if (!password || typeof password !== 'string') {
         return res.status(400).json({ success: false, message: "Password is required." });
     }
-
     if (!captchaToken) {
         return res.status(400).json({ success: false, message: "reCAPTCHA token missing." });
     }
+
     try {
         const isHuman = await verifyRecaptcha(captchaToken);
         if (!isHuman) {
             return res.status(400).json({ success: false, message: "Security verification failed." });
         }
-    } catch (recaptchaErr) {
-        console.error("reCAPTCHA Service Error:", recaptchaErr.message);
-    }
-    try {
+
         const settings = await SystemSettings.findOne(); 
         if (settings && settings.maintenanceMode === true) {
             return res.status(503).json({ 
@@ -897,19 +927,29 @@ async function handleUserLogin(req, res) {
                 message: "SMSGlobe is currently under maintenance. Please try again later." 
             });
         }
-    const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');        
+
+        const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');        
         if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ success: false, message: "Invalid email or password." });
         }
+
+        // Check if the user has verified their email via OTP
+        if (user.isVerified === false) {
+            return res.status(403).json({ 
+                success: false, 
+                isUnverified: true, // Frontend flag to trigger OTP modal
+                message: "Please verify your email address to continue." 
+            });
+        }
+
         if (user.status === 'suspended') {
             return res.status(403).json({ 
                 success: false, 
-                message: "Your account has been suspended for violating SMSGlobe rules. Contact support." 
+                message: "Your account has been suspended. Contact support." 
             });
         }
-        if (!JWT_SECRET) {
-            throw new Error("JWT_SECRET is not defined in environment variables.");
-        }
+
+        if (!JWT_SECRET) throw new Error("JWT_SECRET is not defined.");
 
         const token = jwt.sign(
             { id: user._id, email: user.email, type: 'user' }, 
@@ -925,30 +965,22 @@ async function handleUserLogin(req, res) {
                 email: user.email, 
                 balance: user.balance || 0,
                 bonusBalance: user.bonusBalance || 0,
-                hasDeposited: user.hasDeposited || false
+                hasDeposited: user.hasDeposited || false,
+                referralCount: user.referralCount || 0,
+                referralCode: user.referralCode
             } 
         });
 
     } catch (err) {
-        // Log the stack trace so you know exactly which line failed in your terminal
         console.error("========== LOGIN ERROR ==========");
-        console.error("Message:", err.message);
-        console.error("Stack:", err.stack);
-        console.error("=================================");
-        
-        return res.status(500).json({ 
-            success: false, 
-            message: "Internal server error.",
-            // Only send error details to frontend if in development mode
-            dev_hint: err.message 
-        });
+        console.error(err.message);
+        return res.status(500).json({ success: false, message: "Internal server error." });
     }
 }
 
 async function handleUserRegister(req, res) {
     const { fullName, email, password, captchaToken, friendReferralCode } = req.body;
 
-    // 1. reCAPTCHA Validation
     if (!captchaToken) {
         return res.status(400).json({ success: false, message: "reCAPTCHA token missing." });
     }
@@ -960,63 +992,174 @@ async function handleUserRegister(req, res) {
 
     try {
         const normalizedEmail = email.toLowerCase().trim();
-
-        // 2. Check if user already exists
         const existingUser = await User.findOne({ email: normalizedEmail });
-        if (existingUser) {
+
+        if (existingUser && existingUser.isVerified) {
             return res.status(400).json({ success: false, message: "This email is already registered." });
         }
 
-        let referredBy = null;
-
-        // 3. Handle Referral Logic
         if (friendReferralCode && friendReferralCode.trim().length > 0) {
-            const cleanFriendCode = friendReferralCode.trim().toUpperCase();            
+            const cleanFriendCode = friendReferralCode.trim().toUpperCase();
             const referrer = await User.findOne({ referralCode: cleanFriendCode });
-            
-            if (referrer) {
-                referredBy = referrer.referralCode;
-                
-                // UPDATE: Add the $2,000 bonus to the REFERRER
-                referrer.bonusBalance = (referrer.bonusBalance || 0) + 3000;
-                referrer.referralCount = (referrer.referralCount || 0) + 1;
-                
-                await referrer.save();
-            } else {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: "The referral code provided is invalid. Leave it blank if you don't have one." 
-                });
+            if (!referrer) {
+                return res.status(400).json({ success: false, message: "The referral code provided is invalid." });
             }
         }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpires = Date.now() + 10 * 60 * 1000; 
+
         const myNewReferralCode = await generateUniqueCode();
-        const hashedPassword = await bcrypt.hash(password, 12);                
-        const newUser = new User({ 
-            fullName: fullName.trim(), 
-            email: normalizedEmail, 
+        const hashedPassword = await bcrypt.hash(password, 12);
+
+        const userData = {
+            fullName: fullName.trim(),
+            email: normalizedEmail,
             password: hashedPassword,
-            balance: 0,             // Main wallet (Real money)
-            bonusBalance: 0,        // Starting bonus for new user
-            hasDeposited: false,    // Bonus remains locked until this is true
+            balance: 0,
+            bonusBalance: 0,
+            hasDeposited: false,
             referralCode: myNewReferralCode,
-            referredBy: referredBy           
-        });
-        
-        await newUser.save();
-        
-        return res.status(201).json({ 
+            referredBy: friendReferralCode ? friendReferralCode.trim().toUpperCase() : null,
+            referralCount: 0,
+            isVerified: false,
+            otpCode: otp,
+            otpExpires: otpExpires
+        };
+
+        if (existingUser) {
+            await User.updateOne({ email: normalizedEmail }, userData);
+        } else {
+            const newUser = new User(userData);
+            await newUser.save();
+        }
+
+       await transporter.sendMail({
+    from: '"SMSGlobe" <noreply@smsglobe.com>',
+    to: normalizedEmail,
+    subject: "Verify your SMSGlobe Account",
+    html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                @media only screen and (max-width: 480px) {
+                    .container { padding: 20px !important; }
+                    .otp-text { font-size: 24px !important; letter-spacing: 4px !important; }
+                    .brand-logo { height: 24px !important; }
+                }
+            </style>
+        </head>
+        <body style="margin: 0; padding: 0; background-color: #F0F5FE; font-family: 'Inter', Helvetica, Arial, sans-serif;">
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                    <td align="center" style="padding: 40px 10px;">
+                        <table class="container" role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 440px; background-color: #ffffff; border: 1px solid #EAECF0; border-radius: 24px; padding: 32px; box-shadow: 0 4px 12px rgba(15, 84, 198, 0.05);">
+                            <tr>
+                                <td align="center" style="padding-bottom: 24px;">
+                                    <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" class="brand-logo" style="height: 28px; width: auto; display: block; outline: none; border: none; text-decoration: none;">
+                                </td>
+                            </tr>
+                            
+                            <tr>
+                                <td align="center">
+                                    <h2 style="margin: 0; color: #101828; font-size: 20px; font-weight: 700; line-height: 1.2;">Verify your email</h2>
+                                    <p style="margin: 12px 0 0 0; color: #667085; font-size: 14px; line-height: 1.5;">
+                                        Thanks for joining SMSGlobe! Please use the verification code below to complete your registration.
+                                    </p>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td align="center" style="padding: 32px 0;">
+                                    <div class="otp-text" style="background-color: #F9FAFB; border: 1px dashed #D0D5DD; border-radius: 12px; padding: 16px; font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #0F54C6; display: inline-block;">
+                                        ${otp}
+                                    </div>
+                                    <p style="margin: 12px 0 0 0; color: #F9861E; font-size: 12px; font-weight: 600;">Code expires in 10 minutes</p>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td align="center" style="border-top: 1px solid #EAECF0; padding-top: 24px;">
+                                    <p style="margin: 0; color: #98A2B3; font-size: 11px; line-height: 1.4;">
+                                        If you didn't request this code, you can safely ignore this email.
+                                    </p>
+                                    <p style="margin: 8px 0 0 0; color: #98A2B3; font-size: 11px;">
+                                        &copy; 2026 SMSGlobe. All rights reserved.
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </body>
+        </html>
+    `
+});
+
+        return res.status(200).json({ 
             success: true, 
-            message: "Account created successfully! You can now log in.",
-            referralCode: myNewReferralCode 
+            message: "Verification code sent to your email!" 
         });
 
     } catch (err) {
         console.error("Registration Error:", err);
-        return res.status(500).json({ success: false, message: "Failed to create account. Please try again." });
+        return res.status(500).json({ success: false, message: "Failed to process registration." });
     }
 }
 
-// Fetch profile for the logged-in user (NGN Only)
+async function handleVerifyOTP(req, res) {
+    const { email, otp } = req.body;
+
+    try {
+        const user = await User.findOne({ 
+            email: email.toLowerCase().trim(),
+            otpCode: otp,
+            otpExpires: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).json({ success: false, message: "Invalid or expired verification code." });
+        }
+
+        // CRITICAL: Only process referral rewards if the user is not already verified
+        if (!user.isVerified) {
+            user.isVerified = true;
+            user.otpCode = undefined;
+            user.otpExpires = undefined;
+
+            if (user.referredBy) {
+                const cleanReferralCode = user.referredBy.trim().toUpperCase();
+                const referrer = await User.findOne({ referralCode: cleanReferralCode });
+                
+                if (referrer) {
+                    referrer.referralCount = (referrer.referralCount || 0) + 1;
+                    
+                    // The 10th, 20th, 30th... referral gets ₦3,000
+                    if (referrer.referralCount % 10 === 0) {
+                        referrer.bonusBalance = (referrer.bonusBalance || 0) + 3000;
+                    }
+                    await referrer.save();
+                }
+            }
+            
+            // Save the verified status and cleaned OTP fields
+            await user.save();
+        }
+
+        return res.status(200).json({ 
+            success: true, 
+            message: "Email verified successfully! You can now log in." 
+        });
+
+    } catch (err) {
+        console.error("OTP Verification Error:", err);
+        return res.status(500).json({ success: false, message: "Verification failed." });
+    }
+}
+
 async function handleGetUserProfile(req, res) {
     // 1. Verify token
     const authHeader = req.headers['authorization'];
@@ -1034,7 +1177,16 @@ async function handleGetUserProfile(req, res) {
             return res.status(404).json({ success: false, message: "User not found" });
         }
 
-        // 2. Check for suspension
+        // --- ADDED VERIFICATION CHECK ---
+        if (user.isVerified === false) {
+            return res.status(403).json({ 
+                success: false, 
+                isUnverified: true,
+                message: "Email verification required",
+                status: 'unverified'
+            });
+        }
+
         if (user.status === 'suspended') {
             return res.status(403).json({ 
                 success: false, 
@@ -1050,6 +1202,7 @@ async function handleGetUserProfile(req, res) {
             fullName: user.fullName,
             email: user.email, 
             status: user.status || 'active',
+            isVerified: user.isVerified, // Included for frontend UI state
             balance: user.balance || 0, 
             bonusBalance: user.bonusBalance || 0, 
             hasDeposited: user.hasDeposited || false,
@@ -1267,10 +1420,11 @@ async function handleVerifyTopup(req, res) {
 }
 
 async function handlePurchaseWithWallet(req, res) {
-   const { 
+    // 1. DESTRICTURING (All body variables defined here)
+    const { 
         vpnId, proxyId, rdpId, 
-        carrierName, carrierId, productImage, // Added for eSIM
-        coverageCountry, mobileNumber,        // Added for eSIM
+        carrierName, carrierId, productImage, 
+        coverageCountry, mobileNumber,        
         planAmount, planIndex, 
         metadata, planName, useBonus 
     } = req.body;
@@ -1281,13 +1435,13 @@ async function handlePurchaseWithWallet(req, res) {
     try {
         if (!token) return res.status(401).json({ success: false, message: "Unauthorized" });
         
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
-        // 1. FETCH FRESH USER DATA
+        // FETCH FRESH USER DATA
         const user = await User.findById(decoded.id);
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-        // 2. IDEMPOTENCY CHECK (Prevents double-charging within 20 seconds)
+        // IDEMPOTENCY CHECK
         const recentOrder = await Order.findOne({
             userId: user._id,
             createdAt: { $gt: new Date(Date.now() - 20000) } 
@@ -1301,38 +1455,47 @@ async function handlePurchaseWithWallet(req, res) {
         let productDetails = { name: "", plan: "" };
         let orderSpecifics = {};
 
-        // 3. PRODUCT LOGIC & STOCK MANAGEMENT
         if (vpnId) {
-            const item = await VPN.findOneAndUpdate(
-                { _id: vpnId, stock: { $gt: 0 } },
-                { $inc: { stock: -1 } },
-                { new: true, select: '+password +pcPassword +activationCode' }
-            );
-            
-            if (!item || !item.plans[planIndex]) {
-                return res.status(404).json({ success: false, message: "VPN unavailable or out of stock" });
-            }
+    // We use .select('+password...') because these fields are likely hidden in your schema
+    const item = await VPN.findOneAndUpdate(
+        { _id: vpnId, stock: { $gt: 0 } },
+        { $inc: { stock: -1 } },
+        { 
+            returnDocument: 'after', 
+            // CRITICAL: Ensure we explicitly select the hidden credentials
+            select: '+password +pcPassword +activationCode' 
+        }
+    );
+    
+    if (!item || !item.plans[planIndex]) {
+        return res.status(404).json({ success: false, message: "VPN unavailable or out of stock" });
+    }
 
-            itemType = "VPN";
-            costNGN = Math.round(Number(item.plans[planIndex].price));
-            productDetails.name = item.name;
-            productDetails.plan = item.plans[planIndex].duration;
-            
-            orderSpecifics = {
-                username: item.username || null,
-                password: item.password || null,
-                pcUsername: item.pcUsername || null,
-                pcPassword: item.pcPassword || null,
-                activationCode: item.activationCode || null,
-                pcMethod: item.pcMethod || null,
-                instructions: item.instructions || "Follow the setup guide provided in your dashboard."
-            };
+    itemType = "VPN";
+    costNGN = Math.round(Number(item.plans[planIndex].price));
+    productDetails.name = item.name;
+    productDetails.plan = item.plans[planIndex].duration;
+    
+    // MATCHING YOUR ORDER SCHEMA:
+    // Your schema uses 'vpnCredentials: { username, password }'
+    orderSpecifics = {
+        vpnCredentials: {
+            username: item.username || "",
+            password: item.password || ""
+        },
+        // These fields are flat in your Order schema
+        pcUsername: item.pcUsername || "",
+        pcPassword: item.pcPassword || "",
+        activationCode: item.activationCode || "",
+        pcMethod: item.pcMethod || "",
+        instructions: item.instructions || "Follow the setup guide provided in your dashboard."
+    };
         } 
         else if (proxyId) {
             const item = await Proxy.findOneAndUpdate(
                 { _id: proxyId, stock: { $gt: 0 } },
                 { $inc: { stock: -1 } },
-                { new: true, select: '+activationCode +instructions' } 
+                { returnDocument: 'after', select: '+activationCode +instructions' } 
             );
 
             if (!item || !item.plans[planIndex]) {
@@ -1363,11 +1526,7 @@ async function handlePurchaseWithWallet(req, res) {
             const extraCPUCount = parseInt(metadata?.extraCPU || 0);
             const extraStorageGB = parseInt(metadata?.extraStorage || 0);
 
-            costNGN = Math.round(
-                Number(selectedTier.price) + 
-                (extraCPUCount * 5000) + 
-                (extraStorageGB * 2000)
-            );
+            costNGN = Math.round(Number(selectedTier.price) + (extraCPUCount * 5000) + (extraStorageGB * 2000));
             
             productDetails.name = selectedTier.name;
             productDetails.plan = `${selectedTier.ram} RAM | ${metadata?.osChoice || 'Windows Server'}`;
@@ -1382,39 +1541,57 @@ async function handlePurchaseWithWallet(req, res) {
                 extraStorage: extraStorageGB
             };
         }
-        else if (carrierName && mobileNumber) {
+        else if (metadata?.activationEmail && metadata?.firstName) {
+            itemType = "eSIM_Activation";
+            const cleanedPrice = planAmount.toString().split('.')[0].replace(/[^0-9]/g, "");
+            costNGN = Math.round(Number(cleanedPrice));
+
+            productDetails.name = carrierName || "Global eSIM";
+            productDetails.plan = planName || `₦${costNGN.toLocaleString()} Activation`;
+
+            orderSpecifics = {
+                carrier: { name: carrierName, image: productImage },
+                deviceName: mobileNumber, 
+                customerDetails: {
+                    firstName: metadata.firstName,
+                    lastName: metadata.lastName,
+                    address: metadata.address,
+                    zipCode: metadata.zip,
+                    email: metadata.activationEmail
+                },
+                instructions: "Payment Confirmed. SMSGlobe is verifying your activation details."
+            };
+        }
+       else if (carrierName && mobileNumber) {
             itemType = "eSIM_Refill";
-            
-            // Clean the string (e.g., "₦50,000" -> 50000)
             const cleanedPrice = planAmount.toString().replace(/[^0-9]/g, "");
             costNGN = Math.round(Number(cleanedPrice));
             
             productDetails.name = carrierName;
-            productDetails.plan = planAmount; // Display string
-
+            productDetails.plan = planAmount; 
             orderSpecifics = {
                 carrier: { id: carrierId || 'manual', name: carrierName, image: productImage },
                 target: { number: mobileNumber, country: coverageCountry },
-                instructions: "Your refill request has been received and is being processed."
+                targetNumber: mobileNumber,
+                country: coverageCountry, 
+                instructions: "Payment Confirmed. Your refill is being processed by the technical team."
             };
         }
 
-       // --- 4. BALANCE VALIDATION (UPDATED FOR USER CHOICE) ---
-        const { useBonus } = req.body; // New field from frontend toggle
+        // --- WALLET CALCULATIONS ---
         const mainBal = Number(user.balance || 0);
         const bonusBal = Number(user.bonusBalance || 0);
         const isBonusUnlocked = user.hasDeposited || mainBal > 0;
         const canUseBonus = useBonus === true && isBonusUnlocked && bonusBal > 0;        
         const buyingPower = canUseBonus ? (mainBal + bonusBal) : mainBal;
 
-       if (buyingPower < costNGN) {
-            // Revert stock for inventory-based items
+        if (buyingPower < costNGN) {
             if (vpnId) await VPN.findByIdAndUpdate(vpnId, { $inc: { stock: 1 } });
             if (proxyId) await Proxy.findByIdAndUpdate(proxyId, { $inc: { stock: 1 } });
 
             let errorMsg = `Insufficient Funds. Required: ₦${costNGN.toLocaleString()}.`;
             if (!useBonus && (mainBal + bonusBal) >= costNGN) {
-                errorMsg += " (Try enabling your Bonus Balance to complete this purchase)";
+                errorMsg += " (Try enabling your Bonus Balance)";
             } else if (!isBonusUnlocked && bonusBal > 0) {
                 errorMsg += " (Bonus locked. Deposit to unlock)";
             }
@@ -1434,84 +1611,50 @@ async function handlePurchaseWithWallet(req, res) {
                 remainingToPay -= bonusBal;
             }
         }
+        mainDeduction = remainingToPay;
 
-        if (remainingToPay > 0) {
-            mainDeduction = remainingToPay;
-        }
-      const updatedUser = await User.findOneAndUpdate(
+        const updatedUser = await User.findOneAndUpdate(
             { _id: user._id, balance: { $gte: mainDeduction } },
-            { 
-                $inc: { 
-                    balance: -mainDeduction, 
-                    bonusBalance: -bonusDeduction 
-                } 
-            },
-            { new: true }
+            { $inc: { balance: -mainDeduction, bonusBalance: -bonusDeduction } },
+           { returnDocument: 'after' }
         );
 
         if (!updatedUser) {
             if (vpnId) await VPN.findByIdAndUpdate(vpnId, { $inc: { stock: 1 } });
             if (proxyId) await Proxy.findByIdAndUpdate(proxyId, { $inc: { stock: 1 } });
-            
-            return res.status(400).json({ 
-                success: false, 
-                message: "Transaction failed. Please ensure you have sufficient funds and try again." 
-            });
+            return res.status(400).json({ success: false, message: "Transaction failed." });
         }
 
-       const newMainBalance = updatedUser.balance;
-        const newBonusBalance = updatedUser.bonusBalance;
-
-        const balanceBefore = mainBal; // For Transaction log
-        const balanceAfter = updatedUser.balance;
         const paymentReference = `WAL-${Date.now()}-${user._id.toString().slice(-4)}`;
 
-       // --- 6. CREATE ORDER RECORDS ---
-       let newOrder;
-if (itemType === "eSIM_Refill") {
-    if (!orderSpecifics.target.country || !orderSpecifics.target.number) {
-        throw new Error("Missing target country or mobile number for eSIM Refill");
-    }
-        newOrder = await EsimRefill.create({
-        userId: user._id,
-        userEmail: user.email,
-        fullName: user.fullName || "Customer",
-        carrier: {
-            id: orderSpecifics.carrier.id || "manual",
-            name: orderSpecifics.carrier.name,
-            image: orderSpecifics.carrier.image
-        },
-        target: {
-            number: orderSpecifics.target.number,
-            country: orderSpecifics.target.country 
-        },
-        amount: costNGN,
-        mainBalanceUsed: mainDeduction,
-        bonusBalanceUsed: bonusDeduction,
-        paymentReference: paymentReference,
-        status: 'pending' // Admin sees this to start processing
-    });
-        } else {
-            // Save to standard Order collection
-            newOrder = await Order.create({
-                userId: user._id,
-                userEmail: user.email,
-                fullName: user.fullName,
-                productType: itemType,
-                planName: productDetails.plan,
-                nodeName: productDetails.name,
-                amount: costNGN,
-                mainBalanceUsed: mainDeduction,
-                bonusBalanceUsed: bonusDeduction,
-                currency: "NGN",
-                status: "successful",
-                paymentReference: paymentReference,
-                metadata: metadata, 
-                ...orderSpecifics   
-            });
-        }
+        const newOrder = await Order.create({
+            userId: user._id,
+            userEmail: user.email,
+            fullName: user.fullName || "Customer",
+            productType: itemType,
+            planName: productDetails.plan,
+            nodeName: productDetails.name,
+            amount: costNGN,
+            mainBalanceUsed: mainDeduction,
+            bonusBalanceUsed: bonusDeduction,
+            currency: "NGN",            
+            status: "successful",
+            paymentReference: paymentReference,
+            targetNumber: mobileNumber || orderSpecifics.target?.number,
+            country: coverageCountry || orderSpecifics.target?.country,
+            target: {
+                number: mobileNumber || orderSpecifics.target?.number,
+                country: coverageCountry || orderSpecifics.target?.country
+            },
+            carrier: orderSpecifics.carrier || { name: carrierName, image: productImage },
+            ...orderSpecifics,
+            metadata: { 
+                ...metadata,
+                isManualProcess: (itemType === "eSIM_Refill" || itemType === "eSIM_Activation")
+            }
+        });
 
-        // 7. CREATE TRANSACTION LOG
+        // TRANSACTION LOG
         await Transaction.create({
             userId: user._id,
             type: 'debit',
@@ -1521,60 +1664,161 @@ if (itemType === "eSIM_Refill") {
             reference: paymentReference,
             paymentMethod: 'wallet_combined',            
             balanceBefore: mainBal,
-            balanceAfter: newMainBalance,
+            balanceAfter: updatedUser.balance,
             bonusBefore: bonusBal,
-            bonusAfter: newBonusBalance,
-            metadata: { 
-                orderId: newOrder._id, 
-                product: productDetails.name,
-                breakdown: {
-                    mainWallet: mainBal - newMainBalance,
-                    bonusWallet: bonusBal - newBonusBalance
-                },
-                extras: itemType === "RDP" ? { 
-                    cpu: orderSpecifics.extraCPU, 
-                    storage: orderSpecifics.extraStorage 
-                } : null
-            }
+            bonusAfter: updatedUser.bonusBalance,
+            metadata: { orderId: newOrder._id, product: productDetails.name }
         });
 
-        // 8. SEND DELIVERY EMAIL
-        sendDeliveryEmail(user.email, { 
+sendDeliveryEmail(user.email, { 
             ...orderSpecifics, 
+            productType: itemType, 
             amount: `₦${costNGN.toLocaleString()}`,
-            planName: productDetails.plan
-        }, newOrder).catch(err => console.error("Email Error:", err.message));
+            planName: productDetails.plan || newOrder.planName,
+            paymentReference: paymentReference,
+            metadata: newOrder.metadata,
+            nodeName: productDetails.name,   // Required for eSIM labels
+            targetNumber: mobileNumber        // Required for eSIM labels
+        }).catch(err => console.error("📧 Customer Email Error:", err.message));
 
-        // 9. FINAL RESPONSE
+      // 2. Send Notification to ADMIN (Only for manual products)
+const manualProducts = ["eSIM_Refill", "eSIM_Activation", "RDP"];
+
+if (manualProducts.includes(itemType)) {
+    sendAdminNotification({
+        type: itemType,
+        email: user.email,
+        product: productDetails.name,
+        amount: `₦${costNGN.toLocaleString()}`,
+        reference: paymentReference,
+        target: mobileNumber || metadata?.targetNumber || metadata?.activationEmail || 'N/A',
+        country: coverageCountry || metadata?.country || 'N/A', 
+        metadata: metadata,
+        orderSpecifics: orderSpecifics,
+        planName: productDetails.plan || newOrder.planName || 'Standard'
+    }).catch(err => console.error("📧 Admin Notification Error:", err.message));
+}
+
+        // 3. Final Response to Frontend
+        const isManual = manualProducts.includes(itemType);
+
         return res.json({ 
             success: true, 
-            message: itemType === "eSIM_Refill" ? "Refill request submitted!" : "Purchase successful!",
-            balance: balanceAfter,
+            message: isManual 
+                ? "Request submitted! Our team is processing your order." 
+                : "Purchase successful!",
+            balance: updatedUser.balance,
             bonusBalance: updatedUser.bonusBalance,
-            order: newOrder,
-            rdpDetails: itemType === "RDP" ? {
-                ram: newOrder.ram,
-                cpu: newOrder.cpu,
-                extraCPU: newOrder.extraCPU,
-                storage: newOrder.storage,
-                extraStorage: newOrder.extraStorage,
-                net: newOrder.net,
-                os: newOrder.os
-            } : null,
-            credentials: {
-                username: orderSpecifics.username || null,
-                password: orderSpecifics.password || null,
-                pcUsername: orderSpecifics.pcUsername || null,
-                pcPassword: orderSpecifics.pcPassword || null,
-                activationCode: orderSpecifics.activationCode || null,
-                instructions: orderSpecifics.instructions || null
-            }
+            order: newOrder 
         });
+
     } catch (err) {
         console.error("Wallet Purchase Error:", err);
         return res.status(500).json({ success: false, message: "Internal server error." });
     }
 }
+
+
+// Move transporter outside for faster execution
+const adminTransporter = nodemailer.createTransport({
+    service: 'gmail',
+    pool: true,
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
+const sendAdminNotification = async (orderData) => {
+    const { type, email, amount, product, reference, target, metadata, orderSpecifics, country } = orderData;
+    
+    // Use a smaller base font for mobile optimization
+    const labelStyle = "font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 2px; display: block;";
+    const valueStyle = "font-size: 13px; color: #1e293b; font-weight: 600;";
+    
+    let specificDetailsHtml = '';
+
+    if (type === "RDP") {
+        specificDetailsHtml = `
+            <div style="background: #f8fafc; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; margin: 12px 0;">
+                <p style="font-size: 12px; margin:0 0 8px 0; color: #0F54C6;"><b>🖥️ RDP CONFIG</b></p>
+                <table width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td width="50%"><span style="${labelStyle}">OS</span><span style="${valueStyle}">${orderSpecifics?.os || 'Win'}</span></td>
+                        <td width="50%"><span style="${labelStyle}">RAM</span><span style="${valueStyle}">${orderSpecifics?.ram || 'N/A'}</span></td>
+                    </tr>
+                </table>
+            </div>`;
+    } else if (type === "eSIM_Refill") {
+        specificDetailsHtml = `
+            <div style="background: #f0fdf4; padding: 10px; border: 1px solid #bbf7d0; border-radius: 8px; margin: 12px 0;">
+                <p style="font-size: 12px; margin:0 0 8px 0; color: #166534;"><b>📲 REFILL DETAILS</b></p>
+                <table width="100%" cellspacing="0" cellpadding="2">
+                    <tr>
+                        <td width="50%"><span style="${labelStyle}">Target Number</span><span style="${valueStyle}">${target}</span></td>
+                        <td width="50%"><span style="${labelStyle}">Carrier</span><span style="${valueStyle}">${product}</span></td>
+                    </tr>
+                    <tr>
+                        <td width="50%" style="padding-top:8px;"><span style="${labelStyle}">Country</span><span style="${valueStyle}">${country || 'N/A'}</span></td>
+                        <td width="50%" style="padding-top:8px;"><span style="${labelStyle}">Plan</span><span style="${valueStyle}">${orderData.planName || 'Standard'}</span></td>
+                    </tr>
+                </table>
+            </div>`;
+    }
+
+    const htmlContent = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif; max-width: 450px; margin: auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #ffffff;">
+            <div style="background: #0F54C6; padding: 15px; text-align: center;">
+                <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" width="100">
+            </div>
+            
+            <div style="padding: 20px;">
+                <h3 style="color: #0F54C6; font-size: 16px; margin: 0 0 15px 0; text-align: center;">🚨 New ${type.replace('_', ' ')} Order</h3>
+                
+                <div style="border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 10px;">
+                    <span style="${labelStyle}">Customer Email</span>
+                    <span style="${valueStyle}">${email}</span>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <div style="width: 48%;">
+                        <span style="${labelStyle}">Amount</span>
+                        <span style="font-size: 15px; color: #101828; font-weight: 800;">${amount}</span>
+                    </div>
+                    <div style="width: 48%;">
+                        <span style="${labelStyle}">Ref</span>
+                        <code style="font-size: 11px; background:#f1f5f9; padding:2px 4px; border-radius:4px;">${reference}</code>
+                    </div>
+                </div>
+
+                ${specificDetailsHtml}
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="https://smsglobe.netlify.app/admin" 
+                       style="background: #0F54C6; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: bold; display: inline-block; width: 80%;">
+                        Complete Order
+                    </a>
+                </div>
+            </div>
+            
+            <div style="background: #f8fafc; padding: 12px; text-align: center;">
+                <p style="font-size: 10px; color: #94a3b8; margin: 0;">Priority System Alert &bull; SMSGlobe Admin</p>
+            </div>
+        </div>
+    `;
+
+    try {
+        await adminTransporter.sendMail({
+            from: `"SMSGlobe Alert" <${process.env.EMAIL_USER}>`,
+            to: process.env.ADMIN_EMAIL,
+            subject: `🚨 ${type}: ${amount} from ${email}`,
+            html: htmlContent
+        });
+    } catch (error) {
+        console.error("Admin Mail Error:", error.message);
+    }
+};
+
 
 const sendDeliveryEmail = async (userEmail, credentials) => {
     const transporter = nodemailer.createTransport({
@@ -1585,14 +1829,27 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
         }
     });
 
-    const isVPN = credentials.type === "VPN";
-    const isRDP = credentials.type === "RDP";
-    const isESIM_Refill = credentials.type === "eSIM";
-    const isESIM_Activation = credentials.type === "eSIM_Activation";
-    const isProxy = credentials.type === "Proxy";
+const type = (credentials.type || credentials.productType || "").toUpperCase();
+    
+    if (!type) {
+        console.error("📧 Email Error: No product type provided in credentials object.");
+        return;
+    }
+
+    const isVPN = type === "VPN";
+    const vpnCreds = credentials.vpnCredentials || {};
+    const user = vpnCreds.username || credentials.username || "";
+    const pass = vpnCreds.password || credentials.password || "";
+    const code = credentials.activationCode || "";
+
+    const isRDP = type === "RDP";
+    const isESIM_Refill = type === "eSIM_Refill";
+    const isESIM_Activation = type === "eSIM_Activation";
+    const isProxy = type === "Proxy";
     
     let subject, headerTitle, subHeader;
 
+    // 2. Determine Subject and Headers
     if (isRDP) {
         subject = "🖥️ Your RDP Server is Ready!";
         headerTitle = "Server Provisioned!";
@@ -1613,13 +1870,15 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
             ? "Your eSIM has been successfully topped up." 
             : "We have received your refill request and are processing it.";
     } else {
-        subject = "🌐 Your Proxy Activation Code";
-        headerTitle = "Proxy Ready! 🌐";
-        subHeader = "Your Proxy activation details are below.";
+        // This is the fallback for Proxy and other services
+        subject = `🌐 Your ${type} Activation Details`;
+        headerTitle = `${type} Ready! 🌐`;
+        subHeader = `Your ${type} details are provided below.`;
     }
     
     let dataTableHtml = '';
 
+    // 3. Build the Data Table based on Service Type
     if (isRDP) {
         const specsString = credentials.specs || ""; 
         const specParts = specsString.split(',').map(s => s.trim());
@@ -1630,8 +1889,8 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
         dataTableHtml = `
             <tr>
                 <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Login Details (IP/User/Pass)</span><br>
-                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.confirmationNumber || 'Details in Dashboard'}</strong>
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Login Details</span><br>
+                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.confirmationNumber || 'Check Dashboard'}</strong>
                 </td>
                 <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                     <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Operating System</span><br>
@@ -1652,10 +1911,16 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
                     <strong style="font-size: 12px; color: #101828;">${storageValue}</strong>
                 </td>
             </tr>`;
-  } else if (productType === "VPN") { // Using your productType variable
-    const hasMobile = !!credentials.username;
-    const hasPC = !!credentials.pcUsername;
-    const hasCode = !!credentials.activationCode;
+    } else if (isVPN) {
+    const vpnCreds = credentials.vpnCredentials || {};    
+    const displayUser = vpnCreds.username || credentials.username;
+    const displayPass = vpnCreds.password || credentials.password;    
+    const displayPCUser = credentials.pcUsername;
+    const displayPCPass = credentials.pcPassword;
+    const displayCode = credentials.activationCode;
+    const hasMobile = !!(displayUser && displayUser.trim() !== "");
+    const hasPC = !!(displayPCUser && displayPCUser.trim() !== "");
+    const hasCode = !!(displayCode && displayCode.trim() !== "");
 
     dataTableHtml = `
         <tr>
@@ -1666,106 +1931,171 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
                 </div>
             </td>
         </tr>
-
         ${hasMobile ? `
         <tr>
             <td width="50%" valign="top" style="padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile/Email User</span><br>
-                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #101828;">${credentials.username}</strong>
+                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #101828;">${displayUser}</strong>
             </td>
             <td width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Password</span><br>
-                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.password}</strong>
+                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #0F54C6;">${displayPass}</strong>
             </td>
         </tr>` : ''}
-
         ${hasPC ? `
         <tr>
             <td width="50%" valign="top" style="padding-bottom: 15px; border-top: 1px solid #f2f4f7; padding-top: 10px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">PC Username</span><br>
-                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #101828;">${credentials.pcUsername}</strong>
+                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #101828;">${displayPCUser}</strong>
             </td>
             <td width="50%" valign="top" style="text-align: right; padding-bottom: 15px; border-top: 1px solid #f2f4f7; padding-top: 10px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">PC Password</span><br>
-                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.pcPassword}</strong>
+                <strong style="font-size: 12px; font-family: 'Courier New', monospace; color: #0F54C6;">${displayPCPass}</strong>
             </td>
         </tr>` : ''}
-
         ${hasCode ? `
         <tr>
-            <td colspan="2" valign="top" style="padding: 15px; background-color: #f0f5ff; border-radius: 8px; margin-bottom: 15px;">
+            <td colspan="2" valign="top" style="padding: 15px; background-color: #f0f5ff; border-radius: 8px; margin-bottom: 15px; text-align: center;">
                 <span style="font-size: 9px; color: #0F54C6; text-transform: uppercase; font-weight: bold;">Activation Code ${credentials.pcMethod ? `(${credentials.pcMethod})` : ''}</span><br>
-                <strong style="font-size: 16px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${credentials.activationCode}</strong>
+                <strong style="font-size: 18px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${displayCode}</strong>
             </td>
         </tr>` : ''}
-
         <tr>
             <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">How to Setup</span><br>
-                <p style="font-size: 12px; color: #344054; line-height: 1.6; margin: 5px 0;">
-                    ${credentials.instructions || 'Login to your SMSGlobe dashboard to download the specific apps for your device.'}
-                </p>
+                <div style="font-size: 12px; color: #344054; line-height: 1.6; margin: 5px 0;">
+                    ${credentials.instructions || 'Login to your SMSGlobe dashboard to download the apps for your device.'}
+                </div>
             </td>
         </tr>`;
-    } else if (isESIM_Activation) {
-        dataTableHtml = `
-            <tr>
-                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation Email</span><br>
-                    <strong style="font-size: 13px; color: #0F54C6;">${credentials.email || userEmail}</strong>
-                </td>
-                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
-                    <strong style="font-size: 13px; color: #101828;">${credentials.nodeName || credentials.carrierName || 'Global eSIM'}</strong>
-                </td>
-            </tr>
-            <tr>
-                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Device Model</span><br>
-                    <strong style="font-size: 12px; color: #344054;">${credentials.mobileNumber || credentials.deviceModel || 'Compatible Device'}</strong>
-                </td>
-                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
-                    <strong style="font-size: 13px; color: #101828;">₦${credentials.amount || '0'}</strong>
-                </td>
-            </tr>`;
-    } else if (isESIM_Refill) {
-        dataTableHtml = `
-            <tr>
-                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
-                    <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || credentials.carrierName}</strong>
-                </td>
-                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Number</span><br>
-                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.targetNumber || credentials.mobileNumber}</strong>
-                </td>
-            </tr>
-            <tr>
-                <td class="mobile-full" width="50%" valign="top">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Refill Plan</span><br>
-                    <strong style="font-size: 13px; color: #101828;">${credentials.planName || credentials.amount}</strong>
-                </td>
-                <td class="mobile-full" width="50%" valign="top" style="text-align: right;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Reference #</span><br>
-                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #F9861E;">${credentials.confirmationNumber || 'PROCESSING'}</strong>
-                </td>
-            </tr>`;
-    } else {
-        dataTableHtml = `
-            <tr>
-                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">ID / Code</span><br>
-                    <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #0F54C6;">
-                        ${credentials.activationCode || credentials.confirmationNumber || 'N/A'}
-                    </strong>
-                </td>
-                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 10px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Price Paid</span><br>
-                    <strong style="font-size: 14px; color: #101828;">₦${credentials.amount}</strong>
-                </td>
-            </tr>`;
-    }
+   } 
+  if (isESIM_Activation) {
+    const isFinal = !!(credentials.activationCode || credentials.confirmationNumber);
+    const meta = credentials.metadata || {};
+    
+    dataTableHtml = `
+        <tr>
+            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
+                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || 'Global eSIM'}</strong>
+            </td>
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Device Model</span><br>
+                <strong style="font-size: 13px; color: #101828;">${credentials.targetNumber || 'N/A'}</strong>
+            </td>
+        </tr>
+
+        <tr>
+            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Subscription Plan</span><br>
+                <strong style="font-size: 13px; color: #101828;">${credentials.planName || 'Standard Activation'}</strong>
+            </td>
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
+                <strong style="font-size: 13px; color: #101828;">${credentials.amount}</strong>
+            </td>
+        </tr>
+
+        <tr>
+            <td colspan="2" style="border-top: 1px solid #f2f4f7; padding-top: 15px; padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Subscriber Details</span><br>
+                <div style="font-size: 12px; color: #344054; line-height: 1.6; background: #f9fafb; padding: 10px; border-radius: 6px; margin-top: 5px;">
+                    <strong>Name:</strong> ${credentials.firstName || ''} ${credentials.lastName || ''}<br>
+                    <strong>Email:</strong> ${credentials.email || 'N/A'}<br>
+                    <strong>Address:</strong> ${credentials.address || 'N/A'}<br>
+                    <strong>ZIP Code:</strong> ${credentials.zip || 'N/A'} | <strong>Type:</strong> ${credentials.activationType || 'Prepaid'}
+                </div>
+            </td>
+        </tr>
+
+        <tr>
+            <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px; text-align: center;">
+                ${isFinal ? `
+                <div style="background: #ECFDF3; border: 1px solid #ABEFC6; padding: 15px; border-radius: 8px;">
+                    <span style="font-size: 9px; color: #067647; text-transform: uppercase; font-weight: bold;">eSIM Activation Code / ID</span><br>
+                    <strong style="font-size: 18px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${credentials.activationCode || credentials.confirmationNumber}</strong>
+                </div>` : `
+                <div style="background: #FFF9F2; border: 1px solid #FFE4C4; padding: 15px; border-radius: 8px;">
+                    <span style="font-size: 10px; color: #B45309; text-transform: uppercase; font-weight: bold;">Status: Provisioning eSIM</span><br>
+                    <p style="font-size: 11px; color: #667085; margin: 5px 0 0 0;">Your details have been sent to the carrier. We will notify you once the eSIM profile is ready for download.</p>
+                </div>`}
+            </td>
+        </tr>`;
+}
+else if (isESIM_Refill) {
+    const isFinal = !!credentials.confirmationNumber;
+    
+    // 1. Extract and Clean Variables
+    const displayAmount = credentials.amount || credentials.totalPaid || 0;
+    const displayCountry = credentials.country || credentials.coverage || 'International';
+    const displayPayment = credentials.paymentMethod || credentials.gateway || 'Wallet/Flutterwave';
+
+    dataTableHtml = `
+        <tr>
+            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
+                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || 'Global eSIM'}</strong>
+            </td>
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Target Number</span><br>
+                <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.targetNumber || 'N/A'}</strong>
+            </td>
+        </tr>
+
+        <tr>
+            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Coverage Country</span><br>
+                <strong style="font-size: 13px; color: #101828;">${displayCountry}</strong>
+            </td>
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Price Paid</span><br>
+                <strong style="font-size: 13px; color: #101828;">₦${Number(displayAmount).toLocaleString()}</strong>
+            </td>
+        </tr>
+
+        <tr>
+            <td colspan="2" style="padding-bottom: 15px; border-top: 1px solid #f2f4f7; padding-top: 10px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Payment Method</span><br>
+                <strong style="font-size: 12px; color: #344054;">${displayPayment}</strong>
+            </td>
+        </tr>
+
+        <tr>
+            <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px; text-align: center;">
+                ${isFinal ? `
+                <div style="background: #ECFDF3; border: 1px solid #ABEFC6; padding: 12px; border-radius: 8px;">
+                    <span style="font-size: 9px; color: #067647; text-transform: uppercase; font-weight: bold;">Refill Confirmation Number</span><br>
+                    <strong style="font-size: 18px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${credentials.confirmationNumber}</strong>
+                </div>` : `
+                <div style="background: #FFF9F2; border: 1px solid #FFE4C4; padding: 12px; border-radius: 8px;">
+                    <span style="font-size: 10px; color: #B45309; text-transform: uppercase; font-weight: bold;">Status: Processing Request</span><br>
+                    <p style="font-size: 11px; color: #667085; margin: 5px 0 0 0;">Your refill is being processed by our team. You'll receive another email once it's completed.</p>
+                </div>`}
+            </td>
+        </tr>
+    `;
+}
+else {
+    dataTableHtml = `
+        <tr>
+            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Product</span><br>
+                <strong style="font-size: 14px; color: #0F54C6;">${credentials.nodeName || 'Service'}</strong>
+            </td>
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 10px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Price Paid</span><br>
+                <strong style="font-size: 14px; color: #101828;">₦${Number(credentials.amount).toLocaleString()}</strong>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" style="padding-top: 10px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Credentials / Code</span><br>
+                <strong style="font-size: 14px; font-family: 'Courier New', monospace; color: #101828;">
+                    ${credentials.activationCode || credentials.confirmationNumber || 'N/A'}
+                </strong>
+            </td>
+        </tr>`;
+}
 
     const htmlContent = `
     <!DOCTYPE html>
@@ -1801,7 +2131,7 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
                                 </table>
                             </div>
                             <div style="text-align: center; margin-top: 30px;">
-                                <a href="https://smsglobe.net" style="background-color: #0F54C6; color: #ffffff; padding: 12px 24px; text-decoration: none; font-size: 13px; font-weight: bold; border-radius: 8px; display: inline-block;">Access Dashboard</a>
+                                <a href="https://smsglobe.netlify.app" style="background-color: #0F54C6; color: #ffffff; padding: 12px 24px; text-decoration: none; font-size: 13px; font-weight: bold; border-radius: 8px; display: inline-block;">Access Dashboard</a>
                             </div>
                         </div>
                         <div style="background: #F9FAFB; padding: 20px; text-align: center; border-top: 1px solid #EAECF0;">
@@ -1814,12 +2144,17 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
     </body>
     </html>`;
 
-    await transporter.sendMail({
-        from: `"SMSGlobe Support" <${process.env.EMAIL_USER}>`,
-        to: userEmail,
-        subject: `${subject} - SMSGlobe`,
-        html: htmlContent
-    });
+  try {
+        await transporter.sendMail({
+            from: `"SMSGlobe Support" <${process.env.EMAIL_USER}>`,
+            to: userEmail,
+            subject: `${subject} - SMSGlobe`,
+            html: htmlContent 
+        });
+        console.log(`Delivery email sent to: ${userEmail} (${type})`);
+    } catch (error) {
+        console.error("Nodemailer Error:", error);
+    }
 };
 
 const sendResetPasswordEmail = async (userEmail, resetLink, isAdmin = false) => {
@@ -2018,34 +2353,22 @@ async function handleAllTransactions(req, res) {
 }
 
 async function handleCreateEsimOrder(req, res) {
-    const { email, carrierName, mobileNumber, planAmount, productImage, useBonus } = req.body;
+    // 1. Destructure data (Added coverageCountry from frontend)
+    const { email, carrierName, mobileNumber, planAmount, productImage, useBonus, coverageCountry, carrierId } = req.body;
 
     if (!email || !carrierName || !mobileNumber || !planAmount) {
         return res.status(400).json({ success: false, message: "Missing required eSIM data" });
     }
 
     try {
-        const [settings, user] = await Promise.all([
-            SystemSettings.findOne(),
-            User.findOne({ email: email.toLowerCase() })
-        ]);
-
+        const user = await User.findOne({ email: email.toLowerCase() });
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
+        const finalAmountNGN = Math.round(Number(planAmount.toString().replace(/[^0-9]/g, "")));
 
-        const LIVE_RATE = settings?.exchangeRate || 1380;
-        const MARKUP = settings?.globalMarkup || 0;
-
-        // 1. Price Calculation
-        const amountUSD = parseFloat(planAmount.replace(/[$,]/g, ''));
-        const basePriceNGN = amountUSD * LIVE_RATE;
-        const markupAmount = basePriceNGN * (MARKUP / 100);
-        const finalAmountNGN = Math.round(basePriceNGN + markupAmount);
-
-        // 2. Balance Logic
+        // 3. Balance Deduction Logic
         let remainingToPay = finalAmountNGN;
         let bonusUsed = 0;
         let mainUsed = 0;
-
         const canUseBonus = useBonus && (user.hasDeposited || user.ngn > 0);
 
         if (canUseBonus && user.bonusNGN > 0) {
@@ -2058,29 +2381,58 @@ async function handleCreateEsimOrder(req, res) {
         }
 
         mainUsed = remainingToPay;
-
-        // 3. Atomic Update: Deduct Balances
         user.ngn -= mainUsed;
         user.bonusNGN -= bonusUsed;
         await user.save();
 
-        // 4. Create Order (Using 'eSIM_Refill' to distinguish from new activations)
-        const refId = `ESIM-${Math.random().toString(36).toUpperCase().substring(2, 10)}`;
+        // 5. Create Unified Order Record
+        const refId = `ESIM-${Date.now()}-${user._id.toString().slice(-4)}`;
         
-        const newOrder = await Order.create({
-            userEmail: email.toLowerCase(),
-            userId: user._id, // Added for relationship consistency
-            productType: 'eSIM_Refill', 
-            nodeName: carrierName,
-            planName: planAmount,
-            targetNumber: mobileNumber,
-            productImage: productImage,
-            amount: finalAmountNGN,
-            currency: 'NGN',
-            mainBalanceUsed: mainUsed, // Now tracking balance usage in Order
-            bonusBalanceUsed: bonusUsed,
-            paymentReference: refId,
-            status: 'successful' // Marking as successful because payment was deducted
+      const newOrder = await Order.create({
+    userEmail: email.toLowerCase(),
+    userId: user._id,
+    productType: 'eSIM_Refill', 
+    nodeName: carrierName, 
+    planName: `₦${finalAmountNGN.toLocaleString()}`, 
+    amount: finalAmountNGN,
+    currency: 'NGN',
+    mainBalanceUsed: mainUsed,
+    bonusBalanceUsed: bonusUsed,
+    paymentReference: refId,
+    status: 'pending',
+
+    // NESTED OBJECTS (For showReceipt order.target.number)
+    carrier: {
+        id: carrierId || 'manual',
+        name: carrierName,
+        image: productImage
+    },
+    target: {
+        number: mobileNumber,
+        country: coverageCountry || 'Global' 
+    },
+
+    // TOP-LEVEL HELPERS (For showReceipt order.targetNumber)
+    targetNumber: mobileNumber,
+    country: coverageCountry || 'Global'
+});
+
+        await Transaction.create({
+            userId: user._id,
+            type: 'debit',
+            purpose: 'purchase',
+            amountNGN: finalAmountNGN,
+            status: 'successful',
+            reference: refId,
+            paymentMethod: 'wallet_combined',
+            balanceBefore: user.ngn + mainUsed,
+            balanceAfter: user.ngn,
+            bonusBefore: user.bonusNGN + bonusUsed,
+            bonusAfter: user.bonusNGN,
+            metadata: { 
+                orderId: newOrder._id, 
+                product: carrierName 
+            }
         });
 
         return res.status(201).json({ 
@@ -2095,10 +2447,10 @@ async function handleCreateEsimOrder(req, res) {
         return res.status(500).json({ success: false, message: "Transaction failed. Please contact support." });
     }
 }
-// ADMIN FETCH: Now querying the specialized EsimRefill collection
+
 async function getEsimRefills(req, res) {
     try {
-        const refills = await EsimRefill.find()
+        const refills = await Order.find({ productType: 'eSIM_Refill' })
             .sort({ createdAt: -1 })
             .limit(100);
 
@@ -2106,16 +2458,12 @@ async function getEsimRefills(req, res) {
             paymentReference: refill.paymentReference,
             createdAt: refill.createdAt,
             userEmail: refill.userEmail,
-            fullName: refill.fullName,
+            fullName: refill.fullName || "Customer",
             amountNGN: `₦${Number(refill.amount).toLocaleString()}`, 
-            status: refill.status || 'pending',
-            
-            // Accessing nested schema fields
-            targetNumber: refill.target?.number || 'N/A',
-            country: refill.target?.country || 'N/A',
-            carrier: refill.carrier?.name || 'Global eSIM',
-            
-            // Displaying the Admin-provided ID
+            status: refill.status || 'pending',            
+            targetNumber: refill.targetNumber || (refill.target?.number) || 'N/A',
+            country: refill.country || (refill.target?.country) || 'N/A',
+            carrier: refill.nodeName || (refill.carrier?.name) || 'Global eSIM',
             confirmationNumber: refill.confirmationNumber || 'PENDING'
         }));
 
@@ -2125,7 +2473,7 @@ async function getEsimRefills(req, res) {
         });
 
     } catch (error) {
-        console.error("❌ Admin Fetch Error:", error);
+        console.error("Admin Fetch Error:", error);
         return res.status(500).json({ 
             success: false, 
             message: "Failed to fetch eSIM refill records" 
@@ -2133,9 +2481,7 @@ async function getEsimRefills(req, res) {
     }
 }
 
-// ADMIN UPDATE: Update confirmation number and status in EsimRefill collection
 async function handleAdminEsimUpdate(req, res) {
-    // Get TID from query (for links) or body (for forms)
     const tid = req.query.tid || req.body.tid;
     const { confirmationNumber, adminNote } = req.body;
 
@@ -2144,43 +2490,40 @@ async function handleAdminEsimUpdate(req, res) {
     }
 
     try {
-        const updatedRefill = await EsimRefill.findOneAndUpdate(
-            { paymentReference: tid },
+        const updatedOrder = await Order.findOneAndUpdate(
+            { paymentReference: tid, productType: 'eSIM_Refill' },
             { 
                 $set: { 
-                    status: 'completed', // Using 'completed' from your schema enum
+                    status: 'completed', 
                     confirmationNumber: confirmationNumber, 
                     adminNote: adminNote || '',
                     updatedAt: new Date() 
                 } 
             },
-            { new: true }
+            { returnDocument: 'after' }
         );
 
-        if (!updatedRefill) {
+        if (!updatedOrder) {
             return res.status(404).json({ success: false, message: "Refill record not found." });
         }
-
-        // Send confirmation email to the user
         try {
-            await sendDeliveryEmail(updatedRefill.userEmail, {
-                type: "eSIM_Refill",
-                nodeName: updatedRefill.carrier?.name || "eSIM Carrier",
-                targetNumber: updatedRefill.target?.number,
-                country: updatedRefill.target?.country,
-                amount: `₦${updatedRefill.amount.toLocaleString()}`,
-                confirmationNumber: confirmationNumber, // Pass to email template
+            await sendDeliveryEmail(updatedOrder.userEmail, {
+                productType: "eSIM_Refill", // Keep naming consistent with your check
+                nodeName: updatedOrder.nodeName || "eSIM Carrier",
+                targetNumber: updatedOrder.targetNumber || updatedOrder.target?.number || 'N/A',
+                country: updatedOrder.country || updatedOrder.target?.country || 'N/A',
+                amount: updatedOrder.amount, 
+                confirmationNumber: confirmationNumber,
                 instructions: "Your eSIM refill is now active. Please restart your device if the balance doesn't reflect immediately."
             });
         } catch (emailErr) {
             console.error("Email notification failed:", emailErr.message);
-            // We don't return error here because the DB update was successful
         }
 
         return res.json({ 
             success: true, 
             message: "Refill marked as completed and user notified.",
-            data: updatedRefill 
+            data: updatedOrder 
         });
 
     } catch (error) {
@@ -2200,8 +2543,6 @@ async function handleAdminEsimActivationUpdate(req, res) {
     }
 
     try {
-        // 1. Update the General Order record
-        // We ensure we match the specific productType to avoid accidental updates
         const updatedOrder = await Order.findOneAndUpdate(
             { paymentReference: tid, productType: 'eSIM_Activation' }, 
             { 
@@ -2211,14 +2552,12 @@ async function handleAdminEsimActivationUpdate(req, res) {
                     updatedAt: new Date() 
                 } 
             },
-            { new: true } 
+           { returnDocument: 'after' }
         );
 
         if (!updatedOrder) {
             return res.status(404).json({ success: false, message: "Activation record not found in Orders" });
         }
-
-        // 2. Sync the update to the specialized EsimActivation collection
         await EsimActivation.findOneAndUpdate(
             { paymentReference: tid },
             { 
@@ -2230,37 +2569,31 @@ async function handleAdminEsimActivationUpdate(req, res) {
             }
         );
 
-        const isFinished = status.toLowerCase() === 'completed' || status.toLowerCase() === 'successful';
-        
-        // 3. Trigger Email for successful activations with Address and Zip included
-       // 3. Trigger Email for successful activations with CORRECT mapping
-        if (isFinished) {
-            try {
-                // We create the 'credentials' object using the EXACT keys 
-                // that your sendDeliveryEmail function expects.
-                await sendDeliveryEmail(updatedOrder.userEmail, {
-                    type: "eSIM_Activation", // Must match your template check
-                    
-                    // Display Fields
-                    nodeName: updatedOrder.nodeName || "Global eSIM",
-                    planName: updatedOrder.planName,
-                    amount: `${updatedOrder.currency} ${updatedOrder.amount}`, // Show real price
-                    
-                    // Metadata Fields (Must match credentials.address, credentials.zip)
-                    address: updatedOrder.metadata?.address || "Digital Delivery",
-                    zip: updatedOrder.metadata?.zip || "N/A",
-                    mobileNumber: updatedOrder.targetNumber || "eSIM Device", // Device Model
-                    email: updatedOrder.metadata?.email || updatedOrder.userEmail,
-                    
-                    // Activation Data
-                    activationCode: confirmationNumber || updatedOrder.confirmationNumber,
-                    
-                    instructions: "Your eSIM activation is complete. Please use the Activation code provided to set up your device."
-                });
-            } catch (emailError) {
-                console.error("📧 Email Delivery Failed:", emailError);
-            }
-        }
+        const isFinished = status.toLowerCase() === 'completed' || status.toLowerCase() === 'successful';        
+      if (isFinished) {
+    try {
+        await sendDeliveryEmail(updatedOrder.userEmail, {
+            type: "eSIM_Activation",
+            nodeName: updatedOrder.nodeName || "Global eSIM",
+            planName: updatedOrder.planName || "Standard Plan",
+            amount: `${updatedOrder.currency || '₦'}${Number(updatedOrder.amount).toLocaleString()}`,
+            
+            // Personal Details from metadata
+            firstName: updatedOrder.metadata?.firstName || "Customer",
+            lastName: updatedOrder.metadata?.lastName || "",
+            email: updatedOrder.metadata?.email || updatedOrder.userEmail,
+            address: updatedOrder.metadata?.address || "Digital Delivery",
+            zip: updatedOrder.metadata?.zip || "N/A",
+            activationType: updatedOrder.metadata?.activationType || "Prepaid",
+            
+            targetNumber: updatedOrder.targetNumber || "eSIM Device",
+            activationCode: confirmationNumber || updatedOrder.confirmationNumber,
+            instructions: "Your eSIM activation is complete. Please use the Activation code provided to set up your device."
+        });
+    } catch (emailError) {
+        console.error("📧 Email Delivery Failed:", emailError);
+    }
+}
 
         return res.json({ 
             success: true, 
@@ -2275,109 +2608,122 @@ async function handleAdminEsimActivationUpdate(req, res) {
 }
 
 async function handleCreateEsimActivation(req, res) {
-    // 1. Destructure 'email' from the request body
-    const { email, carrierName, mobileNumber, planAmount, metadata, productType } = req.body;
-    const userEmail = req.user?.email; 
+    const { amount, useBonus, details } = req.body;
+    const userId = req.user._id;
+    const userEmail = req.user.email;
 
-    // 2. Validation: Ensure the new email field is present
-    if (!userEmail || !email || !carrierName || !planAmount) {
-        return res.status(400).json({ success: false, message: "Missing required fields (including Email)" });
+    if (!amount || !details.carrier || !details.deviceName) {
+        return res.status(400).json({ success: false, message: "Missing required activation details" });
     }
 
     try {
-        const txRef = `ACT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        const user = await User.findById(userId);
+        const totalAmount = parseInt(amount);
 
-        // 3. Save to EsimActivation collection
-        const newActivation = new EsimActivation({
+        // 1. Calculate Balance Deduction (Main vs Bonus)
+        let mainToDeduct = totalAmount;
+        let bonusToDeduct = 0;
+
+        if (useBonus && user.bonusBalance > 0) {
+            bonusToDeduct = Math.min(user.bonusBalance, totalAmount);
+            mainToDeduct = totalAmount - bonusToDeduct;
+        }
+
+        if (user.balance < mainToDeduct) {
+            return res.status(400).json({ success: false, message: "Insufficient wallet balance" });
+        }
+
+        const txRef = `ACT-WAL-${Date.now()}`;
+
+        // 2. Create specialized eSIM Activation record
+        const activation = new EsimActivation({
+            userId,
             userEmail,
-            email, // <--- Added here
-            fullName: `${metadata?.firstName || ''} ${metadata?.lastName || ''}`.trim(),
-            nodeName: carrierName,
-            planName: planAmount,
-            amount: parseFloat(planAmount.replace(/[$,]/g, '')),
+            customerDetails: {
+                firstName: details.firstName,
+                lastName: details.lastName,
+                address: details.address,
+                zipCode: details.zip,
+                email: details.email // Activation specific email
+            },
+            carrier: { name: details.carrier },
+            activationType: details.activationType || 'Standard',
+            deviceName: details.deviceName,
+            amount: totalAmount,
+            mainBalanceUsed: mainToDeduct,
+            bonusBalanceUsed: bonusToDeduct,
             paymentReference: txRef,
             status: 'pending'
         });
 
-        await newActivation.save();
-
-        // 4. Save to General Order record
-        const newOrder = new Order({
+        // 3. Create General Order record for the main Dashboard
+        const order = new Order({
+            userId,
             userEmail,
             productType: 'eSIM_Activation',
-            nodeName: carrierName,
-            planName: planAmount,
-            amount: newActivation.amount,
+            nodeName: details.carrier,
+            targetNumber: details.deviceName,
+            planName: `₦${totalAmount.toLocaleString()} Plan`,
+            amount: totalAmount,
+            mainBalanceUsed: mainToDeduct,
+            bonusBalanceUsed: bonusToDeduct,
             status: 'pending',
             paymentReference: txRef,
-            metadata: {
-                email, // <--- Store in metadata for the general Order record
-                address: metadata?.address,
-                zip: metadata?.zip,
-                firstName: metadata?.firstName,
-                lastName: metadata?.lastName
-            }
+            metadata: { ...details }
         });
 
-        await newOrder.save();
+        // 4. Atomic Update: Deduct balances and save records
+        user.balance -= mainToDeduct;
+        user.bonusBalance -= bonusToDeduct;
+
+        await Promise.all([
+            user.save(),
+            activation.save(),
+            order.save()
+        ]);
 
         res.json({ 
             success: true, 
-            message: "Activation order initialized", 
-            tx_ref: txRef 
+            message: "Activation order received", 
+            order: activation 
         });
 
     } catch (error) {
-        console.error("eSIM Activation Order Error:", error);
-        res.status(500).json({ success: false, error: "Internal Server Error" });
+        console.error("eSIM Activation Error:", error);
+        res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 }
 
-// Renamed to match the switch case exactly
 async function handleGetEsimActivations(req, res) { 
     try {
-        const activations = await Order.find({ 
-            productType: 'eSIM_Activation' 
-        })
-        .sort({ createdAt: -1 })
-        .limit(100);
+        const activations = await Order.find({ productType: 'eSIM_Activation' })
+            .sort({ createdAt: -1 })
+            .limit(100);
 
-        const formattedActivations = activations.map(activation => {
-            const amountInUSD = activation.amount / 1380;
-            
-            // Check both activationDetails (new schema) and metadata (old schema)
-            const details = activation.activationDetails || activation.metadata || {};
+        const formattedActivations = activations.map(order => {
+            const details = order.metadata || {};
 
             return {
-                paymentReference: activation.paymentReference,
+                paymentReference: order.paymentReference,
                 productType: 'eSIM_Activation', 
-                createdAt: activation.createdAt,
-                userEmail: activation.userEmail, 
-                email: details.email || activation.userEmail || 'N/A',
-                fullName: `${details.firstName || ''} ${details.lastName || ''}`.trim() || activation.fullName || 'N/A',
-                amount: amountInUSD.toFixed(2), 
-                status: activation.status || 'pending',
-                nodeName: activation.targetNumber || activation.nodeName || activation.carrierName || 'eSIM Device',
-                
-                planName: activation.planName || 'Standard Plan',
-                confirmationNumber: activation.confirmationNumber || 'PENDING',
-                
+                createdAt: order.createdAt,
+                userEmail: order.userEmail, 
+                // Prioritize activation email from metadata
+                email: details.email || order.userEmail,
+                fullName: `${details.firstName || ''} ${details.lastName || ''}`.trim() || 'N/A',
+                amount: order.amount, // Now returns full Naira amount
+                status: order.status,
+                nodeName: order.targetNumber || order.nodeName, // Device Name
+                planName: order.planName,
+                confirmationNumber: order.confirmationNumber || 'PENDING',
                 address: details.address || 'N/A',
-                zipCode: details.zip || details.zipCode || 'N/A'
+                zipCode: details.zip || 'N/A'
             };
         });
 
-        return res.json({
-            success: true,
-            orders: formattedActivations 
-        });
-
+        return res.json({ success: true, orders: formattedActivations });
     } catch (error) {
-        console.error("❌ Admin Fetch Error:", error);
-        return res.status(500).json({ 
-            success: false, 
-            message: "Failed to fetch eSIM activation records" 
-        });
+        return res.status(500).json({ success: false, message: "Failed to fetch records" });
     }
 }
 
@@ -2426,7 +2772,7 @@ async function handleCompleteRDPOrder(req, res) {
                 confirmationNumber: confirmationNumber, // Stores IP/Login Details
                 deliveredAt: new Date()
             },
-            { new: true }
+           { returnDocument: 'after' }
         );
 
         if (!order) {

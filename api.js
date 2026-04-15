@@ -1526,7 +1526,7 @@ async function handlePurchaseWithWallet(req, res) {
             const extraCPUCount = parseInt(metadata?.extraCPU || 0);
             const extraStorageGB = parseInt(metadata?.extraStorage || 0);
 
-            costNGN = Math.round(Number(selectedTier.price) + (extraCPUCount * 5000) + (extraStorageGB * 2000));
+            costNGN = Math.round(Number(selectedTier.price) + (extraCPUCount * 5000) + (extraStorageGB * 5000));
             
             productDetails.name = selectedTier.name;
             productDetails.plan = `${selectedTier.ram} RAM | ${metadata?.osChoice || 'Windows Server'}`;

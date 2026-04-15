@@ -625,7 +625,7 @@ if (data.success) {
         const extraStorageCount = parseInt(document.getElementById('extraStorage')?.value) || 0;
 
         const cpuCost = extraCPUCount * 5000;
-        const storageCost = extraStorageCount * 200;
+        const storageCost = extraStorageCount * 5000;
         const total = activePlan.price + cpuCost + storageCost;
 
         if(document.getElementById('basePriceSummary')) document.getElementById('basePriceSummary').innerText = `₦${activePlan.price.toLocaleString()}`;

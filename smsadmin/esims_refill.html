@@ -399,10 +399,10 @@ function viewOrderDetails(order) {
 async function confirmProcessRefill() {
     const tid = document.getElementById('activeTid').value;
     const confirmationNumber = document.getElementById('modalConfNumber').value.trim();
-    const receiptInput = document.getElementById('modalReceipt'); // The file input
+    const receiptInput = document.getElementById('modalReceipt'); 
     const btn = document.getElementById('modalSubmitBtn');
 
-    // Validation: Code is usually mandatory
+    // Validation
     if (!confirmationNumber) {
         alert("Please enter the confirmation/activation number.");
         return;
@@ -410,54 +410,87 @@ async function confirmProcessRefill() {
 
     const originalText = btn.innerText;
     btn.disabled = true;
-    btn.innerText = "Uploading & Saving...";
+    btn.innerText = "Processing...";
     btn.classList.add('opacity-50', 'cursor-not-allowed');
 
-    // 1. Prepare FormData (Required for File Uploads)
-    const formData = new FormData();
-    formData.append('tid', tid);
-    formData.append('confirmationNumber', confirmationNumber);
-    
-    // Attach file only if one was selected
-    if (receiptInput.files.length > 0) {
-        formData.append('receipt', receiptInput.files[0]);
-    }
-
-    const token = localStorage.getItem('smsglobe_admin_token');
-
     try {
+        let receiptUrl = "";
+
+        // 1. UPLOAD TO CLOUDINARY DIRECTLY (If a file is selected)
+        if (receiptInput.files.length > 0) {
+            btn.innerText = "Uploading Receipt...";
+            const file = receiptInput.files[0];
+            const cloudFormData = new FormData();
+            
+            // Values from your Cloudinary Dashboard
+            cloudFormData.append('file', file);
+            cloudFormData.append('upload_preset', 'smsglobe_unsigned'); 
+            cloudFormData.append('cloud_name', 'sms_globe'); 
+
+            const cloudRes = await fetch('https://api.cloudinary.com/v1_1/sms_globe/image/upload', {
+                method: 'POST',
+                body: cloudFormData
+            });
+            
+            const cloudData = await cloudRes.json();
+            
+            if (cloudData.secure_url) {
+                receiptUrl = cloudData.secure_url;
+            } else {
+                throw new Error(cloudData.error?.message || "Cloudinary upload failed.");
+            }
+        }
+
+        // 2. SEND JSON DATA TO YOUR BACKEND
+        btn.innerText = "Saving to Database...";
+        const token = localStorage.getItem('smsglobe_admin_token');
+
         const response = await fetch('/api/update-esim-status', {
             method: 'POST',
             headers: { 
+                'Content-Type': 'application/json', // Using JSON now
                 'Authorization': `Bearer ${token}`
-                // CRITICAL: Do NOT set 'Content-Type': 'application/json' here.
-                // The browser automatically sets the correct multipart/form-data boundary.
             },
-            body: formData
+            body: JSON.stringify({
+                tid: tid,
+                confirmationNumber: confirmationNumber,
+                receiptUrl: receiptUrl // Sending the URL string
+            })
         });
 
         const data = await response.json();
 
         if (data.success) {
-            alert('Success: Order completed and receipt sent to user.');
+            alert('Success: Order completed and receipt saved.');
             
             // Clean up UI
             closeModal('manageModal');
-            receiptInput.value = ""; // Clear file input
-            document.getElementById('fileNameDisplay').innerText = "JPEG, PNG or PDF (Max 5MB)";
-            document.getElementById('fileNameDisplay').classList.remove('text-brand-blue', 'font-bold');
+            receiptInput.value = ""; 
+            const display = document.getElementById('fileNameDisplay');
+            if(display) {
+                display.innerText = "JPEG, PNG or PDF (Max 5MB)";
+                display.classList.remove('text-brand-blue', 'font-bold');
+            }
             
             // Refresh the table
-            await fetchRefills(); 
+            if (typeof fetchRefills === 'function') await fetchRefills(); 
+            else location.reload(); // Fallback to refresh the page
         } else {
             alert('Failed: ' + (data.message || 'Unknown error occurred'));
             resetSubmitButton(btn, originalText);
         }
     } catch (err) {
-        console.error("Upload/Network Error:", err);
-        alert('Network error. Check file size or connection.');
+        console.error("Process Error:", err);
+        alert('Error: ' + err.message);
         resetSubmitButton(btn, originalText);
     }
+}
+
+// Helper function to reset button state
+function resetSubmitButton(btn, originalText) {
+    btn.disabled = false;
+    btn.innerText = originalText;
+    btn.classList.remove('opacity-50', 'cursor-not-allowed');
 }
 
 function resetSubmitButton(btn, text) {

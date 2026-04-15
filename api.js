@@ -489,36 +489,7 @@ app.all('/api/:action', async (req, res) => {
             break;
         case 'create-esim-order': return handleCreateEsimOrder(req, res);
         case 'esim-refills': return getEsimRefills(req, res);
-
-  case 'update-esim-status':
-    console.log("--- VERCEL UPLOAD DEBUG ---");
-    console.log("Method:", req.method);
-    console.log("Content-Type:", req.headers['content-type']);
-
-    try {
-        await new Promise((resolve, reject) => {
-            console.log("Invoking Multer...");
-            upload.single('receipt')(req, res, (err) => {
-                if (err) {
-                    console.error("MULTER ERROR:", err);
-                    return reject(err);
-                }
-                resolve();
-            });
-        });
-
-        console.log("Multer finished. File caught:", !!req.file);
-        if (req.file) console.log("Cloudinary URL:", req.file.path);
-        
-        return await handleAdminEsimUpdate(req, res);
-    } catch (error) {
-        console.error("CATCH BLOCK ERROR:", error);
-        return res.status(500).json({ 
-            success: false, 
-            message: "Upload Failed", 
-            error: error.message 
-        });
-    }
+    case 'update-esim-status': return await handleAdminEsimUpdate(req, res);
 
         case 'create-esim-order-activation': return handleCreateEsimActivation(req, res);
       case 'esim-activation': 
@@ -2665,24 +2636,23 @@ async function getEsimRefills(req, res) {
 }
 
 async function handleAdminEsimUpdate(req, res) {
-    // 1. Double-check body exists (Multer should have populated this)
+    // 1. Double-check body exists (Vercel/Express parses JSON automatically)
     if (!req.body || Object.keys(req.body).length === 0) {
-        console.error("Empty request body after Multer pass");
+        console.error("Empty request body - expected JSON");
         return res.status(400).json({ 
             success: false, 
-            message: "Data parsing failed. Ensure you are using FormData." 
+            message: "Data parsing failed. Ensure Content-Type is application/json." 
         });
     }
 
     const OrderModel = mongoose.models.Order || mongoose.model('Order');
     
-    // 2. Consistent variable extraction
+    // 2. Consistent variable extraction from req.body
+    // Note: receiptUrl now comes directly from the frontend JSON, not req.file
     const tid = req.body.tid || req.body.paymentReference;
     const confirmationNumber = req.body.confirmationNumber;
     const adminNote = req.body.adminNote || '';
-    
-    // 3. Extract the Cloudinary URL from req.file
-    let receiptPath = req.file ? req.file.path : null; 
+    const receiptUrl = req.body.receiptUrl || null; 
 
     if (!tid) {
         return res.status(400).json({ success: false, message: "Transaction ID (tid) is required." });
@@ -2696,8 +2666,9 @@ async function handleAdminEsimUpdate(req, res) {
             updatedAt: new Date()
         };
 
-        if (receiptPath) {
-            updateData.receiptUrl = receiptPath; 
+        // If the frontend successfully uploaded to Cloudinary, we save the link
+        if (receiptUrl) {
+            updateData.receiptUrl = receiptUrl; 
         }
 
         // Search by paymentReference as per your schema
@@ -2711,7 +2682,7 @@ async function handleAdminEsimUpdate(req, res) {
             return res.status(404).json({ success: false, message: "Order not found in Database." });
         }
 
-        // 4. Decoupled Email Block
+        // 3. Decoupled Email Block
         try {
             if (typeof sendDeliveryEmail === 'function') {
                 await sendDeliveryEmail(updatedOrder.userEmail, {
@@ -2721,13 +2692,13 @@ async function handleAdminEsimUpdate(req, res) {
                     country: updatedOrder.country || 'N/A',
                     amount: updatedOrder.amount, 
                     confirmationNumber: confirmationNumber,
-                    receiptUrl: receiptPath || null,
+                    receiptUrl: receiptUrl,
                     instructions: "Your eSIM refill is now active."
                 });
             }
         } catch (emailErr) {
             console.error("Email notification failed:", emailErr.message);
-            // We don't return here because the DB update was successful
+            // Non-blocking: order is already saved
         }
 
         return res.json({ 
@@ -2745,6 +2716,7 @@ async function handleAdminEsimUpdate(req, res) {
         });
     }
 }
+
 async function handleAdminEsimActivationUpdate(req, res) {
     const { tid, status, confirmationNumber } = req.body;
 

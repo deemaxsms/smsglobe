@@ -304,26 +304,21 @@ function viewOrderDetails(order) {
     const container = document.getElementById('detailContent');
     const date = new Date(order.createdAt).toLocaleString();
     
-    // 1. CARRIER NAME: Ensuring it fetches from all possible data locations
+    // Fallback logic for data fields
     const carrierName = order.nodeName || order.carrier?.name || order.carrierName || 'Global Service';
-
-    // 2. AMOUNT FALLBACK
     const finalAmount = order.amount || order.amountNGN || 0;
-
-    // 3. TARGET INFO FALLBACK
     const targetNo = order.targetNumber || order.target?.number || 'N/A';
     const targetCountry = order.country || order.target?.country || 'N/A';
 
-    // Inject the HTML
     container.innerHTML = `
         <div class="space-y-4">
             <div class="flex justify-end">
-              <button id="modalGenReceiptBtn" 
+                <button id="modalGenReceiptBtn" 
                     class="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[11px] font-bold hover:bg-blue-700 transition-all shadow-sm">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
-                    Generate Receipt (PDF/PNG)
+                    Generate Receipt
                 </button>
             </div>
 
@@ -360,15 +355,6 @@ function viewOrderDetails(order) {
                     </div>
                 </div>
 
-                ${order.receiptUrl ? `
-                <div class="col-span-2">
-                    <a href="${order.receiptUrl}" target="_blank" 
-                        class="flex items-center justify-center gap-2 w-full py-2 bg-gray-800 text-white rounded-lg text-[11px] font-bold hover:bg-black transition-all">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                        View Admin Uploaded Proof
-                    </a>
-                </div>` : ''}
-
                 <div class="col-span-2">
                     <p class="text-[10px] text-brand-lightText font-bold uppercase mb-2">Payment Summary</p>
                     <div class="bg-gray-50 p-3 rounded-xl border border-dashed border-brand-border">
@@ -392,19 +378,10 @@ function viewOrderDetails(order) {
         </div>
     `;
 
-    // --- CRITICAL STEP: ATTACH THE EVENT LISTENER ---
-    const genBtn = document.getElementById('modalGenReceiptBtn');
-    genBtn.onclick = function() {
-        if (typeof generateUniversalReceipt === 'function') {
-            generateUniversalReceipt(order);
-        } else {
-            alert("The Receipt Generator is still loading. Please try again in 2 seconds.");
-            console.error("Make sure receiptGenerator.js is included in your HTML scripts.");
-        }
-    };
-
+    document.getElementById('modalGenReceiptBtn').onclick = () => showReceiptOptions(order);
     document.getElementById('detailModal').classList.remove('hidden');
 }
+
 
     function updateFileName(input) {
     const display = document.getElementById('fileNameDisplay');
@@ -532,25 +509,86 @@ function resetSubmitButton(btn, text) {
         window.location.href = 'sms_login.html';
     }
 
-   async function generateUniversalReceipt(order) {
+    function showReceiptOptions(order) {
+    const overlay = document.createElement('div');
+    overlay.id = "receiptSelectorOverlay";
+    // Tailwind classes for the selection modal
+    overlay.className = "fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4";
+    
+    overlay.innerHTML = `
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-200">
+            <h3 class="text-lg font-bold text-gray-900 mb-1">Download Receipt</h3>
+            <p class="text-xs text-gray-500 mb-6">Choose your preferred format below.</p>
+            
+            <div class="space-y-3">
+                <button id="downloadPdfBtn" class="w-full flex items-center justify-between p-4 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition-all group">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-red-500 text-white rounded-lg shadow-sm">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                        </div>
+                        <div class="text-left">
+                            <p class="font-bold text-red-700 text-sm">PDF Document</p>
+                            <p class="text-[9px] text-red-600/70 uppercase font-black">Standard Print</p>
+                        </div>
+                    </div>
+                    <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </button>
+
+                <button id="downloadImgBtn" class="w-full flex items-center justify-between p-4 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all group">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-blue-500 text-white rounded-lg shadow-sm">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        </div>
+                        <div class="text-left">
+                            <p class="font-bold text-blue-700 text-sm">Image (PNG)</p>
+                            <p class="text-[9px] text-blue-600/70 uppercase font-black">Best for Sharing</p>
+                        </div>
+                    </div>
+                    <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </button>
+            </div>
+
+            <button onclick="document.getElementById('receiptSelectorOverlay').remove()" class="mt-6 w-full py-2 text-xs font-bold text-gray-400 hover:text-gray-900 transition-colors uppercase tracking-widest">
+                Close
+            </button>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    // Event Handlers
+    document.getElementById('downloadPdfBtn').onclick = () => {
+        overlay.remove();
+        generateUniversalReceipt(order, 'pdf');
+    };
+    document.getElementById('downloadImgBtn').onclick = () => {
+        overlay.remove();
+        generateUniversalReceipt(order, 'image');
+    };
+}
+
+
+  async function generateUniversalReceipt(order) {
     if (!order || !order.paymentReference) {
         return alert("Error: Invalid order data provided.");
     }
 
-    const choice = confirm("Download Options:\n\nOK: PDF (Standard White)\nCancel: IMAGE (Transparent PNG)");
+    const choice = confirm("Download Options:\n\nOK: PDF (Standard White)\nCancel: IMAGE (White Background + Watermark)");
     const format = choice ? 'pdf' : 'image';
 
     const receiptDiv = document.createElement('div');
     
+    // Base Styles
     Object.assign(receiptDiv.style, {
-        width: '320px', // Reduced width for a more compact feel
-        padding: '25px', // Reduced padding
-        background: format === 'image' ? 'rgba(255, 255, 255, 0)' : '#ffffff',
+        width: '320px',
+        padding: '25px',
+        background: '#ffffff', // Forced white background for both formats
         fontFamily: "'Inter', 'Segoe UI', Roboto, sans-serif",
         position: 'absolute',
         left: '-9999px',
         color: '#1a1a1a',
-        lineHeight: '1.4'
+        lineHeight: '1.4',
+        overflow: 'hidden' // Ensures watermark doesn't bleed out
     });
 
     const date = new Date(order.createdAt || Date.now()).toLocaleDateString('en-NG', {
@@ -564,41 +602,47 @@ function resetSubmitButton(btn, text) {
     const logoUrl = 'https://i.imgur.com/8YeZgfx.png';
 
     receiptDiv.innerHTML = `
-        <div style="text-align: center; margin-bottom: 15px;">
-            <img src="${logoUrl}" crossorigin="anonymous" style="max-width: 80px; height: auto; margin-bottom: 5px; display: inline-block;">
-            <p style="margin: 0; font-size: 8px; color: #888; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600;">Official Transaction Document</p>
-        </div>
-        
-        <div style="border-top: 0.5px solid #eee; border-bottom: 0.5px solid #eee; padding: 10px 0; margin-bottom: 15px;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10px;">
-                <span style="color: #666;">Date</span>
-                <span style="font-weight: 600;">${date}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 10px;">
-                <span style="color: #666;">Reference</span>
-                <span style="font-family: monospace; font-weight: 600; font-size: 9px;">${order.paymentReference}</span>
-            </div>
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); opacity: 0.06; width: 80%; z-index: 0; pointer-events: none;">
+            <img src="${logoUrl}" crossorigin="anonymous" style="width: 100%;">
         </div>
 
-        <div style="background: ${format === 'image' ? 'rgba(0, 102, 204, 0.03)' : '#f9fbff'}; padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 0.5px solid rgba(0, 102, 204, 0.1);">
-            <p style="margin: 0 0 3px 0; font-size: 8px; text-transform: uppercase; color: #0066cc; font-weight: 700;">Service Details</p>
-            <p style="margin: 0; font-size: 13px; font-weight: 700; color: #000; line-height: 1.2;">${serviceName}</p>
+        <div style="position: relative; z-index: 1;">
+            <div style="text-align: center; margin-bottom: 15px;">
+                <img src="${logoUrl}" crossorigin="anonymous" style="max-width: 80px; height: auto; margin-bottom: 5px; display: inline-block;">
+                <p style="margin: 0; font-size: 8px; color: #888; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600;">Official Transaction Document</p>
+            </div>
             
-            <div style="margin-top: 8px; font-size: 10px; color: #444; border-top: 0.5px solid rgba(0,0,0,0.05); padding-top: 6px;">
-                <p style="margin: 2px 0;">Coverage: <b style="color:#111;">${coverage}</b></p>
-                <p style="margin: 2px 0;">Target: <b style="color:#111;">${target}</b></p>
-                ${order.confirmationNumber ? `<p style="margin: 2px 0;">Confirmation No: <b style="color:#111; font-family: monospace;">${order.confirmationNumber}</b></p>` : ''}
+            <div style="border-top: 0.5px solid #eee; border-bottom: 0.5px solid #eee; padding: 10px 0; margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10px;">
+                    <span style="color: #666;">Date</span>
+                    <span style="font-weight: 600;">${date}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 10px;">
+                    <span style="color: #666;">Reference</span>
+                    <span style="font-family: monospace; font-weight: 600; font-size: 9px;">${order.paymentReference}</span>
+                </div>
             </div>
-        </div>
 
-        <div style="text-align: center; padding: 12px; border: 1.5px dashed #e5e7eb; border-radius: 8px;">
-            <p style="margin: 0; font-size: 9px; color: #71717a; text-transform: uppercase; font-weight: 600;">Total Amount Paid</p>
-            <h2 style="margin: 2px 0 0 0; color: #10b981; font-size: 22px; font-weight: 800;">₦${amount.toLocaleString()}</h2>
-        </div>
+            <div style="background: rgba(249, 251, 255, 0.8); backdrop-filter: blur(2px); padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 0.5px solid rgba(0, 102, 204, 0.1);">
+                <p style="margin: 0 0 3px 0; font-size: 8px; text-transform: uppercase; color: #0066cc; font-weight: 700;">Service Details</p>
+                <p style="margin: 0; font-size: 13px; font-weight: 700; color: #000; line-height: 1.2;">${serviceName}</p>
+                
+                <div style="margin-top: 8px; font-size: 10px; color: #444; border-top: 0.5px solid rgba(0,0,0,0.05); padding-top: 6px;">
+                    <p style="margin: 2px 0;">Coverage: <b style="color:#111;">${coverage}</b></p>
+                    <p style="margin: 2px 0;">Target: <b style="color:#111;">${target}</b></p>
+                    ${order.confirmationNumber ? `<p style="margin: 2px 0;">Confirmation: <b style="color:#111; font-family: monospace;">${order.confirmationNumber}</b></p>` : ''}
+                </div>
+            </div>
 
-        <div style="margin-top: 20px; text-align: center;">
-            <p style="margin: 0; font-size: 9px; color: #27272a; font-weight: 600;">Thank you for choosing SMS GLOBE</p>
-            <p style="margin: 3px 0; font-size: 7px; color: #a1a1aa; line-height: 1.2;">This is an electronically generated receipt.<br>No physical signature required.</p>
+            <div style="text-align: center; padding: 12px; border: 1.5px dashed #e5e7eb; border-radius: 8px; background: rgba(255,255,255,0.7);">
+                <p style="margin: 0; font-size: 9px; color: #71717a; text-transform: uppercase; font-weight: 600;">Total Amount Paid</p>
+                <h2 style="margin: 2px 0 0 0; color: #10b981; font-size: 24px; font-weight: 800;">₦${amount.toLocaleString()}</h2>
+            </div>
+
+            <div style="margin-top: 20px; text-align: center;">
+                <p style="margin: 0; font-size: 9px; color: #27272a; font-weight: 600;">Thank you for choosing SMS GLOBE</p>
+                <p style="margin: 3px 0; font-size: 7px; color: #a1a1aa; line-height: 1.2;">This is an electronically generated receipt.<br>No physical signature required.</p>
+            </div>
         </div>
     `;
 
@@ -606,8 +650,8 @@ function resetSubmitButton(btn, text) {
 
     try {
         const canvas = await html2canvas(receiptDiv, {
-            scale: 4, // Higher scale for clarity at small font sizes
-            backgroundColor: null,
+            scale: 4,
+            backgroundColor: "#ffffff", // Ensures the image is not transparent
             useCORS: true,
             logging: false
         });
@@ -621,8 +665,7 @@ function resetSubmitButton(btn, text) {
             link.click();
         } else {
             const { jsPDF } = window.jspdf;
-            // Height is dynamic based on content to avoid extra white space
-            const pdfWidth = 80; // Compact width
+            const pdfWidth = 80; 
             const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
             const pdf = new jsPDF('p', 'mm', [pdfWidth, pdfHeight]);
             
@@ -636,6 +679,7 @@ function resetSubmitButton(btn, text) {
         document.body.removeChild(receiptDiv);
     }
 }
+
     window.onload = fetchRefills;
 </script>
 </body>

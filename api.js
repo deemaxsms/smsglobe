@@ -2642,22 +2642,18 @@ async function getEsimRefills(req, res) {
 }
 
 async function handleAdminEsimUpdate(req, res) {
-    // Ensure we are using the Order model registered in this file
-    const OrderModel = mongoose.models.Order || mongoose.model('Order');
-
-    const tid = req.query.tid || req.body.tid;
-    const { confirmationNumber, adminNote } = req.body;
-    
-    let receiptPath = null;
-    if (req.file) {
-        // Cloudinary provides the secure_url in req.file.path
-        receiptPath = req.file.path; 
+    if (!req.body) {
+        return res.status(400).json({ success: false, message: "No data received. Ensure you are sending FormData." });
     }
+
+    const OrderModel = mongoose.models.Order || mongoose.model('Order');
+    const tid = req.body.tid || req.query.tid;
+    const { confirmationNumber, adminNote } = req.body;    
+    let receiptPath = req.file ? req.file.path : null; 
 
     if (!tid) {
-        return res.status(400).json({ success: false, message: "TID is required" });
+        return res.status(400).json({ success: false, message: "TID is missing from the request." });
     }
-
     try {
         const updateData = {
             status: 'completed',

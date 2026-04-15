@@ -491,16 +491,13 @@ app.all('/api/:action', async (req, res) => {
         case 'esim-refills': return getEsimRefills(req, res);
 
      case 'update-esim-status':
-    // Vercel needs this wrapped in a Promise to prevent premature exit
     try {
         await new Promise((resolve, reject) => {
             upload.single('receipt')(req, res, (err) => {
                 if (err) reject(err);
                 else resolve();
             });
-        });
-        
-        // After promise resolves, req.file and req.body are ready
+        });        
         return await handleAdminEsimUpdate(req, res);
     } catch (multerError) {
         console.error("Vercel Multer Error:", multerError);

@@ -236,8 +236,7 @@ function viewOrderDetails(ref) {
     const order = allOrders.find(o => o.paymentReference === ref);
     if (!order) return;
 
-    // Standardize status and extract metadata
-    const meta = order.metadata || {};
+    // Use root level data as primary, metadata as fallback
     const status = order.status.toLowerCase();
     const modal = document.getElementById('viewModal');
     const container = document.getElementById('modalContainer'); 
@@ -250,9 +249,8 @@ function viewOrderDetails(ref) {
 
     let actionHTML = '';
 
-    // Administrative Log Form Logic
+    // Administrative Log Form Logic (Show form for active/pending, show credentials for completed)
     if (['successful', 'processing', 'pending', 'completed'].includes(status)) {
-        // Show fulfillment form if status is not 'completed' or show details if it is
         if (status !== 'completed') {
             actionHTML = `
                 <div class="mt-6 p-5 bg-blue-50 rounded-2xl border border-blue-100 text-left">
@@ -306,7 +304,7 @@ function viewOrderDetails(ref) {
                         <div><p class="text-[9px] text-gray-400 uppercase font-bold">Password</p><p class="text-xs font-mono font-bold">${order.rdpPassword || '********'}</p></div>
                     </div>
                     <div class="bg-white p-3 rounded-xl border border-green-100">
-                        <p class="text-[9px] text-gray-400 uppercase font-bold mb-1">Confirmation Note</p>
+                        <p class="text-[9px] text-gray-400 uppercase font-bold mb-1">Confirmation Note / Logs</p>
                         <p class="text-[11px] font-mono text-brand-darkText break-all">${order.confirmationNumber || 'No notes.'}</p>
                     </div>
                 </div>`;
@@ -338,9 +336,9 @@ function viewOrderDetails(ref) {
             <div class="bg-gray-50 p-4 rounded-2xl border border-brand-border">
                 <h4 class="text-[9px] font-bold text-brand-lightText uppercase mb-2">Hardware Specs</h4>
                 <div class="space-y-1 text-[11px]">
-                    <div class="flex justify-between"><span>RAM:</span> <span class="font-bold">${order.ram}</span></div>
-                    <div class="flex justify-between"><span>Base CPU:</span> <span class="font-bold text-brand-blue">${order.cpu}</span></div>
-                    <div class="flex justify-between"><span>Base Disk:</span> <span class="font-bold">${order.storage}</span></div>
+                    <div class="flex justify-between"><span>RAM:</span> <span class="font-bold">${order.ram || 'N/A'}</span></div>
+                    <div class="flex justify-between"><span>Base CPU:</span> <span class="font-bold text-brand-blue">${order.cpu || 'N/A'}</span></div>
+                    <div class="flex justify-between"><span>Base Disk:</span> <span class="font-bold">${order.storage || 'N/A'}</span></div>
                 </div>
                 <div class="mt-2 pt-2 border-t border-dashed border-gray-300">
                     <div class="flex justify-between items-center text-[10px] text-brand-orange font-bold">

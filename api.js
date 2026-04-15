@@ -2004,18 +2004,14 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
         </tr>`;
    } 
  if (isESIM_Activation) {
-    // 1. Get the Code (Check both fields)
     const confNo = credentials.confirmationNumber || credentials.activationCode;
     
-    // 2. Handle Metadata access
     const meta = credentials.metadata || {};
     
     // 3. Subscriber Name Logic
     const fName = meta.firstName || credentials.firstName || "";
     const lName = meta.lastName || credentials.lastName || "";
     const subscriberName = `${fName} ${lName}`.trim() || "Customer";
-
-    // 4. Detail Fallbacks
     const displayEmail = meta.activationEmail || meta.email || credentials.email || credentials.userEmail || 'N/A';
     const displayAddress = meta.address || credentials.address || 'Digital Delivery';
     const displayZip = meta.zip || credentials.zip || 'N/A';
@@ -2610,29 +2606,30 @@ async function handleAdminEsimActivationUpdate(req, res) {
 
         const isFinished = status.toLowerCase() === 'completed' || status.toLowerCase() === 'successful';        
      if (isFinished) {
-    try {
-        await sendDeliveryEmail(updatedOrder.userEmail, {
-            // CRITICAL: Ensure this matches the 'isESIM_Activation' check in your template
-            productType: "eSIM_Activation", 
-            nodeName: updatedOrder.nodeName || "Global eSIM",
-            planName: updatedOrder.planName || "Standard Plan",
-            amount: updatedOrder.amount, // Pass as number            
-            targetNumber: updatedOrder.targetNumber || updatedOrder.target?.number || "eSIM Device",
-            confirmationNumber: confirmationNumber || updatedOrder.confirmationNumber,
-            metadata: updatedOrder.metadata || {},
-            firstName: updatedOrder.metadata?.firstName,
-            lastName: updatedOrder.metadata?.lastName,
-            address: updatedOrder.metadata?.address,
-            zip: updatedOrder.metadata?.zip,
-            activationType: updatedOrder.metadata?.activationType,
-            
-            instructions: "Your eSIM activation is complete. Please use the Activation code provided to set up your device."
-        });
-    } catch (emailError) {
-        console.error("📧 Email Delivery Failed:", emailError);
-    }
+ try {
+    await sendDeliveryEmail(updatedOrder.userEmail, {
+        productType: "eSIM_Activation", 
+        nodeName: updatedOrder.nodeName || "Global eSIM",
+        planName: updatedOrder.planName || "Standard Plan",
+        amount: updatedOrder.amount,        
+        targetNumber: updatedOrder.targetNumber || "eSIM Device",
+        confirmationNumber: confirmationNumber || updatedOrder.confirmationNumber,        
+        metadata: {
+            ...updatedOrder.metadata,
+            activationEmail: updatedOrder.metadata?.activationEmail || updatedOrder.userEmail 
+        },
+        firstName: updatedOrder.metadata?.firstName,
+        lastName: updatedOrder.metadata?.lastName,
+        address: updatedOrder.metadata?.address,
+        zip: updatedOrder.metadata?.zip,
+        activationType: updatedOrder.metadata?.activationType,
+        
+        instructions: "Your eSIM activation is complete..."
+    });
+} catch (emailError) {
+    console.error("📧 Email Delivery Failed:", emailError);
 }
-
+}
         return res.json({ 
             success: true, 
             message: `Activation order updated to ${status}`,

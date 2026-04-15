@@ -732,38 +732,40 @@ async function initiateRDPPayment() {
         }
     }
 
-   // 7. Affordability Logic
-    const checkRDPaffordability = () => {
-        // Ensure we are pulling the latest values from the global object
-        const mainBal = Number(userBalances.ngn || 0);
-        const bonusBal = Number(userBalances.bonusNGN || 0);
-        const isUnlocked = userBalances.hasDeposited || mainBal > 0;
-        
-        const usingBonus = bonusToggle?.checked || false;
-        
-        // Calculate total numeric price from the UI
-        const totalRequiredText = document.getElementById('summaryTotal')?.innerText || "0";
-        const numericPrice = parseFloat(totalRequiredText.replace(/[^\d.]/g, '')) || 0;
-
-        // Logical Buying Power: Sum balances only if bonus is toggled AND user is eligible
-        const buyingPower = (usingBonus && isUnlocked) ? (mainBal + bonusBal) : mainBal;
-
-        if (buyingPower < numericPrice) {
-            confirmBtn.innerText = "Insufficient Funds";
-            // Use replace to switch colors safely
-            confirmBtn.classList.remove('bg-brand-blue');
-            confirmBtn.classList.add('bg-red-500', 'cursor-not-allowed');
-            confirmBtn.disabled = true;
-            if (topupBtn) topupBtn.classList.remove('hidden');
-        } else {
-            confirmBtn.innerText = "Confirm & Pay Now";
-            confirmBtn.classList.remove('bg-red-500', 'cursor-not-allowed');
-            confirmBtn.classList.add('bg-brand-blue');
-            confirmBtn.disabled = false;
-            if (topupBtn) topupBtn.classList.add('hidden');
-        }
-    };
+ // 7. Affordability Logic
+const checkRDPaffordability = () => {
+    // 1. Get numbers from global state
+    const mainBal = Number(userBalances.ngn || 0);
+    const bonusBal = Number(userBalances.bonusNGN || 0);
     
+    // 2. THE FIX: If balance > 0, they ARE eligible to pay, even if hasDeposited is false
+    const isUnlocked = userBalances.hasDeposited === true || mainBal > 0;
+    
+    const usingBonus = bonusToggle?.checked || false;
+    
+    // 3. Parse the RDP price (e.g., "₦45,000")
+    const totalRequiredText = document.getElementById('summaryTotal')?.innerText || "0";
+    const numericPrice = parseFloat(totalRequiredText.replace(/[^\d.]/g, '')) || 0;
+
+    // 4. Calculate Buying Power
+    const buyingPower = (usingBonus && isUnlocked) ? (mainBal + bonusBal) : mainBal;
+
+    // 5. Update Button State
+    if (buyingPower < numericPrice) {
+        confirmBtn.innerText = "Insufficient Funds";
+        confirmBtn.classList.remove('bg-brand-blue');
+        confirmBtn.classList.add('bg-red-500', 'cursor-not-allowed');
+        confirmBtn.disabled = true;
+        if (topupBtn) topupBtn.classList.remove('hidden');
+    } else {
+        confirmBtn.innerText = "Confirm & Pay Now";
+        confirmBtn.classList.remove('bg-red-500', 'cursor-not-allowed');
+        confirmBtn.classList.add('bg-brand-blue');
+        confirmBtn.disabled = false;
+        if (topupBtn) topupBtn.classList.add('hidden');
+    }
+};
+
     // 8. Toggle listener for Bonus
     if (bonusToggle) {
         bonusToggle.onchange = () => {

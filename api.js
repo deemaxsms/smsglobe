@@ -1205,7 +1205,7 @@ async function handleGetUserProfile(req, res) {
             isVerified: user.isVerified, // Included for frontend UI state
             balance: user.balance || 0, 
             bonusBalance: user.bonusBalance || 0, 
-            hasDeposited: user.hasDeposited || false,
+            hasDeposited: user.hasDeposited || "",
             referralCode: user.referralCode || "", 
             referralCount: user.referralCount || 0 
         });

@@ -1965,21 +1965,59 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
     } else if (isESIM_Activation) {
         const confNo = credentials.confirmationNumber || credentials.activationCode;
         const meta = credentials.metadata || {};
-        const subscriberName = `${meta.firstName || ""} ${meta.lastName || ""}`.trim() || "Customer";
+        
+        // Map Subscriber Info from Metadata
+        const fName = meta.firstName || credentials.firstName || "";
+        const lName = meta.lastName || credentials.lastName || "";
+        const subscriberName = `${fName} ${lName}`.trim() || "Customer";
+        
+        const displayEmail = meta.activationEmail || meta.email || credentials.email || 'N/A';
+        const displayAddress = meta.address || credentials.address || 'Digital Delivery';
+        const displayZip = meta.zip || credentials.zip || 'N/A';
+        const displayType = meta.activationType || credentials.activationType || 'Prepaid';
 
         dataTableHtml = `
             <tr>
-                <td class="mobile-full" width="50%" valign="top">
+                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
                     <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
                     <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || 'Global eSIM'}</strong>
                 </td>
-                <td class="mobile-full" width="50%" valign="top" style="text-align: right;">
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                     <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Device Model</span><br>
                     <strong style="font-size: 13px; color: #101828;">${credentials.targetNumber || 'N/A'}</strong>
                 </td>
             </tr>
-            `;
-    } else if (isESIM_Refill) {
+            <tr>
+                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Subscription Plan</span><br>
+                    <strong style="font-size: 13px; color: #101828;">${credentials.planName || 'Standard Activation'}</strong>
+                </td>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
+                    <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount || 0).toLocaleString()}</strong>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="border-top: 1px solid #f2f4f7; padding-top: 15px; padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Subscriber Details</span><br>
+                    <div style="font-size: 12px; color: #344054; line-height: 1.6; background: #f9fafb; padding: 12px; border-radius: 8px; margin-top: 5px; border: 1px solid #eaecf0;">
+                        <strong style="color: #667085;">Name:</strong> ${subscriberName}<br>
+                        <strong style="color: #667085;">Email:</strong> ${displayEmail}<br>
+                        <strong style="color: #667085;">Address:</strong> ${displayAddress}<br>
+                        <strong style="color: #667085;">ZIP:</strong> ${displayZip} | <strong style="color: #667085;">Type:</strong> ${displayType}
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px; text-align: center;">
+                    <div style="background: #ECFDF3; border: 1px solid #ABEFC6; padding: 15px; border-radius: 8px;">
+                        <span style="font-size: 9px; color: #067647; text-transform: uppercase; font-weight: bold;">Confirmation Number</span><br>
+                        <strong style="font-size: 20px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${confNo || 'SUCCESSFUL'}</strong>
+                    </div>
+                </td>
+            </tr>`;
+    }
+    else if (isESIM_Refill) {
         // FIX 3: This was missing an 'else if' connection in your paste
         const confNo = credentials.confirmationNumber || credentials.confNo;
         const rawAmount = String(credentials.amount || 0).replace(/[^0-9.-]+/g, "");

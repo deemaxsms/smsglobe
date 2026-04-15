@@ -1748,10 +1748,18 @@ const sendAdminNotification = async (orderData) => {
     const orderType = type ? type.toLowerCase() : "";
 
   // --- RDP DETAILS ---
+// --- RDP DETAILS ---
 if (orderType === "rdp") {
-    // Extract extras from orderData or metadata
-    const extraCPU = orderData.extraCPU || metadata?.extraCPU || 0;
-    const extraStorage = orderData.extraStorage || metadata?.extraStorage || 0;
+    // 1. Extract values from root orderData (priority) or nested metadata
+    const ram = orderData.ram || metadata?.ram || 'N/A';
+    const os = orderData.os || metadata?.osChoice || 'Windows Server';
+    const cpu = orderData.cpu || metadata?.cpu || 'N/A';
+    const storage = orderData.storage || metadata?.storage || 'N/A';
+    const net = orderData.net || metadata?.net || '1Gbps';
+    
+    // 2. Explicitly grab the extras
+    const extraCPU = parseInt(orderData.extraCPU || metadata?.extraCPU || 0);
+    const extraStorage = parseInt(orderData.extraStorage || metadata?.extraStorage || 0);
 
     specificDetailsHtml = `
         <div style="background: #f8fafc; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; margin: 12px 0;">
@@ -1762,36 +1770,39 @@ if (orderType === "rdp") {
                 <tr>
                     <td width="50%" style="padding-bottom: 10px;">
                         <span style="${labelStyle}">OS</span>
-                        <span style="${valueStyle}">${orderSpecifics?.os || metadata?.osChoice || 'Windows'}</span>
+                        <span style="${valueStyle}">${os}</span>
                     </td>
                     <td width="50%" style="padding-bottom: 10px;">
                         <span style="${labelStyle}">RAM</span>
-                        <span style="${valueStyle}">${orderSpecifics?.ram || metadata?.ram || 'N/A'}</span>
+                        <span style="${valueStyle}">${ram}</span>
                     </td>
                 </tr>
                 <tr>
                     <td width="50%" style="padding-bottom: 10px;">
                         <span style="${labelStyle}">Base CPU</span>
-                        <span style="${valueStyle}">${orderSpecifics?.cpu || metadata?.cpu || 'N/A'}</span>
-                        ${extraCPU > 0 ? `<br><span style="color: #dc2626; font-size: 11px;">🔥 +${extraCPU} Extra Cores</span>` : ''}
+                        <span style="${valueStyle}">${cpu}</span>
+                        ${extraCPU > 0 ? `<br><span style="color: #dc2626; font-size: 11px; font-weight: bold;">🔥 +${extraCPU} EXTRA CORES</span>` : ''}
                     </td>
                     <td width="50%" style="padding-bottom: 10px;">
                         <span style="${labelStyle}">Base Storage</span>
-                        <span style="${valueStyle}">${orderSpecifics?.storage || metadata?.storage || 'N/A'}</span>
-                        ${extraStorage > 0 ? `<br><span style="color: #dc2626; font-size: 11px;">🔥 +${extraStorage}GB Extra</span>` : ''}
+                        <span style="${valueStyle}">${storage}</span>
+                        ${extraStorage > 0 ? `<br><span style="color: #dc2626; font-size: 11px; font-weight: bold;">🔥 +${extraStorage}GB EXTRA</span>` : ''}
                     </td>
                 </tr>
                 <tr>
-                    <td colspan="2" style="padding-top: 5px; border-top: 1px dashed #cbd5e1; padding-top: 10px;">
+                    <td colspan="2" style="border-top: 1px dashed #cbd5e1; padding-top: 10px;">
                         <span style="${labelStyle}">Network Speed</span>
-                        <span style="${valueStyle}">${orderSpecifics?.net || metadata?.net || '1Gbps'}</span>
+                        <span style="${valueStyle}">${net}</span>
                     </td>
                 </tr>
             </table>
+            <div style="margin-top: 10px; background: #fffbeb; border: 1px solid #fef3c7; padding: 8px; border-radius: 4px;">
+                <p style="font-size: 11px; color: #92400e; margin: 0;">
+                    <b>Admin Note:</b> Please ensure the extra resources are added to the instance before sending credentials.
+                </p>
+            </div>
         </div>`;
 }
-
-    // --- ESIM REFILL DETAILS ---
     else if (orderType === "esim_refill") {
         specificDetailsHtml = `
             <div style="background: #f0fdf4; padding: 10px; border: 1px solid #bbf7d0; border-radius: 8px; margin: 12px 0;">
@@ -1938,21 +1949,20 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
     
     let dataTableHtml = '';
 if (isRDP) {
-    // 1. Core Specs
+    // 1. Extract values (Checking root, then metadata)
     const ramValue = credentials.ram || credentials.metadata?.ram || "4GB";
     const osValue = credentials.os || credentials.osChoice || 'Windows Server';
+    const netValue = credentials.net || credentials.metadata?.net || '1Gbps';
     
     // 2. Extra Calculations
     const extraCPU = parseInt(credentials.extraCPU || credentials.metadata?.extraCPU || 0);
     const extraStorage = parseInt(credentials.extraStorage || credentials.metadata?.extraStorage || 0);
 
-    // 3. Display Formatting
-    // Pull base values
+    // 3. Base Specs
     const baseCPU = credentials.cpu || credentials.metadata?.cpu || "2 Cores";
     const baseStorage = credentials.storage || credentials.metadata?.storage || "60GB SSD";
 
-    // Combine Base + Extras for the Final Display
-    const displayRam = ramValue;
+    // 4. Final Display Strings
     const displayCpu = extraCPU > 0 ? `${baseCPU} (+${extraCPU} Extra)` : baseCPU;
     const displayStorage = extraStorage > 0 ? `${baseStorage} (+${extraStorage}GB Extra)` : baseStorage;
 
@@ -1972,17 +1982,23 @@ if (isRDP) {
             </td>
         </tr>
         <tr>
-            <td class="mobile-full" width="33%" valign="top">
+            <td class="mobile-full" width="33%" valign="top" style="padding-bottom: 10px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">RAM</span><br>
-                <strong style="font-size: 12px; color: #101828;">${displayRam}</strong>
+                <strong style="font-size: 12px; color: #101828;">${ramValue}</strong>
             </td>
-            <td class="mobile-full" width="33%" valign="top" style="text-align: center;">
+            <td class="mobile-full" width="33%" valign="top" style="text-align: center; padding-bottom: 10px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">CPU</span><br>
                 <strong style="font-size: 12px; color: #101828;">${displayCpu}</strong>
             </td>
-            <td class="mobile-full" width="33%" valign="top" style="text-align: right;">
+            <td class="mobile-full" width="33%" valign="top" style="text-align: right; padding-bottom: 10px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Storage</span><br>
                 <strong style="font-size: 12px; color: #101828;">${displayStorage}</strong>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="3" style="border-top: 1px dashed #e2e8f0; padding-top: 10px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Network Speed</span><br>
+                <strong style="font-size: 12px; color: #101828;">${netValue}</strong>
             </td>
         </tr>`;
 }
@@ -2805,22 +2821,25 @@ async function handleCompleteRDPOrder(req, res) {
         }
 
         // 2. Trigger the Email Notification
-        try {
-            await sendDeliveryEmail(order.userEmail, { 
-                productType: 'RDP', // Ensure this matches your template's check (isRDP)
-                confirmationNumber: confirmationNumber,                 
-                os: order.os || order.metadata?.osChoice || 'Windows Server',
-                ram: order.ram || order.metadata?.ram || 'Standard',
-                cpu: order.cpu || order.metadata?.cpu || 'Standard',
-                storage: order.storage || order.metadata?.storage || 'Standard',                
-                planName: order.planName || "RDP Service",
-                amount: order.amount,
-                
-                instructions: order.instructions || "Your RDP server is now active. Use the credentials below to connect via Remote Desktop Connection."
-            });
-        } catch (mailError) {
-            console.error("Email failed to send, but order was updated:", mailError);
-        }
+     try {
+    await sendDeliveryEmail(order.userEmail, { 
+        productType: 'RDP', 
+        confirmationNumber: confirmationNumber,         
+        os: order.os || order.metadata?.osChoice || 'Windows Server',
+        ram: order.ram || order.metadata?.ram || 'Standard',
+        cpu: order.cpu || order.metadata?.cpu || 'Standard',
+        storage: order.storage || order.metadata?.storage || 'Standard',        
+        net: order.net || order.metadata?.net || '1Gbps',
+        extraCPU: order.extraCPU || order.metadata?.extraCPU || 0,
+        extraStorage: order.extraStorage || order.metadata?.extraStorage || 0,
+        
+        planName: order.planName || "RDP Service",
+        amount: order.amount,
+        instructions: order.instructions || "Your RDP server is now active. Use the credentials below to connect via Remote Desktop Connection."
+    });
+} catch (mailError) {
+    console.error("Email failed to send, but order was updated:", mailError);
+}
 
         res.json({ 
             success: true, 

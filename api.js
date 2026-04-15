@@ -213,7 +213,7 @@ const esimRefillSchema = new mongoose.Schema({
         index: true 
     },
     confirmationNumber: { type: String }, 
-    receiptUrl: { type: String },
+    receiptUrl: String,
     adminNote: { type: String },
     metadata: { type: mongoose.Schema.Types.Mixed }
 }, { timestamps: true });
@@ -310,7 +310,8 @@ const orderSchema = new mongoose.Schema({
         image: String
     },
     confirmationNumber: { type: String }, // NEW: Store manual activation codes or IDs
-    adminNote: String, // NEW: Internal notes for the order
+    adminNote: String, 
+    receiptUrl: String,
     ram: String,
     cpu: String,   // This allows "2 Cores" to be stored at the top level
     storage: String,
@@ -321,7 +322,6 @@ const orderSchema = new mongoose.Schema({
     rdpUsername: String,  // Critical: Allows saving the Username
     rdpPassword: String,  // Critical: Allows saving the Password
     deliveredAt: Date,
-    receiptUrl: String,
     extraCPU: { type: Number, default: 0 },
     extraStorage: { type: Number, default: 0 },    
     activationCode: String, 
@@ -489,8 +489,14 @@ app.all('/api/:action', async (req, res) => {
             break;
         case 'create-esim-order': return handleCreateEsimOrder(req, res);
         case 'esim-refills': return getEsimRefills(req, res);
-        case 'update-esim-status':
-            return handleAdminEsimUpdate(req, res);
+       case 'update-esim-status':
+    return upload.single('receipt')(req, res, (err) => {
+        if (err) {
+            console.error("Multer/Cloudinary Error:", err);
+            return res.status(500).json({ success: false, message: "File upload failed" });
+        }
+        return handleAdminEsimUpdate(req, res);
+    });
         case 'create-esim-order-activation': return handleCreateEsimActivation(req, res);
       case 'esim-activation': 
         case 'esim-activations': 

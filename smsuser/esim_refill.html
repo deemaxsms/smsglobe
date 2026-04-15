@@ -648,6 +648,25 @@ function closePaymentModal() {
     }
 }
 
+ function toggleSupportMenu() {
+        const menu = document.getElementById('supportMenu');
+        const isHidden = menu.classList.contains('hidden');
+        
+        if (isHidden) {
+            menu.classList.remove('hidden');
+            // Small timeout to allow transition to trigger
+            setTimeout(() => {
+                menu.classList.remove('translate-y-10', 'opacity-0', 'scale-95');
+            }, 10);
+        } else {
+            menu.classList.add('translate-y-10', 'opacity-0', 'scale-95');
+            setTimeout(() => {
+                menu.classList.add('hidden');
+            }, 300);
+        }
+    }
+
+    
 function closeReceipt() {
     document.getElementById('receiptModal').classList.add('hidden');
     document.getElementById('receiptModal').classList.remove('flex');

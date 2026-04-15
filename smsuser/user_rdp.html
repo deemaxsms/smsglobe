@@ -522,42 +522,31 @@ async function fetchUserProfile() {
                 'Cache-Control': 'no-cache' 
             }
         });
-        if (res.status === 401) return logout();
-        
+        if (res.status === 401) {
+            return logout(); 
+        }
         const data = await res.json();
-        
         if (res.status === 403 && data.isUnverified) {
+            console.warn("User is unverified. Redirecting to verification...");
             window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
-            return false;
+            return;
         }
-
-        if (data.success) {
-            const userData = data.user || data;
-
-            // FIX: Update the GLOBAL userBalances object used by the checkout
-            window.userBalances = {
-                ngn: userData.balance || 0,
-                bonusNGN: userData.bonusBalance || 0,
-                hasDeposited: userData.hasDeposited || (userData.balance > 0)
-            };
-
-            // Update UI Elements
-            if (document.getElementById('displayBalance')) {
-                document.getElementById('displayBalance').innerText = `₦${userBalances.ngn.toLocaleString()}`;
-            }
-            if (document.getElementById('displayBonus')) {
-               document.getElementById('displayBonus').innerText = `₦${userBalances.bonusNGN.toLocaleString()}`;
-            }
-            
-            localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
-            return true; // Important for initiateRDPPayment to continue
-        }
-        return false;
+if (data.success) {
+    const userData = data.user || data;
+    userBalances.ngn = userData.balance || 0; 
+    userBalances.bonusNGN = userData.bonusBalance || 0; 
+    
+    // Update Displays
+    const elBal = document.getElementById('displayBalance');
+    const elBonus = document.getElementById('displayBonus');
+    if (elBal) elBal.innerText = `₦${userBalances.ngn.toLocaleString()}`;
+    if (elBonus) elBonus.innerText = `₦${userBalances.bonusNGN.toLocaleString()}`;
+}
     } catch (err) {
         console.error("Failed to fetch profile details:", err);
-        return false;
     }
 }
+
 
   function renderPlans() {
     if(!tableBody) return;

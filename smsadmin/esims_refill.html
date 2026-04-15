@@ -302,84 +302,90 @@ function viewOrderDetails(order) {
     const container = document.getElementById('detailContent');
     const date = new Date(order.createdAt).toLocaleString();
     
-    // 1. CARRIER FALLBACK: Priority to the nested carrier object provided in your data
-    const carrierName = order.carrier?.name || order.nodeName || 'N/A';
-    const carrierImg = order.carrier?.image || order.image || 'https://via.placeholder.com/40';
+    // 1. CARRIER NAME: prioritized extraction without the image
+    const carrierName = order.carrier?.name || order.nodeName || order.carrierName || 'N/A';
 
-    // 2. AMOUNT FALLBACK: Check 'amount' first, then 'amountNGN'
+    // 2. AMOUNT FALLBACK
     const finalAmount = order.amount || order.amountNGN || 0;
 
-    // 3. TARGET INFO FALLBACK:
+    // 3. TARGET INFO FALLBACK
     const targetNo = order.targetNumber || order.target?.number || 'N/A';
     const targetCountry = order.country || order.target?.country || 'N/A';
 
     container.innerHTML = `
-        <div class="grid grid-cols-2 gap-4">
-            <div class="col-span-2 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                <p class="text-[10px] text-blue-600 font-bold uppercase">Transaction ID</p>
-                <p class="font-mono font-bold text-brand-darkText break-all">${order.paymentReference}</p>
+        <div class="space-y-4">
+            <div class="flex justify-end">
+                <button onclick="generateReceiptPDF('${order.paymentReference}')" 
+                    class="flex items-center gap-2 px-3 py-1.5 bg-brand-blue/10 text-brand-blue rounded-lg text-[11px] font-bold hover:bg-brand-blue hover:text-white transition-all border border-brand-blue/20">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Generate PDF Receipt
+                </button>
             </div>
 
-            <div>
-                <p class="text-[10px] text-brand-lightText font-bold uppercase">Customer</p>
-                <p class="font-medium text-sm">${order.userEmail}</p>
-            </div>
-            <div>
-                <p class="text-[10px] text-brand-lightText font-bold uppercase">Date</p>
-                <p class="font-medium text-sm">${date}</p>
-            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="col-span-2 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                    <p class="text-[10px] text-blue-600 font-bold uppercase">Transaction ID</p>
+                    <p class="font-mono font-bold text-brand-darkText break-all">${order.paymentReference}</p>
+                </div>
 
-            <div class="col-span-2 border-t border-b py-3 space-y-3">
-                <div class="flex items-center gap-3">
-                    <img src="${carrierImg}" 
-                         class="w-10 h-10 rounded-lg object-contain bg-gray-100 p-1"
-                         onerror="this.src='https://via.placeholder.com/40'">
+                <div>
+                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Customer</p>
+                    <p class="font-medium text-sm">${order.userEmail}</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Date</p>
+                    <p class="font-medium text-sm">${date}</p>
+                </div>
+
+                <div class="col-span-2 border-t border-b py-3 space-y-3">
                     <div>
                         <p class="text-[10px] text-brand-lightText font-bold uppercase">Carrier Name</p>
-                        <p class="font-bold text-brand-darkText">${carrierName}</p>
+                        <p class="font-bold text-lg text-brand-darkText">${carrierName}</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-xl border border-brand-border">
+                        <div>
+                            <p class="text-[10px] text-brand-lightText font-bold uppercase">Target Number</p>
+                            <p class="font-bold text-sm text-blue-700">${targetNo}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-brand-lightText font-bold uppercase">Coverage Country</p>
+                            <p class="font-bold text-sm">${targetCountry}</p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-xl border border-brand-border">
-                    <div>
-                        <p class="text-[10px] text-brand-lightText font-bold uppercase">Target Number</p>
-                        <p class="font-bold text-sm text-blue-700">${targetNo}</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] text-brand-lightText font-bold uppercase">Coverage Country</p>
-                        <p class="font-bold text-sm">${targetCountry}</p>
+                ${order.receiptUrl ? `
+                <div class="col-span-2">
+                    <a href="${order.receiptUrl}" target="_blank" 
+                        class="flex items-center justify-center gap-2 w-full py-2 bg-gray-800 text-white rounded-lg text-[11px] font-bold hover:bg-black transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        View Admin Uploaded Proof
+                    </a>
+                </div>` : ''}
+
+                <div class="col-span-2">
+                    <p class="text-[10px] text-brand-lightText font-bold uppercase mb-2">Payment Summary</p>
+                    <div class="bg-gray-50 p-3 rounded-xl border border-dashed border-brand-border">
+                        <div class="flex justify-between mb-1 text-sm">
+                            <span>Amount Paid:</span>
+                            <span class="font-bold text-green-700">₦${finalAmount.toLocaleString()}</span>
+                        </div>
+                        <div class="flex justify-between text-[11px] text-brand-lightText">
+                            <span>Current Status:</span>
+                            <span class="uppercase font-bold ${order.status === 'successful' || order.status === 'completed' ? 'text-green-600' : 'text-orange-500'}">${order.status}</span>
+                        </div>
                     </div>
                 </div>
+
+                ${order.confirmationNumber ? `
+                <div class="col-span-2 bg-green-50 p-3 rounded-lg border border-green-200">
+                    <p class="text-[10px] text-green-600 font-bold uppercase">Activation PIN / Code</p>
+                    <p class="font-mono font-bold text-green-700">${order.confirmationNumber}</p>
+                </div>` : ''}
             </div>
-
-            ${order.receiptUrl ? `
-            <div class="col-span-2">
-                <a href="${order.receiptUrl}" target="_blank" 
-                   class="flex items-center justify-center gap-2 w-full py-2 bg-gray-800 text-white rounded-lg text-[11px] font-bold hover:bg-black transition-all">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    Download / View Uploaded Receipt
-                </a>
-            </div>` : ''}
-
-            <div class="col-span-2">
-                <p class="text-[10px] text-brand-lightText font-bold uppercase mb-2">Payment Summary</p>
-                <div class="bg-gray-50 p-3 rounded-xl border border-dashed border-brand-border">
-                    <div class="flex justify-between mb-1 text-sm">
-                        <span>Amount Paid:</span>
-                        <span class="font-bold text-green-700">₦${finalAmount.toLocaleString()}</span>
-                    </div>
-                    <div class="flex justify-between text-[11px] text-brand-lightText">
-                        <span>Current Status:</span>
-                        <span class="uppercase font-bold ${order.status === 'successful' || order.status === 'completed' ? 'text-green-600' : 'text-orange-500'}">${order.status}</span>
-                    </div>
-                </div>
-            </div>
-
-            ${order.confirmationNumber ? `
-            <div class="col-span-2 bg-green-50 p-3 rounded-lg border border-green-200">
-                <p class="text-[10px] text-green-600 font-bold uppercase">Activation PIN / Code</p>
-                <p class="font-mono font-bold text-green-700">${order.confirmationNumber}</p>
-            </div>` : ''}
         </div>
     `;
     document.getElementById('detailModal').classList.remove('hidden');

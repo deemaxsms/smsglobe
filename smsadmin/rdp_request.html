@@ -236,7 +236,17 @@ function viewOrderDetails(ref) {
     const order = allOrders.find(o => o.paymentReference === ref);
     if (!order) return;
 
-    // Use root level data as primary, metadata as fallback
+    // --- STANDARDIZED DATA EXTRACTION ---
+    // Extract specs from root, fallback to metadata, then to 'N/A'
+    const ramVal = order.ram || order.metadata?.ram || 'N/A';
+    const cpuVal = order.cpu || order.metadata?.cpu || 'N/A';
+    const storageVal = order.storage || order.metadata?.storage || 'N/A';
+    const osVal = order.os || order.metadata?.osChoice || 'Windows Server';
+    
+    // Extract extra addons from root (using 0 as fallback for numbers)
+    const extraCPUVal = order.extraCPU ?? order.metadata?.extraCPU ?? 0;
+    const extraStorageVal = order.extraStorage ?? order.metadata?.extraStorage ?? 0;
+
     const status = order.status.toLowerCase();
     const modal = document.getElementById('viewModal');
     const container = document.getElementById('modalContainer'); 
@@ -249,7 +259,7 @@ function viewOrderDetails(ref) {
 
     let actionHTML = '';
 
-    // Administrative Log Form Logic (Show form for active/pending, show credentials for completed)
+    // Administrative Log Form Logic
     if (['successful', 'processing', 'pending', 'completed'].includes(status)) {
         if (status !== 'completed') {
             actionHTML = `
@@ -326,7 +336,7 @@ function viewOrderDetails(ref) {
             <div class="bg-gray-50 p-4 rounded-2xl border border-brand-border">
                 <h4 class="text-[9px] font-bold text-brand-lightText uppercase mb-2">Configuration</h4>
                 <p class="text-xs font-bold">${order.planName}</p>
-                <p class="text-[11px] text-brand-orange font-bold">${order.os || 'Windows Server'}</p>
+                <p class="text-[11px] text-brand-orange font-bold">${osVal}</p>
                 <div class="mt-3 pt-3 border-t border-gray-200 flex justify-between">
                     <span class="text-[10px] text-brand-lightText">Region</span>
                     <span class="text-[10px] font-bold uppercase">${order.nodeName}</span>
@@ -336,18 +346,18 @@ function viewOrderDetails(ref) {
             <div class="bg-gray-50 p-4 rounded-2xl border border-brand-border">
                 <h4 class="text-[9px] font-bold text-brand-lightText uppercase mb-2">Hardware Specs</h4>
                 <div class="space-y-1 text-[11px]">
-                    <div class="flex justify-between"><span>RAM:</span> <span class="font-bold">${order.ram || 'N/A'}</span></div>
-                    <div class="flex justify-between"><span>Base CPU:</span> <span class="font-bold text-brand-blue">${order.cpu || 'N/A'}</span></div>
-                    <div class="flex justify-between"><span>Base Disk:</span> <span class="font-bold">${order.storage || 'N/A'}</span></div>
+                    <div class="flex justify-between"><span>RAM:</span> <span class="font-bold">${ramVal}</span></div>
+                    <div class="flex justify-between"><span>Base CPU:</span> <span class="font-bold text-brand-blue">${cpuVal}</span></div>
+                    <div class="flex justify-between"><span>Base Disk:</span> <span class="font-bold">${storageVal}</span></div>
                 </div>
                 <div class="mt-2 pt-2 border-t border-dashed border-gray-300">
                     <div class="flex justify-between items-center text-[10px] text-brand-orange font-bold">
                         <span>Extra Cores:</span> 
-                        <span class="bg-orange-100 px-1.5 py-0.5 rounded">+${order.extraCPU || 0} vCPU</span>
+                        <span class="bg-orange-100 px-1.5 py-0.5 rounded">+${extraCPUVal} vCPU</span>
                     </div>
                     <div class="flex justify-between items-center text-[10px] text-brand-orange font-bold mt-1">
                         <span>Extra Disk:</span> 
-                        <span class="bg-orange-100 px-1.5 py-0.5 rounded">+${order.extraStorage || 0} GB</span>
+                        <span class="bg-orange-100 px-1.5 py-0.5 rounded">+${extraStorageVal} GB</span>
                     </div>
                 </div>
             </div>

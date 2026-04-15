@@ -292,10 +292,16 @@ const orderSchema = new mongoose.Schema({
     confirmationNumber: { type: String }, // NEW: Store manual activation codes or IDs
     adminNote: String, // NEW: Internal notes for the order
     ram: String,
-    cpu: String,
+    cpu: String,   // This allows "2 Cores" to be stored at the top level
     storage: String,
-    net: String,
+    net: String,   // This allows "1Gbps" to be stored at the top level
     os: String,
+    ipAddress: String,    // Critical: Allows saving the IP
+    port: { type: String, default: '3389' }, // Critical: Allows saving the Port
+    rdpUsername: String,  // Critical: Allows saving the Username
+    rdpPassword: String,  // Critical: Allows saving the Password
+    deliveredAt: Date,
+
     extraCPU: { type: Number, default: 0 },
     extraStorage: { type: Number, default: 0 },    
     activationCode: String, 
@@ -1524,38 +1530,38 @@ async function handlePurchaseWithWallet(req, res) {
             orderSpecifics.activationCode = item.activationCode;
             orderSpecifics.instructions = item.instructions;
         }
-        else if (rdpId) {
-            itemType = "RDP";
-            const rdpPlans = {
-                tier1: { id: "tier1", name: "USA Tier 1", price: 45000, ram: "4GB", cpu: "2 Cores", storage: "60GB SSD", net: "1Gbps" },
-                tier2: { id: "tier2", name: "USA Tier 2", price: 55000, ram: "6GB", cpu: "3 Cores", storage: "100GB SSD", net: "1Gbps" },
-                tier3: { id: "tier3", name: "USA Tier 3", price: 65000, ram: "8GB", cpu: "4 Cores", storage: "140GB SSD", net: "1Gbps" },
-                tier4: { id: "tier4", name: "USA Tier 4", price: 80000, ram: "12GB", cpu: "6 Cores", storage: "180GB SSD", net: "2Gbps" },
-                tier5: { id: "tier5", name: "USA Tier 5", price: 90000, ram: "18GB", cpu: "8 Cores", storage: "240GB SSD", net: "2Gbps" },
-                tier6: { id: "tier6", name: "USA Tier 6", price: 130000, ram: "24GB", cpu: "8 Cores", storage: "280GB SSD", net: "2Gbps" }
-            };
-
-            const selectedTier = rdpPlans[rdpId];
-            if (!selectedTier) return res.status(404).json({ success: false, message: "RDP Plan not found" });
-
-            const extraCPUCount = parseInt(metadata?.extraCPU || 0);
-            const extraStorageGB = parseInt(metadata?.extraStorage || 0);
-
-            costNGN = Math.round(Number(selectedTier.price) + (extraCPUCount * 5000) + (extraStorageGB * 5000));
-            
-            productDetails.name = selectedTier.name;
-            productDetails.plan = `${selectedTier.ram} RAM | ${metadata?.osChoice || 'Windows Server'}`;
-            
-            orderSpecifics = {
-                ram: selectedTier.ram,
-                cpu: selectedTier.cpu,
-                storage: selectedTier.storage,
-                net: selectedTier.net,
-                os: metadata?.osChoice || "Windows Server",
-                extraCPU: extraCPUCount,
-                extraStorage: extraStorageGB
-            };
-        }
+else if (rdpId) {
+    itemType = "RDP";
+    const rdpPlans = {
+        tier1: { id: "tier1", name: "USA Tier 1", price: 45000, ram: "4GB", cpu: "2 Cores", storage: "60GB SSD", net: "1Gbps" },
+        tier2: { id: "tier2", name: "USA Tier 2", price: 55000, ram: "6GB", cpu: "3 Cores", storage: "100GB SSD", net: "1Gbps" },
+        tier3: { id: "tier3", name: "USA Tier 3", price: 65000, ram: "8GB", cpu: "4 Cores", storage: "140GB SSD", net: "1Gbps" },
+        tier4: { id: "tier4", name: "USA Tier 4", price: 80000, ram: "12GB", cpu: "6 Cores", storage: "180GB SSD", net: "2Gbps" },
+        tier5: { id: "tier5", name: "USA Tier 5", price: 90000, ram: "18GB", cpu: "8 Cores", storage: "240GB SSD", net: "2Gbps" },
+        tier6: { id: "tier6", name: "USA Tier 6", price: 130000, ram: "24GB", cpu: "8 Cores", storage: "280GB SSD", net: "2Gbps" }
+    };
+    const selectedTier = rdpPlans[rdpId];
+    if (!selectedTier) return res.status(404).json({ success: false, message: "RDP Plan not found" });
+    const extraCPUCount = parseInt(metadata?.extraCPU || 0);
+    const extraStorageGB = parseInt(metadata?.extraStorage || 0);
+    costNGN = Math.round(Number(selectedTier.price) + (extraCPUCount * 5000) + (extraStorageGB * 5000));
+    productDetails.name = selectedTier.name;
+    productDetails.plan = `${selectedTier.ram} RAM | ${metadata?.osChoice || 'Windows Server'}`;
+    
+    orderSpecifics = {
+        ram: selectedTier.ram,
+        cpu: selectedTier.cpu,     // Fixes the "CPU not displaying" issue
+        storage: selectedTier.storage,
+        net: selectedTier.net,     // Fixes the "Network speed not displaying" issue
+        os: metadata?.osChoice || "Windows Server",
+        extraCPU: extraCPUCount,
+        extraStorage: extraStorageGB,
+        ipAddress: "",
+        rdpUsername: "",
+        rdpPassword: "",
+        port: ""
+    };
+}
         else if (metadata?.activationEmail && metadata?.firstName) {
             itemType = "eSIM_Activation";
             const cleanedPrice = planAmount.toString().split('.')[0].replace(/[^0-9]/g, "");
@@ -2937,6 +2943,7 @@ async function handleDeleteRDP(req, res) {
         res.status(500).json({ success: false, message: "Delete failed" });
     }
 }
+
 async function handleGetRdpRequests(req, res) {
     try {
         const requests = await Order.find({ productType: 'RDP' })
@@ -2944,42 +2951,44 @@ async function handleGetRdpRequests(req, res) {
             .limit(100);
 
         const formattedRequests = requests.map(order => {
-            const nairaAmount = parseFloat(order.amount) || 0;
             const meta = order.metadata || {};
-            const rdpDetails = order.rdpDetails || {};
-
+            
             return {
                 paymentReference: order.paymentReference,
                 productType: 'RDP',
                 createdAt: order.createdAt,
                 userEmail: order.userEmail,
-                fullName: meta.fullName || 'N/A',
+                fullName: order.fullName || meta.fullName || 'User',
                 nodeName: order.nodeName || 'USA Tier 1',
                 planName: order.planName || 'RDP Server',
-                paymentMethod: order.useBonus ? "Bonus + Main" : "Main Wallet Only",
-                bonusDeducted: order.bonusUsed || 0,
+                
+                // Hardware Specs - Pulling from root or metadata
+                cpu: order.cpu || meta.cpu || 'N/A', 
+                ram: order.ram || meta.ram || 'N/A',
+                storage: order.storage || meta.storage || 'N/A',
+                net: order.net || meta.net || 'N/A',
+                os: order.os || meta.osChoice || 'Windows',
+
+                // Credentials - These must be sent to the frontend
+                ipAddress: order.ipAddress || '',
+                port: order.port || '',
+                rdpUsername: order.rdpUsername || '',
+                rdpPassword: order.rdpPassword || '',
+                
                 metadata: {
-                    osChoice: meta.osChoice || rdpDetails.os || 'Windows',
-                    ram: meta.ram || 'Standard',
-                    storage: meta.storage || 'Standard',
-                    net: order.net || 'N/A',
-                    extraCPU: meta.extraCPU || 0,
-                    extraStorage: meta.extraStorage || 0
+                    extraCPU: meta.extraCPU || order.extraCPU || 0,
+                    extraStorage: meta.extraStorage || order.extraStorage || 0
                 },
-                amount: nairaAmount, 
+                amount: order.amount, 
                 status: order.status || 'pending',
-                confirmationNumber: order.confirmationNumber || 'PENDING'
+                confirmationNumber: order.confirmationNumber || ''
             };
         });
 
-        return res.json({
-            success: true,
-            orders: formattedRequests
-        });
-
+        return res.json({ success: true, orders: formattedRequests });
     } catch (error) {
         console.error("❌ RDP Fetch Error:", error);
-        return res.status(500).json({ success: false, message: "Failed to fetch RDP requests" });
+        return res.status(500).json({ success: false, message: "Failed to fetch" });
     }
 }
 

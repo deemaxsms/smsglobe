@@ -3679,9 +3679,3 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = app;
 
-// This tells Vercel NOT to parse the body, allowing Multer to take over
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};

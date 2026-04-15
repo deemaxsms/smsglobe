@@ -514,11 +514,12 @@
 
     let activePlan = null;
 
-    window.onload = () => {
-        renderPlans();
-    };
-
 async function fetchUserProfile() {
+    // Safety check: Ensure userBalances object exists globally
+    if (typeof userBalances === 'undefined') {
+        window.userBalances = { ngn: 0, bonusNGN: 0, hasDeposited: false };
+    }
+
     try {
         const res = await fetch(`${API_BASE_URL}/user-profile`, {
             headers: { 
@@ -526,31 +527,35 @@ async function fetchUserProfile() {
                 'Cache-Control': 'no-cache' 
             }
         });
+
         if (res.status === 401) return logout();
+
         const data = await res.json();
         if (res.status === 403 && data.isUnverified) {
-            console.warn("User is unverified. Redirecting...");
             window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
-            return;
+            return false;
         }
+
         if (data.success) {
-            const userData = data.user || data;
-            userBalance = userData.balance || 0; 
-            userBonusBalance = userData.bonusBalance || 0; 
+            const userData = data.user || data;             
+            userBalances.ngn = userData.balance || 0;
+            userBalances.bonusNGN = userData.bonusBalance || 0;
+            userBalances.hasDeposited = userData.hasDeposited || (userBalances.ngn > 0);            
             const balEl = document.getElementById('displayBalance');
-            if (balEl) balEl.innerText = `₦${userBalance.toLocaleString()}`;
+            if (balEl) balEl.innerText = `₦${userBalances.ngn.toLocaleString()}`;
             
             const bonusEl = document.getElementById('displayBonus');
-            if (bonusEl) bonusEl.innerText = `₦${userBonusBalance.toLocaleString()}`;
-            
-            const refCountEl = document.getElementById('userReferralCount');
-            if (refCountEl) refCountEl.innerText = userData.referralCount || 0;            
+            if (bonusEl) bonusEl.innerText = `₦${userBalances.bonusNGN.toLocaleString()}`;            
             localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
+            console.log("Profile Sync: Balances updated.");
             
-            console.log("Profile Sync: Main Wallet and Bonus Balance updated.");
-       }
+            return true; // Signals success to initiateRDPPayment
+        }
+        
+        return false; // Request failed on server side
     } catch (err) {
-        console.error("Failed to fetch balance and bonus", err);
+        console.error("Failed to fetch profile", err);
+        return false; // Network or syntax error
     }
 }
 
@@ -661,17 +666,20 @@ async function initiateRDPPayment() {
 
     if (!payBtn || !confirmBtn) return;
     
-    // Initial UI reset
+    // 1. Initial UI reset
     if (topupBtn) topupBtn.classList.add('hidden');
     confirmBtn.innerText = "Confirm & Pay Now";
     confirmBtn.classList.remove('bg-red-500', 'cursor-not-allowed');
     confirmBtn.classList.add('bg-brand-blue');
     confirmBtn.disabled = false;
 
-    // Fetch latest user data
+    // 2. Fetch latest user data and handle the response correctly
     payBtn.innerText = "Verifying Wallet...";
     payBtn.disabled = true;
-    const success = await fetchUserProfile();    
+    
+    // Ensure fetchUserProfile returns true/false based on success
+    const success = await fetchUserProfile();     
+    
     payBtn.innerText = "Pay Securely Now";
     payBtn.disabled = false;
 
@@ -680,16 +688,19 @@ async function initiateRDPPayment() {
         return;
     }
 
-    // Balance definitions
-    const mainBal = Number(userBalances.ngn || 0);
-    const bonusBal = Number(userBalances.bonusNGN || 0);
-    const isUnlocked = userBalances.hasDeposited || mainBal > 0;
+    // 3. Data Mapping: Ensure we use the correct global variables
+    // In your previous code, fetchUserProfile updated 'userBalance' and 'userBonusBalance'
+    const mainBal = Number(window.userBalance || 0);
+    const bonusBal = Number(window.userBonusBalance || 0);
+    
+    // Check if user is "unlocked" (has deposited or has a balance)
+    const isUnlocked = (mainBal > 0);
 
-    // Price parsing
+    // 4. Price parsing
     const totalRequiredText = document.getElementById('summaryTotal')?.innerText || "₦0.00";
-    const numericPrice = parseFloat(totalRequiredText.replace(/[^\d.]/g, ''));    
+    const numericPrice = parseFloat(totalRequiredText.replace(/[^\d.]/g, '')) || 0;    
 
-    // UI: Update Balance Displays
+    // 5. UI: Update Balance Displays in the Modal
     const modalBalanceNGN = document.getElementById('modalBalanceNGN');
     const modalTotalDisplay = document.getElementById('modalTotalDue');
 
@@ -704,23 +715,28 @@ async function initiateRDPPayment() {
         modalTotalDisplay.innerText = totalRequiredText;
     }
 
-    // Handle Bonus Section Visibility
-    if (bonusSection) {
+    // 6. Handle Bonus Section Visibility
+    if (bonusSection && bonusToggle) {
         if (bonusBal > 0) {
             bonusSection.classList.remove('hidden');
-            document.getElementById('modalBonusBalanceNGN').innerText = '₦' + bonusBal.toLocaleString('en-NG', {
-                minimumFractionDigits: 2
-            });
-            bonusToggle.checked = true;
+            const bonusDisplay = document.getElementById('modalBonusBalanceNGN');
+            if (bonusDisplay) {
+                bonusDisplay.innerText = '₦' + bonusBal.toLocaleString('en-NG', {
+                    minimumFractionDigits: 2
+                });
+            }
+            bonusToggle.checked = true; // Default to using bonus if available
         } else {
             bonusSection.classList.add('hidden');
             bonusToggle.checked = false;
         }
     }
 
-    // Affordability Logic (Consistent with VPN/Proxy)
+    // 7. Affordability Logic
     const checkRDPaffordability = () => {
         const usingBonus = bonusToggle?.checked || false;
+        
+        // Logical Buying Power: Sum balances only if bonus is toggled AND user is eligible
         const buyingPower = (usingBonus && isUnlocked) ? (mainBal + bonusBal) : mainBal;
 
         if (buyingPower < numericPrice) {
@@ -738,7 +754,7 @@ async function initiateRDPPayment() {
         }
     };
 
-    // Toggle listener
+    // 8. Toggle listener for Bonus
     if (bonusToggle) {
         bonusToggle.onchange = () => {
             if (bonusLabel) {
@@ -751,10 +767,13 @@ async function initiateRDPPayment() {
         };
     }
 
+    // 9. Execute initial check and open modal
     checkRDPaffordability();
     
     const modal = document.getElementById('paymentModal');
-    if (modal) modal.classList.remove('hidden');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
 }
 
 async function purchaseRDPWithWallet() {
@@ -1004,6 +1023,11 @@ function contactRDPAdmin() {
     overlay?.addEventListener('click', toggleSidebar);
 
     function logout() { window.location.href = 'user_login.html'; }
+
+    window.onload = () => {
+        renderPlans();
+        fetchUserProfile(); // Get initial balance on load
+    };
 </script>
 </body>
 </html>

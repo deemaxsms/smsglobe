@@ -1681,23 +1681,23 @@ sendDeliveryEmail(user.email, {
             targetNumber: mobileNumber        // Required for eSIM labels
         }).catch(err => console.error("📧 Customer Email Error:", err.message));
 
-        // 2. Send Notification to ADMIN (Only for manual products)
-        const manualProducts = ["eSIM_Refill", "eSIM_Activation", "RDP"];
+      // 2. Send Notification to ADMIN (Only for manual products)
+const manualProducts = ["eSIM_Refill", "eSIM_Activation", "RDP"];
 
-        if (manualProducts.includes(itemType)) {
-            sendAdminNotification({
-                type: itemType,
-                email: user.email,
-                product: productDetails.name,
-                amount: `₦${costNGN.toLocaleString()}`,
-                reference: paymentReference,
-                target: mobileNumber || metadata?.activationEmail,
-                metadata: metadata,
-                orderSpecifics: orderSpecifics,
-                planName: productDetails.plan || newOrder.planName
-
-            }).catch(err => console.error("📧 Admin Notification Error:", err.message));
-        }
+if (manualProducts.includes(itemType)) {
+    sendAdminNotification({
+        type: itemType,
+        email: user.email,
+        product: productDetails.name,
+        amount: `₦${costNGN.toLocaleString()}`,
+        reference: paymentReference,
+        target: mobileNumber || metadata?.targetNumber || metadata?.activationEmail || 'N/A',
+        country: coverageCountry || metadata?.country || 'N/A', 
+        metadata: metadata,
+        orderSpecifics: orderSpecifics,
+        planName: productDetails.plan || newOrder.planName || 'Standard'
+    }).catch(err => console.error("📧 Admin Notification Error:", err.message));
+}
 
         // 3. Final Response to Frontend
         const isManual = manualProducts.includes(itemType);
@@ -1719,86 +1719,101 @@ sendDeliveryEmail(user.email, {
 }
 
 
+// Move transporter outside for faster execution
+const adminTransporter = nodemailer.createTransport({
+    service: 'gmail',
+    pool: true,
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
 const sendAdminNotification = async (orderData) => {
-    const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        pool: true,
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-        }
-    });
-    const { type, email, amount, product, reference, target, metadata, orderSpecifics } = orderData;
+    const { type, email, amount, product, reference, target, metadata, orderSpecifics, country } = orderData;
+    
+    // Use a smaller base font for mobile optimization
+    const labelStyle = "font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: bold; margin-bottom: 2px; display: block;";
+    const valueStyle = "font-size: 13px; color: #1e293b; font-weight: 600;";
+    
     let specificDetailsHtml = '';
+
     if (type === "RDP") {
         specificDetailsHtml = `
-            <div style="background: #f8fafc; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; margin: 15px 0;">
-                <p style="margin:0 0 5px 0;"><b>🖥️ RDP CONFIGURATION:</b></p>
-                <ul style="margin:0; padding-left:20px; font-size: 13px;">
-                    <li><b>OS:</b> ${orderSpecifics?.os || 'Windows Server'}</li>
-                    <li><b>RAM:</b> ${orderSpecifics?.ram || 'N/A'}</li>
-                    <li><b>CPU:</b> ${orderSpecifics?.cpu || 'N/A'} (+${orderSpecifics?.extraCPU || 0} Extra)</li>
-                    <li><b>Storage:</b> ${orderSpecifics?.storage || 'N/A'} (+${orderSpecifics?.extraStorage || 0}GB)</li>
-                </ul>
-            </div>`;
-    } else if (type === "eSIM_Activation") {
-        specificDetailsHtml = `
-            <div style="background: #fdf2f2; padding: 12px; border: 1px solid #fecaca; border-radius: 6px; margin: 15px 0;">
-                <p style="margin:0 0 5px 0;"><b>📶 ACTIVATION DETAILS:</b></p>
-                <ul style="margin:0; padding-left:20px; font-size: 13px;">
-                    <li><b>Carrier:</b> ${product}</li>
-                    <li><b>Registered Name:</b> ${metadata?.firstName} ${metadata?.lastName}</li>
-                    <li><b>Activation Email:</b> ${metadata?.activationEmail}</li>
-                    <li><b>Address:</b> ${metadata?.address}, ${metadata?.zip}</li>
-                </ul>
+            <div style="background: #f8fafc; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; margin: 12px 0;">
+                <p style="font-size: 12px; margin:0 0 8px 0; color: #0F54C6;"><b>🖥️ RDP CONFIG</b></p>
+                <table width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                        <td width="50%"><span style="${labelStyle}">OS</span><span style="${valueStyle}">${orderSpecifics?.os || 'Win'}</span></td>
+                        <td width="50%"><span style="${labelStyle}">RAM</span><span style="${valueStyle}">${orderSpecifics?.ram || 'N/A'}</span></td>
+                    </tr>
+                </table>
             </div>`;
     } else if (type === "eSIM_Refill") {
         specificDetailsHtml = `
-            <div style="background: #f0fdf4; padding: 12px; border: 1px solid #bbf7d0; border-radius: 6px; margin: 15px 0;">
-                <p style="margin:0 0 5px 0;"><b>📲 REFILL DETAILS:</b></p>
-                <ul style="margin:0; padding-left:20px; font-size: 13px;">
-                    <li><b>Target Number:</b> ${target}</li>
-                    <li><b>Carrier:</b> ${product}</li>
-                    <li><b>Plan:</b> ${orderData.planName || 'N/A'}</li>
-                </ul>
+            <div style="background: #f0fdf4; padding: 10px; border: 1px solid #bbf7d0; border-radius: 8px; margin: 12px 0;">
+                <p style="font-size: 12px; margin:0 0 8px 0; color: #166534;"><b>📲 REFILL DETAILS</b></p>
+                <table width="100%" cellspacing="0" cellpadding="2">
+                    <tr>
+                        <td width="50%"><span style="${labelStyle}">Target Number</span><span style="${valueStyle}">${target}</span></td>
+                        <td width="50%"><span style="${labelStyle}">Carrier</span><span style="${valueStyle}">${product}</span></td>
+                    </tr>
+                    <tr>
+                        <td width="50%" style="padding-top:8px;"><span style="${labelStyle}">Country</span><span style="${valueStyle}">${country || 'N/A'}</span></td>
+                        <td width="50%" style="padding-top:8px;"><span style="${labelStyle}">Plan</span><span style="${valueStyle}">${orderData.planName || 'Standard'}</span></td>
+                    </tr>
+                </table>
             </div>`;
     }
+
     const htmlContent = `
-        <div style="font-family: sans-serif; border: 2px solid #0F54C6; padding: 25px; border-radius: 12px; color: #1e293b;">
-            <div style="text-align: center; margin-bottom: 20px;">
-                <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" width="140">
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif; max-width: 450px; margin: auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #ffffff;">
+            <div style="background: #0F54C6; padding: 15px; text-align: center;">
+                <img src="https://imgur.com/8YeZgfx.png" alt="SMSGlobe" width="100">
             </div>
-            <h2 style="color: #0F54C6; margin-top: 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
-                🚨 Action Required: ${type.replace('_', ' ')}
-            </h2>
-            <p>A new manual fulfillment request has been received via <b>Wallet Payment</b>.</p>
             
-            <p><b>User:</b> ${email}</p>
-            <p><b>Total Paid:</b> ${amount}</p>
-            <p><b>Reference:</b> <code style="background:#f1f5f9; padding:2px 5px;">${reference}</code></p>
+            <div style="padding: 20px;">
+                <h3 style="color: #0F54C6; font-size: 16px; margin: 0 0 15px 0; text-align: center;">🚨 New ${type.replace('_', ' ')} Order</h3>
+                
+                <div style="border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 10px;">
+                    <span style="${labelStyle}">Customer Email</span>
+                    <span style="${valueStyle}">${email}</span>
+                </div>
 
-            ${specificDetailsHtml}
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <div style="width: 48%;">
+                        <span style="${labelStyle}">Amount</span>
+                        <span style="font-size: 15px; color: #101828; font-weight: 800;">${amount}</span>
+                    </div>
+                    <div style="width: 48%;">
+                        <span style="${labelStyle}">Ref</span>
+                        <code style="font-size: 11px; background:#f1f5f9; padding:2px 4px; border-radius:4px;">${reference}</code>
+                    </div>
+                </div>
 
-            <div style="text-align: center; margin-top: 25px;">
-                <a href="https://smsglobe.netlify.app/admin" 
-                   style="background: #0F54C6; color: white; padding: 14px 25px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
-                   Open Admin Panel to Complete Order
-                </a>
+                ${specificDetailsHtml}
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="https://smsglobe.netlify.app/admin" 
+                       style="background: #0F54C6; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: bold; display: inline-block; width: 80%;">
+                        Complete Order
+                    </a>
+                </div>
             </div>
-            <p style="font-size: 11px; color: #64748b; text-align: center; margin-top: 20px;">
-                This is an automated priority alert from the SMSGlobe Backend.
-            </p>
+            
+            <div style="background: #f8fafc; padding: 12px; text-align: center;">
+                <p style="font-size: 10px; color: #94a3b8; margin: 0;">Priority System Alert &bull; SMSGlobe Admin</p>
+            </div>
         </div>
     `;
 
     try {
-        await transporter.sendMail({
-            from: `"SMSGlobe System" <${process.env.EMAIL_USER}>`,
+        await adminTransporter.sendMail({
+            from: `"SMSGlobe Alert" <${process.env.EMAIL_USER}>`,
             to: process.env.ADMIN_EMAIL,
-            subject: `[URGENT] New ${type} Order - ${email}`,
+            subject: `🚨 ${type}: ${amount} from ${email}`,
             html: htmlContent
         });
-        console.log(`Admin alerted for ${type} order: ${reference}`);
     } catch (error) {
         console.error("Admin Mail Error:", error.message);
     }
@@ -1988,7 +2003,7 @@ else if (isESIM_Refill) {
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
-                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || credentials.carrier || 'Global eSIM'}</strong>
+                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || 'Global eSIM'}</strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Target Number</span><br>
@@ -1998,30 +2013,28 @@ else if (isESIM_Refill) {
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Coverage Country</span><br>
-                <strong style="font-size: 13px; color: #101828;">${credentials.country || 'United States'}</strong>
+                <strong style="font-size: 13px; color: #101828;">${credentials.country || 'International'}</strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Price Paid</span><br>
                 <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount).toLocaleString()}</strong>
             </td>
         </tr>
-        ${isFinal ? `
         <tr>
             <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px; text-align: center;">
+                ${isFinal ? `
                 <div style="background: #ECFDF3; border: 1px solid #ABEFC6; padding: 12px; border-radius: 8px;">
-                    <span style="font-size: 9px; color: #067647; text-transform: uppercase; font-weight: bold;">Refill Confirmation Code</span><br>
-                    <strong style="font-size: 16px; font-family: 'Courier New', monospace; color: #101828;">${credentials.confirmationNumber}</strong>
-                </div>
+                    <span style="font-size: 9px; color: #067647; text-transform: uppercase; font-weight: bold;">Confirmation Number</span><br>
+                    <strong style="font-size: 18px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${credentials.confirmationNumber}</strong>
+                </div>` : `
+                <div style="background: #F9FAFB; border: 1px solid #EAECF0; padding: 12px; border-radius: 8px;">
+                    <em style="font-size: 11px; color: #667085;">Order Received: Your confirmation number will be provided here once the refill is processed.</em>
+                </div>`}
             </td>
-        </tr>` : `
-        <tr>
-            <td colspan="2" style="border-top: 1px solid #EAECF0; padding-top: 15px; text-align: center;">
-                <em style="font-size: 11px; color: #667085;">The confirmation code will be sent once processing is complete.</em>
-            </td>
-        </tr>`}
+        </tr>
     `;
-
-} else {
+}
+else {
     dataTableHtml = `
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 10px;">

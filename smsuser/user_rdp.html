@@ -515,11 +515,6 @@
     let activePlan = null;
 
 async function fetchUserProfile() {
-    // Safety check: Ensure userBalances object exists globally
-    if (typeof userBalances === 'undefined') {
-        window.userBalances = { ngn: 0, bonusNGN: 0, hasDeposited: false };
-    }
-
     try {
         const res = await fetch(`${API_BASE_URL}/user-profile`, {
             headers: { 
@@ -527,35 +522,32 @@ async function fetchUserProfile() {
                 'Cache-Control': 'no-cache' 
             }
         });
-
-        if (res.status === 401) return logout();
-
+        if (res.status === 401) {
+            return logout(); 
+        }
         const data = await res.json();
         if (res.status === 403 && data.isUnverified) {
+            console.warn("User is unverified. Redirecting to verification...");
             window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
-            return false;
+            return;
         }
-
         if (data.success) {
-            const userData = data.user || data;             
-            userBalances.ngn = userData.balance || 0;
-            userBalances.bonusNGN = userData.bonusBalance || 0;
-            userBalances.hasDeposited = userData.hasDeposited || (userBalances.ngn > 0);            
-            const balEl = document.getElementById('displayBalance');
-            if (balEl) balEl.innerText = `₦${userBalances.ngn.toLocaleString()}`;
-            
-            const bonusEl = document.getElementById('displayBonus');
-            if (bonusEl) bonusEl.innerText = `₦${userBalances.bonusNGN.toLocaleString()}`;            
+            const userData = data.user || data;
+            userBalance = userData.balance || 0; 
+            userBonusBalance = userData.bonusBalance || 0;             
+            if (document.getElementById('displayBalance')) {
+                document.getElementById('displayBalance').innerText = `₦${userBalance.toLocaleString()}`;
+            }
+            if (document.getElementById('displayBonus')) {
+               document.getElementById('displayBonus').innerText = `₦${userBonusBalance.toLocaleString()}`;
+            }
+            if (document.getElementById('userReferralCount')) {
+                document.getElementById('userReferralCount').innerText = userData.referralCount || 0;
+            }
             localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
-            console.log("Profile Sync: Balances updated.");
-            
-            return true; // Signals success to initiateRDPPayment
         }
-        
-        return false; // Request failed on server side
     } catch (err) {
-        console.error("Failed to fetch profile", err);
-        return false; // Network or syntax error
+        console.error("Failed to fetch profile details:", err);
     }
 }
 

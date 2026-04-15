@@ -237,13 +237,12 @@ function viewOrderDetails(ref) {
     if (!order) return;
 
     // --- STANDARDIZED DATA EXTRACTION ---
-    // Extract specs from root, fallback to metadata, then to 'N/A'
     const ramVal = order.ram || order.metadata?.ram || 'N/A';
+    // Logic updated to ensure CPU displays correctly (e.g., "2 Cores")
     const cpuVal = order.cpu || order.metadata?.cpu || 'N/A';
     const storageVal = order.storage || order.metadata?.storage || 'N/A';
     const osVal = order.os || order.metadata?.osChoice || 'Windows Server';
     
-    // Extract extra addons from root (using 0 as fallback for numbers)
     const extraCPUVal = order.extraCPU ?? order.metadata?.extraCPU ?? 0;
     const extraStorageVal = order.extraStorage ?? order.metadata?.extraStorage ?? 0;
 
@@ -293,6 +292,12 @@ function viewOrderDetails(ref) {
                             <input type="text" id="log-pass-${order.paymentReference}" placeholder="********" 
                                    class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
                         </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Confirmation Number / Admin Note</label>
+                        <input type="text" id="log-conf-${order.paymentReference}" placeholder="Enter confirmation or internal ref" 
+                               class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
                     </div>
 
                     <button onclick="processRDPDeployment('${order.paymentReference}', event)" 

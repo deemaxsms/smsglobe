@@ -134,7 +134,43 @@
         </main>
     </div>
 
+   <div id="manageModal" class="fixed inset-0 bg-black/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl">
+        <div class="p-5 border-b border-brand-border flex justify-between items-center bg-gray-50 rounded-t-2xl">
+            <h3 class="font-bold text-brand-darkText">Process Refill</h3>
+            <button onclick="closeModal('manageModal')" class="text-gray-400 hover:text-brand-darkText">✕</button>
+        </div>
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-[10px] font-bold text-brand-lightText mb-1 uppercase">Confirmation Number / PIN</label>
+                <input type="text" id="modalConfNumber" placeholder="Enter activation code..." 
+                       class="w-full border border-brand-border rounded-xl p-3 text-sm focus:ring-2 focus:ring-brand-blue outline-none shadow-sm">
+            </div>
+            <input type="hidden" id="activeTid">
+            <button id="modalSubmitBtn" onclick="confirmProcessRefill()" 
+                    class="w-full bg-green-600 text-white py-3.5 rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg">
+                Complete Order
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="detailModal" class="fixed inset-0 bg-black/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+        <div class="p-5 border-b border-brand-border flex justify-between items-center bg-brand-blue text-white">
+            <h3 class="font-bold">Order Specification</h3>
+            <button onclick="closeModal('detailModal')" class="text-white/80 hover:text-white">✕</button>
+        </div>
+        <div id="detailContent" class="p-6 space-y-4 max-h-[70vh] overflow-y-auto no-scrollbar text-sm">
+            </div>
+        <div class="p-4 bg-gray-50 border-t border-brand-border text-right">
+            <button onclick="closeModal('detailModal')" class="px-6 py-2 bg-white border border-brand-border rounded-lg font-bold text-xs">Close</button>
+        </div>
+    </div>
+</div>
+
 <script>
+    // --- SIDEBAR LOGIC ---
     function toggleSidebar() {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebar-overlay');
@@ -142,117 +178,170 @@
         overlay.classList.toggle('hidden');
     }
 
- async function fetchRefills() {
-    const token = localStorage.getItem('smsglobe_admin_token');
-    const tbody = document.getElementById('refills-body');
+    // --- FETCH & RENDER REFILLS ---
+    async function fetchRefills() {
+        const token = localStorage.getItem('smsglobe_admin_token');
+        const tbody = document.getElementById('refills-body');
 
-    try {
-        const response = await fetch('/api/esim-refills', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
+        try {
+            const response = await fetch('/api/esim-refills', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
 
-        if (data.success && data.refills.length > 0) {
-            tbody.innerHTML = data.refills.map(refill => {
+            if (data.success && data.refills.length > 0) {
+                tbody.innerHTML = data.refills.map(refill => {
+                    const status = (refill.status || 'pending').toLowerCase();
+                    const tid = refill.paymentReference || 'N/A';
+                    
+                    // Prepare data for the View Modal
+                    const refillData = JSON.stringify(refill).replace(/'/g, "&apos;");
 
-const status = (refill.status || 'pending').toLowerCase();
-const tid = refill.paymentReference || 'N/A';
+                    // Handle Currency & Amount Formatting
+                    let numericAmount = 0;
+                    if (refill.amount !== undefined && refill.amount !== null) {
+                        numericAmount = parseFloat(String(refill.amount).replace(/[₦,]/g, '')) || 0;
+                    } else if (refill.amountNGN) {
+                        numericAmount = parseFloat(String(refill.amountNGN).replace(/[₦,]/g, '')) || 0;
+                    }
+                    const displayAmount = numericAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    const currencySymbol = (refill.currency === 'NGN' || !refill.currency) ? '₦' : refill.currency;
 
-let numericAmount = 0;
-if (refill.amount !== undefined && refill.amount !== null) {
-    const cleanAmount = String(refill.amount).replace(/[₦,]/g, '');
-    numericAmount = parseFloat(cleanAmount) || 0;
-} 
-else if (refill.amountNGN) {
-    const cleanAmountNGN = String(refill.amountNGN).replace(/[₦,]/g, '');
-    numericAmount = parseFloat(cleanAmountNGN) || 0;
-}
-const displayAmount = numericAmount > 0 
-    ? numericAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) 
-    : '0.00';
+                    // Action Area Logic (Manage + View)
+                    let actionButtons = `
+                        <button onclick='viewOrderDetails(${refillData})' 
+                                class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 text-brand-midText border border-brand-border rounded-lg text-[10px] font-bold hover:bg-gray-100 transition-all">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            View
+                        </button>
+                    `;
 
-const currencySymbol = (refill.currency === 'NGN' || !refill.currency) ? '₦' : refill.currency;
-let actionArea = '';
+                    if (['pending', 'successful', 'processing'].includes(status)) {
+                        actionButtons += `
+                            <button onclick="openManageModal('${tid}')" 
+                                    class="px-4 py-1.5 bg-brand-blue text-white rounded-lg text-[10px] font-bold hover:bg-blue-700 transition-all shadow-sm">
+                                Manage
+                            </button>`;
+                    } else if (status === 'completed') {
+                        actionButtons += `
+                            <div class="flex items-center gap-1 text-green-600 font-bold text-[10px] px-2">
+                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                                Done
+                            </div>`;
+                    }
 
-                if (['pending', 'successful', 'processing'].includes(status)) {
-                    actionArea = `
-                        <div class="flex flex-col gap-2 items-end">
-                            <input type="text" id="conf-${tid}" 
-                                   placeholder="Enter Confirmation #" 
-                                   class="border border-brand-border rounded px-2 py-1.5 text-[10px] w-40 focus:ring-1 focus:ring-brand-blue outline-none shadow-sm font-medium">
-                            <button onclick="processRefill('${tid}')" 
-                                    class="bg-green-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-bold hover:bg-green-700 transition-all shadow-md">
-                                Mark as Done
-                            </button>
-                        </div>`;
-                } 
-                else if (status === 'completed') {
-                    actionArea = `
-                        <div class="text-right">
-                            <div class="text-green-600 font-bold text-[10px] flex items-center justify-end gap-1 mb-1">
-                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                                Applied
-                            </div>
-                            <div class="text-[9px] text-brand-lightText font-mono">CODE: ${refill.confirmationNumber || 'N/A'}</div>
-                        </div>`;
-                } else {
-                    actionArea = `<span class="text-gray-400 text-[10px] italic uppercase">${status}</span>`;
-                }
-
-                return `
-                    <tr class="hover:bg-gray-50/50 transition-colors">
-                        <td class="px-4 py-4">
-                            <div class="font-bold text-brand-darkText">#${tid.slice(-8)}</div>
-                            <div class="text-[9px] text-brand-lightText">${new Date(refill.createdAt).toLocaleDateString()}</div>
-                        </td>
-                        <td class="px-4 py-4">
-                            <div class="font-medium text-[12px]">${refill.userEmail}</div>
-                        </td>
-                        <td class="px-4 py-4">
-                            <div class="font-bold text-brand-orange uppercase text-[10px]">${refill.nodeName || refill.carrier || 'eSIM'}</div>
-                            <div class="text-[10px] font-mono bg-gray-100 px-1.5 py-0.5 rounded inline-block mt-1">
-                                ${refill.targetNumber || refill.esimIdentifier || 'N/A'}
-                            </div>
-                        </td>
-                        <td class="px-4 py-4 text-center font-bold text-brand-blue">
-                            ${currencySymbol} ${displayAmount}
-                        </td>
-                        <td class="px-4 py-4">
-                            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getStatusClass(refill.status)}">
-                                ${refill.status}
-                            </span>
-                        </td>
-                        <td class="px-4 py-4 text-right">
-                            ${actionArea}
-                        </td>
-                    </tr>`;
-            }).join('');
-        } else {
-            tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-brand-lightText italic">No requests found.</td></tr>`;
+                    return `
+                        <tr class="hover:bg-gray-50/50 transition-colors">
+                            <td class="px-4 py-4">
+                                <div class="font-bold text-brand-darkText">#${tid.slice(-8)}</div>
+                                <div class="text-[9px] text-brand-lightText">${new Date(refill.createdAt).toLocaleDateString()}</div>
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="font-medium text-[12px]">${refill.userEmail}</div>
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="font-bold text-brand-orange uppercase text-[10px]">${refill.nodeName || refill.carrier || 'eSIM'}</div>
+                                <div class="text-[10px] font-mono bg-gray-100 px-1.5 py-0.5 rounded inline-block mt-1">
+                                    ${refill.targetNumber || refill.esimIdentifier || 'N/A'}
+                                </div>
+                            </td>
+                            <td class="px-4 py-4 text-center font-bold text-brand-blue">
+                                ${currencySymbol} ${displayAmount}
+                            </td>
+                            <td class="px-4 py-4">
+                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getStatusClass(refill.status)}">
+                                    ${refill.status}
+                                </span>
+                            </td>
+                            <td class="px-4 py-4">
+                                <div class="flex items-center justify-end gap-2">${actionButtons}</div>
+                            </td>
+                        </tr>`;
+                }).join('');
+            } else {
+                tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-brand-lightText italic">No requests found.</td></tr>`;
+            }
+        } catch (err) {
+            console.error("Fetch error:", err);
+            tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-red-500 font-bold">Error loading data.</td></tr>`;
         }
-    } catch (err) {
-        console.error("Fetch error:", err);
-        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-red-500 font-bold">Error loading data.</td></tr>`;
     }
-}
 
-    async function processRefill(tid) {
-        const confInput = document.getElementById(`conf-${tid}`);
-        const confirmationNumber = confInput.value.trim();
-        const btn = event.target;
+    // --- MODAL CONTROLS ---
+    function openManageModal(tid) {
+        document.getElementById('activeTid').value = tid;
+        document.getElementById('modalConfNumber').value = '';
+        document.getElementById('manageModal').classList.remove('hidden');
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.add('hidden');
+    }
+
+    function viewOrderDetails(order) {
+        const container = document.getElementById('detailContent');
+        const date = new Date(order.createdAt).toLocaleString();
+        
+        container.innerHTML = `
+            <div class="grid grid-cols-2 gap-4">
+                <div class="col-span-2 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                    <p class="text-[10px] text-blue-600 font-bold uppercase">Transaction ID</p>
+                    <p class="font-mono font-bold text-brand-darkText break-all">${order.paymentReference}</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Customer</p>
+                    <p class="font-medium">${order.userEmail}</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Date</p>
+                    <p class="font-medium">${date}</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Carrier / Node</p>
+                    <p class="text-brand-orange font-bold">${order.nodeName || order.carrier || 'N/A'}</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Target eSIM/Number</p>
+                    <p class="font-mono font-bold text-brand-blue">${order.targetNumber || order.esimIdentifier || 'N/A'}</p>
+                </div>
+                <div class="col-span-2 border-t pt-3">
+                    <p class="text-[10px] text-brand-lightText font-bold uppercase mb-2">Refill Summary</p>
+                    <div class="bg-gray-50 p-3 rounded-xl border border-dashed border-brand-border">
+                        <div class="flex justify-between mb-1">
+                            <span>Amount Paid:</span>
+                            <span class="font-bold">₦${(order.amount || order.amountNGN || 0).toLocaleString()}</span>
+                        </div>
+                        <div class="flex justify-between text-[11px] text-brand-lightText">
+                            <span>Order Status:</span>
+                            <span class="uppercase font-bold">${order.status}</span>
+                        </div>
+                    </div>
+                </div>
+                ${order.confirmationNumber ? `
+                <div class="col-span-2 bg-green-50 p-3 rounded-lg border border-green-200">
+                    <p class="text-[10px] text-green-600 font-bold uppercase">Applied Code / Reference</p>
+                    <p class="font-mono font-bold text-green-700">${order.confirmationNumber}</p>
+                </div>` : ''}
+            </div>
+        `;
+        document.getElementById('detailModal').classList.remove('hidden');
+    }
+
+    // --- PROCESSING LOGIC ---
+    async function confirmProcessRefill() {
+        const tid = document.getElementById('activeTid').value;
+        const confirmationNumber = document.getElementById('modalConfNumber').value.trim();
+        const btn = document.getElementById('modalSubmitBtn');
 
         if (!confirmationNumber) {
-            alert("Please enter the confirmation/activation number before marking as done.");
-            confInput.focus();
+            alert("Please enter the confirmation/activation number.");
             return;
         }
 
-        if (!confirm("Are you sure? This will update the database and email the customer.")) return;
-
         const originalText = btn.innerText;
         btn.disabled = true;
-        btn.innerText = "Saving...";
-        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        btn.innerText = "Processing...";
+        btn.classList.add('opacity-50');
 
         const token = localStorage.getItem('smsglobe_admin_token');
 
@@ -263,40 +352,37 @@ let actionArea = '';
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json' 
                 },
-                body: JSON.stringify({ 
-                    tid: tid, 
-                    confirmationNumber: confirmationNumber 
-                })
+                body: JSON.stringify({ tid, confirmationNumber })
             });
 
             const data = await response.json();
 
             if (data.success) {
-                alert('Success: Order completed and user notified.');
-                await fetchRefills(); 
+                closeModal('manageModal');
+                fetchRefills();
+                alert('Success: Refill completed and customer notified.');
             } else {
                 alert('Failed: ' + (data.message || 'Unknown error occurred'));
-                resetButton(btn, originalText);
+                btn.disabled = false;
+                btn.innerText = originalText;
+                btn.classList.remove('opacity-50');
             }
         } catch (err) {
             console.error("Network Error:", err);
             alert('Network error. Please try again.');
-            resetButton(btn, originalText);
+            btn.disabled = false;
+            btn.innerText = originalText;
+            btn.classList.remove('opacity-50');
         }
     }
 
+    // --- HELPERS ---
     function getStatusClass(status) {
         const s = status.toLowerCase();
         if (s === 'completed' || s === 'successful') return 'bg-green-100 text-green-700';
         if (s === 'processing') return 'bg-blue-100 text-blue-700';
         if (s === 'pending') return 'bg-orange-100 text-orange-700';
         return 'bg-gray-100 text-gray-700';
-    }
-
-    function resetButton(btn, text) {
-        btn.disabled = false;
-        btn.innerText = text;
-        btn.classList.remove('opacity-50', 'cursor-not-allowed');
     }
 
     function logout() {

@@ -3668,8 +3668,5 @@ if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, () => console.log(`Dev Server: http://localhost:${PORT}`));
 }
 
-module.exports.config = {
-    api: {
-        bodyParser: false,
-    },
-};
+module.exports = app;
+

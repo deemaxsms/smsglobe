@@ -1685,32 +1685,39 @@ sendDeliveryEmail(user.email, {
 const manualProducts = ["eSIM_Refill", "eSIM_Activation", "RDP"];
 
 if (manualProducts.includes(itemType)) {
-    sendAdminNotification({
-        type: itemType,
-        email: user.email,
-        product: productDetails.name,
-        amount: `₦${costNGN.toLocaleString()}`,
-        reference: paymentReference,
-        target: mobileNumber || metadata?.targetNumber || metadata?.activationEmail || 'N/A',
-        country: coverageCountry || metadata?.country || 'N/A', 
-        metadata: metadata,
-        orderSpecifics: orderSpecifics,
-        planName: productDetails.plan || newOrder.planName || 'Standard'
-    }).catch(err => console.error("📧 Admin Notification Error:", err.message));
+    try {
+        // CRITICAL: You MUST use 'await' here on Vercel 
+        // otherwise the function closes before the email sends.
+        await sendAdminNotification({
+            type: itemType,
+            email: user.email,
+            product: productDetails.name,
+            amount: `₦${costNGN.toLocaleString()}`,
+            reference: paymentReference,
+            target: mobileNumber || newOrder.metadata?.targetNumber || newOrder.metadata?.activationEmail || 'N/A',
+            country: coverageCountry || newOrder.metadata?.country || 'N/A', 
+            metadata: newOrder.metadata,
+            orderSpecifics: orderSpecifics,
+            planName: productDetails.plan || newOrder.planName || 'Standard'
+        });
+        console.log("✅ Admin notification sent successfully");
+    } catch (err) {
+        console.error("📧 Admin Notification Error:", err.message);
+    }
 }
 
-        // 3. Final Response to Frontend
-        const isManual = manualProducts.includes(itemType);
-
-        return res.json({ 
-            success: true, 
-            message: isManual 
-                ? "Request submitted! Our team is processing your order." 
-                : "Purchase successful!",
-            balance: updatedUser.balance,
-            bonusBalance: updatedUser.bonusBalance,
-            order: newOrder 
-        });
+// 3. Final Response to Frontend
+// Move this AFTER the await so the process stays alive
+const isManual = manualProducts.includes(itemType);
+return res.json({ 
+    success: true, 
+    message: isManual 
+        ? "Request submitted! Our team is processing your order." 
+        : "Purchase successful!",
+    balance: updatedUser.balance,
+    bonusBalance: updatedUser.bonusBalance,
+    order: newOrder 
+});
 
     } catch (err) {
         console.error("Wallet Purchase Error:", err);
@@ -1999,17 +2006,23 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
         </tr>`;
    } 
  if (isESIM_Activation) {
-    // 1. Correctly identify if the order is finished (Check top level and metadata)
+    // 1. Get confirmation number (tries both names)
     const confNo = credentials.confirmationNumber || credentials.activationCode;
     const isFinal = !!confNo;
     
     // 2. Extract metadata safely
     const meta = credentials.metadata || {};
     
-    // 3. Extract names (In your log, it's inside metadata)
+    // 3. Robust Name Extraction (checks metadata then top-level)
     const fName = meta.firstName || credentials.firstName || "";
     const lName = meta.lastName || credentials.lastName || "";
     const subscriberName = `${fName} ${lName}`.trim() || "Customer";
+
+    // 4. Robust Email/Address extraction
+    const displayEmail = meta.activationEmail || meta.email || credentials.userEmail || 'N/A';
+    const displayAddress = meta.address || credentials.address || 'N/A';
+    const displayZip = meta.zip || credentials.zip || 'N/A';
+    const displayType = meta.activationType || credentials.activationType || 'Prepaid';
 
     dataTableHtml = `
         <tr>
@@ -2030,7 +2043,7 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
-                <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount).toLocaleString()}</strong>
+                <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount || 0).toLocaleString()}</strong>
             </td>
         </tr>
 
@@ -2039,9 +2052,9 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Subscriber Details</span><br>
                 <div style="font-size: 12px; color: #344054; line-height: 1.6; background: #f9fafb; padding: 10px; border-radius: 6px; margin-top: 5px;">
                     <strong>Name:</strong> ${subscriberName}<br>
-                    <strong>Email:</strong> ${meta.activationEmail || credentials.userEmail || 'N/A'}<br>
-                    <strong>Address:</strong> ${meta.address || 'N/A'}<br>
-                    <strong>ZIP Code:</strong> ${meta.zip || 'N/A'} | <strong>Type:</strong> ${meta.activationType || 'Prepaid'}
+                    <strong>Email:</strong> ${displayEmail}<br>
+                    <strong>Address:</strong> ${displayAddress}<br>
+                    <strong>ZIP Code:</strong> ${displayZip} | <strong>Type:</strong> ${displayType}
                 </div>
             </td>
         </tr>

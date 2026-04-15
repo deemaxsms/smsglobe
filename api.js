@@ -1669,25 +1669,26 @@ async function handlePurchaseWithWallet(req, res) {
             bonusAfter: updatedUser.bonusBalance,
             metadata: { orderId: newOrder._id, product: productDetails.name }
         });
-
-sendDeliveryEmail(user.email, { 
-            ...orderSpecifics, 
-            productType: itemType, 
-            amount: `₦${costNGN.toLocaleString()}`,
-            planName: productDetails.plan || newOrder.planName,
-            paymentReference: paymentReference,
-            metadata: newOrder.metadata,
-            nodeName: productDetails.name,   // Required for eSIM labels
-            targetNumber: mobileNumber        // Required for eSIM labels
-        }).catch(err => console.error("📧 Customer Email Error:", err.message));
-
-      // 2. Send Notification to ADMIN (Only for manual products)
 const manualProducts = ["eSIM_Refill", "eSIM_Activation", "RDP"];
+const isManual = manualProducts.includes(itemType);
 
-if (manualProducts.includes(itemType)) {
+// 1. Customer Delivery (Only for Automated products)
+if (!isManual) {
+    await sendDeliveryEmail(user.email, { 
+        ...orderSpecifics, 
+        productType: itemType, 
+        amount: `₦${costNGN.toLocaleString()}`,
+        planName: productDetails.plan || newOrder.planName,
+        paymentReference: paymentReference,
+        metadata: newOrder.metadata,
+        nodeName: productDetails.name,   
+        targetNumber: mobileNumber        
+    }).catch(err => console.error("📧 Customer Email Error:", err.message));
+}
+
+// 2. Admin Notification (Only for Manual products)
+if (isManual) { // Use the variable here instead of re-checking the array
     try {
-        // CRITICAL: You MUST use 'await' here on Vercel 
-        // otherwise the function closes before the email sends.
         await sendAdminNotification({
             type: itemType,
             email: user.email,
@@ -1705,10 +1706,6 @@ if (manualProducts.includes(itemType)) {
         console.error("📧 Admin Notification Error:", err.message);
     }
 }
-
-// 3. Final Response to Frontend
-// Move this AFTER the await so the process stays alive
-const isManual = manualProducts.includes(itemType);
 return res.json({ 
     success: true, 
     message: isManual 
@@ -1885,7 +1882,7 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
     
     let subject, headerTitle, subHeader;
 
-    // 2. Determine Subject and Headers
+    // 2. Determine Subject and Headers (All set to "Ready/Success")
     if (isRDP) {
         subject = "🖥️ Your RDP Server is Ready!";
         headerTitle = "Server Provisioned!";
@@ -1895,18 +1892,16 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
         headerTitle = "VPN Activated!";
         subHeader = "Your Premium VPN Access is ready.";
     } else if (isESIM_Activation) {
-        subject = "📶 eSIM Activation Request Received";
-        headerTitle = "Activation in Progress!";
-        subHeader = "We are preparing your new eSIM profile.";
+        subject = "✅ eSIM Activated Successfully";
+        headerTitle = "Activation Complete!";
+        subHeader = "Your eSIM profile is now active and ready for use.";
     } else if (isESIM_Refill) {
-        const isFinal = !!credentials.confirmationNumber;
-        subject = isFinal ? "✅ eSIM Refill Confirmed" : "📶 eSIM Refill Request Received";
-        headerTitle = isFinal ? "Refill Successful!" : "Processing Refill...";
-        subHeader = isFinal 
-            ? "Your eSIM has been successfully topped up." 
-            : "We have received your refill request and are processing it.";
+        // Removed "Request Received" logic entirely
+        subject = "✅ eSIM Refill Confirmed";
+        headerTitle = "Refill Successful!";
+        subHeader = "Your eSIM has been successfully topped up.";
     } else {
-        // This is the fallback for Proxy and other services
+        // Fallback for Proxy and other automated services
         subject = `🌐 Your ${type} Activation Details`;
         headerTitle = `${type} Ready! 🌐`;
         subHeader = `Your ${type} details are provided below.`;
@@ -2006,19 +2001,13 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
         </tr>`;
    } 
  if (isESIM_Activation) {
-    // 1. Get confirmation number (tries both names)
     const confNo = credentials.confirmationNumber || credentials.activationCode;
-    const isFinal = !!confNo;
-    
-    // 2. Extract metadata safely
     const meta = credentials.metadata || {};
     
-    // 3. Robust Name Extraction (checks metadata then top-level)
     const fName = meta.firstName || credentials.firstName || "";
     const lName = meta.lastName || credentials.lastName || "";
     const subscriberName = `${fName} ${lName}`.trim() || "Customer";
 
-    // 4. Robust Email/Address extraction
     const displayEmail = meta.activationEmail || meta.email || credentials.userEmail || 'N/A';
     const displayAddress = meta.address || credentials.address || 'N/A';
     const displayZip = meta.zip || credentials.zip || 'N/A';
@@ -2035,7 +2024,6 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
                 <strong style="font-size: 13px; color: #101828;">${credentials.targetNumber || 'N/A'}</strong>
             </td>
         </tr>
-
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Subscription Plan</span><br>
@@ -2046,7 +2034,6 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
                 <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount || 0).toLocaleString()}</strong>
             </td>
         </tr>
-
         <tr>
             <td colspan="2" style="border-top: 1px solid #f2f4f7; padding-top: 15px; padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Subscriber Details</span><br>
@@ -2058,31 +2045,20 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
                 </div>
             </td>
         </tr>
-
         <tr>
             <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px; text-align: center;">
-                ${isFinal ? `
                 <div style="background: #ECFDF3; border: 1px solid #ABEFC6; padding: 15px; border-radius: 8px;">
                     <span style="font-size: 9px; color: #067647; text-transform: uppercase; font-weight: bold;">eSIM Activation Code / ID</span><br>
-                    <strong style="font-size: 20px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${confNo}</strong>
-                </div>` : `
-                <div style="background: #FFF9F2; border: 1px solid #FFE4C4; padding: 15px; border-radius: 8px;">
-                    <span style="font-size: 10px; color: #B45309; text-transform: uppercase; font-weight: bold;">Status: Provisioning eSIM</span><br>
-                    <p style="font-size: 11px; color: #667085; margin: 5px 0 0 0;">Your details have been sent to the carrier. We will notify you once the eSIM profile is ready for download.</p>
-                </div>`}
+                    <strong style="font-size: 20px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${confNo || 'See Dashboard'}</strong>
+                </div>
             </td>
         </tr>`;
 }
 else if (isESIM_Refill) {
-    // 1. Identify if finalized (Check for the confirmation number from your log)
     const confNo = credentials.confirmationNumber;
-    const isFinal = !!confNo;
-    
-    // 2. Extract and Clean Variables based on your specific Data Object
     const displayAmount = credentials.amount || 0;
     const displayCountry = credentials.country || (credentials.target && credentials.target.country) || 'United States';
     
-    // Determine payment method label based on balance used
     let displayPayment = "Flutterwave / Card";
     if (credentials.mainBalanceUsed > 0) {
         displayPayment = "Wallet Balance";
@@ -2101,7 +2077,6 @@ else if (isESIM_Refill) {
                 <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.targetNumber || 'N/A'}</strong>
             </td>
         </tr>
-
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Coverage Country</span><br>
@@ -2112,28 +2087,20 @@ else if (isESIM_Refill) {
                 <strong style="font-size: 13px; color: #101828;">₦${Number(displayAmount).toLocaleString()}</strong>
             </td>
         </tr>
-
         <tr>
             <td colspan="2" style="padding-bottom: 15px; border-top: 1px solid #f2f4f7; padding-top: 10px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Payment Method</span><br>
                 <strong style="font-size: 12px; color: #344054;">${displayPayment}</strong>
             </td>
         </tr>
-
         <tr>
             <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px; text-align: center;">
-                ${isFinal ? `
                 <div style="background: #ECFDF3; border: 1px solid #ABEFC6; padding: 15px; border-radius: 8px;">
                     <span style="font-size: 9px; color: #067647; text-transform: uppercase; font-weight: bold;">Refill Confirmation Number</span><br>
-                    <strong style="font-size: 20px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${confNo}</strong>
-                </div>` : `
-                <div style="background: #FFF9F2; border: 1px solid #FFE4C4; padding: 15px; border-radius: 8px;">
-                    <span style="font-size: 10px; color: #B45309; text-transform: uppercase; font-weight: bold;">Status: Processing Request</span><br>
-                    <p style="font-size: 11px; color: #667085; margin: 5px 0 0 0;">Your refill is being processed by our team. You'll receive another email once it's completed.</p>
-                </div>`}
+                    <strong style="font-size: 20px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${confNo || 'SUCCESSFUL'}</strong>
+                </div>
             </td>
-        </tr>
-    `;
+        </tr>`;
 }
 else {
     dataTableHtml = `

@@ -673,11 +673,11 @@ async function initiateRDPPayment() {
     confirmBtn.classList.add('bg-brand-blue');
     confirmBtn.disabled = false;
 
-    // 2. Fetch latest user data and handle the response correctly
+    // 2. Fetch latest user data
     payBtn.innerText = "Verifying Wallet...";
     payBtn.disabled = true;
     
-    // Ensure fetchUserProfile returns true/false based on success
+    // This function must update the global 'userBalances' object
     const success = await fetchUserProfile();     
     
     payBtn.innerText = "Pay Securely Now";
@@ -688,21 +688,15 @@ async function initiateRDPPayment() {
         return;
     }
 
-    // 3. Data Mapping: Ensure we use the correct global variables
-    // In your previous code, fetchUserProfile updated 'userBalance' and 'userBonusBalance'
-    const mainBal = Number(window.userBalance || 0);
-    const bonusBal = Number(window.userBonusBalance || 0);
-    
-    // Check if user is "unlocked" (has deposited or has a balance)
-    const isUnlocked = (mainBal > 0);
+    // 3. UI: Update Balance Displays in the Modal using the FRESHLY fetched data
+    // Accessing directly from the global object updated by fetchUserProfile
+    const mainBal = Number(userBalances.ngn || 0);
+    const bonusBal = Number(userBalances.bonusNGN || 0);
+    const isUnlocked = userBalances.hasDeposited === true || mainBal > 0;
 
-    // 4. Price parsing
-    const totalRequiredText = document.getElementById('summaryTotal')?.innerText || "₦0.00";
-    const numericPrice = parseFloat(totalRequiredText.replace(/[^\d.]/g, '')) || 0;    
-
-    // 5. UI: Update Balance Displays in the Modal
     const modalBalanceNGN = document.getElementById('modalBalanceNGN');
     const modalTotalDisplay = document.getElementById('modalTotalDue');
+    const totalRequiredText = document.getElementById('summaryTotal')?.innerText || "₦0.00";
 
     if (modalBalanceNGN) {
         modalBalanceNGN.innerText = '₦' + mainBal.toLocaleString('en-NG', {
@@ -715,7 +709,7 @@ async function initiateRDPPayment() {
         modalTotalDisplay.innerText = totalRequiredText;
     }
 
-    // 6. Handle Bonus Section Visibility
+    // 4. Handle Bonus Section Visibility
     if (bonusSection && bonusToggle) {
         if (bonusBal > 0) {
             bonusSection.classList.remove('hidden');
@@ -725,48 +719,41 @@ async function initiateRDPPayment() {
                     minimumFractionDigits: 2
                 });
             }
-            bonusToggle.checked = true; // Default to using bonus if available
+            bonusToggle.checked = true; 
         } else {
             bonusSection.classList.add('hidden');
             bonusToggle.checked = false;
         }
     }
 
- // 7. Affordability Logic
-const checkRDPaffordability = () => {
-    // 1. Get numbers from global state
-    const mainBal = Number(userBalances.ngn || 0);
-    const bonusBal = Number(userBalances.bonusNGN || 0);
-    
-    // 2. THE FIX: If balance > 0, they ARE eligible to pay, even if hasDeposited is false
-    const isUnlocked = userBalances.hasDeposited === true || mainBal > 0;
-    
-    const usingBonus = bonusToggle?.checked || false;
-    
-    // 3. Parse the RDP price (e.g., "₦45,000")
-    const totalRequiredText = document.getElementById('summaryTotal')?.innerText || "0";
-    const numericPrice = parseFloat(totalRequiredText.replace(/[^\d.]/g, '')) || 0;
+    // 5. Affordability Logic
+    const checkRDPaffordability = () => {
+        // Re-calculate based on current toggle state
+        const usingBonus = bonusToggle?.checked || false;
+        
+        // Parse current price
+        const currentPriceText = document.getElementById('summaryTotal')?.innerText || "0";
+        const numericPrice = parseFloat(currentPriceText.replace(/[^\d.]/g, '')) || 0;
 
-    // 4. Calculate Buying Power
-    const buyingPower = (usingBonus && isUnlocked) ? (mainBal + bonusBal) : mainBal;
+        // Buying Power: Sum balances only if bonus is toggled AND user is eligible
+        const buyingPower = (usingBonus && isUnlocked) ? (mainBal + bonusBal) : mainBal;
 
-    // 5. Update Button State
-    if (buyingPower < numericPrice) {
-        confirmBtn.innerText = "Insufficient Funds";
-        confirmBtn.classList.remove('bg-brand-blue');
-        confirmBtn.classList.add('bg-red-500', 'cursor-not-allowed');
-        confirmBtn.disabled = true;
-        if (topupBtn) topupBtn.classList.remove('hidden');
-    } else {
-        confirmBtn.innerText = "Confirm & Pay Now";
-        confirmBtn.classList.remove('bg-red-500', 'cursor-not-allowed');
-        confirmBtn.classList.add('bg-brand-blue');
-        confirmBtn.disabled = false;
-        if (topupBtn) topupBtn.classList.add('hidden');
-    }
-};
+        if (buyingPower < numericPrice) {
+            confirmBtn.innerText = "Insufficient Funds";
+            confirmBtn.classList.remove('bg-brand-blue');
+            confirmBtn.classList.add('bg-red-500', 'cursor-not-allowed');
+            confirmBtn.disabled = true;
+            if (topupBtn) topupBtn.classList.remove('hidden');
+        } else {
+            confirmBtn.innerText = "Confirm & Pay Now";
+            confirmBtn.classList.remove('bg-red-500', 'cursor-not-allowed');
+            confirmBtn.classList.add('bg-brand-blue');
+            confirmBtn.disabled = false;
+            if (topupBtn) topupBtn.classList.add('hidden');
+        }
+    };
 
-    // 8. Toggle listener for Bonus
+    // 6. Toggle listener for Bonus
     if (bonusToggle) {
         bonusToggle.onchange = () => {
             if (bonusLabel) {
@@ -779,7 +766,7 @@ const checkRDPaffordability = () => {
         };
     }
 
-    // 9. Execute initial check and open modal
+    // 7. Execute initial check and open modal
     checkRDPaffordability();
     
     const modal = document.getElementById('paymentModal');

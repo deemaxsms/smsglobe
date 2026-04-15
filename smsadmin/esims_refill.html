@@ -157,19 +157,14 @@
                 const status = (refill.status || 'pending').toLowerCase();
                 const tid = refill.paymentReference || 'N/A';
                 
-                // --- IMPROVED AMOUNT LOGIC ---
-                // We check 'amount' first, then 'planName' (which is "30000" in your DB)
-                const rawAmount = refill.amount || refill.planName || 0;
-                const finalAmount = Number(rawAmount); 
-                
-                // Ensure displayAmount handles the number properly
-                const displayAmount = !isNaN(finalAmount) && finalAmount > 0 
-                    ? finalAmount.toLocaleString() 
-                    : '0.00';
-
-                // Handle Currency: Database uses "NGN", convert to "₦"
-                const currencySymbol = (refill.currency === 'NGN' || !refill.currency) ? '₦' : refill.currency;
-                
+const mainBal = Number(refill.mainBalanceUsed) || 0;
+const bonusBal = Number(refill.bonusBalanceUsed) || 0;
+const rawAmount = refill.amount || (mainBal + bonusBal) || refill.planName || 0;
+const finalAmount = Number(rawAmount); 
+const displayAmount = (!isNaN(finalAmount) && finalAmount !== 0) 
+    ? finalAmount.toLocaleString() 
+    : '0.00';
+const currencySymbol = (refill.currency === 'NGN' || !refill.currency) ? '₦' : refill.currency;
                 let actionArea = '';
 
                 if (['pending', 'successful', 'processing'].includes(status)) {

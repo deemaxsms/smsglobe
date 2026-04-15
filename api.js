@@ -9,6 +9,8 @@ const { OAuth2Client } = require('google-auth-library');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
 const crypto = require('crypto');
+const multer = require('multer');
+const upload = multer({ dest: 'temp/' });
 
 dotenv.config();
 const app = express();
@@ -134,6 +136,7 @@ const ProxySchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const Proxy = mongoose.models.Proxy || mongoose.model('Proxy', ProxySchema);
+
 const rdpSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     userEmail: String,
@@ -193,7 +196,8 @@ const esimRefillSchema = new mongoose.Schema({
         default: 'pending',
         index: true 
     },
-    confirmationNumber: { type: String }, // The ID admin provides after manual processing
+    confirmationNumber: { type: String }, 
+    receiptUrl: { type: String },
     adminNote: { type: String },
     metadata: { type: mongoose.Schema.Types.Mixed }
 }, { timestamps: true });
@@ -1583,21 +1587,31 @@ else if (rdpId) {
                 instructions: "Payment Confirmed. SMSGlobe is verifying your activation details."
             };
         }
-       else if (carrierName && mobileNumber) {
-            itemType = "eSIM_Refill";
-            const cleanedPrice = planAmount.toString().replace(/[^0-9]/g, "");
-            costNGN = Math.round(Number(cleanedPrice));
-            
-            productDetails.name = carrierName;
-            productDetails.plan = planAmount; 
-            orderSpecifics = {
-                carrier: { id: carrierId || 'manual', name: carrierName, image: productImage },
-                target: { number: mobileNumber, country: coverageCountry },
-                targetNumber: mobileNumber,
-                country: coverageCountry, 
-                instructions: "Payment Confirmed. Your refill is being processed by the technical team."
-            };
-        }
+      else if (carrierName && mobileNumber) {
+    itemType = "eSIM_Refill";    
+    const cleanedPrice = planAmount.toString().replace(/[^0-9]/g, "");
+    costNGN = Math.round(Number(cleanedPrice));    
+    productDetails.name = carrierName;
+    productDetails.plan = `₦${costNGN.toLocaleString()}`; 
+    orderSpecifics = {
+        productType: "eSIM_Refill",
+        nodeName: carrierName, // Used for the dashboard table
+        planName: `₦${costNGN.toLocaleString()}`,        
+        carrier: { 
+            id: carrierId || 'manual', 
+            name: carrierName, 
+            image: productImage 
+        },        
+        target: { 
+            number: mobileNumber, 
+            country: coverageCountry || 'Global' 
+        },        
+        targetNumber: mobileNumber,
+        country: coverageCountry || 'Global',         
+        instructions: "Payment Confirmed. Your refill is being processed by the technical team.",
+        status: 'pending'
+    };
+}
 
         // --- WALLET CALCULATIONS ---
         const mainBal = Number(user.balance || 0);
@@ -2139,44 +2153,57 @@ else if (isVPN) {
                 </td>
             </tr>`;
     }
-    else if (isESIM_Refill) {
-        // FIX 3: This was missing an 'else if' connection in your paste
-        const confNo = credentials.confirmationNumber || credentials.confNo;
-        const rawAmount = String(credentials.amount || 0).replace(/[^0-9.-]+/g, "");
-        const displayAmount = Number(rawAmount) || 0;
-        const displayCountry = credentials.country || (credentials.target && credentials.target.country) || 'N/A';
-        const displayTarget = credentials.targetNumber || (credentials.target && credentials.target.number) || 'N/A';
+   else if (isESIM_Refill) {
+    const confNo = credentials.confirmationNumber || credentials.confNo;
+    const rawAmount = String(credentials.amount || 0).replace(/[^0-9.-]+/g, "");
+    const displayAmount = Number(rawAmount) || 0;
+    const displayCountry = credentials.country || (credentials.target && credentials.target.country) || 'N/A';
+    const displayTarget = credentials.targetNumber || (credentials.target && credentials.target.number) || 'N/A';
 
-        dataTableHtml = `
-            <tr>
-                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
-                    <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || 'eSIM Carrier'}</strong>
-                </td>
-                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Target Number</span><br>
-                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${displayTarget}</strong>
-                </td>
-            </tr>
-            <tr>
-                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Coverage Country</span><br>
-                    <strong style="font-size: 13px; color: #101828;">${displayCountry}</strong>
-                </td>
-                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Price Paid</span><br>
-                    <strong style="font-size: 13px; color: #101828;">₦${displayAmount.toLocaleString()}</strong>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px; text-align: center;">
-                    <div style="background: #ECFDF3; border: 1px solid #ABEFC6; padding: 15px; border-radius: 8px;">
-                        <span style="font-size: 9px; color: #067647; text-transform: uppercase; font-weight: bold;">Confirmation Number</span><br>
-                        <strong style="font-size: 20px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${confNo || 'SUCCESSFUL'}</strong>
-                    </div>
-                </td>
-            </tr>`;
-    } else {
+    // Conditional Receipt Button
+    let receiptBtn = '';
+    if (credentials.receiptUrl) {
+        receiptBtn = `
+            <div style="margin-top: 15px;">
+                <a href="${credentials.receiptUrl}" 
+                   style="display: inline-block; padding: 12px 24px; background-color: #0F54C6; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">
+                   View Transaction Receipt
+                </a>
+            </div>`;
+    }
+
+    dataTableHtml = `
+        <tr>
+            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
+                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || 'eSIM Carrier'}</strong>
+            </td>
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Target Number</span><br>
+                <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${displayTarget}</strong>
+            </td>
+        </tr>
+        <tr>
+            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Coverage Country</span><br>
+                <strong style="font-size: 13px; color: #101828;">${displayCountry}</strong>
+            </td>
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Price Paid</span><br>
+                <strong style="font-size: 13px; color: #101828;">₦${displayAmount.toLocaleString()}</strong>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px; text-align: center;">
+                <div style="background: #ECFDF3; border: 1px solid #ABEFC6; padding: 15px; border-radius: 8px;">
+                    <span style="font-size: 9px; color: #067647; text-transform: uppercase; font-weight: bold;">Confirmation Number</span><br>
+                    <strong style="font-size: 20px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${confNo || 'SUCCESSFUL'}</strong>
+                </div>
+                ${receiptBtn}
+            </td>
+        </tr>`;
+}
+else {
         // Generic fallback
         dataTableHtml = `
             <tr>
@@ -2245,19 +2272,28 @@ else if (isVPN) {
     </body>
     </html>`;
 
-  try {
+const emailAttachments = [];
+    if (credentials.receiptUrl) {
+        const extension = credentials.receiptUrl.split('.').pop().toLowerCase().split('?')[0]; // Handle query params
+        emailAttachments.push({
+            filename: `SMSGlobe_Receipt_${credentials.confirmationNumber || 'Order'}.${extension}`,
+            path: credentials.receiptUrl
+        });
+    }
+
+    try {
         await transporter.sendMail({
             from: `"SMSGlobe Support" <${process.env.EMAIL_USER}>`,
             to: userEmail,
             subject: `${subject} - SMSGlobe`,
-            html: htmlContent 
+            html: htmlContent,
+            attachments: emailAttachments // Physical file attachment
         });
-        console.log(`Delivery email sent to: ${userEmail} (${type})`);
+        console.log(`Delivery email sent to: ${userEmail}`);
     } catch (error) {
         console.error("Nodemailer Error:", error);
     }
 };
-
 const sendResetPasswordEmail = async (userEmail, resetLink, isAdmin = false) => {
     const transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -2561,7 +2597,8 @@ async function getEsimRefills(req, res) {
             userEmail: refill.userEmail,
             fullName: refill.fullName || "Customer",
             amountNGN: `₦${Number(refill.amount).toLocaleString()}`, 
-            status: refill.status || 'pending',            
+            status: refill.status || '',   
+            receiptUrl: refill.receiptUrl || null,         
             targetNumber: refill.targetNumber || (refill.target?.number) || 'N/A',
             country: refill.country || (refill.target?.country) || 'N/A',
             carrier: refill.nodeName || (refill.carrier?.name) || 'Global eSIM',
@@ -2583,55 +2620,84 @@ async function getEsimRefills(req, res) {
 }
 
 async function handleAdminEsimUpdate(req, res) {
+    // 1. Extract TID from Query or Body
     const tid = req.query.tid || req.body.tid;
     const { confirmationNumber, adminNote } = req.body;
+    
+    // 2. Extract file path (Works with Multer or Cloudinary middleware)
+    // For Render/Netlify, ensure you use a storage provider like Cloudinary
+    let receiptPath = null;
+    if (req.file) {
+        // If using Cloudinary: req.file.path
+        // If using local storage: req.file.filename or req.file.path
+        receiptPath = req.file.path || req.file.location || req.file.url; 
+    }
 
     if (!tid) {
-        return res.status(400).json({ success: false, message: "Transaction ID (TID) is required" });
+        return res.status(400).json({ 
+            success: false, 
+            message: "Transaction ID (TID) is required" 
+        });
     }
 
     try {
-        const updatedOrder = await Order.findOneAndUpdate(
-            { paymentReference: tid, productType: 'eSIM_Refill' },
-            { 
-                $set: { 
-                    status: 'completed', 
-                    confirmationNumber: confirmationNumber, 
-                    adminNote: adminNote || '',
-                    updatedAt: new Date() 
-                } 
-            },
-            { returnDocument: 'after' }
+        // 3. Construct Update Object
+        const updateData = {
+            status: 'completed',
+            confirmationNumber: confirmationNumber,
+            adminNote: adminNote || '',
+            updatedAt: new Date()
+        };
+
+        // Only append receiptUrl if a file was actually uploaded
+        if (receiptPath) {
+            updateData.receiptUrl = receiptPath;
+        }
+
+        // 4. Update Database
+        // We use the EsimRefill model (as defined in your schema)
+        const updatedOrder = await EsimRefill.findOneAndUpdate(
+            { paymentReference: tid }, 
+            { $set: updateData },
+            { new: true } // returns the updated document
         );
 
         if (!updatedOrder) {
-            return res.status(404).json({ success: false, message: "Refill record not found." });
+            return res.status(404).json({ 
+                success: false, 
+                message: "eSIM Refill record not found." 
+            });
         }
+
+        // 5. Send Delivery Email
         try {
             await sendDeliveryEmail(updatedOrder.userEmail, {
-                productType: "eSIM_Refill", // Keep naming consistent with your check
-                nodeName: updatedOrder.nodeName || "eSIM Carrier",
-                targetNumber: updatedOrder.targetNumber || updatedOrder.target?.number || 'N/A',
-                country: updatedOrder.country || updatedOrder.target?.country || 'N/A',
+                productType: "eSIM_Refill",
+                nodeName: updatedOrder.carrier?.name || updatedOrder.nodeName || "eSIM Carrier",
+                targetNumber: updatedOrder.target?.number || updatedOrder.targetNumber || 'N/A',
+                country: updatedOrder.target?.country || updatedOrder.country || 'N/A',
                 amount: updatedOrder.amount, 
                 confirmationNumber: confirmationNumber,
-                instructions: "Your eSIM refill is now active. Please restart your device if the balance doesn't reflect immediately."
+                receiptUrl: updatedOrder.receiptUrl || null, // Ensure your email template handles this link
+                instructions: "Your eSIM refill is now active. You can view or download your receipt via the link below."
             });
         } catch (emailErr) {
             console.error("Email notification failed:", emailErr.message);
+            // We don't return error here because the DB update was successful
         }
 
+        // 6. Final Response
         return res.json({ 
             success: true, 
-            message: "Refill marked as completed and user notified.",
+            message: "Order completed and receipt attached successfully.",
             data: updatedOrder 
         });
 
     } catch (error) {
-        console.error("CRITICAL UPDATE ERROR:", error);
+        console.error("CRITICAL ADMIN UPDATE ERROR:", error);
         return res.status(500).json({ 
             success: false, 
-            message: "Internal Server Error during update" 
+            message: "Internal server error during order update" 
         });
     }
 }

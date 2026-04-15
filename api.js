@@ -1747,19 +1747,43 @@ const sendAdminNotification = async (orderData) => {
     // Normalize type for comparison
     const orderType = type ? type.toLowerCase() : "";
 
-    // --- RDP DETAILS ---
+   // --- RDP DETAILS ---
     if (orderType === "rdp") {
         specificDetailsHtml = `
-            <div style="background: #f8fafc; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; margin: 12px 0;">
-                <p style="font-size: 12px; margin:0 0 8px 0; color: #0F54C6;"><b>🖥️ RDP CONFIG</b></p>
+            <div style="background: #f8fafc; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; margin: 12px 0;">
+                <p style="font-size: 12px; margin:0 0 10px 0; color: #0F54C6; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px;">
+                    <b>🖥️ RDP PROVISIONING SPECS</b>
+                </p>
                 <table width="100%" cellspacing="0" cellpadding="0">
                     <tr>
-                        <td width="50%"><span style="${labelStyle}">OS</span><span style="${valueStyle}">${orderSpecifics?.os || 'Win'}</span></td>
-                        <td width="50%"><span style="${labelStyle}">RAM</span><span style="${valueStyle}">${orderSpecifics?.ram || 'N/A'}</span></td>
+                        <td width="50%" style="padding-bottom: 10px;">
+                            <span style="${labelStyle}">OS</span>
+                            <span style="${valueStyle}">${orderSpecifics?.os || metadata?.osChoice || 'Windows'}</span>
+                        </td>
+                        <td width="50%" style="padding-bottom: 10px;">
+                            <span style="${labelStyle}">RAM</span>
+                            <span style="${valueStyle}">${orderSpecifics?.ram || metadata?.ram || 'N/A'}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td width="50%">
+                            <span style="${labelStyle}">CPU</span>
+                            <span style="${valueStyle}">${orderSpecifics?.cpu || metadata?.cpu || 'N/A'}</span>
+                        </td>
+                        <td width="50%">
+                            <span style="${labelStyle}">Storage</span>
+                            <span style="${valueStyle}">${orderSpecifics?.storage || metadata?.storage || 'N/A'}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="padding-top: 10px;">
+                            <span style="${labelStyle}">Network Speed</span>
+                            <span style="${valueStyle}">${orderSpecifics?.net || metadata?.net || '1Gbps'}</span>
+                        </td>
                     </tr>
                 </table>
             </div>`;
-    } 
+    }
     // --- ESIM REFILL DETAILS ---
     else if (orderType === "esim_refill") {
         specificDetailsHtml = `
@@ -1906,41 +1930,50 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
     }
     
     let dataTableHtml = '';
+if (isRDP) {
+    // 1. Prioritize direct fields, fallback to metadata, then fallback to specs string
+    const ramValue = credentials.ram || credentials.metadata?.ram || "";
+    const cpuValue = credentials.cpu || credentials.metadata?.cpu || "";
+    const storageValue = credentials.storage || credentials.metadata?.storage || "";
+    
+    // 2. Fallback logic: If fields are still empty, try parsing the specs string
+    const specParts = (credentials.specs || "").split(',').map(s => s.trim());
+    
+    const displayRam = ramValue || specParts[0] || 'N/A';
+    const displayCpu = cpuValue || specParts[1] || 'N/A';
+    const displayStorage = storageValue || specParts[2] || 'N/A';
 
-    // 3. Build the Data Table
-    if (isRDP) {
-        const specsString = credentials.specs || ""; 
-        const specParts = specsString.split(',').map(s => s.trim());
-        const ramValue = credentials.ram || specParts[0] || '4GB RAM';
-        const cpuValue = credentials.cpu || specParts[1] || '2 Cores';
-        const storageValue = credentials.storage || specParts[2] || '60GB SSD';
-
-        dataTableHtml = `
-            <tr>
-                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Confirmation Number</span><br>
-                    <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6;">${credentials.confirmationNumber || 'Check Dashboard'}</strong>
-                </td>
-                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Operating System</span><br>
-                    <strong style="font-size: 13px; color: #101828;">${credentials.osChoice || 'Windows Server'}</strong>
-                </td>
-            </tr>
-            <tr>
-                <td class="mobile-full" width="33%" valign="top">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">RAM</span><br>
-                    <strong style="font-size: 12px; color: #101828;">${ramValue}</strong>
-                </td>
-                <td class="mobile-full" width="33%" valign="top" style="text-align: center;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">CPU</span><br>
-                    <strong style="font-size: 12px; color: #101828;">${cpuValue}</strong>
-                </td>
-                <td class="mobile-full" width="33%" valign="top" style="text-align: right;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Storage</span><br>
-                    <strong style="font-size: 12px; color: #101828;">${storageValue}</strong>
-                </td>
-            </tr>`;
-    } else if (isVPN) {
+    dataTableHtml = `
+        <tr>
+            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Confirmation Number</span><br>
+                <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #0F54C6;">
+                    ${credentials.confirmationNumber || 'Check Dashboard'}
+                </strong>
+            </td>
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Operating System</span><br>
+                <strong style="font-size: 13px; color: #101828;">
+                    ${credentials.os || credentials.osChoice || 'Windows Server'}
+                </strong>
+            </td>
+        </tr>
+        <tr>
+            <td class="mobile-full" width="33%" valign="top">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">RAM</span><br>
+                <strong style="font-size: 12px; color: #101828;">${displayRam}</strong>
+            </td>
+            <td class="mobile-full" width="33%" valign="top" style="text-align: center;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">CPU</span><br>
+                <strong style="font-size: 12px; color: #101828;">${displayCpu}</strong>
+            </td>
+            <td class="mobile-full" width="33%" valign="top" style="text-align: right;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Storage</span><br>
+                <strong style="font-size: 12px; color: #101828;">${displayStorage}</strong>
+            </td>
+        </tr>`;
+}
+else if (isVPN) {
         const vpnCreds = credentials.vpnCredentials || {};    
         const displayUser = vpnCreds.username || credentials.username;
         const displayPass = vpnCreds.password || credentials.password;    
@@ -2751,7 +2784,7 @@ async function handleCompleteRDPOrder(req, res) {
                 confirmationNumber: confirmationNumber, // Stores IP/Login Details
                 deliveredAt: new Date()
             },
-           { returnDocument: 'after' }
+            { new: true } // 'new: true' is the standard for returning the updated doc
         );
 
         if (!order) {
@@ -2759,20 +2792,21 @@ async function handleCompleteRDPOrder(req, res) {
         }
 
         // 2. Trigger the Email Notification
-        // We pass the RDP metadata so the email shows RAM, CPU, etc.
         try {
             await sendDeliveryEmail(order.userEmail, { 
-                type: 'RDP', 
-                confirmationNumber: confirmationNumber, // This is the IP/Login details
-                osChoice: order.metadata?.osChoice || 'Windows Server',
-                ram: order.metadata?.ram || 'Standard',
-                cpu: order.metadata?.cpu || 'Standard',
-                storage: order.metadata?.storage || 'Standard',
+                productType: 'RDP', // Ensure this matches your template's check (isRDP)
+                confirmationNumber: confirmationNumber,                 
+                os: order.os || order.metadata?.osChoice || 'Windows Server',
+                ram: order.ram || order.metadata?.ram || 'Standard',
+                cpu: order.cpu || order.metadata?.cpu || 'Standard',
+                storage: order.storage || order.metadata?.storage || 'Standard',                
+                planName: order.planName || "RDP Service",
+                amount: order.amount,
+                
                 instructions: order.instructions || "Your RDP server is now active. Use the credentials below to connect via Remote Desktop Connection."
             });
         } catch (mailError) {
             console.error("Email failed to send, but order was updated:", mailError);
-            // We don't return error here because the DB update was successful
         }
 
         res.json({ 

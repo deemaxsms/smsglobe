@@ -1722,6 +1722,7 @@ sendDeliveryEmail(user.email, {
 const sendAdminNotification = async (orderData) => {
     const transporter = nodemailer.createTransport({
         service: 'gmail',
+        pool: true,
         auth: {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS
@@ -1981,27 +1982,44 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
         </tr>`;
 } 
 else if (isESIM_Refill) {
+    const isFinal = !!credentials.confirmationNumber;
+    
     dataTableHtml = `
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
-                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName}</strong>
+                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || credentials.carrier || 'Global eSIM'}</strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Mobile Number</span><br>
-                <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.targetNumber}</strong>
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Target Number</span><br>
+                <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.targetNumber || 'N/A'}</strong>
             </td>
         </tr>
         <tr>
-            <td class="mobile-full" width="50%" valign="top">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Plan Paid</span><br>
-                <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount).toLocaleString()} Refill</strong>
-            </td>
-            <td class="mobile-full" width="50%" valign="top" style="text-align: right;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Country</span><br>
+            <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Coverage Country</span><br>
                 <strong style="font-size: 13px; color: #101828;">${credentials.country || 'United States'}</strong>
             </td>
-        </tr>`;
+            <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
+                <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount).toLocaleString()}</strong>
+            </td>
+        </tr>
+        ${isFinal ? `
+        <tr>
+            <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px; text-align: center;">
+                <div style="background: #ECFDF3; border: 1px solid #ABEFC6; padding: 12px; border-radius: 8px;">
+                    <span style="font-size: 9px; color: #067647; text-transform: uppercase; font-weight: bold;">Refill Confirmation Code</span><br>
+                    <strong style="font-size: 16px; font-family: 'Courier New', monospace; color: #101828;">${credentials.confirmationNumber}</strong>
+                </div>
+            </td>
+        </tr>` : `
+        <tr>
+            <td colspan="2" style="border-top: 1px solid #EAECF0; padding-top: 15px; text-align: center;">
+                <em style="font-size: 11px; color: #667085;">The confirmation code will be sent once processing is complete.</em>
+            </td>
+        </tr>`}
+    `;
 
 } else {
     dataTableHtml = `
@@ -2436,11 +2454,11 @@ async function handleAdminEsimUpdate(req, res) {
         }
         try {
             await sendDeliveryEmail(updatedOrder.userEmail, {
-                type: "eSIM_Refill",
+                productType: "eSIM_Refill", // Keep naming consistent with your check
                 nodeName: updatedOrder.nodeName || "eSIM Carrier",
-                targetNumber: updatedOrder.targetNumber || updatedOrder.target?.number,
-                country: updatedOrder.country || updatedOrder.target?.country,
-                amount: `₦${updatedOrder.amount.toLocaleString()}`,
+                targetNumber: updatedOrder.targetNumber || updatedOrder.target?.number || 'N/A',
+                country: updatedOrder.country || updatedOrder.target?.country || 'N/A',
+                amount: updatedOrder.amount, 
                 confirmationNumber: confirmationNumber,
                 instructions: "Your eSIM refill is now active. Please restart your device if the balance doesn't reflect immediately."
             });

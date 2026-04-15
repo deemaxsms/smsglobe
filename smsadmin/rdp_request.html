@@ -239,7 +239,13 @@
         const ramVal = order.ram || order.metadata?.ram || 'N/A';
         const cpuVal = order.cpu || order.metadata?.cpu || 'N/A';
         const storageVal = order.storage || order.metadata?.storage || 'N/A';
-        const osVal = order.os || order.metadata?.osChoice || 'Windows Server';
+        const osVal = order.os || order.metadata?.osChoice || '';
+
+        const ipVal = order.ipAddress || '';
+const portVal = order.port || '';
+const userVal = order.rdpUsername || '';
+const passVal = order.rdpPassword || '';
+const confVal = order.confirmationNumber || '.';
         
         const extraCPUVal = order.extraCPU ?? order.metadata?.extraCPU ?? 0;
         const extraStorageVal = order.extraStorage ?? order.metadata?.extraStorage ?? 0;
@@ -302,23 +308,35 @@
                         </button>
                     </div>`;
             } else {
-                actionHTML = `
-                    <div class="mt-6 p-5 bg-green-50 rounded-2xl border border-green-100 text-left">
-                        <div class="flex items-center gap-2 mb-4">
-                            <div class="w-1.5 h-4 bg-green-500 rounded-full"></div>
-                            <h4 class="text-[11px] font-bold text-green-700 uppercase tracking-wider">Active Credentials</h4>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4 bg-white p-4 rounded-xl border border-green-100 shadow-sm mb-4">
-                            <div><p class="text-[9px] text-gray-400 uppercase font-bold">IP Address</p><p class="text-xs font-mono font-bold">${order.ipAddress || 'N/A'}</p></div>
-                            <div><p class="text-[9px] text-gray-400 uppercase font-bold">Port</p><p class="text-xs font-mono font-bold">${order.port || '3389'}</p></div>
-                            <div><p class="text-[9px] text-gray-400 uppercase font-bold">Username</p><p class="text-xs font-mono font-bold">${order.rdpUsername || 'Admin'}</p></div>
-                            <div><p class="text-[9px] text-gray-400 uppercase font-bold">Password</p><p class="text-xs font-mono font-bold">${order.rdpPassword || '********'}</p></div>
-                        </div>
-                        <div class="bg-white p-3 rounded-xl border border-green-100">
-                            <p class="text-[9px] text-gray-400 uppercase font-bold mb-1">Confirmation Note / Logs</p>
-                            <p class="text-[11px] font-mono text-brand-darkText break-all">${order.confirmationNumber || 'No notes.'}</p>
-                        </div>
-                    </div>`;
+              actionHTML = `
+    <div class="mt-6 p-5 bg-green-50 rounded-2xl border border-green-100 text-left">
+        <div class="flex items-center gap-2 mb-4">
+            <div class="w-1.5 h-4 bg-green-500 rounded-full"></div>
+            <h4 class="text-[11px] font-bold text-green-700 uppercase tracking-wider">Active Credentials</h4>
+        </div>
+        <div class="grid grid-cols-2 gap-4 bg-white p-4 rounded-xl border border-green-100 shadow-sm mb-4">
+            <div>
+                <p class="text-[9px] text-gray-400 uppercase font-bold">IP Address</p>
+                <p class="text-xs font-mono font-bold">${ipVal}</p>
+            </div>
+            <div>
+                <p class="text-[9px] text-gray-400 uppercase font-bold">Port</p>
+                <p class="text-xs font-mono font-bold">${portVal}</p>
+            </div>
+            <div>
+                <p class="text-[9px] text-gray-400 uppercase font-bold">Username</p>
+                <p class="text-xs font-mono font-bold">${userVal}</p>
+            </div>
+            <div>
+                <p class="text-[9px] text-gray-400 uppercase font-bold">Password</p>
+                <p class="text-xs font-mono font-bold">${passVal}</p>
+            </div>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-green-100">
+            <p class="text-[9px] text-gray-400 uppercase font-bold mb-1">Confirmation Note / Logs</p>
+            <p class="text-[11px] font-mono text-brand-darkText break-all">${confVal}</p>
+        </div>
+    </div>`;
             }
         }
 
@@ -412,7 +430,7 @@
         const notesInput = document.getElementById(`log-conf-${tid}`);
 
         const ip = ipInput.value.trim();
-        const port = portInput.value.trim() || '3389';
+        const port = portInput.value.trim() || '';
         const user = userInput.value.trim();
         const pass = passInput.value.trim();
         const notes = notesInput.value.trim();

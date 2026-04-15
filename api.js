@@ -134,7 +134,6 @@ const ProxySchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const Proxy = mongoose.models.Proxy || mongoose.model('Proxy', ProxySchema);
-
 const rdpSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     userEmail: String,
@@ -142,14 +141,31 @@ const rdpSchema = new mongoose.Schema({
     productType: { type: String, default: "RDP" },
     planName: String,
     nodeName: String, 
-    ram: String, cpu: String, storage: String, net: String, os: String,
+    ram: String, 
+    cpu: String, 
+    storage: String, 
+    net: String, 
+    os: String,
     amount: Number,
     extraCPU: { type: Number, default: 0 },
     extraStorage: { type: Number, default: 0 },
     currency: { type: String, default: "NGN" },
     status: { type: String, default: "successful" },
     paymentReference: String,
-    metadata: { extraCPU: Number, extraStorage: Number, osChoice: String }
+    // Add these new fields for credentials
+    ipAddress: { type: String, default: "N/A" },
+    port: { type: String, default: "3389" },
+    rdpUsername: { type: String, default: "Admin" },
+    rdpPassword: { type: String },
+    confirmationNumber: { type: String },
+    metadata: { 
+        extraCPU: Number, 
+        extraStorage: Number, 
+        osChoice: String,
+        ram: String,
+        cpu: String,
+        storage: String
+    }
 }, { timestamps: true });
 
 const RDP = mongoose.models.RDP || mongoose.model('RDP', rdpSchema, 'rdp_orders');

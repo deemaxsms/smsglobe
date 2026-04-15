@@ -167,7 +167,6 @@
             overlay.classList.toggle('hidden');
         }
 
-
 async function fetchRDPRequests() {
     const token = localStorage.getItem('smsglobe_admin_token');
     const tbody = document.getElementById('rdp-body');
@@ -186,7 +185,6 @@ async function fetchRDPRequests() {
                 const meta = order.metadata || {}; 
                 const formattedPrice = `₦${Number(order.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
                 
-                // Main Table row now only contains info and the "View Details" trigger
                 return `
                     <tr class="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
                         <td class="px-4 py-4">
@@ -217,7 +215,7 @@ async function fetchRDPRequests() {
                             <button onclick="viewOrderDetails('${order.paymentReference}')" 
                                     class="bg-gray-100 text-brand-darkText px-4 py-2 rounded-lg text-[10px] font-bold hover:bg-brand-blue hover:text-white transition-all shadow-sm flex items-center gap-2 ml-auto">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                Manage Request
+                                Manage
                             </button>
                         </td>
                     </tr>`;
@@ -236,17 +234,21 @@ function viewOrderDetails(ref) {
 
     const meta = order.metadata || {};
     const status = order.status.toLowerCase();
-    const modal = document.getElementById('viewModal');
     
+    // DEFINING ELEMENTS PROPERLY
+    const modal = document.getElementById('viewModal');
+    const container = document.getElementById('modalContainer'); 
+
+    if (!modal) return console.error("Modal element not found");
+
     document.getElementById('m-ref').innerText = `Order #${order.paymentReference.slice(-8)}`;
     document.getElementById('m-date').innerText = `Customer: ${order.fullName} | ${order.userEmail}`;
 
-    // Action Section Logic: Show input if not completed, show data if it is.
     let fulfillmentHTML = '';
     if (['successful', 'processing', 'pending'].includes(status)) {
         fulfillmentHTML = `
             <div class="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                <h4 class="text-[10px] font-bold text-brand-blue uppercase mb-3">Fulfill Request</h4>
+                <h4 class="text-[10px] font-bold text-brand-blue uppercase mb-3 text-left">Fulfill Request</h4>
                 <div class="flex flex-col gap-3">
                     <textarea id="conf-${order.paymentReference}" 
                               placeholder="Paste IP Address, Username, and Password here..." 
@@ -259,7 +261,7 @@ function viewOrderDetails(ref) {
             </div>`;
     } else if (status === 'completed') {
         fulfillmentHTML = `
-            <div class="mt-6 p-4 bg-green-50 rounded-xl border border-green-100">
+            <div class="mt-6 p-4 bg-green-50 rounded-xl border border-green-100 text-left">
                 <h4 class="text-[10px] font-bold text-green-700 uppercase mb-2">Delivered Details</h4>
                 <div class="bg-white p-3 rounded border border-green-200 text-xs font-mono text-brand-darkText break-all">
                     ${order.confirmationNumber || 'No details recorded.'}
@@ -269,7 +271,7 @@ function viewOrderDetails(ref) {
     }
 
     document.getElementById('modalContent').innerHTML = `
-        <div class="grid grid-cols-2 gap-4 mb-6">
+        <div class="grid grid-cols-2 gap-4 mb-6 text-left">
             <div class="bg-gray-50 p-4 rounded-xl border border-brand-border">
                 <h4 class="text-[9px] font-bold text-brand-lightText uppercase mb-2">Configuration</h4>
                 <p class="text-xs font-bold">${order.planName}</p>
@@ -294,7 +296,7 @@ function viewOrderDetails(ref) {
         </div>
 
         <div class="bg-brand-darkText p-4 rounded-xl text-white flex justify-between items-center mb-4">
-            <div>
+            <div class="text-left">
                 <p class="text-[10px] opacity-70 uppercase font-bold">Total Revenue</p>
                 <p class="text-lg font-bold">₦${Number(order.amount).toLocaleString()}</p>
             </div>
@@ -306,12 +308,16 @@ function viewOrderDetails(ref) {
 
         ${fulfillmentHTML}
     `;
-    // Show Modal with animation
+
+    // SHOW AND ANIMATE
     modal.classList.remove('hidden');
-    setTimeout(() => {
-        container.classList.remove('scale-95', 'opacity-0');
-        container.classList.add('scale-100', 'opacity-100');
-    }, 10);
+    
+    if (container) {
+        setTimeout(() => {
+            container.classList.remove('scale-95', 'opacity-0');
+            container.classList.add('scale-100', 'opacity-100');
+        }, 10);
+    }
 }
 
 function closeModal() {

@@ -6,6 +6,8 @@
     <title>SMSGlobe Admin - eSIM Refills</title>
     <link rel="icon" type="image/png" href="https://i.imgur.com/syKFaNI.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
         if (!localStorage.getItem('smsglobe_admin_token')) {
             window.location.href = 'sms_login.html';
@@ -302,8 +304,8 @@ function viewOrderDetails(order) {
     const container = document.getElementById('detailContent');
     const date = new Date(order.createdAt).toLocaleString();
     
-    // 1. CARRIER NAME: prioritized extraction without the image
-    const carrierName = order.carrier?.name || order.nodeName || order.carrierName || 'N/A';
+    // 1. CARRIER NAME: Ensuring it fetches from all possible data locations
+    const carrierName = order.nodeName || order.carrier?.name || order.carrierName || 'Global Service';
 
     // 2. AMOUNT FALLBACK
     const finalAmount = order.amount || order.amountNGN || 0;
@@ -312,16 +314,17 @@ function viewOrderDetails(order) {
     const targetNo = order.targetNumber || order.target?.number || 'N/A';
     const targetCountry = order.country || order.target?.country || 'N/A';
 
+    // Inject the HTML
     container.innerHTML = `
         <div class="space-y-4">
             <div class="flex justify-end">
-<button onclick="generateUniversalReceipt(${JSON.stringify(order).replace(/"/g, '&quot;')})" 
-    class="flex items-center gap-2 px-3 py-1.5 bg-brand-blue/10 text-brand-blue rounded-lg text-[11px] font-bold hover:bg-brand-blue hover:text-white transition-all border border-brand-blue/20">
-    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-    </svg>
-    Generate Receipt (PDF/PNG)
-</button>
+                <button id="modalGenReceiptBtn"
+                    class="flex items-center gap-2 px-3 py-1.5 bg-brand-blue/10 text-brand-blue rounded-lg text-[11px] font-bold hover:bg-brand-blue hover:text-white transition-all border border-brand-blue/20">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Generate Receipt (PDF/PNG)
+                </button>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
@@ -342,7 +345,7 @@ function viewOrderDetails(order) {
                 <div class="col-span-2 border-t border-b py-3 space-y-3">
                     <div>
                         <p class="text-[10px] text-brand-lightText font-bold uppercase">Carrier Name</p>
-                        <p class="font-bold text-lg text-brand-darkText">${carrierName}</p>
+                        <p class="font-bold text-lg text-brand-darkText uppercase">${carrierName}</p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-xl border border-brand-border">
@@ -388,6 +391,18 @@ function viewOrderDetails(order) {
             </div>
         </div>
     `;
+
+    // --- CRITICAL STEP: ATTACH THE EVENT LISTENER ---
+    const genBtn = document.getElementById('modalGenReceiptBtn');
+    genBtn.onclick = function() {
+        if (typeof generateUniversalReceipt === 'function') {
+            generateUniversalReceipt(order);
+        } else {
+            alert("The Receipt Generator is still loading. Please try again in 2 seconds.");
+            console.error("Make sure receiptGenerator.js is included in your HTML scripts.");
+        }
+    };
+
     document.getElementById('detailModal').classList.remove('hidden');
 }
 
@@ -519,5 +534,6 @@ function resetSubmitButton(btn, text) {
 
     window.onload = fetchRefills;
 </script>
+<script src="/receiptGenerator.js"></script>
 </body>
 </html>

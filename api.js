@@ -489,22 +489,28 @@ app.all('/api/:action', async (req, res) => {
             break;
         case 'create-esim-order': return handleCreateEsimOrder(req, res);
         case 'esim-refills': return getEsimRefills(req, res);
-      case 'update-esim-status': return upload.single('receipt')(req, res, async (err) => {
-        if (err) {
-            console.error("Multer/Cloudinary Error:", err);
-            return res.status(500).json({ 
-                success: false, 
-                message: "File upload failed", 
-                error: err.message 
+
+     case 'update-esim-status':
+    // Vercel needs this wrapped in a Promise to prevent premature exit
+    try {
+        await new Promise((resolve, reject) => {
+            upload.single('receipt')(req, res, (err) => {
+                if (err) reject(err);
+                else resolve();
             });
-        }
-        try {
-            return await handleAdminEsimUpdate(req, res);
-        } catch (handlerErr) {
-            console.error("Handler Crash:", handlerErr);
-            return res.status(500).json({ success: false, message: "Internal Handler Error" });
-        }
-    });
+        });
+        
+        // After promise resolves, req.file and req.body are ready
+        return await handleAdminEsimUpdate(req, res);
+    } catch (multerError) {
+        console.error("Vercel Multer Error:", multerError);
+        return res.status(500).json({ 
+            success: false, 
+            message: "File upload failed", 
+            error: multerError.message 
+        });
+    }
+
         case 'create-esim-order-activation': return handleCreateEsimActivation(req, res);
       case 'esim-activation': 
         case 'esim-activations': 
@@ -3662,4 +3668,8 @@ if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, () => console.log(`Dev Server: http://localhost:${PORT}`));
 }
 
-module.exports = app;
+module.exports.config = {
+    api: {
+        bodyParser: false,
+    },
+};

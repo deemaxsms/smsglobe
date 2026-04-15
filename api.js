@@ -1970,35 +1970,66 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
         </tr>`;
    } 
   if (isESIM_Activation) {
-    // LAYOUT FOR ESIM ACTIVATION
+    const isFinal = !!(credentials.activationCode || credentials.confirmationNumber);
+    const meta = credentials.metadata || {};
+    
     dataTableHtml = `
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
-                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName}</strong>
+                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || 'Global eSIM'}</strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Device Model</span><br>
-                <strong style="font-size: 13px; color: #101828;">${credentials.targetNumber}</strong>
+                <strong style="font-size: 13px; color: #101828;">${credentials.targetNumber || 'N/A'}</strong>
             </td>
         </tr>
+
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Activation Details</span><br>
-                <strong style="font-size: 11px; color: #344054;">
-                    ${credentials.metadata?.address || 'N/A'}<br>
-                    ZIP: ${credentials.metadata?.zip || 'N/A'} | Type: ${credentials.metadata?.activationType || 'Prepaid'}
-                </strong>
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Subscription Plan</span><br>
+                <strong style="font-size: 13px; color: #101828;">${credentials.planName || 'Standard Activation'}</strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
-                <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount).toLocaleString()}</strong>
+                <strong style="font-size: 13px; color: #101828;">${credentials.amount}</strong>
+            </td>
+        </tr>
+
+        <tr>
+            <td colspan="2" style="border-top: 1px solid #f2f4f7; padding-top: 15px; padding-bottom: 15px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Subscriber Details</span><br>
+                <div style="font-size: 12px; color: #344054; line-height: 1.6; background: #f9fafb; padding: 10px; border-radius: 6px; margin-top: 5px;">
+                    <strong>Name:</strong> ${credentials.firstName || ''} ${credentials.lastName || ''}<br>
+                    <strong>Email:</strong> ${credentials.email || 'N/A'}<br>
+                    <strong>Address:</strong> ${credentials.address || 'N/A'}<br>
+                    <strong>ZIP Code:</strong> ${credentials.zip || 'N/A'} | <strong>Type:</strong> ${credentials.activationType || 'Prepaid'}
+                </div>
+            </td>
+        </tr>
+
+        <tr>
+            <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px; text-align: center;">
+                ${isFinal ? `
+                <div style="background: #ECFDF3; border: 1px solid #ABEFC6; padding: 15px; border-radius: 8px;">
+                    <span style="font-size: 9px; color: #067647; text-transform: uppercase; font-weight: bold;">eSIM Activation Code / ID</span><br>
+                    <strong style="font-size: 18px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${credentials.activationCode || credentials.confirmationNumber}</strong>
+                </div>` : `
+                <div style="background: #FFF9F2; border: 1px solid #FFE4C4; padding: 15px; border-radius: 8px;">
+                    <span style="font-size: 10px; color: #B45309; text-transform: uppercase; font-weight: bold;">Status: Provisioning eSIM</span><br>
+                    <p style="font-size: 11px; color: #667085; margin: 5px 0 0 0;">Your details have been sent to the carrier. We will notify you once the eSIM profile is ready for download.</p>
+                </div>`}
             </td>
         </tr>`;
-} 
+}
 else if (isESIM_Refill) {
     const isFinal = !!credentials.confirmationNumber;
     
+    // 1. Extract and Clean Variables
+    const displayAmount = credentials.amount || credentials.totalPaid || 0;
+    const displayCountry = credentials.country || credentials.coverage || 'International';
+    const displayPayment = credentials.paymentMethod || credentials.gateway || 'Wallet/Flutterwave';
+
     dataTableHtml = `
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
@@ -2010,25 +2041,35 @@ else if (isESIM_Refill) {
                 <strong style="font-size: 13px; font-family: 'Courier New', monospace; color: #101828;">${credentials.targetNumber || 'N/A'}</strong>
             </td>
         </tr>
+
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Coverage Country</span><br>
-                <strong style="font-size: 13px; color: #101828;">${credentials.country || 'International'}</strong>
+                <strong style="font-size: 13px; color: #101828;">${displayCountry}</strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Price Paid</span><br>
-                <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount).toLocaleString()}</strong>
+                <strong style="font-size: 13px; color: #101828;">₦${Number(displayAmount).toLocaleString()}</strong>
             </td>
         </tr>
+
+        <tr>
+            <td colspan="2" style="padding-bottom: 15px; border-top: 1px solid #f2f4f7; padding-top: 10px;">
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Payment Method</span><br>
+                <strong style="font-size: 12px; color: #344054;">${displayPayment}</strong>
+            </td>
+        </tr>
+
         <tr>
             <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 15px; text-align: center;">
                 ${isFinal ? `
                 <div style="background: #ECFDF3; border: 1px solid #ABEFC6; padding: 12px; border-radius: 8px;">
-                    <span style="font-size: 9px; color: #067647; text-transform: uppercase; font-weight: bold;">Confirmation Number</span><br>
+                    <span style="font-size: 9px; color: #067647; text-transform: uppercase; font-weight: bold;">Refill Confirmation Number</span><br>
                     <strong style="font-size: 18px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 1px;">${credentials.confirmationNumber}</strong>
                 </div>` : `
-                <div style="background: #F9FAFB; border: 1px solid #EAECF0; padding: 12px; border-radius: 8px;">
-                    <em style="font-size: 11px; color: #667085;">Order Received: Your confirmation number will be provided here once the refill is processed.</em>
+                <div style="background: #FFF9F2; border: 1px solid #FFE4C4; padding: 12px; border-radius: 8px;">
+                    <span style="font-size: 10px; color: #B45309; text-transform: uppercase; font-weight: bold;">Status: Processing Request</span><br>
+                    <p style="font-size: 11px; color: #667085; margin: 5px 0 0 0;">Your refill is being processed by our team. You'll receive another email once it's completed.</p>
                 </div>`}
             </td>
         </tr>
@@ -2529,24 +2570,30 @@ async function handleAdminEsimActivationUpdate(req, res) {
         );
 
         const isFinished = status.toLowerCase() === 'completed' || status.toLowerCase() === 'successful';        
-        if (isFinished) {
-            try {
-                await sendDeliveryEmail(updatedOrder.userEmail, {
-                    type: "eSIM_Activation", // Must match your template check                    
-                    nodeName: updatedOrder.nodeName || "Global eSIM",
-                    planName: updatedOrder.planName,
-                    amount: `${updatedOrder.currency} ${updatedOrder.amount}`, // Show real price                    
-                    address: updatedOrder.metadata?.address || "Digital Delivery",
-                    zip: updatedOrder.metadata?.zip || "N/A",
-                    mobileNumber: updatedOrder.targetNumber || "eSIM Device", // Device Model
-                    email: updatedOrder.metadata?.email || updatedOrder.userEmail,                    
-                    activationCode: confirmationNumber || updatedOrder.confirmationNumber,
-                    instructions: "Your eSIM activation is complete. Please use the Activation code provided to set up your device."
-                });
-            } catch (emailError) {
-                console.error("📧 Email Delivery Failed:", emailError);
-            }
-        }
+      if (isFinished) {
+    try {
+        await sendDeliveryEmail(updatedOrder.userEmail, {
+            type: "eSIM_Activation",
+            nodeName: updatedOrder.nodeName || "Global eSIM",
+            planName: updatedOrder.planName || "Standard Plan",
+            amount: `${updatedOrder.currency || '₦'}${Number(updatedOrder.amount).toLocaleString()}`,
+            
+            // Personal Details from metadata
+            firstName: updatedOrder.metadata?.firstName || "Customer",
+            lastName: updatedOrder.metadata?.lastName || "",
+            email: updatedOrder.metadata?.email || updatedOrder.userEmail,
+            address: updatedOrder.metadata?.address || "Digital Delivery",
+            zip: updatedOrder.metadata?.zip || "N/A",
+            activationType: updatedOrder.metadata?.activationType || "Prepaid",
+            
+            targetNumber: updatedOrder.targetNumber || "eSIM Device",
+            activationCode: confirmationNumber || updatedOrder.confirmationNumber,
+            instructions: "Your eSIM activation is complete. Please use the Activation code provided to set up your device."
+        });
+    } catch (emailError) {
+        console.error("📧 Email Delivery Failed:", emailError);
+    }
+}
 
         return res.json({ 
             success: true, 

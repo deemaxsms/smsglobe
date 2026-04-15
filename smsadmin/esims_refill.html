@@ -416,7 +416,6 @@ async function confirmProcessRefill() {
     try {
         let receiptUrl = "";
 
-        // 1. UPLOAD TO CLOUDINARY DIRECTLY (If a file is selected)
         if (receiptInput.files.length > 0) {
             btn.innerText = "Uploading Receipt...";
             const file = receiptInput.files[0];
@@ -425,9 +424,8 @@ async function confirmProcessRefill() {
             // Values from your Cloudinary Dashboard
             cloudFormData.append('file', file);
             cloudFormData.append('upload_preset', 'smsglobe_unsigned'); 
-            cloudFormData.append('cloud_name', 'sms_globe'); 
 
-            const cloudRes = await fetch('https://api.cloudinary.com/v1_1/sms_globe/image/upload', {
+            const cloudRes = await fetch('https://api.cloudinary.com/v1_1/dycksm1kp/image/upload', {
                 method: 'POST',
                 body: cloudFormData
             });

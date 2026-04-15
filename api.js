@@ -1669,23 +1669,26 @@ async function handlePurchaseWithWallet(req, res) {
             bonusAfter: updatedUser.bonusBalance,
             metadata: { orderId: newOrder._id, product: productDetails.name }
         });
+        
 const manualProducts = ["eSIM_Refill", "eSIM_Activation", "RDP"];
 const isManual = manualProducts.includes(itemType);
-
 // 1. Customer Delivery (Only for Automated products)
 if (!isManual) {
     await sendDeliveryEmail(user.email, { 
         ...orderSpecifics, 
         productType: itemType, 
-        amount: `₦${costNGN.toLocaleString()}`,
+        nodeName: productDetails.name, 
         planName: productDetails.plan || newOrder.planName,
+        amount: costNGN, // Pass as number so .toLocaleString() works inside the function
         paymentReference: paymentReference,
-        metadata: newOrder.metadata,
-        nodeName: productDetails.name,   
-        targetNumber: mobileNumber        
+        confirmationNumber: confirmationNumber,        
+        targetNumber: mobileNumber || newOrder.metadata?.targetNumber || "N/A",
+        country: coverageCountry || newOrder.metadata?.country || "N/A",        
+        mainBalanceUsed: newOrder.mainBalanceUsed || 0,
+        bonusBalanceUsed: newOrder.bonusBalanceUsed || 0,
+        metadata: newOrder.metadata
     }).catch(err => console.error("📧 Customer Email Error:", err.message));
 }
-
 // 2. Admin Notification (Only for Manual products)
 if (isManual) { // Use the variable here instead of re-checking the array
     try {
@@ -2001,15 +2004,20 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
         </tr>`;
    } 
  if (isESIM_Activation) {
+    // 1. Get the Code (Check both fields)
     const confNo = credentials.confirmationNumber || credentials.activationCode;
+    
+    // 2. Handle Metadata access
     const meta = credentials.metadata || {};
     
+    // 3. Subscriber Name Logic
     const fName = meta.firstName || credentials.firstName || "";
     const lName = meta.lastName || credentials.lastName || "";
     const subscriberName = `${fName} ${lName}`.trim() || "Customer";
 
-    const displayEmail = meta.activationEmail || meta.email || credentials.userEmail || 'N/A';
-    const displayAddress = meta.address || credentials.address || 'N/A';
+    // 4. Detail Fallbacks
+    const displayEmail = meta.activationEmail || meta.email || credentials.email || credentials.userEmail || 'N/A';
+    const displayAddress = meta.address || credentials.address || 'Digital Delivery';
     const displayZip = meta.zip || credentials.zip || 'N/A';
     const displayType = meta.activationType || credentials.activationType || 'Prepaid';
 
@@ -2056,13 +2064,17 @@ const type = (credentials.type || credentials.productType || "").toUpperCase();
 }
 else if (isESIM_Refill) {
     const confNo = credentials.confirmationNumber;
-    const displayAmount = credentials.amount || 0;
+    
+    // Safely handle amount if it's already a string or contains symbols
+    const rawAmount = String(credentials.amount || 0).replace(/[^0-9.-]+/g, "");
+    const displayAmount = Number(rawAmount) || 0;
+
     const displayCountry = credentials.country || (credentials.target && credentials.target.country) || 'United States';
     
     let displayPayment = "Flutterwave / Card";
-    if (credentials.mainBalanceUsed > 0) {
+    if (Number(credentials.mainBalanceUsed) > 0) {
         displayPayment = "Wallet Balance";
-    } else if (credentials.bonusBalanceUsed > 0) {
+    } else if (Number(credentials.bonusBalanceUsed) > 0) {
         displayPayment = "Referral Bonus";
     }
 
@@ -2084,7 +2096,7 @@ else if (isESIM_Refill) {
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Price Paid</span><br>
-                <strong style="font-size: 13px; color: #101828;">₦${Number(displayAmount).toLocaleString()}</strong>
+                <strong style="font-size: 13px; color: #101828;">₦${displayAmount.toLocaleString()}</strong>
             </td>
         </tr>
         <tr>
@@ -2597,24 +2609,23 @@ async function handleAdminEsimActivationUpdate(req, res) {
         );
 
         const isFinished = status.toLowerCase() === 'completed' || status.toLowerCase() === 'successful';        
-      if (isFinished) {
+     if (isFinished) {
     try {
         await sendDeliveryEmail(updatedOrder.userEmail, {
-            type: "eSIM_Activation",
+            // CRITICAL: Ensure this matches the 'isESIM_Activation' check in your template
+            productType: "eSIM_Activation", 
             nodeName: updatedOrder.nodeName || "Global eSIM",
             planName: updatedOrder.planName || "Standard Plan",
-            amount: `${updatedOrder.currency || '₦'}${Number(updatedOrder.amount).toLocaleString()}`,
+            amount: updatedOrder.amount, // Pass as number            
+            targetNumber: updatedOrder.targetNumber || updatedOrder.target?.number || "eSIM Device",
+            confirmationNumber: confirmationNumber || updatedOrder.confirmationNumber,
+            metadata: updatedOrder.metadata || {},
+            firstName: updatedOrder.metadata?.firstName,
+            lastName: updatedOrder.metadata?.lastName,
+            address: updatedOrder.metadata?.address,
+            zip: updatedOrder.metadata?.zip,
+            activationType: updatedOrder.metadata?.activationType,
             
-            // Personal Details from metadata
-            firstName: updatedOrder.metadata?.firstName || "Customer",
-            lastName: updatedOrder.metadata?.lastName || "",
-            email: updatedOrder.metadata?.email || updatedOrder.userEmail,
-            address: updatedOrder.metadata?.address || "Digital Delivery",
-            zip: updatedOrder.metadata?.zip || "N/A",
-            activationType: updatedOrder.metadata?.activationType || "Prepaid",
-            
-            targetNumber: updatedOrder.targetNumber || "eSIM Device",
-            activationCode: confirmationNumber || updatedOrder.confirmationNumber,
             instructions: "Your eSIM activation is complete. Please use the Activation code provided to set up your device."
         });
     } catch (emailError) {

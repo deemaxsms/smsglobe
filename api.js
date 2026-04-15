@@ -489,13 +489,21 @@ app.all('/api/:action', async (req, res) => {
             break;
         case 'create-esim-order': return handleCreateEsimOrder(req, res);
         case 'esim-refills': return getEsimRefills(req, res);
-       case 'update-esim-status':
-    return upload.single('receipt')(req, res, (err) => {
+      case 'update-esim-status': return upload.single('receipt')(req, res, async (err) => {
         if (err) {
             console.error("Multer/Cloudinary Error:", err);
-            return res.status(500).json({ success: false, message: "File upload failed" });
+            return res.status(500).json({ 
+                success: false, 
+                message: "File upload failed", 
+                error: err.message 
+            });
         }
-        return handleAdminEsimUpdate(req, res);
+        try {
+            return await handleAdminEsimUpdate(req, res);
+        } catch (handlerErr) {
+            console.error("Handler Crash:", handlerErr);
+            return res.status(500).json({ success: false, message: "Internal Handler Error" });
+        }
     });
         case 'create-esim-order-activation': return handleCreateEsimActivation(req, res);
       case 'esim-activation': 
@@ -2642,31 +2650,42 @@ async function getEsimRefills(req, res) {
 }
 
 async function handleAdminEsimUpdate(req, res) {
-    if (!req.body) {
-        return res.status(400).json({ success: false, message: "No data received. Ensure you are sending FormData." });
+    // 1. Double-check body exists (Multer should have populated this)
+    if (!req.body || Object.keys(req.body).length === 0) {
+        console.error("Empty request body after Multer pass");
+        return res.status(400).json({ 
+            success: false, 
+            message: "Data parsing failed. Ensure you are using FormData." 
+        });
     }
 
     const OrderModel = mongoose.models.Order || mongoose.model('Order');
-    const tid = req.body.tid || req.query.tid;
-    const { confirmationNumber, adminNote } = req.body;    
+    
+    // 2. Consistent variable extraction
+    const tid = req.body.tid;
+    const confirmationNumber = req.body.confirmationNumber;
+    const adminNote = req.body.adminNote || '';
+    
+    // 3. Extract the Cloudinary URL from req.file
     let receiptPath = req.file ? req.file.path : null; 
 
     if (!tid) {
-        return res.status(400).json({ success: false, message: "TID is missing from the request." });
+        return res.status(400).json({ success: false, message: "Transaction ID (tid) is required." });
     }
+
     try {
         const updateData = {
             status: 'completed',
             confirmationNumber: confirmationNumber,
-            adminNote: adminNote || '',
+            adminNote: adminNote,
             updatedAt: new Date()
         };
 
         if (receiptPath) {
-            updateData.receiptUrl = receiptPath; // Ensure your schema has receiptUrl or use metadata
+            updateData.receiptUrl = receiptPath; 
         }
 
-        // Search by paymentReference which matches your schema
+        // Search by paymentReference as per your schema
         const updatedOrder = await OrderModel.findOneAndUpdate(
             { paymentReference: tid }, 
             { $set: updateData },
@@ -2677,7 +2696,7 @@ async function handleAdminEsimUpdate(req, res) {
             return res.status(404).json({ success: false, message: "Order not found in Database." });
         }
 
-        // Email Block - Wrapped in its own try/catch so it doesn't crash the whole API
+        // 4. Decoupled Email Block
         try {
             if (typeof sendDeliveryEmail === 'function') {
                 await sendDeliveryEmail(updatedOrder.userEmail, {
@@ -2692,7 +2711,8 @@ async function handleAdminEsimUpdate(req, res) {
                 });
             }
         } catch (emailErr) {
-            console.error("Email notification failed but DB updated:", emailErr.message);
+            console.error("Email notification failed:", emailErr.message);
+            // We don't return here because the DB update was successful
         }
 
         return res.json({ 
@@ -2702,16 +2722,14 @@ async function handleAdminEsimUpdate(req, res) {
         });
 
     } catch (error) {
-        // This log will appear in your Render/Netlify terminal
         console.error("CRITICAL ADMIN ERROR:", error.message);
         return res.status(500).json({ 
             success: false, 
-            message: "Internal Server Error", 
+            message: "Database update failed", 
             error: error.message 
         });
     }
 }
-
 async function handleAdminEsimActivationUpdate(req, res) {
     const { tid, status, confirmationNumber } = req.body;
 

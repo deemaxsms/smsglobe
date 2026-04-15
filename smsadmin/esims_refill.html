@@ -298,10 +298,21 @@
         document.getElementById(id).classList.add('hidden');
     }
 
-   function viewOrderDetails(order) {
+function viewOrderDetails(order) {
     const container = document.getElementById('detailContent');
     const date = new Date(order.createdAt).toLocaleString();
     
+    // 1. CARRIER FALLBACK: Priority to the nested carrier object provided in your data
+    const carrierName = order.carrier?.name || order.nodeName || 'N/A';
+    const carrierImg = order.carrier?.image || order.image || 'https://via.placeholder.com/40';
+
+    // 2. AMOUNT FALLBACK: Check 'amount' first, then 'amountNGN'
+    const finalAmount = order.amount || order.amountNGN || 0;
+
+    // 3. TARGET INFO FALLBACK:
+    const targetNo = order.targetNumber || order.target?.number || 'N/A';
+    const targetCountry = order.country || order.target?.country || 'N/A';
+
     container.innerHTML = `
         <div class="grid grid-cols-2 gap-4">
             <div class="col-span-2 bg-blue-50 p-3 rounded-lg border border-blue-100">
@@ -320,22 +331,23 @@
 
             <div class="col-span-2 border-t border-b py-3 space-y-3">
                 <div class="flex items-center gap-3">
-                    <img src="${order.carrier?.image || order.image || 'https://via.placeholder.com/40'}" 
-                         class="w-10 h-10 rounded-lg object-contain bg-gray-100 p-1">
+                    <img src="${carrierImg}" 
+                         class="w-10 h-10 rounded-lg object-contain bg-gray-100 p-1"
+                         onerror="this.src='https://via.placeholder.com/40'">
                     <div>
-                        <p class="text-[10px] text-brand-lightText font-bold uppercase">Carrier</p>
-                        <p class="font-bold text-brand-darkText">${order.nodeName || order.carrier?.name || 'N/A'}</p>
+                        <p class="text-[10px] text-brand-lightText font-bold uppercase">Carrier Name</p>
+                        <p class="font-bold text-brand-darkText">${carrierName}</p>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-xl border border-brand-border">
                     <div>
                         <p class="text-[10px] text-brand-lightText font-bold uppercase">Target Number</p>
-                        <p class="font-bold text-sm text-blue-700">${order.targetNumber || order.target?.number || 'N/A'}</p>
+                        <p class="font-bold text-sm text-blue-700">${targetNo}</p>
                     </div>
                     <div>
                         <p class="text-[10px] text-brand-lightText font-bold uppercase">Coverage Country</p>
-                        <p class="font-bold text-sm">${order.country || order.target?.country || 'N/A'}</p>
+                        <p class="font-bold text-sm">${targetCountry}</p>
                     </div>
                 </div>
             </div>
@@ -354,11 +366,11 @@
                 <div class="bg-gray-50 p-3 rounded-xl border border-dashed border-brand-border">
                     <div class="flex justify-between mb-1 text-sm">
                         <span>Amount Paid:</span>
-                        <span class="font-bold text-green-700">₦${(order.amount || 0).toLocaleString()}</span>
+                        <span class="font-bold text-green-700">₦${finalAmount.toLocaleString()}</span>
                     </div>
                     <div class="flex justify-between text-[11px] text-brand-lightText">
                         <span>Current Status:</span>
-                        <span class="uppercase font-bold ${order.status === 'completed' ? 'text-green-600' : 'text-orange-500'}">${order.status}</span>
+                        <span class="uppercase font-bold ${order.status === 'successful' || order.status === 'completed' ? 'text-green-600' : 'text-orange-500'}">${order.status}</span>
                     </div>
                 </div>
             </div>

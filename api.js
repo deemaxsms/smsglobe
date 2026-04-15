@@ -321,7 +321,7 @@ const orderSchema = new mongoose.Schema({
     rdpUsername: String,  // Critical: Allows saving the Username
     rdpPassword: String,  // Critical: Allows saving the Password
     deliveredAt: Date,
-
+    receiptUrl: String,
     extraCPU: { type: Number, default: 0 },
     extraStorage: { type: Number, default: 0 },    
     activationCode: String, 
@@ -2636,14 +2636,15 @@ async function getEsimRefills(req, res) {
 }
 
 async function handleAdminEsimUpdate(req, res) {
-    // 1. Extract TID
+    // Ensure we are using the Order model registered in this file
+    const OrderModel = mongoose.models.Order || mongoose.model('Order');
+
     const tid = req.query.tid || req.body.tid;
     const { confirmationNumber, adminNote } = req.body;
     
-    // 2. Extract file path (Multer + Cloudinary)
     let receiptPath = null;
     if (req.file) {
-        // req.file.path is provided by cloudinary-multer
+        // Cloudinary provides the secure_url in req.file.path
         receiptPath = req.file.path; 
     }
 
@@ -2652,7 +2653,6 @@ async function handleAdminEsimUpdate(req, res) {
     }
 
     try {
-        // 3. Prepare Update
         const updateData = {
             status: 'completed',
             confirmationNumber: confirmationNumber,
@@ -2661,45 +2661,52 @@ async function handleAdminEsimUpdate(req, res) {
         };
 
         if (receiptPath) {
-            updateData.receiptUrl = receiptPath;
+            updateData.receiptUrl = receiptPath; // Ensure your schema has receiptUrl or use metadata
         }
 
-        // 4. Update Database (Using 'Order' model to match your creation logic)
-        const updatedOrder = await Order.findOneAndUpdate(
+        // Search by paymentReference which matches your schema
+        const updatedOrder = await OrderModel.findOneAndUpdate(
             { paymentReference: tid }, 
             { $set: updateData },
             { new: true } 
         );
 
         if (!updatedOrder) {
-            return res.status(404).json({ success: false, message: "Order not found." });
+            return res.status(404).json({ success: false, message: "Order not found in Database." });
         }
 
-        // 5. Send Delivery Email
+        // Email Block - Wrapped in its own try/catch so it doesn't crash the whole API
         try {
-            await sendDeliveryEmail(updatedOrder.userEmail, {
-                productType: "eSIM_Refill",
-                nodeName: updatedOrder.nodeName || "eSIM Carrier",
-                targetNumber: updatedOrder.targetNumber || 'N/A',
-                country: updatedOrder.country || 'N/A',
-                amount: updatedOrder.amount, 
-                confirmationNumber: confirmationNumber,
-                receiptUrl: updatedOrder.receiptUrl || null,
-                instructions: "Your eSIM refill is now active. See attached receipt."
-            });
+            if (typeof sendDeliveryEmail === 'function') {
+                await sendDeliveryEmail(updatedOrder.userEmail, {
+                    productType: updatedOrder.productType,
+                    nodeName: updatedOrder.nodeName || updatedOrder.carrier?.name || "eSIM Carrier",
+                    targetNumber: updatedOrder.targetNumber || 'N/A',
+                    country: updatedOrder.country || 'N/A',
+                    amount: updatedOrder.amount, 
+                    confirmationNumber: confirmationNumber,
+                    receiptUrl: receiptPath || null,
+                    instructions: "Your eSIM refill is now active."
+                });
+            }
         } catch (emailErr) {
-            console.error("Email failed:", emailErr.message);
+            console.error("Email notification failed but DB updated:", emailErr.message);
         }
 
         return res.json({ 
             success: true, 
-            message: "Order completed successfully.",
+            message: "Order marked as completed.",
             data: updatedOrder 
         });
 
     } catch (error) {
-        console.error("ADMIN UPDATE ERROR:", error);
-        return res.status(500).json({ success: false, message: "Server error during update" });
+        // This log will appear in your Render/Netlify terminal
+        console.error("CRITICAL ADMIN ERROR:", error.message);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Internal Server Error", 
+            error: error.message 
+        });
     }
 }
 

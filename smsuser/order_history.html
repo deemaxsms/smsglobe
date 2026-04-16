@@ -167,10 +167,10 @@
             </section>
         </main>
     </div>
-
-    <div id="orderModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+<div id="orderModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-brand-darkText/40 backdrop-blur-sm" onclick="closeOrderModal()"></div>
-    <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl relative z-10 overflow-hidden transform transition-all scale-100">
+    <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl relative z-10 overflow-hidden">
+        
         <div class="p-5 border-b border-brand-border flex justify-between items-center bg-gray-50/50">
             <h3 class="font-black text-brand-darkText text-sm uppercase tracking-tight">Order Receipt</h3>
             <button onclick="closeOrderModal()" class="text-brand-lightText hover:text-brand-darkText text-xl">&times;</button>
@@ -188,6 +188,9 @@
                 </div>
             </div>
 
+            <div id="modalDynamicDetails" class="space-y-3 border-t border-brand-border pt-4 mt-2">
+                </div>
+
             <div class="p-4 bg-brand-background rounded-xl border border-brand-blue/10">
                 <div class="flex justify-between items-center mb-2">
                     <span class="text-[10px] font-medium text-brand-midText">Amount Paid</span>
@@ -200,10 +203,10 @@
             </div>
 
             <div>
-                <p class="text-[9px] font-bold text-brand-lightText uppercase mb-2">Proof of Service / Receipt</p>
+                <p class="text-[9px] font-bold text-brand-lightText uppercase mb-2">Proof of Service</p>
                 <div id="receiptContainer" class="rounded-xl border-2 border-dashed border-brand-border bg-gray-50 flex flex-col items-center justify-center p-4 min-h-[150px]">
                     <p id="noReceiptMsg" class="text-[10px] text-brand-lightText">No attachment uploaded yet.</p>
-                    <img id="receiptImg" src="" alt="Admin Receipt" class="hidden rounded-lg w-full h-auto shadow-sm cursor-zoom-in" onclick="window.open(this.src)">
+                    <img id="receiptImg" src="" alt="Admin Receipt" class="hidden rounded-lg w-full h-auto shadow-sm">
                 </div>
             </div>
         </div>
@@ -214,7 +217,6 @@
         </div>
     </div>
 </div>
-
     <script>
         const API_BASE_URL = '/api';
 

@@ -669,40 +669,41 @@ function showSuccessModal(data) {
     const successState = document.getElementById('successState');
     const modalCode = document.getElementById('modalCode');
     const modalInstructions = document.getElementById('modalInstructions');
-    if (confirmState) confirmState.classList.add('hidden');
-    
+
+    // 1. Completely hide the confirmation UI
+    if (confirmState) {
+        confirmState.classList.add('hidden');
+        confirmState.style.display = 'none'; // Force layout removal
+    }
+
+    // 2. Show the success UI
     if (successState) {
         successState.classList.remove('hidden');
-        successState.classList.add('animate-in', 'fade-in', 'zoom-in', 'duration-500');
+        successState.style.display = 'block'; // Force visibility
         if (modal) modal.scrollTop = 0; 
     }
     const credentials = data.credentials || {};
     const activationCode = credentials.activationCode || data.activationCode || data.code || "SUCCESSFUL";
-    
     const info = credentials.instructions || data.instructions || data.message || "Your proxy is now active. Use the code above to connect.";
-    if (modalCode) {
-        modalCode.innerText = activationCode;
-    }
-    
-    if (modalInstructions) {
-        modalInstructions.innerText = info;
-    }
-    const copyBtn = document.querySelector('[onclick*="copyToClipboard"]') || document.getElementById('copyCodeBtn');
+
+    if (modalCode) modalCode.innerText = activationCode;
+    if (modalInstructions) modalInstructions.innerText = info;
+
+    const copyBtn = document.getElementById('copyCodeBtn');
     if (copyBtn) {
         copyBtn.onclick = (e) => {
             e.preventDefault();
             navigator.clipboard.writeText(activationCode).then(() => {
-                const originalContent = copyBtn.innerHTML;
-                // Emerald-500 matches your brand's success feedback style
-                copyBtn.innerHTML = '<span class="text-[9px] text-emerald-500 font-bold uppercase">Copied!</span>';
-                setTimeout(() => { copyBtn.innerHTML = originalContent; }, 2000);
+                const original = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<span class="text-[10px] text-emerald-600 font-bold uppercase">Copied!</span>';
+                setTimeout(() => { copyBtn.innerHTML = original; }, 2000);
             });
         };
     }
-    if (modal) {
-        modal.classList.remove('hidden');
-    }
+
+    if (modal) modal.classList.remove('hidden');
 }
+
     function closeModal() {
         document.getElementById('proxyModal').classList.add('hidden');
         window.location.href = 'user_dashboard.html';

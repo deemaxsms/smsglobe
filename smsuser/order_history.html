@@ -151,7 +151,8 @@
                                 <th class="px-5 py-3 text-[9px] font-bold text-brand-lightText uppercase">Amount</th>
                                 <th class="px-5 py-3 text-[9px] font-bold text-brand-lightText uppercase">Payment</th>
                                 <th class="px-5 py-3 text-[9px] font-bold text-brand-lightText uppercase">Status</th>
-                                <th class="px-5 py-3 text-[9px] font-bold text-brand-lightText uppercase">Date & Time</th>        
+                                <th class="px-5 py-3 text-[9px] font-bold text-brand-lightText uppercase">Date & Time</th>  
+                                <th class="px-5 py-3 text-[9px] font-bold text-brand-lightText uppercase">Action</th>      
                             </tr>
                         </thead>
                         <tbody id="historyBody" class="divide-y divide-brand-border">
@@ -166,6 +167,53 @@
             </section>
         </main>
     </div>
+
+    <div id="orderModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-brand-darkText/40 backdrop-blur-sm" onclick="closeOrderModal()"></div>
+    <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl relative z-10 overflow-hidden transform transition-all scale-100">
+        <div class="p-5 border-b border-brand-border flex justify-between items-center bg-gray-50/50">
+            <h3 class="font-black text-brand-darkText text-sm uppercase tracking-tight">Order Receipt</h3>
+            <button onclick="closeOrderModal()" class="text-brand-lightText hover:text-brand-darkText text-xl">&times;</button>
+        </div>
+        
+        <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto no-scrollbar">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p class="text-[9px] font-bold text-brand-lightText uppercase">Product</p>
+                    <p id="modalProduct" class="text-xs font-bold text-brand-darkText mt-0.5">-</p>
+                </div>
+                <div>
+                    <p class="text-[9px] font-bold text-brand-lightText uppercase">Transaction ID</p>
+                    <p id="modalID" class="text-[10px] font-mono text-brand-midText mt-0.5 break-all">-</p>
+                </div>
+            </div>
+
+            <div class="p-4 bg-brand-background rounded-xl border border-brand-blue/10">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-[10px] font-medium text-brand-midText">Amount Paid</span>
+                    <span id="modalAmount" class="text-sm font-black text-brand-blue">-</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-[10px] font-medium text-brand-midText">Payment Method</span>
+                    <span id="modalPayment" class="text-[9px] font-bold px-2 py-0.5 bg-white rounded border border-brand-border uppercase">-</span>
+                </div>
+            </div>
+
+            <div>
+                <p class="text-[9px] font-bold text-brand-lightText uppercase mb-2">Proof of Service / Receipt</p>
+                <div id="receiptContainer" class="rounded-xl border-2 border-dashed border-brand-border bg-gray-50 flex flex-col items-center justify-center p-4 min-h-[150px]">
+                    <p id="noReceiptMsg" class="text-[10px] text-brand-lightText">No attachment uploaded yet.</p>
+                    <img id="receiptImg" src="" alt="Admin Receipt" class="hidden rounded-lg w-full h-auto shadow-sm cursor-zoom-in" onclick="window.open(this.src)">
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4 bg-gray-50 border-t border-brand-border flex gap-2">
+            <button onclick="closeOrderModal()" class="flex-grow py-2.5 bg-white border border-brand-border text-brand-darkText rounded-xl text-[11px] font-bold active-scale">Close</button>
+            <button id="downloadReceiptBtn" class="flex-grow py-2.5 bg-brand-blue text-white rounded-xl text-[11px] font-bold active-scale hidden">Download Receipt</button>
+        </div>
+    </div>
+</div>
 
     <script>
         const API_BASE_URL = '/api';
@@ -185,79 +233,133 @@
             }
         }
 
-        function renderHistory(orders) {
-            const container = document.getElementById('historyBody');
-            const totalCount = document.getElementById('totalOrdersCount');
-            const successCount = document.getElementById('successfulCount');
-            const pendingCount = document.getElementById('pendingCount');
+     function renderHistory(orders) {
+    const container = document.getElementById('historyBody');
+    const totalCount = document.getElementById('totalOrdersCount');
+    const successCount = document.getElementById('successfulCount');
+    const pendingCount = document.getElementById('pendingCount');
 
-            if (!orders || orders.length === 0) {
-                container.innerHTML = `<tr><td colspan="5" class="px-5 py-20 text-center text-[11px] text-brand-lightText">No transactions found in your account history.</td></tr>`;
-                return;
-            }
+    if (!orders || orders.length === 0) {
+        container.innerHTML = `<tr><td colspan="6" class="px-5 py-20 text-center text-[11px] text-brand-lightText">No transactions found in your account history.</td></tr>`;
+        return;
+    }
 
-            // Stats Logic
-            totalCount.innerText = orders.length;
-            successCount.innerText = orders.filter(o => o.status?.toLowerCase() === 'successful' || o.status?.toLowerCase() === 'completed').length;
-            pendingCount.innerText = orders.filter(o => o.status?.toLowerCase() === 'pending').length;
+    // Stats Logic
+    totalCount.innerText = orders.length;
+    successCount.innerText = orders.filter(o => ['successful', 'completed'].includes(o.status?.toLowerCase())).length;
+    pendingCount.innerText = orders.filter(o => o.status?.toLowerCase() === 'pending').length;
 
-            container.innerHTML = ''; 
+    container.innerHTML = ''; 
 
-            orders.forEach(order => {
-                const statusColors = {
-                    successful: 'bg-green-50 text-green-600 border-green-100',
-                    completed: 'bg-green-50 text-green-600 border-green-100',
-                    pending: 'bg-orange-50 text-orange-600 border-orange-100',
-                    failed: 'bg-red-50 text-red-600 border-red-100'
-                };
+    orders.forEach(order => {
+        const statusColors = {
+            successful: 'bg-green-50 text-green-600 border-green-100',
+            completed: 'bg-green-50 text-green-600 border-green-100',
+            pending: 'bg-orange-50 text-orange-600 border-orange-100',
+            failed: 'bg-red-50 text-red-600 border-red-100'
+        };
 
-                const currentStatus = (order.status || 'pending').toLowerCase();
-                const colorClass = statusColors[currentStatus] || 'bg-gray-50 text-gray-600 border-gray-100';
-                
-                // Date Formatting
-                let dateStr = "N/A", timeStr = "---";
-                const rawDate = order.createdAt || order.date;
-                if (rawDate) {
-                    const dateObj = new Date(rawDate);
-                    dateStr = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-                    timeStr = dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-                }
-
-                const isBonus = order.paymentMethod === 'Referral Bonus' || order.useBonus === true;
-                const sourceLabel = isBonus ? 'BONUS' : 'WALLET';
-
-                const row = `
-                    <tr class="hover:bg-gray-50/50 transition-colors">
-                        <td class="px-5 py-4">
-                            <div class="flex flex-col">
-                                <span class="text-[11px] font-bold text-brand-darkText uppercase">${order.productType || 'SERVICE'}</span>
-                                <span class="text-[9px] text-brand-lightText">${order.nodeName || order.product || 'Details'}</span>
-                            </div>
-                        </td>
-                        <td class="px-5 py-4 text-[11px] font-black text-brand-darkText">
-                            ₦${(order.amount || 0).toLocaleString()}
-                        </td>
-                        <td class="px-5 py-4">
-                            <span class="px-2 py-0.5 rounded text-[8px] font-black border ${isBonus ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-blue-50 text-blue-600 border-blue-100'} uppercase">
-                                ${sourceLabel}
-                            </span>
-                        </td>
-                        <td class="px-5 py-4">
-                            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold border ${colorClass} uppercase">
-                                ${currentStatus}
-                            </span>
-                        </td>
-                        <td class="px-5 py-4">
-                            <div class="flex flex-col">
-                                <span class="text-[10px] text-brand-darkText font-semibold">${dateStr}</span>
-                                <span class="text-[8px] text-brand-lightText uppercase">${timeStr}</span>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                container.insertAdjacentHTML('beforeend', row);
-            });
+        const currentStatus = (order.status || 'pending').toLowerCase();
+        const colorClass = statusColors[currentStatus] || 'bg-gray-50 text-gray-600 border-gray-100';
+        
+        // Date Formatting
+        let dateStr = "N/A", timeStr = "---";
+        const rawDate = order.createdAt || order.date;
+        if (rawDate) {
+            const dateObj = new Date(rawDate);
+            dateStr = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+            timeStr = dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
         }
+
+        const isBonus = order.paymentMethod === 'Referral Bonus' || order.useBonus === true;
+        const sourceLabel = isBonus ? 'BONUS' : 'WALLET';
+
+        // Prepare order data for the modal button (escapes quotes safely)
+        const orderData = encodeURIComponent(JSON.stringify(order));
+
+        const row = `
+            <tr class="hover:bg-gray-50/50 transition-colors">
+                <td class="px-5 py-4">
+                    <div class="flex flex-col">
+                        <span class="text-[11px] font-bold text-brand-darkText uppercase">${order.productType || 'SERVICE'}</span>
+                        <span class="text-[9px] text-brand-lightText">${order.nodeName || order.product || 'Details'}</span>
+                    </div>
+                </td>
+                <td class="px-5 py-4 text-[11px] font-black text-brand-darkText">
+                    ₦${(order.amount || 0).toLocaleString()}
+                </td>
+                <td class="px-5 py-4">
+                    <span class="px-2 py-0.5 rounded text-[8px] font-black border ${isBonus ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-blue-50 text-blue-600 border-blue-100'} uppercase">
+                        ${sourceLabel}
+                    </span>
+                </td>
+                <td class="px-5 py-4">
+                    <span class="px-2 py-0.5 rounded-full text-[9px] font-bold border ${colorClass} uppercase">
+                        ${currentStatus}
+                    </span>
+                </td>
+                <td class="px-5 py-4">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-brand-darkText font-semibold">${dateStr}</span>
+                        <span class="text-[8px] text-brand-lightText uppercase">${timeStr}</span>
+                    </div>
+                </td>
+                <td class="px-5 py-4">
+                    <button onclick="viewOrderDetails('${orderData}')" 
+                        class="bg-brand-blue/10 text-brand-blue hover:bg-brand-blue hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all active-scale">
+                        View
+                    </button>
+                </td>
+            </tr>
+        `;
+        container.insertAdjacentHTML('beforeend', row);
+    });
+}
+
+function viewOrderDetails(encodedData) {
+    const order = JSON.parse(decodeURIComponent(encodedData));
+    // Now call the function we built in the previous step
+    openOrderDetails(order); 
+}
+
+function openOrderDetails(order) {
+    const modal = document.getElementById('orderModal');
+    
+    // Fill Text Data
+    document.getElementById('modalProduct').innerText = `${order.productType || 'Service'} (${order.nodeName || 'Standard'})`;
+    document.getElementById('modalID').innerText = order._id || 'N/A';
+    document.getElementById('modalAmount').innerText = `₦${(order.amount || 0).toLocaleString()}`;
+    document.getElementById('modalPayment').innerText = order.paymentMethod || (order.useBonus ? 'Bonus Wallet' : 'Main Wallet');
+
+    // Handle Admin Receipt Image
+    const receiptImg = document.getElementById('receiptImg');
+    const noReceiptMsg = document.getElementById('noReceiptMsg');
+    const downloadBtn = document.getElementById('downloadReceiptBtn');
+
+    // Assuming admin uploads the path to 'order.receiptUrl' or 'order.adminImage'
+    const imageUrl = order.receiptUrl || order.adminImage; 
+
+    if (imageUrl) {
+        receiptImg.src = imageUrl;
+        receiptImg.classList.remove('hidden');
+        noReceiptMsg.classList.add('hidden');
+        downloadBtn.classList.remove('hidden');
+        downloadBtn.onclick = () => window.open(imageUrl, '_blank');
+    } else {
+        receiptImg.classList.add('hidden');
+        noReceiptMsg.classList.remove('hidden');
+        downloadBtn.classList.add('hidden');
+    }
+
+    // Show Modal
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden'; // Stop scrolling
+}
+
+function closeOrderModal() {
+    document.getElementById('orderModal').classList.add('hidden');
+    document.body.style.overflow = 'auto'; // Enable scrolling
+}
 
         function logout() {
             localStorage.removeItem('userToken');

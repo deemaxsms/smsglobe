@@ -856,6 +856,7 @@ async function handleManageUser(req, res) {
         return res.status(500).json({ success: false, message: err.message });
     }
 }
+
 async function handleGetVPNs(req, res) {
     try {
         const vpns = await VPN.find({})
@@ -1530,20 +1531,20 @@ async function handlePurchaseWithWallet(req, res) {
         let productDetails = { name: "", plan: "" };
         let orderSpecifics = {};
 
-        if (vpnId) {
-    // We use .select('+password...') because these fields are likely hidden in your schema
+       if (vpnId) {
+    // 1. First, just decrement the stock
     const item = await VPN.findOneAndUpdate(
         { _id: vpnId, stock: { $gt: 0 } },
         { $inc: { stock: -1 } },
         { 
-            returnDocument: 'after', 
-            // CRITICAL: Ensure we explicitly select the hidden credentials
-        select: 'password pcPassword activationCode username pcUsername pcMethod instructions plans'
+            returnDocument: 'after',
+            // Use the + prefix for HIDDEN fields and list others clearly
+            select: '+password +pcPassword activationCode username pcUsername pcMethod instructions plans name' 
         }
     );
     
-    if (!item || !item.plans[planIndex]) {
-        return res.status(404).json({ success: false, message: "VPN unavailable or out of stock" });
+    if (!item || !item.plans || !item.plans[planIndex]) {
+        return res.status(404).json({ success: false, message: "VPN unavailable or invalid plan" });
     }
 
     itemType = "VPN";
@@ -1551,21 +1552,18 @@ async function handlePurchaseWithWallet(req, res) {
     productDetails.name = item.name;
     productDetails.plan = item.plans[planIndex].duration;
     
-    // MATCHING YOUR ORDER SCHEMA:
-    // Your schema uses 'vpnCredentials: { username, password }'
     orderSpecifics = {
         vpnCredentials: {
             username: item.username || "",
-            password: item.password || ""
+            password: item.password || "" // This will now be available because of the +password select
         },
-        // These fields are flat in your Order schema
         pcUsername: item.pcUsername || "",
-        pcPassword: item.pcPassword || "",
+        pcPassword: item.pcPassword || "", 
         activationCode: item.activationCode || "",
         pcMethod: item.pcMethod || "",
-        instructions: item.instructions || "Follow the setup guide provided in your dashboard."
+        instructions: item.instructions || "Follow the setup guide in your dashboard."
     };
-        } 
+}
         else if (proxyId) {
             const item = await Proxy.findOneAndUpdate(
                 { _id: proxyId, stock: { $gt: 0 } },
@@ -1618,8 +1616,8 @@ else if (rdpId) {
 }
         else if (metadata?.activationEmail && metadata?.firstName) {
             itemType = "eSIM_Activation";
-            const cleanedPrice = planAmount.toString().split('.')[0].replace(/[^0-9]/g, "");
-            costNGN = Math.round(Number(cleanedPrice));
+        const cleanedPrice = (planAmount || "0").toString().split('.')[0].replace(/[^0-9]/g, "");
+                costNGN = Math.round(Number(cleanedPrice));
 
             productDetails.name = carrierName || "Global eSIM";
             productDetails.plan = planName || `₦${costNGN.toLocaleString()} Activation`;
@@ -1759,7 +1757,7 @@ const manualProducts = ["eSIM_Refill", "eSIM_Activation", "RDP"];
 const isManual = manualProducts.includes(itemType);
 
 if (!isManual) {
-    await sendDeliveryEmail(user.email, { 
+    sendDeliveryEmail(user.email, { 
         ...orderSpecifics, 
         productType: itemType, 
         nodeName: productDetails.name, 
@@ -1777,7 +1775,7 @@ if (!isManual) {
 // 2. Admin Notification (Only for Manual products)
 if (isManual) { // Use the variable here instead of re-checking the array
     try {
-        await sendAdminNotification({
+        sendAdminNotification({
             type: itemType,
             email: user.email,
             product: productDetails.name,
@@ -3317,7 +3315,7 @@ async function handleGetUserOrders(req, res) {
         const token = authHeader.split(' ')[1];
         
         const jwt = require('jsonwebtoken');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_secret_key');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const userEmail = decoded.email;
 
         if (!userEmail) {

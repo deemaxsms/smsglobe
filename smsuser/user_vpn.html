@@ -604,68 +604,60 @@ async function buyVPN(vpnId) {
             confirmState.classList.remove('hidden');
             modal.classList.remove('hidden');
 
-          // Inside your buyVPN function, update Section 5:
-confirmBtn.onclick = async () => {
-    // 1. Get references to the UI states
-    const processingState = document.getElementById('processingState');
-    const confirmState = document.getElementById('confirmState');
+        confirmBtn.onclick = async () => {
+        const processingState = document.getElementById('processingState');
+        const confirmState = document.getElementById('confirmState');
 
-    // 2. Switch UI to Processing mode
-    confirmState.classList.add('hidden');
-    processingState.classList.remove('hidden');
+        confirmState.classList.add('hidden');
+        processingState.classList.remove('hidden');
 
-    try {
-        // 3. Start BOTH the API call and a 5-second timer
-        const apiPromise = fetch(`${API_BASE_URL}/purchase-with-wallet`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${token}` 
-            },
-            body: JSON.stringify({ 
-                vpnId, 
-                planIndex: parseInt(planIndex),
-                useBonus: bonusToggle.checked 
-            })
-        });
+        try {
+            const apiPromise = fetch(`${API_BASE_URL}/purchase-with-wallet`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: JSON.stringify({ 
+                    vpnId, 
+                    planIndex: parseInt(planIndex),
+                    useBonus: bonusToggle.checked 
+                })
+            });
 
-        // Forced delay of 5000ms (5 seconds)
-        const timerPromise = new Promise(resolve => setTimeout(resolve, 5000));
+            // Keep the 5s timer for the "premium" feel as discussed
+            const timerPromise = new Promise(resolve => setTimeout(resolve, 5000));
 
-        // 4. Wait for both to complete
-        const [purchaseRes] = await Promise.all([apiPromise, timerPromise]);
-        const pData = await purchaseRes.json();
-        
-        if (pData.success) {
-            // Logic for credentials
-            const creds = pData.credentials || (pData.order ? {
-                username: pData.order.username || pData.order.vpnCredentials?.username,
-                password: pData.order.password || pData.order.vpnCredentials?.password,
-                pcUsername: pData.order.pcUsername,
-                pcPassword: pData.order.pcPassword,
-                activationCode: pData.order.activationCode,
-                instructions: pData.order.instructions
-            } : null);
+            const [purchaseRes] = await Promise.all([apiPromise, timerPromise]);
+            const pData = await purchaseRes.json();
+            
+            if (pData.success) {
+                // UPDATE: Update local balance displays
+                if (typeof userBalance !== 'undefined') {
+                    userBalance = pData.balance;
+                    if (document.getElementById('displayBalance')) {
+                        document.getElementById('displayBalance').innerText = `₦${userBalance.toLocaleString()}`;
+                    }
+                }
 
-            if (typeof userBalance !== 'undefined') userBalance = pData.balance; 
-
-            // IMPORTANT: Hide processing state before showing success details
-            processingState.classList.add('hidden');
-            showSuccessDetails(creds, vpnData);
-        } else {
-            // If error, revert back to confirmation state
-            alert(pData.message || "Purchase failed");
+                processingState.classList.add('hidden');
+                
+                // Pass the order object directly to success details
+                showSuccessDetails(pData.order, vpnData);
+            } else {
+                alert(pData.message || "Purchase failed");
+                processingState.classList.add('hidden');
+                confirmState.classList.remove('hidden');
+                checkAffordability();
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Connection Error. Please check your network.");
             processingState.classList.add('hidden');
             confirmState.classList.remove('hidden');
-            checkAffordability();
         }
-    } catch (err) {
-        console.error(err);
-        alert("Connection Error. Please check your network.");
-        processingState.classList.add('hidden');
-        confirmState.classList.remove('hidden');
-    }
-};
+    };
+
         }
     } catch (err) {
         console.error("Verification Error:", err);
@@ -692,8 +684,7 @@ confirmBtn.onclick = async () => {
     }
 
     
-function showSuccessDetails(creds, vpnData) {
-    // 1. Switch UI States
+function showSuccessDetails(order, vpnData) {
     document.getElementById('confirmState').classList.add('hidden');
     document.getElementById('successState').classList.remove('hidden');
 
@@ -701,45 +692,45 @@ function showSuccessDetails(creds, vpnData) {
     const passWrap = document.getElementById('wrapPass');
     const codeWrap = document.getElementById('wrapCode');
     
-    // Hide all rows initially
+    // Reset visibility
     [userWrap, passWrap, codeWrap].forEach(el => el?.classList.add('hidden'));
 
-    if (!creds) {
-        console.error("No credentials provided.");
-        return;
-    }
+    if (!order) return;
 
-    const vpnCreds = creds.vpnCredentials || {};
-    
-    const finalUser = vpnCreds.username || creds.username || creds.pcUsername;
-    const finalPass = vpnCreds.password || creds.password || creds.pcPassword;
-    const finalCode = creds.activationCode;
-    if (finalUser && finalUser.trim() !== "") {
-        document.getElementById('resUser').innerText = finalUser;
+    // 1. Handle Credentials (VPN/RDP)
+    // We check the top level because the API spreads orderSpecifics
+    const finalUser = order.rdpUsername || (order.vpnCredentials && order.vpnCredentials.username) || order.username;
+    const finalPass = order.rdpPassword || (order.vpnCredentials && order.vpnCredentials.password) || order.password;
+    const finalCode = order.activationCode;
+
+    // If it's an RDP, show the IP in the username field for convenience
+    if (finalUser) {
+        const displayUser = order.ipAddress ? `${order.ipAddress} | ${finalUser}` : finalUser;
+        document.getElementById('resUser').innerText = displayUser;
         userWrap.classList.remove('hidden');
     }
     
-    if (finalPass && finalPass.trim() !== "") {
+    if (finalPass) {
         document.getElementById('resPass').innerText = finalPass;
         passWrap.classList.remove('hidden');
     }
     
-    if (finalCode && finalCode.trim() !== "") {
+    if (finalCode) {
         document.getElementById('resCode').innerText = finalCode;
         codeWrap.classList.remove('hidden');
     }
-    const defaultInstr = "Download the app from the official store and use the details above to log in.";
-    const finalInstructions = creds.instructions || vpnData?.instructions || defaultInstr;
-    
+
+    // 2. Handle Instructions
+    const defaultInstr = "Your order is being processed. Check your email or dashboard history for updates.";
+    document.getElementById('resInstructions').innerText = order.instructions || vpnData?.instructions || defaultInstr;
+
+    // 3. Handle Limits
     if (document.getElementById('resLimit')) {
-        document.getElementById('resLimit').innerText = `${vpnData?.deviceLimit || 1} Device(s)`;
-    }
-    
-    if (document.getElementById('resInstructions')) {
-        document.getElementById('resInstructions').innerText = finalInstructions;
+        document.getElementById('resLimit').innerText = order.productType === 'RDP' 
+            ? `${order.ram} RAM / ${order.cpu} CPU` 
+            : `${vpnData?.deviceLimit || 1} Device(s)`;
     }
 }
-
         function copyText(id) {
             const text = document.getElementById(id).innerText;
             navigator.clipboard.writeText(text);

@@ -278,64 +278,96 @@ const transactionSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const Transaction = mongoose.models.Transaction || mongoose.model('Transaction', transactionSchema);
-
-const orderSchema = new mongoose.Schema({
-    userEmail: { type: String, required: true, index: true },
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    fullName: { type: String },         
-    productType: { 
-        type: String, 
-        enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill', 'eSIM_Activation', 'RDP', 'RentedNumber'], 
-        required: true 
-    },
-    planName: String, 
-    nodeName: String, 
-    amount: { type: Number, required: true },
-    currency: { type: String, default: 'NGN' },         
-    mainBalanceUsed: { type: Number, default: 0 }, 
-    bonusBalanceUsed: { type: Number, default: 0 }, 
-    status: { 
-        type: String, 
-        enum: ['pending', 'processing', 'successful', 'failed', 'completed'], 
-        default: 'pending' 
-    }, 
-    paymentReference: { type: String, unique: true },    
-    targetNumber: String, 
-    country: String,
-    target: {
-        number: String,
-        country: String
-    },
-    carrier: {
-        id: String,
-        name: String,
-        image: String
-    },
-    confirmationNumber: { type: String }, // NEW: Store manual activation codes or IDs
-    adminNote: String, 
-    receiptUrl: String,
-    ram: String,
-    cpu: String,   // This allows "2 Cores" to be stored at the top level
-    storage: String,
-    net: String,   // This allows "1Gbps" to be stored at the top level
-    os: String,
-    ipAddress: String,    // Critical: Allows saving the IP
-    port: { type: String, default: '3389' }, // Critical: Allows saving the Port
-    rdpUsername: String,  // Critical: Allows saving the Username
-    rdpPassword: String,  // Critical: Allows saving the Password
-    deliveredAt: Date,
-    extraCPU: { type: Number, default: 0 },
-    extraStorage: { type: Number, default: 0 },    
-    activationCode: String, 
-    vpnCredentials: { username: String, password: { type: String } },
-    metadata: { type: mongoose.Schema.Types.Mixed } 
+function openOrderDetails(order) {
+    const modal = document.getElementById('orderModal');
     
-}, { timestamps: true });
+    // 1. Core Header Info
+    document.getElementById('modalProduct').innerText = `${order.productType.replace('_', ' ')} - ${order.nodeName || order.planName || 'Standard'}`;
+    document.getElementById('modalID').innerText = order.paymentReference || order._id;
+    document.getElementById('modalAmount').innerText = `₦${(order.amount || 0).toLocaleString()}`;
+    document.getElementById('modalPayment').innerText = order.bonusBalanceUsed > 0 ? 'Bonus + Main Wallet' : 'Main Wallet';
 
-// Optimize for dashboard performance
-orderSchema.index({ createdAt: -1 });
+    // 2. Dynamic Details Logic
+    const detailsContainer = document.getElementById('modalDynamicDetails');
+    let html = '';
 
-const Order = mongoose.models.Order || mongoose.model('Order', orderSchema);
+    // Helper for key-value rows
+    const addRow = (label, value, isCode = false) => {
+        if (!value) return;
+        html += `
+            <div class="flex justify-between items-start py-1 border-b border-gray-50 last:border-0">
+                <span class="text-[9px] font-bold text-brand-lightText uppercase">${label}</span>
+                <span class="text-[10px] font-semibold text-brand-darkText ${isCode ? 'font-mono bg-gray-100 px-1 rounded' : ''}">${value}</span>
+            </div>`;
+    };
+
+    // --- RDP / SERVER DETAILS ---
+    if (order.productType === 'RDP') {
+        html += `<p class="text-[8px] font-black text-brand-blue uppercase mb-1">Server Access</p>`;
+        addRow('IP Address', order.ipAddress, true);
+        addRow('Port', order.port, true);
+        addRow('Username', order.rdpUsername);
+        addRow('Password', order.rdpPassword, true);
+        addRow('Specs', `${order.cpu || order.extraCPU + ' Core'} / ${order.ram || 'N/A'} RAM`);
+        addRow('OS', order.os);
+    }
+
+    // --- eSIM REFILL & ACTIVATION ---
+    else if (order.productType.startsWith('eSIM')) {
+        html += `<p class="text-[8px] font-black text-brand-blue uppercase mb-1">eSIM Details</p>`;
+        addRow('Target/Device', order.targetNumber);
+        addRow('Country', order.country);
+        addRow('Carrier', order.carrier?.name);
+        addRow('Activation Code', order.activationCode || order.confirmationNumber, true);
+    }
+
+    // --- VPN & PROXY ---
+    else if (order.productType === 'VPN' || order.productType === 'Proxy') {
+        html += `<p class="text-[8px] font-black text-brand-blue uppercase mb-1">Connection Details</p>`;
+        addRow('Country/Node', order.country || order.nodeName);
+        addRow('Username', order.vpnCredentials?.username);
+        addRow('Password', order.vpnCredentials?.password, true);
+        addRow('IP/Target', order.targetNumber);
+    }
+
+    // --- RENTED NUMBERS ---
+    else if (order.productType === 'RentedNumber') {
+        addRow('Rented Number', order.targetNumber);
+        addRow('Service', order.planName);
+    }
+
+    if (order.adminNote) {
+        html += `
+            <div class="mt-3 p-3 bg-brand-background rounded-lg border border-brand-blue/10">
+                <p class="text-[8px] font-bold text-brand-blue uppercase mb-1">Admin Message:</p>
+                <p class="text-[10px] text-brand-midText leading-relaxed italic">"${order.adminNote}"</p>
+            </div>`;
+    }
+
+    detailsContainer.innerHTML = html || '<p class="text-[10px] text-center text-gray-400">Processing order details...</p>';
+
+    // 3. Receipt Image Logic
+    const receiptImg = document.getElementById('receiptImg');
+    const noReceiptMsg = document.getElementById('noReceiptMsg');
+    const downloadBtn = document.getElementById('downloadReceiptBtn');
+    const imageUrl = order.receiptUrl;
+
+    if (imageUrl) {
+        receiptImg.src = imageUrl;
+        receiptImg.classList.remove('hidden');
+        noReceiptMsg.classList.add('hidden');
+        downloadBtn.classList.remove('hidden');
+        downloadBtn.onclick = () => window.open(imageUrl, '_blank');
+    } else {
+        receiptImg.classList.add('hidden');
+        noReceiptMsg.classList.remove('hidden');
+        downloadBtn.classList.add('hidden');
+    }
+
+    // 4. Reveal Modal
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
 
 let isConnected = false;
 const connectDB = async () => {
@@ -1703,7 +1735,7 @@ else if (rdpId) {
             ...orderSpecifics,
             metadata: { 
                 ...metadata,
-                isManualProcess: (itemType === "eSIM_Refill" || itemType === "eSIM_Activation")
+            isManualProcess: (itemType === "eSIM_Refill" || itemType === "eSIM_Activation" || itemType === "RDP")
             }
         });
 

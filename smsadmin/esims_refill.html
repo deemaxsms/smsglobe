@@ -306,9 +306,11 @@ function viewOrderDetails(order) {
     const container = document.getElementById('detailContent');
     const date = new Date(order.createdAt).toLocaleString();
     
-    // Fallback logic for data fields
-    const carrierName = refill.nodeName || (refill.carrier && refill.carrier.name) || '';
-    const targetDisplay = refill.targetNumber || (refill.target && refill.target.number) || 'N/A';
+    // --- FIXED: Changed 'refill' to 'order' to match the function parameter ---
+    const carrierName = order.nodeName || (order.carrier && order.carrier.name) || 'eSIM Service';
+    const targetDisplay = order.targetNumber || (order.target && order.target.number) || 'N/A';
+    
+    // Fallback logic for payment data
     const finalAmount = order.amount || order.amountNGN || 0;
     const targetNo = order.targetNumber || order.target?.number || 'N/A';
     const targetCountry = order.country || order.target?.country || 'N/A';
@@ -384,8 +386,6 @@ function viewOrderDetails(order) {
     document.getElementById('modalGenReceiptBtn').onclick = () => showReceiptOptions(order);
     document.getElementById('detailModal').classList.remove('hidden');
 }
-
-
     function updateFileName(input) {
     const display = document.getElementById('fileNameDisplay');
     if (input.files && input.files[0]) {

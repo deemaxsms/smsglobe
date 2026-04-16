@@ -448,7 +448,7 @@
         return 'bg-gray-100 text-gray-700';
     }
 
-   async function processRDPDeployment(tid, event) {
+async function processRDPDeployment(tid, event) {
     const ipInput = document.getElementById(`log-ip-${tid}`);
     const portInput = document.getElementById(`log-port-${tid}`);
     const userInput = document.getElementById(`log-user-${tid}`);
@@ -462,7 +462,7 @@
     const pass = passInput.value.trim();
     const notes = notesInput.value.trim();
     
-    // 1. Check for Manual Upload first
+    // 1. Get initial file from input (if any)
     let receiptFile = fileInput && fileInput.files.length > 0 ? fileInput.files[0] : null;
 
     const btn = event.currentTarget || event.target;
@@ -486,7 +486,7 @@
     try {
         let finalReceiptUrl = "";
 
-        // 2. AUTO-GENERATE RECEIPT if none was uploaded
+        // 2. AUTO-GENERATE RECEIPT if none was uploaded manually
         if (!receiptFile) {
             console.log("No manual receipt found. Generating automatic receipt...");
             const orderData = allOrders.find(o => o.paymentReference === tid);
@@ -495,14 +495,12 @@
             }
         }
 
-      if (receiptInput.files.length > 0) {
-            btn.innerText = "Uploading Receipt...";
-            const file = receiptInput.files[0];
+        // 3. CLOUDINARY UPLOAD (Now using the correct receiptFile variable)
+        if (receiptFile) {
             const cloudFormData = new FormData();
-            
-            // Values from your Cloudinary Dashboard
-            cloudFormData.append('file', file);
+            cloudFormData.append('file', receiptFile);
             cloudFormData.append('upload_preset', 'smsglobe_unsigned'); 
+            cloudFormData.append('folder', 'rdp_receipts');
 
             const cloudRes = await fetch('https://api.cloudinary.com/v1_1/dycksm1kp/image/upload', {
                 method: 'POST',
@@ -512,19 +510,19 @@
             const cloudData = await cloudRes.json();
             
             if (cloudData.secure_url) {
-                receiptUrl = cloudData.secure_url;
+                finalReceiptUrl = cloudData.secure_url;
             } else {
                 throw new Error(cloudData.error?.message || "Cloudinary upload failed.");
             }
         }
 
-        // 4. CALL BACKEND WITH JSON (No FormData needed for the backend)
+        // 4. CALL BACKEND WITH JSON
         const token = localStorage.getItem('smsglobe_admin_token');
         const response = await fetch('/api/rdp-request-complete', {
             method: 'POST',
             headers: { 
                 'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json' // We are sending JSON now
+                'Content-Type': 'application/json' 
             },
             body: JSON.stringify({
                 tid,
@@ -534,7 +532,7 @@
                 rdpUsername: user,
                 rdpPassword: pass,
                 confirmationNumber: notes,
-                receiptUrl: finalReceiptUrl // Send the URL string here
+                receiptUrl: finalReceiptUrl 
             })
         });
 
@@ -549,12 +547,17 @@
             resetButton(btn, originalText);
         }
     } catch (err) {
-        console.error(err);
-        alert('Operation failed. Please check your connection or Cloudinary config.');
+        console.error("Deployment Error:", err);
+        alert('Operation failed: ' + err.message);
         resetButton(btn, originalText);
     }
 }
 
+function resetButton(btn, originalText) {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+}
 
 async function generateUniversalReceipt(order) {
     const receiptDiv = document.createElement('div');
@@ -689,13 +692,7 @@ async function downloadReceiptTrigger(orderReference) {
     }
 }
 
-// Helper to reset button state
-function resetButton(btn, originalText) {
-    btn.disabled = false;
-    btn.innerHTML = originalText;
-    btn.classList.remove('opacity-50', 'cursor-not-allowed');
-}
-    
+
     function logout() {
         localStorage.removeItem('smsglobe_admin_token');
         window.location.href = 'sms_login.html';

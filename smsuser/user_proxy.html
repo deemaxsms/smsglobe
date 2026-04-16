@@ -666,6 +666,7 @@ function closeModal() {
     document.getElementById('proxyModal').classList.add('hidden');
     window.location.href = 'user_dashboard.html';
 }
+
 function showSuccessModal(data) {
     const modal = document.getElementById('proxyModal');
     const confirmState = document.getElementById('confirmState');
@@ -673,15 +674,13 @@ function showSuccessModal(data) {
     const modalCode = document.getElementById('modalCode');
     const modalInstructions = document.getElementById('modalInstructions');
 
-    // 1. Map incoming data exactly to your transaction structure
-    // Primary: data.activationCode (from your snippet)
-    // Secondary: data.credentials.activationCode (backup for different products)
-    const code = data.activationCode || (data.credentials && data.credentials.activationCode) || "N/A";
+    // 1. Map data directly from your Order Schema
+    // We check data.activationCode first (top level of the order)
+    const code = data.activationCode || (data.metadata && data.metadata.activationCode) || "NOT_FOUND";
     
-    // Check for admin instructions in data.instructions or data.message
-    const info = data.instructions || data.message || (data.credentials && data.credentials.instructions) || "Your proxy has been provisioned successfully. You can manage it from your dashboard.";
+    // We check for instructions or adminNote from the order
+    const info = data.instructions || data.adminNote || "Your proxy is now active. You can view full details in your dashboard.";
 
-    // Update the UI
     if (modalCode) modalCode.innerText = code;
     if (modalInstructions) modalInstructions.innerText = info;
 
@@ -696,7 +695,7 @@ function showSuccessModal(data) {
         successState.style.display = 'flex'; 
     }
 
-    // 3. Handle Copy Functionality
+    // 3. Handle Copy
     const copyBtn = document.getElementById('copyCodeBtn');
     if (copyBtn) {
         copyBtn.onclick = () => {
@@ -708,13 +707,11 @@ function showSuccessModal(data) {
         };
     }
 
-    // 4. Reset modal scroll
     if (modal) {
         modal.classList.remove('hidden');
         modal.scrollTop = 0;
     }
 }
-
     function closeModal() {
         document.getElementById('proxyModal').classList.add('hidden');
         window.location.href = 'user_dashboard.html';

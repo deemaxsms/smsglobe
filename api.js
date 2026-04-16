@@ -1534,24 +1534,24 @@ async function handlePurchaseWithWallet(req, res) {
         instructions: item.instructions || "Follow the setup guide provided in your dashboard."
     };
         } 
-        else if (proxyId) {
-            const item = await Proxy.findOneAndUpdate(
-                { _id: proxyId, stock: { $gt: 0 } },
-                { $inc: { stock: -1 } },
-                { returnDocument: 'after', select: '+activationCode +instructions' } 
-            );
+        if (proxyId) {
+    const item = await Proxy.findOneAndUpdate(
+        { _id: proxyId, stock: { $gt: 0 } },
+        { $inc: { stock: -1 } },
+        { returnDocument: 'after', select: '+activationCode +instructions' } 
+    );
 
-            if (!item || !item.plans[planIndex]) {
-                return res.status(404).json({ success: false, message: "Proxy unavailable or out of stock" });
-            }
-            
-            itemType = "Proxy";
-            costNGN = Math.round(Number(item.plans[planIndex].price));
-            productDetails.name = item.name;
-            productDetails.plan = `${item.plans[planIndex].ip_count} IPs`;    
-            orderSpecifics.activationCode = item.activationCode;
-            orderSpecifics.instructions = item.instructions;
-        }
+    if (!item || !item.plans[planIndex]) {
+        return res.status(404).json({ success: false, message: "Proxy unavailable or out of stock" });
+    }
+    
+    itemType = "Proxy";
+    costNGN = Math.round(Number(item.plans[planIndex].price));
+    productDetails.name = item.name;
+    productDetails.plan = `${item.plans[planIndex].ip_count} IPs`;    
+    orderSpecifics.activationCode = item.activationCode;
+    orderSpecifics.instructions = item.instructions;
+}
 else if (rdpId) {
     itemType = "RDP";
     const rdpPlans = {

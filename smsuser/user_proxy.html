@@ -215,25 +215,35 @@
                         <p id="modalUserBalanceNGN" class="text-lg font-black text-brand-blue">₦0.00</p>
                     </div>
                 </div>
-                <div id="bonusSection" class="hidden py-3 px-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 text-left flex justify-between items-center">
-                    <div class="flex flex-col">
-                        <p class="text-[9px] font-bold text-emerald-700 uppercase tracking-wider">Referral Bonus</p>
-                        <p id="modalBonusBalanceNGN" class="text-sm font-black text-emerald-600">₦0.00</p>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="useBonusToggle" class="sr-only peer" checked>
-                        <div class="w-8 h-4 bg-gray-200 rounded-full peer peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:after:translate-x-full"></div>
-                    </label>
-                </div>
+               <div id="bonusSection" class="hidden py-3 px-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 text-left flex justify-between items-center">
+    <div class="flex flex-col">
+        <p class="text-[9px] font-bold text-emerald-700 uppercase tracking-wider">Referral Bonus</p>
+        <p id="modalBonusBalanceNGN" class="text-sm font-black text-emerald-600">₦0.00</p>
+    </div>
+    <div class="flex items-center gap-2">
+        <span id="bonusStatusLabel" class="text-[9px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-md border border-emerald-200">USE FIRST</span>
+        
+        <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="useBonusToggle" class="sr-only peer" checked>
+            <div class="w-8 h-4 bg-gray-200 rounded-full peer peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:after:translate-x-full"></div>
+        </label>
+    </div>
+</div>
                 <div class="py-3 px-4 bg-blue-50/50 rounded-2xl border border-brand-blue/10 text-left">
                     <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider">Total Amount Due</p>
                     <p id="modalPurchaseAmountNGN" class="text-lg font-black text-brand-darkText">₦0.00</p>
                 </div>
             </div>
 
+          
             <div class="flex gap-3">
                 <button onclick="closeModalOnly()" class="flex-1 py-4 border border-brand-border rounded-2xl font-bold text-xs text-brand-midText uppercase active-scale">Cancel</button>
-                <button id="finalConfirmBtn" class="flex-1 py-4 bg-brand-blue text-white rounded-2xl font-bold text-xs uppercase shadow-lg active-scale">Confirm & Pay</button>
+                <button id="finalConfirmBtn" class="flex-1 py-4 bg-brand-blue text-white rounded-2xl font-bold text-xs uppercase shadow-lg active-scale">
+                    Confirm & Pay
+                </button>
+                <button id="modalTopupBtn" onclick="window.location.href='topup.html'" class="hidden flex-1 py-4 bg-brand-darkText text-white rounded-2xl font-bold text-xs uppercase shadow-lg active-scale">
+                    Add Funds
+                </button>
             </div>
         </div>
 

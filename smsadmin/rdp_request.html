@@ -479,11 +479,13 @@
     btn.disabled = true;
     btn.innerHTML = `<span class="flex items-center justify-center gap-2">
         <svg class="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-        Processing Delivery...
+        Uploading & Processing...
     </span>`;
     btn.classList.add('opacity-50', 'cursor-not-allowed');
 
     try {
+        let finalReceiptUrl = "";
+
         // 2. AUTO-GENERATE RECEIPT if none was uploaded
         if (!receiptFile) {
             console.log("No manual receipt found. Generating automatic receipt...");
@@ -493,31 +495,51 @@
             }
         }
 
-        const token = localStorage.getItem('smsglobe_admin_token');
-        const formData = new FormData();
-        formData.append('tid', tid);
-        formData.append('status', 'completed');
-        formData.append('ipAddress', ip);
-        formData.append('port', port);
-        formData.append('rdpUsername', user);
-        formData.append('rdpPassword', pass);
-        formData.append('confirmationNumber', notes);
-        
+        // 3. CLOUDINARY UPLOAD (Same as eSIM logic)
         if (receiptFile) {
-            formData.append('receiptFile', receiptFile);
+            const cloudData = new FormData();
+            cloudData.append("file", receiptFile);
+            cloudData.append("upload_preset", "your_upload_preset"); // Replace with your actual preset
+            cloudData.append("folder", "rdp_receipts");
+
+            const cloudRes = await fetch("https://api.cloudinary.com/v1_1/your_cloud_name/image/upload", {
+                method: "POST",
+                body: cloudData
+            });
+
+            const cloudJson = await cloudRes.json();
+            if (cloudJson.secure_url) {
+                finalReceiptUrl = cloudJson.secure_url;
+            } else {
+                console.error("Cloudinary Error:", cloudJson);
+            }
         }
 
+        // 4. CALL BACKEND WITH JSON (No FormData needed for the backend)
+        const token = localStorage.getItem('smsglobe_admin_token');
         const response = await fetch('/api/rdp-request-complete', {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            body: formData
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json' // We are sending JSON now
+            },
+            body: JSON.stringify({
+                tid,
+                status: 'completed',
+                ipAddress: ip,
+                port: port,
+                rdpUsername: user,
+                rdpPassword: pass,
+                confirmationNumber: notes,
+                receiptUrl: finalReceiptUrl // Send the URL string here
+            })
         });
 
         const data = await response.json();
 
         if (data.success) {
             alert('RDP Provisioned and Receipt Sent!');
-            closeModal(); // Using your existing helper
+            if (typeof closeModal === 'function') closeModal();
             await fetchRDPRequests(); 
         } else {
             alert('Error: ' + (data.message || 'Update failed'));
@@ -525,10 +547,11 @@
         }
     } catch (err) {
         console.error(err);
-        alert('Connection error. Please check your internet.');
+        alert('Operation failed. Please check your connection or Cloudinary config.');
         resetButton(btn, originalText);
     }
 }
+
 
 async function generateUniversalReceipt(order) {
     const receiptDiv = document.createElement('div');
@@ -663,7 +686,7 @@ async function downloadReceiptTrigger(orderReference) {
     }
 }
 
-// Helper to reset button state on failure
+// Helper to reset button state
 function resetButton(btn, originalText) {
     btn.disabled = false;
     btn.innerHTML = originalText;

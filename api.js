@@ -2980,8 +2980,9 @@ async function handleAddRDP(req, res) {
     }
 }
 
-// Updated: Complete RDP Order with Receipt Support
+// Updated: Complete RDP Order (Aligned with eSIM Refill Pattern)
 async function handleCompleteRDPOrder(req, res) {
+    // 1. Extract data from req.body (receiptUrl now comes as a string from frontend)
     const { 
         tid, 
         status, 
@@ -2989,31 +2990,31 @@ async function handleCompleteRDPOrder(req, res) {
         ipAddress, 
         port, 
         rdpUsername, 
-        rdpPassword 
+        rdpPassword,
+        receiptUrl 
     } = req.body;
-    const file = req.file; 
+
+    // Basic validation
+    if (!tid) {
+        return res.status(400).json({ success: false, message: "Transaction ID (tid) is required." });
+    }
 
     try {
-        let receiptUrl = '';
-
-        // 1. Handle File Upload (Example using a Cloudinary helper)
-        if (file) {
-            const uploadResult = await uploadToCloudinary(file.path); 
-            receiptUrl = uploadResult.secure_url;
-        }
-
         // 2. Update the order in MongoDB
         const order = await Order.findOneAndUpdate(
             { paymentReference: tid },
             { 
-                status: status || 'completed',
-                confirmationNumber: confirmationNumber, 
-                ipAddress: ipAddress,
-                port: port || '3389',
-                rdpUsername: rdpUsername,
-                rdpPassword: rdpPassword,
-                receiptUrl: receiptUrl, // Store the URL in the database
-                deliveredAt: new Date()
+                $set: {
+                    status: status || 'completed',
+                    confirmationNumber: confirmationNumber, 
+                    ipAddress: ipAddress,
+                    port: port || '3389',
+                    rdpUsername: rdpUsername,
+                    rdpPassword: rdpPassword,
+                    receiptUrl: receiptUrl || '', // Store the URL directly from the body
+                    deliveredAt: new Date(),
+                    updatedAt: new Date()
+                }
             },
             { new: true } 
         );
@@ -3021,37 +3022,45 @@ async function handleCompleteRDPOrder(req, res) {
         if (!order) {
             return res.status(404).json({ success: false, message: "Order not found" });
         }
+
+        // 3. Trigger Delivery Email (Non-blocking)
         try {
-            await sendDeliveryEmail(order.userEmail, { 
-                productType: 'RDP', 
-                fullName: order.fullName,
-                confirmationNumber: confirmationNumber,         
-                os: order.os || 'Windows Server',
-                ram: order.ram || 'N/A',
-                cpu: order.cpu || 'N/A',
-                storage: order.storage || 'N/A',        
-                net: order.net || '1Gbps',
-                ipAddress: ipAddress || order.ipAddress,
-                port: port || order.port || '3389',
-                rdpUsername: rdpUsername || order.rdpUsername,
-                rdpPassword: rdpPassword || order.rdpPassword,
-                receiptUrl: receiptUrl, // Pass to email template
-                planName: order.planName || "RDP Service",
-                amount: order.amount
-            });
+            if (typeof sendDeliveryEmail === 'function') {
+                await sendDeliveryEmail(order.userEmail, { 
+                    productType: 'RDP', 
+                    fullName: order.fullName || 'Customer',
+                    confirmationNumber: confirmationNumber,         
+                    os: order.os || 'Windows Server',
+                    ram: order.ram || 'N/A',
+                    cpu: order.cpu || 'N/A',
+                    storage: order.storage || 'N/A',        
+                    net: order.net || '1Gbps',
+                    ipAddress: ipAddress || order.ipAddress,
+                    port: port || order.port || '3389',
+                    rdpUsername: rdpUsername || order.rdpUsername,
+                    rdpPassword: rdpPassword || order.rdpPassword,
+                    receiptUrl: receiptUrl || order.receiptUrl, 
+                    planName: order.planName || "RDP Service",
+                    amount: order.amount
+                });
+            }
         } catch (mailError) {
-            console.error("Email failed but database updated:", mailError);
+            console.error("Email failed but database updated:", mailError.message);
         }
 
         return res.status(200).json({ 
             success: true, 
-            message: "RDP Provisioned & Receipt Uploaded", 
+            message: "RDP Provisioned successfully", 
             order 
         });
 
     } catch (error) {
-        console.error("Fulfillment Error:", error);
-        return res.status(500).json({ success: false, message: "Internal Server Error" });
+        console.error("RDP Fulfillment Error:", error.message);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Internal Server Error",
+            error: error.message 
+        });
     }
 }
 

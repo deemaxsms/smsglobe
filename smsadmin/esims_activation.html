@@ -436,13 +436,14 @@ async function generateUniversalReceipt(order, format) {
     
     const logoUrl = 'https://i.imgur.com/8YeZgfx.png';
 
-    // 1. UPDATED DATE & TIME FORMATTING
-    const dateTime = new Date(order.createdAt).toLocaleString('en-NG', {
+    // 1. IMPROVED DATE & TIME FORMATTING (Lagos/Nigeria local time)
+    const dateTime = new Date(order.createdAt || Date.now()).toLocaleString('en-NG', {
         year: 'numeric', 
         month: 'long', 
         day: 'numeric',
         hour: '2-digit', 
         minute: '2-digit',
+        second: '2-digit',
         hour12: true
     });
 
@@ -457,53 +458,51 @@ async function generateUniversalReceipt(order, format) {
         </div>
 
         <div style="position:relative; z-index:1;">
-            <div style="text-align:center; margin-bottom:25px;">
+            <div style="text-align:center; margin-bottom:25px; border-bottom: 1px solid #f1f5f9; padding-bottom: 15px;">
                 <img src="${logoUrl}" style="width:45px; height:auto; margin:0 auto 10px auto; display:block;">
-                <h1 style="font-size:14px; margin:0; color:#0f54c6; text-transform:uppercase; letter-spacing:1px;">Official Receipt</h1>
-                <p style="font-size:10px; color:#64748b; margin-top:4px;">${dateTime}</p>
-            </div>
-
-            <div style="background:#f8fafc; border-radius:12px; padding:15px; margin-bottom:20px; border:1px solid #e2e8f0;">
-                <p style="font-size:9px; color:#64748b; margin:0 0 4px 0; text-transform:uppercase;">Total Amount Paid</p>
-                <h2 style="font-size:24px; color:#0f54c6; margin:0; font-weight:800;">₦${parseFloat(order.amount).toLocaleString()}</h2>
+                <h1 style="font-size:14px; margin:0; color:#0f54c6; text-transform:uppercase; letter-spacing:1px; font-weight:800;">Official Delivery Receipt</h1>
+                <div style="margin-top: 8px;">
+                    <p style="font-size:9px; color:#64748b; margin:0; text-transform:uppercase; letter-spacing:0.5px;">Issued On</p>
+                    <p style="font-size:11px; color:#1e293b; margin:2px 0; font-weight:600;">${dateTime}</p>
+                </div>
             </div>
 
             <div style="font-size:11px; line-height:1.6;">
-                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:6px 0;">
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:8px 0;">
                     <span style="color:#64748b;">Reference:</span>
                     <span style="font-weight:700; font-family:monospace;">${order.paymentReference}</span>
                 </div>
-                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:6px 0;">
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:8px 0;">
                     <span style="color:#64748b;">Carrier:</span>
                     <span style="font-weight:600;">${order.nodeName || 'N/A'}</span>
                 </div>
-                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:6px 0;">
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:8px 0;">
                     <span style="color:#64748b;">Device:</span>
                     <span style="font-weight:600;">${deviceName}</span>
                 </div>
-                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:6px 0;">
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:8px 0;">
                     <span style="color:#64748b;">Plan:</span>
                     <span style="font-weight:600;">${order.planName}</span>
                 </div>
-                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:6px 0;">
-                    <span style="color:#64748b;">Type:</span>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:8px 0;">
+                    <span style="color:#64748b;">Activation Type:</span>
                     <span style="font-weight:600; color:#0f54c6;">${activationType}</span>
                 </div>
             </div>
 
-            <div style="margin-top:20px; padding:12px; background:#fff; border:1px solid #f1f5f9; border-radius:8px;">
-                <p style="font-size:9px; color:#64748b; margin:0 0 5px 0; font-weight:bold; text-transform:uppercase;">Subscriber Info</p>
-                <p style="font-size:11px; margin:2px 0;"><b>Name:</b> ${order.fullName || 'N/A'}</p>
-                <p style="font-size:11px; margin:2px 0;"><b>Email:</b> ${order.email || order.userEmail}</p>
-                <p style="font-size:10px; margin:2px 0; color:#475569;"><b>Address:</b> ${order.address || 'N/A'}, ${order.zipCode || ''}</p>
+            <div style="margin-top:20px; padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+                <p style="font-size:9px; color:#64748b; margin:0 0 5px 0; font-weight:bold; text-transform:uppercase;">Subscriber Details</p>
+                <p style="font-size:11px; margin:2px 0; color:#1e293b;"><b>Name:</b> ${order.fullName || 'N/A'}</p>
+                <p style="font-size:11px; margin:2px 0; color:#1e293b;"><b>Email:</b> ${order.email || order.userEmail}</p>
+                <p style="font-size:10px; margin:2px 0; color:#64748b;"><b>Address:</b> ${order.address || 'N/A'}, ${order.zipCode || ''}</p>
             </div>
 
             <div style="margin-top:25px; text-align:center; padding-top:15px; border-top:2px dashed #e2e8f0;">
-                <p style="font-size:9px; color:#64748b; margin-bottom:5px;">CONFIRMATION NUMBER</p>
-                <p style="font-size:14px; font-weight:800; color:#16a34a; font-family:monospace; margin:0;">${order.confirmationNumber || 'VERIFIED'}</p>
+                <p style="font-size:9px; color:#64748b; margin-bottom:5px; text-transform:uppercase; letter-spacing:1px;">Provisioning Status</p>
+                <p style="font-size:14px; font-weight:800; color:#16a34a; font-family:monospace; margin:0;">${order.confirmationNumber || 'SUCCESSFULLY VERIFIED'}</p>
                 <div style="margin-top:20px;">
-                    <p style="font-size:10px; font-weight:700; color:#0f54c6; margin:0;">SMS GLOBE</p>
-                    <p style="font-size:8px; color:#94a3b8; margin-top:4px;">This is an electronically generated receipt.</p>
+                    <p style="font-size:10px; font-weight:800; color:#0f54c6; margin:0; letter-spacing:1px;">SMS GLOBE GLOBAL CONNECTIVITY</p>
+                    <p style="font-size:8px; color:#94a3b8; margin-top:4px;">This document serves as proof of service delivery.<br>Electronically generated on secure node.</p>
                 </div>
             </div>
         </div>
@@ -528,8 +527,9 @@ async function generateUniversalReceipt(order, format) {
             link.click();
         } else {
             const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', [80, 165]); 
-            pdf.addImage(imgData, 'PNG', 0, 0, 80, 165);
+            // Adjusted height since the amount box is removed
+            const pdf = new jsPDF('p', 'mm', [80, 150]); 
+            pdf.addImage(imgData, 'PNG', 0, 0, 80, 150);
             pdf.save(`SMS-GLOBE-Receipt-${order.paymentReference}.pdf`);
         }
     } catch (error) {
@@ -538,6 +538,7 @@ async function generateUniversalReceipt(order, format) {
         document.body.removeChild(receiptDiv);
     }
 }
+
 function getStatusClass(status) {
     const s = status.toLowerCase();
     if (s === 'completed' || s === 'successful') return 'bg-green-100 text-green-700';

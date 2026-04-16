@@ -582,21 +582,27 @@ function resetSubmitButton(btn, text) {
     Object.assign(receiptDiv.style, {
         width: '320px',
         padding: '25px',
-        background: '#ffffff', // Forced white background for both formats
+        background: '#ffffff',
         fontFamily: "'Inter', 'Segoe UI', Roboto, sans-serif",
         position: 'absolute',
         left: '-9999px',
         color: '#1a1a1a',
         lineHeight: '1.4',
-        overflow: 'hidden' // Ensures watermark doesn't bleed out
+        overflow: 'hidden'
     });
 
-    const date = new Date(order.createdAt || Date.now()).toLocaleDateString('en-NG', {
-        year: 'numeric', month: 'short', day: 'numeric'
+    // Enhanced Date and Time Formatting (Lagos/Nigeria context)
+    const dateTimeStr = new Date(order.createdAt || Date.now()).toLocaleString('en-NG', {
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit',
+        hour12: true
     });
     
     const serviceName = order.nodeName || order.carrier?.name || order.productName || 'Service Purchase';
-    const amount = order.amount || order.amountNGN || 0;
     const target = order.targetNumber || order.recipient || 'N/A';
     const coverage = order.country || order.target?.country || 'Global';
     const logoUrl = 'https://i.imgur.com/8YeZgfx.png';
@@ -609,13 +615,13 @@ function resetSubmitButton(btn, text) {
         <div style="position: relative; z-index: 1;">
             <div style="text-align: center; margin-bottom: 15px;">
                 <img src="${logoUrl}" crossorigin="anonymous" style="max-width: 80px; height: auto; margin-bottom: 5px; display: inline-block;">
-                <p style="margin: 0; font-size: 8px; color: #888; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600;">Official Transaction Document</p>
+                <p style="margin: 0; font-size: 8px; color: #888; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600;">Official Delivery Receipt</p>
             </div>
             
             <div style="border-top: 0.5px solid #eee; border-bottom: 0.5px solid #eee; padding: 10px 0; margin-bottom: 15px;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 10px;">
-                    <span style="color: #666;">Date</span>
-                    <span style="font-weight: 600;">${date}</span>
+                    <span style="color: #666;">Date/Time</span>
+                    <span style="font-weight: 600;">${dateTimeStr}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 10px;">
                     <span style="color: #666;">Reference</span>
@@ -634,14 +640,10 @@ function resetSubmitButton(btn, text) {
                 </div>
             </div>
 
-            <div style="text-align: center; padding: 12px; border: 1.5px dashed #e5e7eb; border-radius: 8px; background: rgba(255,255,255,0.7);">
-                <p style="margin: 0; font-size: 9px; color: #71717a; text-transform: uppercase; font-weight: 600;">Total Amount Paid</p>
-                <h2 style="margin: 2px 0 0 0; color: #10b981; font-size: 24px; font-weight: 800;">₦${amount.toLocaleString()}</h2>
-            </div>
-
             <div style="margin-top: 20px; text-align: center;">
                 <p style="margin: 0; font-size: 9px; color: #27272a; font-weight: 600;">Thank you for choosing SMS GLOBE</p>
-                <p style="margin: 3px 0; font-size: 7px; color: #a1a1aa; line-height: 1.2;">This is an electronically generated receipt.<br>No physical signature required.</p>
+                <p style="margin: 3px 0; font-size: 7px; color: #a1a1aa; line-height: 1.2;">This is an electronically generated delivery receipt.<br>No physical signature required.</p>
+                <p style="margin-top: 5px; font-size: 6px; color: #d1d1d6; text-transform: uppercase; letter-spacing: 1px;">Verified Node Assignment</p>
             </div>
         </div>
     `;
@@ -651,7 +653,7 @@ function resetSubmitButton(btn, text) {
     try {
         const canvas = await html2canvas(receiptDiv, {
             scale: 4,
-            backgroundColor: "#ffffff", // Ensures the image is not transparent
+            backgroundColor: "#ffffff",
             useCORS: true,
             logging: false
         });
@@ -679,7 +681,6 @@ function resetSubmitButton(btn, text) {
         document.body.removeChild(receiptDiv);
     }
 }
-
     window.onload = fetchRefills;
 </script>
 </body>

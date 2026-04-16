@@ -597,11 +597,6 @@ async function generateUniversalReceipt(order) {
                 <p style="font-size:9px; color:#64748b; margin-top:4px;">${dateTime}</p>
             </div>
 
-            <div style="background:#f8fafc; border-radius:12px; padding:12px; margin-bottom:15px; border:1px solid #e2e8f0; text-align:center;">
-                <p style="font-size:8px; color:#64748b; margin:0; text-transform:uppercase;">Total Amount</p>
-                <h2 style="font-size:20px; color:#0f54c6; margin:0; font-weight:800;">₦${parseFloat(order.amount).toLocaleString()}</h2>
-            </div>
-
             <div style="font-size:10px; line-height:1.5;">
                 <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:5px 0;">
                     <span style="color:#64748b;">Reference:</span>
@@ -645,7 +640,6 @@ async function generateUniversalReceipt(order) {
         
         return new Promise((resolve) => {
             canvas.toBlob((blob) => {
-                // Create a file object from the blob
                 const file = new File([blob], `Receipt-${order.paymentReference.slice(-6)}.png`, { type: "image/png" });
                 resolve(file);
             }, 'image/png');

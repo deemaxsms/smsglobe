@@ -278,96 +278,64 @@ const transactionSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const Transaction = mongoose.models.Transaction || mongoose.model('Transaction', transactionSchema);
-function openOrderDetails(order) {
-    const modal = document.getElementById('orderModal');
+
+const orderSchema = new mongoose.Schema({
+    userEmail: { type: String, required: true, index: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    fullName: { type: String },         
+    productType: { 
+        type: String, 
+        enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill', 'eSIM_Activation', 'RDP', 'RentedNumber'], 
+        required: true 
+    },
+    planName: String, 
+    nodeName: String, 
+    amount: { type: Number, required: true },
+    currency: { type: String, default: 'NGN' },         
+    mainBalanceUsed: { type: Number, default: 0 }, 
+    bonusBalanceUsed: { type: Number, default: 0 }, 
+    status: { 
+        type: String, 
+        enum: ['pending', 'processing', 'successful', 'failed', 'completed'], 
+        default: 'pending' 
+    }, 
+    paymentReference: { type: String, unique: true },    
+    targetNumber: String, 
+    country: String,
+    target: {
+        number: String,
+        country: String
+    },
+    carrier: {
+        id: String,
+        name: String,
+        image: String
+    },
+    confirmationNumber: { type: String }, // NEW: Store manual activation codes or IDs
+    adminNote: String, 
+    receiptUrl: String,
+    ram: String,
+    cpu: String,   // This allows "2 Cores" to be stored at the top level
+    storage: String,
+    net: String,   // This allows "1Gbps" to be stored at the top level
+    os: String,
+    ipAddress: String,    // Critical: Allows saving the IP
+    port: { type: String, default: '3389' }, // Critical: Allows saving the Port
+    rdpUsername: String,  // Critical: Allows saving the Username
+    rdpPassword: String,  // Critical: Allows saving the Password
+    deliveredAt: Date,
+    extraCPU: { type: Number, default: 0 },
+    extraStorage: { type: Number, default: 0 },    
+    activationCode: String, 
+    vpnCredentials: { username: String, password: { type: String } },
+    metadata: { type: mongoose.Schema.Types.Mixed } 
     
-    // 1. Core Header Info
-    document.getElementById('modalProduct').innerText = `${order.productType.replace('_', ' ')} - ${order.nodeName || order.planName || 'Standard'}`;
-    document.getElementById('modalID').innerText = order.paymentReference || order._id;
-    document.getElementById('modalAmount').innerText = `₦${(order.amount || 0).toLocaleString()}`;
-    document.getElementById('modalPayment').innerText = order.bonusBalanceUsed > 0 ? 'Bonus + Main Wallet' : 'Main Wallet';
+}, { timestamps: true });
 
-    // 2. Dynamic Details Logic
-    const detailsContainer = document.getElementById('modalDynamicDetails');
-    let html = '';
+// Optimize for dashboard performance
+orderSchema.index({ createdAt: -1 });
 
-    // Helper for key-value rows
-    const addRow = (label, value, isCode = false) => {
-        if (!value) return;
-        html += `
-            <div class="flex justify-between items-start py-1 border-b border-gray-50 last:border-0">
-                <span class="text-[9px] font-bold text-brand-lightText uppercase">${label}</span>
-                <span class="text-[10px] font-semibold text-brand-darkText ${isCode ? 'font-mono bg-gray-100 px-1 rounded' : ''}">${value}</span>
-            </div>`;
-    };
-
-    // --- RDP / SERVER DETAILS ---
-    if (order.productType === 'RDP') {
-        html += `<p class="text-[8px] font-black text-brand-blue uppercase mb-1">Server Access</p>`;
-        addRow('IP Address', order.ipAddress, true);
-        addRow('Port', order.port, true);
-        addRow('Username', order.rdpUsername);
-        addRow('Password', order.rdpPassword, true);
-        addRow('Specs', `${order.cpu || order.extraCPU + ' Core'} / ${order.ram || 'N/A'} RAM`);
-        addRow('OS', order.os);
-    }
-
-    // --- eSIM REFILL & ACTIVATION ---
-    else if (order.productType.startsWith('eSIM')) {
-        html += `<p class="text-[8px] font-black text-brand-blue uppercase mb-1">eSIM Details</p>`;
-        addRow('Target/Device', order.targetNumber);
-        addRow('Country', order.country);
-        addRow('Carrier', order.carrier?.name);
-        addRow('Activation Code', order.activationCode || order.confirmationNumber, true);
-    }
-
-    // --- VPN & PROXY ---
-    else if (order.productType === 'VPN' || order.productType === 'Proxy') {
-        html += `<p class="text-[8px] font-black text-brand-blue uppercase mb-1">Connection Details</p>`;
-        addRow('Country/Node', order.country || order.nodeName);
-        addRow('Username', order.vpnCredentials?.username);
-        addRow('Password', order.vpnCredentials?.password, true);
-        addRow('IP/Target', order.targetNumber);
-    }
-
-    // --- RENTED NUMBERS ---
-    else if (order.productType === 'RentedNumber') {
-        addRow('Rented Number', order.targetNumber);
-        addRow('Service', order.planName);
-    }
-
-    if (order.adminNote) {
-        html += `
-            <div class="mt-3 p-3 bg-brand-background rounded-lg border border-brand-blue/10">
-                <p class="text-[8px] font-bold text-brand-blue uppercase mb-1">Admin Message:</p>
-                <p class="text-[10px] text-brand-midText leading-relaxed italic">"${order.adminNote}"</p>
-            </div>`;
-    }
-
-    detailsContainer.innerHTML = html || '<p class="text-[10px] text-center text-gray-400">Processing order details...</p>';
-
-    // 3. Receipt Image Logic
-    const receiptImg = document.getElementById('receiptImg');
-    const noReceiptMsg = document.getElementById('noReceiptMsg');
-    const downloadBtn = document.getElementById('downloadReceiptBtn');
-    const imageUrl = order.receiptUrl;
-
-    if (imageUrl) {
-        receiptImg.src = imageUrl;
-        receiptImg.classList.remove('hidden');
-        noReceiptMsg.classList.add('hidden');
-        downloadBtn.classList.remove('hidden');
-        downloadBtn.onclick = () => window.open(imageUrl, '_blank');
-    } else {
-        receiptImg.classList.add('hidden');
-        noReceiptMsg.classList.remove('hidden');
-        downloadBtn.classList.add('hidden');
-    }
-
-    // 4. Reveal Modal
-    modal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-}
+const Order = mongoose.models.Order || mongoose.model('Order', orderSchema);
 
 let isConnected = false;
 const connectDB = async () => {
@@ -856,7 +824,6 @@ async function handleManageUser(req, res) {
         return res.status(500).json({ success: false, message: err.message });
     }
 }
-
 async function handleGetVPNs(req, res) {
     try {
         const vpns = await VPN.find({})
@@ -1531,20 +1498,20 @@ async function handlePurchaseWithWallet(req, res) {
         let productDetails = { name: "", plan: "" };
         let orderSpecifics = {};
 
-       if (vpnId) {
-    // 1. First, just decrement the stock
+        if (vpnId) {
+    // We use .select('+password...') because these fields are likely hidden in your schema
     const item = await VPN.findOneAndUpdate(
         { _id: vpnId, stock: { $gt: 0 } },
         { $inc: { stock: -1 } },
         { 
-            returnDocument: 'after',
-            // Use the + prefix for HIDDEN fields and list others clearly
-            select: '+password +pcPassword activationCode username pcUsername pcMethod instructions plans name' 
+            returnDocument: 'after', 
+            // CRITICAL: Ensure we explicitly select the hidden credentials
+            select: '+password +pcPassword +activationCode' 
         }
     );
     
-    if (!item || !item.plans || !item.plans[planIndex]) {
-        return res.status(404).json({ success: false, message: "VPN unavailable or invalid plan" });
+    if (!item || !item.plans[planIndex]) {
+        return res.status(404).json({ success: false, message: "VPN unavailable or out of stock" });
     }
 
     itemType = "VPN";
@@ -1552,18 +1519,21 @@ async function handlePurchaseWithWallet(req, res) {
     productDetails.name = item.name;
     productDetails.plan = item.plans[planIndex].duration;
     
+    // MATCHING YOUR ORDER SCHEMA:
+    // Your schema uses 'vpnCredentials: { username, password }'
     orderSpecifics = {
         vpnCredentials: {
             username: item.username || "",
-            password: item.password || "" // This will now be available because of the +password select
+            password: item.password || ""
         },
+        // These fields are flat in your Order schema
         pcUsername: item.pcUsername || "",
-        pcPassword: item.pcPassword || "", 
+        pcPassword: item.pcPassword || "",
         activationCode: item.activationCode || "",
         pcMethod: item.pcMethod || "",
-        instructions: item.instructions || "Follow the setup guide in your dashboard."
+        instructions: item.instructions || "Follow the setup guide provided in your dashboard."
     };
-}
+        } 
         else if (proxyId) {
             const item = await Proxy.findOneAndUpdate(
                 { _id: proxyId, stock: { $gt: 0 } },
@@ -1616,8 +1586,8 @@ else if (rdpId) {
 }
         else if (metadata?.activationEmail && metadata?.firstName) {
             itemType = "eSIM_Activation";
-        const cleanedPrice = (planAmount || "0").toString().split('.')[0].replace(/[^0-9]/g, "");
-                costNGN = Math.round(Number(cleanedPrice));
+            const cleanedPrice = planAmount.toString().split('.')[0].replace(/[^0-9]/g, "");
+            costNGN = Math.round(Number(cleanedPrice));
 
             productDetails.name = carrierName || "Global eSIM";
             productDetails.plan = planName || `₦${costNGN.toLocaleString()} Activation`;
@@ -1733,7 +1703,7 @@ else if (rdpId) {
             ...orderSpecifics,
             metadata: { 
                 ...metadata,
-            isManualProcess: (itemType === "eSIM_Refill" || itemType === "eSIM_Activation" || itemType === "RDP")
+                isManualProcess: (itemType === "eSIM_Refill" || itemType === "eSIM_Activation")
             }
         });
 
@@ -1755,16 +1725,16 @@ else if (rdpId) {
         
 const manualProducts = ["eSIM_Refill", "eSIM_Activation", "RDP"];
 const isManual = manualProducts.includes(itemType);
-
+// 1. Customer Delivery (Only for Automated products)
 if (!isManual) {
-    sendDeliveryEmail(user.email, { 
+    await sendDeliveryEmail(user.email, { 
         ...orderSpecifics, 
         productType: itemType, 
         nodeName: productDetails.name, 
         planName: productDetails.plan || newOrder.planName,
-        amount: costNGN, 
+        amount: costNGN, // Pass as number so .toLocaleString() works inside the function
         paymentReference: paymentReference,
-        confirmationNumber: paymentReference,         
+        confirmationNumber: confirmationNumber,        
         targetNumber: mobileNumber || newOrder.metadata?.targetNumber || "N/A",
         country: coverageCountry || newOrder.metadata?.country || "N/A",        
         mainBalanceUsed: newOrder.mainBalanceUsed || 0,
@@ -1775,7 +1745,7 @@ if (!isManual) {
 // 2. Admin Notification (Only for Manual products)
 if (isManual) { // Use the variable here instead of re-checking the array
     try {
-        sendAdminNotification({
+        await sendAdminNotification({
             type: itemType,
             email: user.email,
             product: productDetails.name,
@@ -3315,7 +3285,7 @@ async function handleGetUserOrders(req, res) {
         const token = authHeader.split(' ')[1];
         
         const jwt = require('jsonwebtoken');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_secret_key');
         const userEmail = decoded.email;
 
         if (!userEmail) {

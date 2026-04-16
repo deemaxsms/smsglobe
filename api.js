@@ -238,6 +238,7 @@ const esimActivationSchema = new mongoose.Schema({
         name: { type: String, required: true }, // e.g., T-Mobile, AT&T
         image: { type: String } 
     },
+    receiptUrl: String,
     activationType: { type: String, required: true }, // e.g., 'Prepaid', 'Data-Only'
     deviceName: { type: String, required: true },    // The device name/model provided in 'targetNumber' field
     amount: { type: Number, required: true }, 
@@ -2127,8 +2128,26 @@ else if (isVPN) {
         const displayAddress = meta.address || credentials.address || 'Digital Delivery';
         const displayZip = meta.zip || credentials.zip || 'N/A';
         const displayType = meta.activationType || credentials.activationType || 'Prepaid';
+        
+        // Handle Receipt Link
+        const receiptUrl = credentials.receiptUrl || meta.receiptUrl;
+        let receiptSection = "";
+
+        if (receiptUrl) {
+            receiptSection = `
+                <tr>
+                    <td colspan="2" style="padding-top: 10px; padding-bottom: 20px; text-align: center;">
+                        <a href="${receiptUrl}" target="_blank" style="display: inline-block; background-color: #0F54C6; color: #ffffff; padding: 12px 25px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px; shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            📄 Download Official Receipt
+                        </a>
+                        <p style="font-size: 10px; color: #667085; margin-top: 8px;">Valid for official records and reimbursements</p>
+                    </td>
+                </tr>
+            `;
+        }
 
         dataTableHtml = `
+            ${receiptSection}
             <tr>
                 <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
                     <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Carrier</span><br>
@@ -2718,7 +2737,8 @@ async function handleAdminEsimUpdate(req, res) {
 }
 
 async function handleAdminEsimActivationUpdate(req, res) {
-    const { tid, status, confirmationNumber } = req.body;
+    // 1. Added receiptUrl to the request body
+    const { tid, status, confirmationNumber, receiptUrl } = req.body;
 
     if (!tid || !status) {
         return res.status(400).json({ success: false, message: "Missing Transaction ID or Status" });
@@ -2730,7 +2750,9 @@ async function handleAdminEsimActivationUpdate(req, res) {
             { 
                 $set: { 
                     status: status, 
-                    confirmationNumber: confirmationNumber || null, 
+                    confirmationNumber: confirmationNumber || null,
+                    // 2. Save receipt URL to Order metadata or top level
+                    "metadata.receiptUrl": receiptUrl || null, 
                     updatedAt: new Date() 
                 } 
             },
@@ -2740,43 +2762,44 @@ async function handleAdminEsimActivationUpdate(req, res) {
         if (!updatedOrder) {
             return res.status(404).json({ success: false, message: "Activation record not found in Orders" });
         }
+
         await EsimActivation.findOneAndUpdate(
             { paymentReference: tid },
             { 
                 $set: { 
                     status: status, 
-                    esimProfileId: confirmationNumber || null, 
+                    esimProfileId: confirmationNumber || null,
+                    receiptUrl: receiptUrl || null, // 3. Sync to specialized activation record
                     updatedAt: new Date() 
                 } 
             }
         );
 
         const isFinished = status.toLowerCase() === 'completed' || status.toLowerCase() === 'successful';        
-     if (isFinished) {
- try {
-    await sendDeliveryEmail(updatedOrder.userEmail, {
-        productType: "eSIM_Activation", 
-        nodeName: updatedOrder.nodeName || "Global eSIM",
-        planName: updatedOrder.planName || "Standard Plan",
-        amount: updatedOrder.amount,        
-        targetNumber: updatedOrder.targetNumber || "eSIM Device",
-        confirmationNumber: confirmationNumber || updatedOrder.confirmationNumber,        
-        metadata: {
-            ...updatedOrder.metadata,
-            activationEmail: updatedOrder.metadata?.activationEmail || updatedOrder.userEmail 
-        },
-        firstName: updatedOrder.metadata?.firstName,
-        lastName: updatedOrder.metadata?.lastName,
-        address: updatedOrder.metadata?.address,
-        zip: updatedOrder.metadata?.zip,
-        activationType: updatedOrder.metadata?.activationType,
         
-        instructions: "Your eSIM activation is complete..."
-    });
-} catch (emailError) {
-    console.error("📧 Email Delivery Failed:", emailError);
-}
-}
+        if (isFinished) {
+            try {
+                await sendDeliveryEmail(updatedOrder.userEmail, {
+                    productType: "eSIM_Activation", 
+                    nodeName: updatedOrder.nodeName || "Global eSIM",
+                    planName: updatedOrder.planName || "Standard Plan",
+                    amount: updatedOrder.amount,        
+                    targetNumber: updatedOrder.targetNumber || "eSIM Device",
+                    confirmationNumber: confirmationNumber || updatedOrder.confirmationNumber,
+                    receiptUrl: receiptUrl || null, // 4. Pass receipt to email template
+                    metadata: {
+                        ...updatedOrder.metadata,
+                        activationEmail: updatedOrder.metadata?.activationEmail || updatedOrder.userEmail 
+                    },
+                    firstName: updatedOrder.metadata?.firstName,
+                    lastName: updatedOrder.metadata?.lastName,
+                    instructions: "Your eSIM activation is complete. You can download your receipt from your dashboard."
+                });
+            } catch (emailError) {
+                console.error("📧 Email Delivery Failed:", emailError);
+            }
+        }
+
         return res.json({ 
             success: true, 
             message: `Activation order updated to ${status}`,
@@ -2832,6 +2855,7 @@ async function handleCreateEsimActivation(req, res) {
             activationType: details.activationType || 'Standard',
             deviceName: details.deviceName,
             amount: totalAmount,
+            receiptUrl: details.receiptUrl || null,
             mainBalanceUsed: mainToDeduct,
             bonusBalanceUsed: bonusToDeduct,
             paymentReference: txRef,

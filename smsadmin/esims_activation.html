@@ -6,6 +6,8 @@
     <title>SMSGlobe Admin - eSIM Activations</title>
     <link rel="icon" type="image/png" href="https://i.imgur.com/syKFaNI.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
         if (!localStorage.getItem('smsglobe_admin_token')) {
             window.location.href = 'sms_login.html';
@@ -100,48 +102,61 @@
             </div>
         </aside>
 
-        <main class="flex-1 p-3 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full overflow-hidden">
-            <header class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4 px-1">
-                <div>
-                    <h2 class="text-xl sm:text-2xl font-bold tracking-tight">eSIM Activation & Refills</h2>
-                    <p class="text-brand-lightText text-xs sm:text-sm">Manage new eSIM orders and top-up requests (NGN)</p>
-                </div>
-                <button onclick="fetchOrders()" class="bg-brand-blue text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2 w-fit">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    Refresh List
-                </button>
-            </header>
+      <main class="flex-1 p-3 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full overflow-hidden">
+    <header class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4 px-1">
+        <div>
+            <h2 class="text-xl sm:text-2xl font-bold tracking-tight">eSIM Activation & Refills</h2>
+            <p class="text-brand-lightText text-xs sm:text-sm">Manage new eSIM orders and top-up requests (NGN)</p>
+        </div>
+        <button onclick="fetchOrders()" class="bg-brand-blue text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2 w-fit">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            Refresh List
+        </button>
+    </header>
 
-            <div class="bg-white rounded-xl border border-brand-border shadow-sm overflow-hidden">
-                <div class="overflow-x-auto no-scrollbar">
-                    <table class="w-full text-left text-[11px] sm:text-sm whitespace-nowrap">
-                        <thead class="bg-gray-50 text-brand-lightText uppercase text-[9px] sm:text-[11px] border-b border-brand-border">
-                            <tr>
-                                <th class="px-4 py-4 font-bold">Transaction / Type</th>
-                                <th class="px-4 py-4 font-bold">User / Activation Email</th>
-                                <th class="px-4 py-4 font-bold">Plan / Carrier</th>
-                                <th class="px-4 py-4 font-bold text-center">Amount (NGN)</th>
-                                <th class="px-4 py-4 font-bold">Status</th>
-                                <th class="px-4 py-4 font-bold text-right">Process</th>
-                            </tr>
-                        </thead>
-                        <tbody id="orders-body" class="divide-y divide-gray-100">
-                            </tbody>
-                    </table>
-                </div>
-            </div>
-        </main>
+    <div class="bg-white rounded-xl border border-brand-border shadow-sm overflow-hidden">
+        <div class="overflow-x-auto no-scrollbar">
+            <table class="w-full text-left text-[11px] sm:text-sm whitespace-nowrap">
+                <thead class="bg-gray-50 text-brand-lightText uppercase text-[9px] sm:text-[11px] border-b border-brand-border">
+                    <tr>
+                        <th class="px-4 py-4 font-bold">Transaction / Type</th>
+                        <th class="px-4 py-4 font-bold">User / Activation Email</th>
+                        <th class="px-4 py-4 font-bold">Plan / Carrier</th>
+                        <th class="px-4 py-4 font-bold text-center">Amount (NGN)</th>
+                        <th class="px-4 py-4 font-bold">Status</th>
+                        <th class="px-4 py-4 font-bold text-right">Actions</th> </tr>
+                </thead>
+                <tbody id="orders-body" class="divide-y divide-gray-100">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</main>
     </div>
 
+    <div id="detailModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl scale-in-center">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <h3 class="font-bold text-brand-darkText">Order Information</h3>
+            <button onclick="document.getElementById('detailModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div id="detailContent" class="p-6 max-h-[80vh] overflow-y-auto no-scrollbar">
+            </div>
+    </div>
+</div>
+
 <script>
+    let currentOrders = [];
+
     function toggleSidebar() {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebar-overlay');
         sidebar.classList.toggle('-translate-x-full');
         overlay.classList.toggle('hidden');
     }
-
-   async function fetchOrders() {
+async function fetchOrders() {
     const token = localStorage.getItem('smsglobe_admin_token');
     const tbody = document.getElementById('orders-body');
 
@@ -151,150 +166,242 @@
         });
         const data = await response.json();
 
-        if (data.success && data.orders.length > 0) {
+        if (data.success) {
+            currentOrders = data.orders; // Save to global
             tbody.innerHTML = data.orders.map(order => {
-                const status = order.status.toLowerCase();
-                
-                let actionArea = '';
-
-                // IF PAYMENT IS SUCCESSFUL BUT NOT YET ACTIVATED BY ADMIN
-                if (status === 'successful' || status === 'processing') {
-                    actionArea = `
-                        <div class="flex flex-col gap-2 items-end">
-                            <label class="text-[8px] font-bold text-brand-blue uppercase">Input Confirmation Number</label>
-                            <input type="text" id="conf-${order.paymentReference}" 
-                                   placeholder="e.g. SMG-9920-X" 
-                                   class="border border-brand-blue/20 rounded px-2 py-1.5 text-[10px] w-40 focus:ring-2 focus:ring-brand-blue outline-none shadow-sm font-mono">
-                            <button onclick="processOrder('${order.paymentReference}', event)" 
-                                    class="bg-brand-blue text-white px-4 py-1.5 rounded-lg text-[10px] font-bold hover:bg-blue-800 transition-all shadow-md w-full">
-                                Complete Activation
-                            </button>
-                        </div>`;
-                } 
-                // IF ACTIVATION IS FULLY DONE
-                else if (status === 'completed') {
-                    actionArea = `
-                        <div class="text-right bg-green-50 p-2 rounded-lg border border-green-100">
-                            <div class="text-green-700 font-black text-[9px] flex items-center justify-end gap-1 mb-1 uppercase">
-                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
-                                Activation Finished
-                            </div>
-                            <div class="text-[10px] text-gray-600 font-mono font-bold bg-white px-2 py-1 rounded border border-green-200">
-                                ${order.confirmationNumber || 'N/A'}
-                            </div>
-                        </div>`;
-                } 
-                else {
-                    actionArea = `<span class="text-gray-400 text-[10px] italic font-medium px-2 py-1 bg-gray-50 rounded">Awaiting Flutterwave...</span>`;
-                }
-
                 return `
                     <tr class="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
                         <td class="px-4 py-4">
                             <div class="font-bold text-brand-darkText">#${order.paymentReference.slice(-8)}</div>
-                            <div class="text-[9px] font-black text-brand-blue uppercase tracking-tighter">${order.productType.replace('_', ' ')}</div>
+                            <div class="text-[9px] font-black text-brand-blue uppercase tracking-tighter">${order.productType?.replace('_', ' ') || 'eSIM'}</div>
                         </td>
-
                         <td class="px-4 py-4">
                             <div class="text-[11px] font-bold text-brand-darkText">${order.fullName || 'User'}</div>
                             <div class="text-[10px] text-brand-orange font-medium mt-0.5">${order.email}</div>
                         </td>
-
                         <td class="px-4 py-4">
                             <div class="font-bold text-brand-darkText uppercase text-[10px]">${order.nodeName}</div>
                             <div class="text-[9px] text-brand-lightText font-bold">${order.planName}</div>
                         </td>
-
                         <td class="px-4 py-4 text-center">
                             <div class="font-black text-brand-blue text-[12px]">₦${parseFloat(order.amount).toLocaleString()}</div>
                         </td>
-
                         <td class="px-4 py-4">
                             <span class="px-2 py-1 rounded-md text-[9px] font-black uppercase ${getStatusClass(order.status)}">
                                 ${order.status}
                             </span>
                         </td>
-
                         <td class="px-4 py-4 text-right">
-                            ${actionArea}
+                            <div class="flex items-center justify-end gap-2">
+                                <button onclick="viewActivationDetails('${order.paymentReference}')" 
+                                    class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-[10px] font-bold hover:bg-gray-200 transition-all">
+                                    View
+                                </button>
+                                <button onclick="manageActivation('${order.paymentReference}')" 
+                                    class="px-3 py-1.5 bg-brand-blue text-white rounded-lg text-[10px] font-bold hover:bg-blue-700 transition-all shadow-sm">
+                                    Manage
+                                </button>
+                            </div>
                         </td>
                     </tr>`;
             }).join('');
         }
     } catch (err) {
-        console.error("Order fetch error:", err);
+        console.error("Fetch error:", err);
     }
 }
 
-    function getStatusClass(status) {
-        const s = status.toLowerCase();
-        if (s === 'completed' || s === 'successful') return 'bg-green-100 text-green-700';
-        if (s === 'processing') return 'bg-blue-100 text-blue-700';
-        if (s === 'pending') return 'bg-orange-100 text-orange-700';
-        return 'bg-gray-100 text-gray-700';
+// --- VIEW MODAL LOGIC ---
+function viewActivationDetails(ref) {
+    const order = currentOrders.find(o => o.paymentReference === ref);
+    if (!order) return;
+
+    const container = document.getElementById('detailContent');
+    const date = new Date(order.createdAt).toLocaleString();
+
+    container.innerHTML = `
+        <div class="space-y-4">
+            <div class="flex justify-end">
+                <button id="modalGenReceiptBtn" 
+                    class="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[11px] font-bold hover:bg-blue-700 transition-all">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Generate Receipt (PDF/PNG)
+                </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="col-span-2 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                    <p class="text-[10px] text-blue-600 font-bold uppercase">Transaction Reference</p>
+                    <p class="font-mono font-bold text-brand-darkText break-all">${order.paymentReference}</p>
+                </div>
+
+                <div>
+                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Plan</p>
+                    <p class="font-bold text-sm text-brand-blue uppercase">${order.planName}</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Date</p>
+                    <p class="font-medium text-sm">${date}</p>
+                </div>
+
+                <div class="col-span-2 border-t border-b py-3">
+                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Activation Code / PIN</p>
+                    <p class="font-mono font-bold text-lg text-green-700">${order.confirmationNumber || 'PENDING'}</p>
+                </div>
+
+                <div class="col-span-2 bg-gray-50 p-3 rounded-xl border">
+                    <div class="flex justify-between text-sm">
+                        <span>Total Paid:</span>
+                        <b class="text-brand-blue">₦${parseFloat(order.amount).toLocaleString()}</b>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('modalGenReceiptBtn').onclick = () => showReceiptOptions(order);
+    document.getElementById('detailModal').classList.remove('hidden');
+}
+
+// --- MANAGE MODAL LOGIC ---
+function manageActivation(ref) {
+    const order = currentOrders.find(o => o.paymentReference === ref);
+    if (!order) return;
+
+    const container = document.getElementById('detailContent');
+    container.innerHTML = `
+        <div class="space-y-5">
+            <div>
+                <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Status</label>
+                <select id="updateStatus" class="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-brand-blue outline-none">
+                    <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>Pending</option>
+                    <option value="processing" ${order.status === 'processing' ? 'selected' : ''}>Processing</option>
+                    <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>Completed</option>
+                    <option value="failed" ${order.status === 'failed' ? 'selected' : ''}>Failed</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Activation PIN / Confirmation Code</label>
+                <input type="text" id="updateConf" value="${order.confirmationNumber || ''}" 
+                    class="w-full border border-gray-200 rounded-xl p-3 text-sm font-mono focus:ring-2 focus:ring-brand-blue outline-none" 
+                    placeholder="e.g. LPA:1$SMSG.COM$...">
+            </div>
+
+            <div class="pt-4 border-t">
+                <button id="saveOrderBtn" onclick="saveOrderUpdate('${order.paymentReference}')" 
+                    class="w-full bg-brand-blue text-white py-3 rounded-xl font-bold hover:bg-blue-800 transition-all shadow-lg shadow-blue-200">
+                    Update Order Details
+                </button>
+            </div>
+        </div>
+    `;
+    document.getElementById('detailModal').classList.remove('hidden');
+}
+
+async function saveOrderUpdate(tid) {
+    const status = document.getElementById('updateStatus').value;
+    const confirmationNumber = document.getElementById('updateConf').value.trim();
+    const btn = document.getElementById('saveOrderBtn');
+
+    btn.disabled = true;
+    btn.innerHTML = `<span class="flex items-center justify-center gap-2">Processing...</span>`;
+
+    try {
+        const response = await fetch('/api/esim-activation-complete', {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${localStorage.getItem('smsglobe_admin_token')}`,
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({ tid, status, confirmationNumber })
+        });
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('detailModal').classList.add('hidden');
+            fetchOrders();
+        } else { alert(data.message); }
+    } catch (err) { alert("Connection Error"); }
+    finally { btn.disabled = false; btn.innerText = "Update Order Details"; }
+}
+
+// --- RECEIPT UTILITIES (PDF/PNG) ---
+function showReceiptOptions(order) {
+    const overlay = document.createElement('div');
+    overlay.id = "receiptSelectorOverlay";
+    overlay.className = "fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4";
+    overlay.innerHTML = `
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl scale-in-center">
+            <h3 class="text-lg font-bold text-gray-900 mb-1">Download Receipt</h3>
+            <p class="text-xs text-gray-500 mb-6">Choose your preferred format for this activation.</p>
+            <div class="space-y-3">
+                <button id="downloadPdfBtn" class="w-full flex items-center justify-between p-4 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition-all">
+                    <span class="font-bold text-red-700 text-sm">PDF Document</span>
+                    <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </button>
+                <button id="downloadImgBtn" class="w-full flex items-center justify-between p-4 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all">
+                    <span class="font-bold text-blue-700 text-sm">Image (PNG)</span>
+                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </button>
+            </div>
+            <button onclick="document.getElementById('receiptSelectorOverlay').remove()" class="mt-6 w-full py-2 text-xs font-bold text-gray-400 hover:text-gray-900 uppercase tracking-widest">Close</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    document.getElementById('downloadPdfBtn').onclick = () => { overlay.remove(); generateUniversalReceipt(order, 'pdf'); };
+    document.getElementById('downloadImgBtn').onclick = () => { overlay.remove(); generateUniversalReceipt(order, 'image'); };
+}
+
+async function generateUniversalReceipt(order, format) {
+    const receiptDiv = document.createElement('div');
+    Object.assign(receiptDiv.style, { width: '320px', padding: '25px', background: '#fff', position: 'absolute', left: '-9999px', fontFamily: 'sans-serif' });
+    
+    const logoUrl = 'https://i.imgur.com/8YeZgfx.png';
+    receiptDiv.innerHTML = `
+        <div style="text-align:center; margin-bottom:20px;">
+            <img src="${logoUrl}" style="width:80px; margin-bottom:5px;">
+            <p style="font-size:10px; color:#888; text-transform:uppercase;">eSIM Activation Receipt</p>
+        </div>
+        <div style="border-top:1px solid #eee; padding:10px 0; font-size:11px;">
+            <p>Ref: <b>${order.paymentReference}</b></p>
+            <p>Plan: <b>${order.planName}</b></p>
+        </div>
+        <div style="background:#f8fafc; padding:15px; border-radius:8px; text-align:center; margin-bottom:20px;">
+            <p style="font-size:10px; color:#64748b; margin:0;">Total Amount Paid</p>
+            <h2 style="font-size:22px; color:#0f54c6; margin:5px 0;">₦${parseFloat(order.amount).toLocaleString()}</h2>
+        </div>
+        <div style="text-align:center; font-size:9px; color:#999;">
+            <p>Thank you for choosing SMS GLOBE</p>
+        </div>
+    `;
+    document.body.appendChild(receiptDiv);
+
+    const canvas = await html2canvas(receiptDiv, { scale: 3, useCORS: true });
+    const imgData = canvas.toDataURL('image/png');
+    if (format === 'image') {
+        const link = document.createElement('a');
+        link.download = `Receipt-${order.paymentReference}.png`;
+        link.href = imgData;
+        link.click();
+    } else {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', [80, 120]);
+        pdf.addImage(imgData, 'PNG', 0, 0, 80, 120);
+        pdf.save(`Receipt-${order.paymentReference}.pdf`);
     }
+    document.body.removeChild(receiptDiv);
+}
 
-    async function processOrder(tid, event) {
-        const confInput = document.getElementById(`conf-${tid}`);
-        const confirmationNumber = confInput.value.trim();
-        const btn = event.target;
+function getStatusClass(status) {
+    const s = status.toLowerCase();
+    if (s === 'completed' || s === 'successful') return 'bg-green-100 text-green-700';
+    if (s === 'processing') return 'bg-blue-100 text-blue-700';
+    if (s === 'pending') return 'bg-orange-100 text-orange-700';
+    return 'bg-gray-100 text-gray-700';
+}
 
-        if (!confirmationNumber) {
-            alert("Please enter the eSIM Profile ID or Confirmation Number.");
-            confInput.focus();
-            return;
-        }
-
-        if (!confirm("Confirm: Mark as completed? The user will receive an email with their details.")) return;
-
-        const originalText = btn.innerText;
-        btn.disabled = true;
-        btn.innerText = "Saving...";
-        btn.classList.add('opacity-50', 'cursor-not-allowed');
-
-        const token = localStorage.getItem('smsglobe_admin_token');
-
-        try {
-            const response = await fetch('/api/esim-activation-complete', {
-                method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json' 
-                },
-                body: JSON.stringify({ 
-                    tid: tid, 
-                    status: 'completed', 
-                    confirmationNumber: confirmationNumber 
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                alert('Order updated successfully!');
-                await fetchOrders(); 
-            } else {
-                alert('Error: ' + (data.message || 'Update failed'));
-                resetButton(btn, originalText);
-            }
-        } catch (err) {
-            alert('Connection error.');
-            resetButton(btn, originalText);
-        }
-    }
-
-    function resetButton(btn, text) {
-        btn.disabled = false;
-        btn.innerText = text;
-        btn.classList.remove('opacity-50', 'cursor-not-allowed');
-    }
-
-    function logout() {
-        localStorage.removeItem('smsglobe_admin_token');
-        window.location.href = 'sms_login.html';
-    }
-
-    window.onload = fetchOrders;
+function logout() { localStorage.removeItem('smsglobe_admin_token'); window.location.href = 'sms_login.html'; }
+window.onload = fetchOrders;
 </script>
 </body>
 </html>

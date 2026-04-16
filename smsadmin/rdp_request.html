@@ -6,6 +6,8 @@
     <title>SMSGlobe Admin - RDP Requests</title>
     <link rel="icon" type="image/png" href="https://i.imgur.com/syKFaNI.png">
     <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
         if (!localStorage.getItem('smsglobe_admin_token')) {
             window.location.href = 'sms_login.html';
@@ -448,75 +450,76 @@
         return 'bg-gray-100 text-gray-700';
     }
 
-    // RENAMED TO processRDPDeployment TO MATCH HTML
    async function processRDPDeployment(tid, event) {
     const ipInput = document.getElementById(`log-ip-${tid}`);
     const portInput = document.getElementById(`log-port-${tid}`);
     const userInput = document.getElementById(`log-user-${tid}`);
     const passInput = document.getElementById(`log-pass-${tid}`);
     const notesInput = document.getElementById(`log-conf-${tid}`);
-    const fileInput = document.getElementById(`log-file-${tid}`); // The new file input
+    const fileInput = document.getElementById(`log-file-${tid}`);
 
     const ip = ipInput.value.trim();
-    const port = portInput.value.trim() || '';
+    const port = portInput.value.trim() || '3389';
     const user = userInput.value.trim();
     const pass = passInput.value.trim();
     const notes = notesInput.value.trim();
-    const receiptFile = fileInput ? fileInput.files[0] : null;
+    
+    // 1. Check for Manual Upload first
+    let receiptFile = fileInput && fileInput.files.length > 0 ? fileInput.files[0] : null;
 
     const btn = event.currentTarget || event.target;
 
-    // Validation
     if (!ip || !user || !pass) {
-        alert("Please enter the required RDP details: IP Address, Username, and Password.");
-        if (!ip) ipInput.focus();
-        else if (!user) userInput.focus();
-        else passInput.focus();
+        alert("Please enter IP, Username, and Password.");
         return;
     }
 
-    if (!confirm("Confirm delivery? The user will receive these login details immediately.")) return;
+    if (!confirm("Confirm delivery? The user will receive login details and a receipt immediately.")) return;
 
     // UI Feedback
     const originalText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerText = "Deploying & Uploading...";
+    btn.innerHTML = `<span class="flex items-center justify-center gap-2">
+        <svg class="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        Processing Delivery...
+    </span>`;
     btn.classList.add('opacity-50', 'cursor-not-allowed');
 
-    const token = localStorage.getItem('smsglobe_admin_token');
-
-    // Prepare FormData for file upload support
-    const formData = new FormData();
-    formData.append('tid', tid);
-    formData.append('status', 'completed');
-    formData.append('ipAddress', ip);
-    formData.append('port', port);
-    formData.append('rdpUsername', user);
-    formData.append('rdpPassword', pass);
-    formData.append('confirmationNumber', notes);
-    
-    // Add the file if it exists
-    if (receiptFile) {
-        formData.append('receiptFile', receiptFile);
-    }
-
     try {
+        // 2. AUTO-GENERATE RECEIPT if none was uploaded
+        if (!receiptFile) {
+            console.log("No manual receipt found. Generating automatic receipt...");
+            const orderData = allOrders.find(o => o.paymentReference === tid);
+            if (orderData) {
+                receiptFile = await generateUniversalReceipt(orderData);
+            }
+        }
+
+        const token = localStorage.getItem('smsglobe_admin_token');
+        const formData = new FormData();
+        formData.append('tid', tid);
+        formData.append('status', 'completed');
+        formData.append('ipAddress', ip);
+        formData.append('port', port);
+        formData.append('rdpUsername', user);
+        formData.append('rdpPassword', pass);
+        formData.append('confirmationNumber', notes);
+        
+        if (receiptFile) {
+            formData.append('receiptFile', receiptFile);
+        }
+
         const response = await fetch('/api/rdp-request-complete', {
             method: 'POST',
-            headers: { 
-                'Authorization': `Bearer ${token}`
-                // Note: Content-Type is NOT set here. 
-                // The browser will automatically set it to multipart/form-data with the correct boundary.
-            },
+            headers: { 'Authorization': `Bearer ${token}` },
             body: formData
         });
 
         const data = await response.json();
 
         if (data.success) {
-            alert('RDP Provisioned and Receipt Uploaded successfully!');
-            const modal = document.getElementById('viewModal');
-            if (modal) modal.classList.add('hidden');
+            alert('RDP Provisioned and Receipt Sent!');
+            closeModal(); // Using your existing helper
             await fetchRDPRequests(); 
         } else {
             alert('Error: ' + (data.message || 'Update failed'));

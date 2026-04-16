@@ -321,22 +321,54 @@ function viewOrderDetails(encodedData) {
     // Now call the function we built in the previous step
     openOrderDetails(order); 
 }
-
 function openOrderDetails(order) {
     const modal = document.getElementById('orderModal');
     
-    // Fill Text Data
-    document.getElementById('modalProduct').innerText = `${order.productType || 'Service'} (${order.nodeName || 'Standard'})`;
-    document.getElementById('modalID').innerText = order._id || 'N/A';
+    // 1. Basic Information
+    document.getElementById('modalProduct').innerText = `${order.productType.replace('_', ' ')} - ${order.nodeName || 'Standard'}`;
+    document.getElementById('modalID').innerText = order.paymentReference || order._id;
     document.getElementById('modalAmount').innerText = `₦${(order.amount || 0).toLocaleString()}`;
-    document.getElementById('modalPayment').innerText = order.paymentMethod || (order.useBonus ? 'Bonus Wallet' : 'Main Wallet');
+    document.getElementById('modalPayment').innerText = order.paymentMethod || (order.bonusBalanceUsed > 0 ? 'Bonus Wallet' : 'Main Wallet');
 
-    // Handle Admin Receipt Image
+    // 2. Dynamic Details Logic
+    const detailsContainer = document.getElementById('modalDynamicDetails');
+    let dynamicHtml = '';
+
+    // Helper to add a detail row
+    const addRow = (label, value) => {
+        if (!value) return;
+        dynamicHtml += `
+            <div class="flex justify-between items-center">
+                <span class="text-[9px] font-bold text-brand-lightText uppercase">${label}</span>
+                <span class="text-[10px] font-semibold text-brand-darkText">${value}</span>
+            </div>`;
+    };
+
+    // Product-Specific Logic
+    if (order.productType.includes('eSIM')) {
+        addRow('Phone/Device', order.targetNumber);
+        addRow('Country', order.country);
+        addRow('Plan', order.planName);
+        addRow('Confirmation', order.confirmationNumber);
+    } else if (order.productType === 'RDP') {
+        addRow('Port', order.port);
+        addRow('CPU/Storage', `${order.extraCPU} Core / ${order.extraStorage}GB`);
+    } else if (order.productType === 'VPN' || order.productType === 'Proxy') {
+        addRow('Region', order.country || order.nodeName);
+        addRow('Target', order.targetNumber);
+    }
+
+    // Fallback for general metadata
+    if (order.adminNote) {
+        dynamicHtml += `<div class="mt-2 p-2 bg-orange-50 text-orange-700 text-[9px] rounded border border-orange-100 italic"><b>Note:</b> ${order.adminNote}</div>`;
+    }
+
+    detailsContainer.innerHTML = dynamicHtml || '<p class="text-[9px] text-gray-400">No additional details.</p>';
+
+    // 3. Handle Admin Receipt Image
     const receiptImg = document.getElementById('receiptImg');
     const noReceiptMsg = document.getElementById('noReceiptMsg');
     const downloadBtn = document.getElementById('downloadReceiptBtn');
-
-    // Assuming admin uploads the path to 'order.receiptUrl' or 'order.adminImage'
     const imageUrl = order.receiptUrl || order.adminImage; 
 
     if (imageUrl) {
@@ -351,9 +383,9 @@ function openOrderDetails(order) {
         downloadBtn.classList.add('hidden');
     }
 
-    // Show Modal
+    // 4. Show Modal
     modal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden'; // Stop scrolling
+    document.body.style.overflow = 'hidden';
 }
 
 function closeOrderModal() {

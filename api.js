@@ -1757,16 +1757,16 @@ else if (rdpId) {
         
 const manualProducts = ["eSIM_Refill", "eSIM_Activation", "RDP"];
 const isManual = manualProducts.includes(itemType);
-// 1. Customer Delivery (Only for Automated products)
+
 if (!isManual) {
     await sendDeliveryEmail(user.email, { 
         ...orderSpecifics, 
         productType: itemType, 
         nodeName: productDetails.name, 
         planName: productDetails.plan || newOrder.planName,
-        amount: costNGN, // Pass as number so .toLocaleString() works inside the function
+        amount: costNGN, 
         paymentReference: paymentReference,
-        confirmationNumber: confirmationNumber,        
+        confirmationNumber: paymentReference,         
         targetNumber: mobileNumber || newOrder.metadata?.targetNumber || "N/A",
         country: coverageCountry || newOrder.metadata?.country || "N/A",        
         mainBalanceUsed: newOrder.mainBalanceUsed || 0,

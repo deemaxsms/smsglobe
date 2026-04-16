@@ -260,18 +260,16 @@
 
     if (!modal) return;
 
-    // --- HEADER: Title and Generate Receipt Button ---
-    // We use a safe attribute to pass the ref to a helper function instead of passing the whole object as a string
-    document.getElementById('m-ref').innerHTML = `
-        <div class="flex justify-between items-center w-full">
-            <span>Order #${order.paymentReference.slice(-8)}</span>
-            <button onclick="generateUniversalReceipt(allOrders.find(o=>o.paymentReference==='${order.paymentReference}'), 'pdf')" 
-                class="flex items-center gap-1.5 px-3 py-1 bg-white border border-brand-blue text-brand-blue rounded-lg text-[10px] font-bold hover:bg-brand-blue hover:text-white transition-all shadow-sm">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                Generate Receipt
-            </button>
-        </div>
-    `;
+   document.getElementById('m-ref').innerHTML = `
+    <div class="flex justify-between items-center w-full">
+        <span>Order #${order.paymentReference.slice(-8)}</span>
+        <button onclick="downloadReceiptTrigger('${order.paymentReference}')" 
+            class="flex items-center gap-1.5 px-3 py-1 bg-white border border-brand-blue text-brand-blue rounded-lg text-[10px] font-bold hover:bg-brand-blue hover:text-white transition-all shadow-sm">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            Generate Receipt
+        </button>
+    </div>
+`;
     document.getElementById('m-date').innerText = `Product: ${order.productType || 'RDP'} | ${order.nodeName || 'Global'}`;
 
     let actionHTML = '';
@@ -628,6 +626,40 @@ async function generateUniversalReceipt(order) {
         return null;
     } finally {
         document.body.removeChild(receiptDiv);
+    }
+}
+
+async function downloadReceiptTrigger(orderReference) {
+    const order = allOrders.find(o => o.paymentReference === orderReference);
+    if (!order) return alert("Order data not found");
+
+    // Optional: Add loading state to the button
+    const btn = event.currentTarget;
+    const originalHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = "Generating...";
+
+    try {
+        // This calls your existing function
+        const file = await generateUniversalReceipt(order);
+        
+        if (file) {
+            const url = URL.createObjectURL(file);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Receipt_${orderReference.slice(-6)}.png`;
+            document.body.appendChild(a);
+            a.click();
+            
+            // Cleanup
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    } catch (err) {
+        console.error("Download Error:", err);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
     }
 }
 

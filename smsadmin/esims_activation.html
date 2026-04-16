@@ -156,7 +156,7 @@
         sidebar.classList.toggle('-translate-x-full');
         overlay.classList.toggle('hidden');
     }
-async function fetchOrders() {
+    async function fetchOrders() {
     const token = localStorage.getItem('smsglobe_admin_token');
     const tbody = document.getElementById('orders-body');
 
@@ -167,21 +167,29 @@ async function fetchOrders() {
         const data = await response.json();
 
         if (data.success) {
-            currentOrders = data.orders; // Save to global
+            // Save to global variable for modal access
+            currentOrders = data.orders; 
+            
             tbody.innerHTML = data.orders.map(order => {
+                // Determine Carrier and Device from order properties
+                const carrier = order.carrierName || order.nodeName || 'eSIM Carrier';
+                const device = order.deviceName || order.targetNumber || 'Standard Device';
+                
                 return `
                     <tr class="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
                         <td class="px-4 py-4">
                             <div class="font-bold text-brand-darkText">#${order.paymentReference.slice(-8)}</div>
-                            <div class="text-[9px] font-black text-brand-blue uppercase tracking-tighter">${order.productType?.replace('_', ' ') || 'eSIM'}</div>
+                            <div class="text-[9px] font-black text-brand-blue uppercase tracking-tighter">
+                                ${order.productType?.replace('_', ' ') || 'eSIM'}
+                            </div>
                         </td>
                         <td class="px-4 py-4">
                             <div class="text-[11px] font-bold text-brand-darkText">${order.fullName || 'User'}</div>
                             <div class="text-[10px] text-brand-orange font-medium mt-0.5">${order.email}</div>
                         </td>
                         <td class="px-4 py-4">
-                            <div class="font-bold text-brand-darkText uppercase text-[10px]">${order.nodeName}</div>
-                            <div class="text-[9px] text-brand-lightText font-bold">${order.planName}</div>
+                            <div class="font-bold text-brand-darkText uppercase text-[10px]">${carrier}</div>
+                            <div class="text-[9px] text-brand-lightText font-bold">${order.planName || 'Data Plan'}</div>
                         </td>
                         <td class="px-4 py-4 text-center">
                             <div class="font-black text-brand-blue text-[12px]">₦${parseFloat(order.amount).toLocaleString()}</div>
@@ -211,13 +219,17 @@ async function fetchOrders() {
     }
 }
 
-// --- VIEW MODAL LOGIC ---
 function viewActivationDetails(ref) {
     const order = currentOrders.find(o => o.paymentReference === ref);
     if (!order) return;
 
     const container = document.getElementById('detailContent');
     const date = new Date(order.createdAt).toLocaleString();
+    
+    // Consistent fallback logic for the detail view
+    const carrier = order.carrierName || order.nodeName || 'N/A';
+    const device = order.deviceName || order.targetNumber || 'N/A';
+    const actType = order.activationType || 'Standard';
 
     container.innerHTML = `
         <div class="space-y-6">
@@ -245,15 +257,15 @@ function viewActivationDetails(ref) {
             <div class="grid grid-cols-2 gap-6">
                 <div>
                     <p class="text-[10px] text-brand-lightText font-bold uppercase">Carrier / Network</p>
-                    <p class="font-bold text-sm text-brand-darkText uppercase">${order.nodeName || 'N/A'}</p>
+                    <p class="font-bold text-sm text-brand-darkText uppercase">${carrier}</p>
                 </div>
                 <div>
                     <p class="text-[10px] text-brand-lightText font-bold uppercase">Device Model</p>
-                    <p class="font-bold text-sm text-brand-darkText">${order.targetNumber || 'N/A'}</p>
+                    <p class="font-bold text-sm text-brand-darkText">${device}</p>
                 </div>
                 <div>
                     <p class="text-[10px] text-brand-lightText font-bold uppercase">Activation Type</p>
-                    <p class="font-medium text-sm px-2 py-0.5 bg-gray-100 rounded-md w-fit">${order.activationType || 'Standard'}</p>
+                    <p class="font-medium text-sm px-2 py-0.5 bg-gray-100 rounded-md w-fit">${actType}</p>
                 </div>
                 <div>
                     <p class="text-[10px] text-brand-lightText font-bold uppercase">Order Date</p>

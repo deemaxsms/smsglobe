@@ -2965,12 +2965,13 @@ async function handleGetEsimActivations(req, res) {
                 productType: 'eSIM_Activation', 
                 createdAt: order.createdAt,
                 userEmail: order.userEmail, 
-                // Prioritize activation email from metadata
                 email: details.email || order.userEmail,
                 fullName: `${details.firstName || ''} ${details.lastName || ''}`.trim() || 'N/A',
-                amount: order.amount, // Now returns full Naira amount
+                amount: order.amount,
                 status: order.status,
-                nodeName: order.targetNumber || order.nodeName, // Device Name
+                carrierName: order.nodeName || "Global eSIM", // Map nodeName to carrier
+                deviceName: order.targetNumber || "eSIM Device", // Map targetNumber to device
+                activationType: details.activationType || 'Standard', // Pull from metadata
                 planName: order.planName,
                 confirmationNumber: order.confirmationNumber || 'PENDING',
                 address: details.address || 'N/A',
@@ -2983,7 +2984,6 @@ async function handleGetEsimActivations(req, res) {
         return res.status(500).json({ success: false, message: "Failed to fetch records" });
     }
 }
-
 // GET: Fetch all RDP plans (for Admin list or User selection)
 async function handleGetRDPs(req, res) {
     try {

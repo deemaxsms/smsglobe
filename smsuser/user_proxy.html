@@ -267,7 +267,6 @@
     </div>
 </div>
 
-
 <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end space-y-4">
     
     <div id="supportMenu" class="hidden flex flex-col space-y-3 mb-2 transition-all duration-300 transform translate-y-10 opacity-0 scale-95">
@@ -647,6 +646,7 @@ function closeModal() {
     window.location.href = 'user_dashboard.html';
 }
 
+
 function showSuccessModal(data) {
     const modal = document.getElementById('proxyModal');
     const confirmState = document.getElementById('confirmState');
@@ -655,20 +655,18 @@ function showSuccessModal(data) {
     const modalInstructions = document.getElementById('modalInstructions');
     const copyBtn = document.getElementById('copyCodeBtn');
 
-    // 1. Reset Visibility
-    if (confirmState) confirmState.style.display = 'none'; // Using style for immediate override
+    // 1. Swap Visibility
+    if (confirmState) confirmState.classList.add('hidden');
     
     if (successState) {
         successState.classList.remove('hidden');
-        successState.style.display = 'flex'; // Ensure flexbox layout
         successState.classList.add('animate-in', 'fade-in', 'zoom-in', 'duration-500');
     }
 
-    // 2. Parse Data
-    // Check vpnCredentials (from your DB example) or standard credentials
-    const creds = data.credentials || data.vpnCredentials || {};
-    const activationCode = creds.activationCode || data.activationCode || data.code || "SUCCESSFUL";
-    const info = creds.instructions || data.instructions || data.message || "Your service is now active. Access details have been saved to your history.";
+    // 2. Parse Data Safely
+    const credentials = data.credentials || {};
+    const activationCode = credentials.activationCode || data.activationCode || data.code || "SUCCESSFUL";
+    const info = credentials.instructions || data.instructions || data.message || "Your proxy is now active. Use the code above to connect.";
 
     // 3. Inject Content
     if (modalCode) modalCode.innerText = activationCode;
@@ -676,23 +674,18 @@ function showSuccessModal(data) {
 
     // 4. Handle Clipboard Logic
     if (copyBtn) {
-        const originalSVG = copyBtn.innerHTML;
         copyBtn.onclick = (e) => {
             e.preventDefault();
             navigator.clipboard.writeText(activationCode).then(() => {
+                const originalSVG = copyBtn.innerHTML;
                 copyBtn.innerHTML = '<span class="text-[9px] text-emerald-500 font-bold uppercase">Copied!</span>';
                 setTimeout(() => { copyBtn.innerHTML = originalSVG; }, 2000);
-            }).catch(() => {
-                alert("Code: " + activationCode); // Fallback for insecure contexts
             });
         };
     }
 
-    // 5. Ensure Main Modal is visible
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex'); // Ensure flex is applied to center it
-    }
+    // 5. Final Display Ensure
+    if (modal) modal.classList.remove('hidden');
 }
 
     function closeModal() {

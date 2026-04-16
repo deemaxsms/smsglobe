@@ -674,12 +674,10 @@ function showSuccessModal(data) {
     const modalCode = document.getElementById('modalCode');
     const modalInstructions = document.getElementById('modalInstructions');
 
-    // 1. Map data directly from your Order Schema
-    // We check data.activationCode first (top level of the order)
-    const code = data.activationCode || (data.metadata && data.metadata.activationCode) || "NOT_FOUND";
-    
-    // We check for instructions or adminNote from the order
-    const info = data.instructions || data.adminNote || "Your proxy is now active. You can view full details in your dashboard.";
+    // 1. Precise Data Mapping
+    // Use data.activationCode and data.instructions directly from the Order response
+    const code = data.activationCode || "NOT_FOUND";
+    const info = data.instructions || data.adminNote || "Your proxy is active. Check dashboard for details.";
 
     if (modalCode) modalCode.innerText = code;
     if (modalInstructions) modalInstructions.innerText = info;
@@ -712,6 +710,7 @@ function showSuccessModal(data) {
         modal.scrollTop = 0;
     }
 }
+
     function closeModal() {
         document.getElementById('proxyModal').classList.add('hidden');
         window.location.href = 'user_dashboard.html';

@@ -311,7 +311,8 @@ const orderSchema = new mongoose.Schema({
         name: String,
         image: String
     },
-    confirmationNumber: { type: String }, // NEW: Store manual activation codes or IDs
+    confirmationNumber: { type: String },
+    instructions: String, 
     adminNote: String, 
     receiptUrl: String,
     ram: String,
@@ -1534,10 +1535,11 @@ async function handlePurchaseWithWallet(req, res) {
         instructions: item.instructions || "Follow the setup guide provided in your dashboard."
     };
         } 
-        if (proxyId) {
+ if (proxyId) {
     const item = await Proxy.findOneAndUpdate(
         { _id: proxyId, stock: { $gt: 0 } },
         { $inc: { stock: -1 } },
+        // Ensure activationCode and instructions are selected
         { returnDocument: 'after', select: '+activationCode +instructions' } 
     );
 
@@ -1548,7 +1550,7 @@ async function handlePurchaseWithWallet(req, res) {
     itemType = "Proxy";
     costNGN = Math.round(Number(item.plans[planIndex].price));
     productDetails.name = item.name;
-    productDetails.plan = `${item.plans[planIndex].ip_count} IPs`;    
+    productDetails.plan = `${item.plans[planIndex].ip_count} IPs`;        
     orderSpecifics.activationCode = item.activationCode;
     orderSpecifics.instructions = item.instructions;
 }

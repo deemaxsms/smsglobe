@@ -502,7 +502,7 @@ async function buyVPN(vpnId) {
     }
 
     const selectedPlan = vpnData.plans[planIndex];
-    const price = parseFloat(selectedPlan.price);
+    costNGN = Math.round(Number(item.plans[planIndex].price));
 
     const modal = document.getElementById('vpnModal');
     const confirmState = document.getElementById('confirmState');

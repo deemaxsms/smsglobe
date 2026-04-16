@@ -252,33 +252,35 @@
                             </div>`;
                     }
 
-                    return `
-                        <tr class="hover:bg-gray-50/50 transition-colors">
-                            <td class="px-4 py-4">
-                                <div class="font-bold text-brand-darkText">#${tid.slice(-8)}</div>
-                                <div class="text-[9px] text-brand-lightText">${new Date(refill.createdAt).toLocaleDateString()}</div>
-                            </td>
-                            <td class="px-4 py-4">
-                                <div class="font-medium text-[12px]">${refill.userEmail}</div>
-                            </td>
-                            <td class="px-4 py-4">
-                                <div class="font-bold text-brand-orange uppercase text-[10px]">${refill.nodeName || refill.carrier || 'eSIM'}</div>
-                                <div class="text-[10px] font-mono bg-gray-100 px-1.5 py-0.5 rounded inline-block mt-1">
-                                    ${refill.targetNumber || refill.esimIdentifier || 'N/A'}
-                                </div>
-                            </td>
-                            <td class="px-4 py-4 text-center font-bold text-brand-blue">
-                                ${currencySymbol} ${displayAmount}
-                            </td>
-                            <td class="px-4 py-4">
-                                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getStatusClass(refill.status)}">
-                                    ${refill.status}
-                                </span>
-                            </td>
-                            <td class="px-4 py-4">
-                                <div class="flex items-center justify-end gap-2">${actionButtons}</div>
-                            </td>
-                        </tr>`;
+                  return `
+    <tr class="hover:bg-gray-50/50 transition-colors">
+        <td class="px-4 py-4">
+            <div class="font-bold text-brand-darkText">#${tid.slice(-8)}</div>
+            <div class="text-[9px] text-brand-lightText">${new Date(refill.createdAt).toLocaleDateString()}</div>
+        </td>
+        <td class="px-4 py-4">
+            <div class="font-medium text-[12px]">${refill.userEmail}</div>
+        </td>
+        <td class="px-4 py-4">
+            <div class="font-bold text-brand-orange uppercase text-[10px]">
+                ${refill.nodeName || (refill.carrier && refill.carrier.name) || 'eSIM Service'}
+            </div>
+            <div class="text-[10px] font-mono bg-gray-100 px-1.5 py-0.5 rounded inline-block mt-1">
+                ${refill.targetNumber || (refill.target && refill.target.number) || 'N/A'}
+            </div>
+        </td>
+        <td class="px-4 py-4 text-center font-bold text-brand-blue">
+            ${currencySymbol} ${displayAmount}
+        </td>
+        <td class="px-4 py-4">
+            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${getStatusClass(refill.status)}">
+                ${refill.status}
+            </span>
+        </td>
+        <td class="px-4 py-4">
+            <div class="flex items-center justify-end gap-2">${actionButtons}</div>
+        </td>
+    </tr>`;
                 }).join('');
             } else {
                 tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-brand-lightText italic">No requests found.</td></tr>`;
@@ -305,7 +307,8 @@ function viewOrderDetails(order) {
     const date = new Date(order.createdAt).toLocaleString();
     
     // Fallback logic for data fields
-    const carrierName = order.nodeName || order.carrier?.name || order.carrierName || 'Global Service';
+    const carrierName = refill.nodeName || (refill.carrier && refill.carrier.name) || '';
+    const targetDisplay = refill.targetNumber || (refill.target && refill.target.number) || 'N/A';
     const finalAmount = order.amount || order.amountNGN || 0;
     const targetNo = order.targetNumber || order.target?.number || 'N/A';
     const targetCountry = order.country || order.target?.country || 'N/A';
@@ -400,7 +403,6 @@ async function confirmProcessRefill() {
     const receiptInput = document.getElementById('modalReceipt'); 
     const btn = document.getElementById('modalSubmitBtn');
 
-    // Validation
     if (!confirmationNumber) {
         alert("Please enter the confirmation/activation number.");
         return;
@@ -414,12 +416,12 @@ async function confirmProcessRefill() {
     try {
         let receiptUrl = "";
 
+        // 1. UPLOAD TO CLOUDINARY IF FILE EXISTS
         if (receiptInput.files.length > 0) {
             btn.innerText = "Uploading Receipt...";
             const file = receiptInput.files[0];
             const cloudFormData = new FormData();
             
-            // Values from your Cloudinary Dashboard
             cloudFormData.append('file', file);
             cloudFormData.append('upload_preset', 'smsglobe_unsigned'); 
 
@@ -429,7 +431,6 @@ async function confirmProcessRefill() {
             });
             
             const cloudData = await cloudRes.json();
-            
             if (cloudData.secure_url) {
                 receiptUrl = cloudData.secure_url;
             } else {
@@ -437,50 +438,51 @@ async function confirmProcessRefill() {
             }
         }
 
-        // 2. SEND JSON DATA TO YOUR BACKEND
+        // 2. SEND DATA TO BACKEND
         btn.innerText = "Saving to Database...";
         const token = localStorage.getItem('smsglobe_admin_token');
 
         const response = await fetch('/api/update-esim-status', {
             method: 'POST',
             headers: { 
-                'Content-Type': 'application/json', // Using JSON now
+                'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify({
                 tid: tid,
                 confirmationNumber: confirmationNumber,
-                receiptUrl: receiptUrl // Sending the URL string
+                receiptUrl: receiptUrl,
+                status: 'completed' // Explicitly set status to complete the flow
             })
         });
+
+        // Check if response is actually JSON
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("Server did not return JSON. Check backend routes.");
+        }
 
         const data = await response.json();
 
         if (data.success) {
-            alert('Success: Order completed and receipt saved.');
-            
-            // Clean up UI
+            alert('Success: Order completed.');
             closeModal('manageModal');
+            // Clean up UI
             receiptInput.value = ""; 
-            const display = document.getElementById('fileNameDisplay');
-            if(display) {
-                display.innerText = "JPEG, PNG or PDF (Max 5MB)";
-                display.classList.remove('text-brand-blue', 'font-bold');
-            }
-            
-            // Refresh the table
+            document.getElementById('modalConfNumber').value = "";
             if (typeof fetchRefills === 'function') await fetchRefills(); 
-            else location.reload(); // Fallback to refresh the page
+            else location.reload();
         } else {
-            alert('Failed: ' + (data.message || 'Unknown error occurred'));
-            resetSubmitButton(btn, originalText);
+            throw new Error(data.message || 'Database update failed');
         }
     } catch (err) {
         console.error("Process Error:", err);
         alert('Error: ' + err.message);
+    } finally {
         resetSubmitButton(btn, originalText);
     }
 }
+
 
 // Helper function to reset button state
 function resetSubmitButton(btn, originalText) {

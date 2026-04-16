@@ -2001,21 +2001,58 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
     }
     
     let dataTableHtml = '';
+    if (isProxy) {
+        dataTableHtml = `
+            <tr>
+                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Service</span><br>
+                    <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || 'Premium Proxy'}</strong>
+                </td>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Plan</span><br>
+                    <strong style="font-size: 13px; color: #101828;">${credentials.planName || 'Standard'}</strong>
+                </td>
+            </tr>
+            <tr>
+                <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Purchase Date</span><br>
+                    <strong style="font-size: 11px; color: #101828;">${purchaseDate}</strong>
+                </td>
+                <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
+                    <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount || 0).toLocaleString()}</strong>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="border-top: 1px solid #D1E0FF; padding-top: 20px; text-align: center;">
+                    <div style="background: #f8faff; border: 1px dashed #0F54C6; padding: 20px; border-radius: 12px;">
+                        <span style="font-size: 10px; color: #0F54C6; text-transform: uppercase; font-weight: 800; letter-spacing: 1px;">Your Activation Code</span><br>
+                        <div style="margin-top: 10px; background: #ffffff; padding: 10px; border-radius: 8px; display: inline-block; border: 1px solid #e2e8f0;">
+                            <strong style="font-size: 22px; font-family: 'Courier New', monospace; color: #101828; letter-spacing: 2px;">
+                                ${credentials.activationCode || 'PENDING'}
+                            </strong>
+                        </div>
+                        <p style="font-size: 10px; color: #667085; margin-top: 12px;">Copy this code into your ${credentials.nodeName || 'Proxy'} dashboard to activate.</p>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="padding-top: 15px; text-align: center;">
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase;">Transaction Ref:</span>
+                    <code style="font-size: 10px; color: #98A2B3;">${credentials.paymentReference || 'N/A'}</code>
+                </td>
+            </tr>
+        `;
+    }
 if (isRDP) {
     // 1. Extract Hardware Values (Root Level priority)
     const ramValue = credentials.ram || credentials.metadata?.ram || "4GB";
     const osValue = credentials.os || credentials.osChoice || credentials.metadata?.osChoice || 'Windows Server';
-    const netValue = credentials.net || credentials.metadata?.net || '1Gbps';
-    
-    // 2. Extra Calculations
+    const netValue = credentials.net || credentials.metadata?.net || '1Gbps';    
     const extraCPU = parseInt(credentials.extraCPU || credentials.metadata?.extraCPU || 0);
     const extraStorage = parseInt(credentials.extraStorage || credentials.metadata?.extraStorage || 0);
-
-    // 3. Base Specs
     const baseCPU = credentials.cpu || credentials.metadata?.cpu || "2 Cores";
     const baseStorage = credentials.storage || credentials.metadata?.storage || "60GB SSD";
-
-    // 4. Final Display Strings
     const displayCpu = extraCPU > 0 ? `${baseCPU} (+${extraCPU} vCPU)` : baseCPU;
     const displayStorage = extraStorage > 0 ? `${baseStorage} (+${extraStorage}GB)` : baseStorage;
 
@@ -2097,7 +2134,7 @@ if (isRDP) {
                     <div style="text-align: right;">
                         <a href="${credentials.receiptUrl}" target="_blank" 
                            style="display: inline-block; padding: 8px 12px; background-color: #0F54C6; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 10px; font-weight: bold; text-transform: uppercase;">
-                           View Delivery Receipt
+                           View Receipt
                         </a>
                     </div>
                     ` : ''}

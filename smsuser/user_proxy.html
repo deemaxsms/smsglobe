@@ -187,9 +187,7 @@
     </div>
 
 <div id="proxyModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
-    
     <div class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-in zoom-in fade-in duration-300">
-        
         <div id="confirmState" class="p-8 text-center">
             <div class="w-16 h-16 bg-brand-background text-brand-blue rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,69 +204,75 @@
                         <p id="modalUserBalanceNGN" class="text-lg font-black text-brand-blue">₦0.00</p>
                     </div>
                 </div>
-<div id="bonusSection" class="hidden ...">
-    <div class="flex flex-col">
-        <p class="text-[9px] font-bold text-emerald-700 uppercase tracking-wider">Referral Bonus</p>
-        <p id="modalBonusBalanceNGN" class="text-sm font-black text-emerald-600">₦0.00</p>
-    </div>
-    <div class="flex items-center gap-2">
-        <span id="bonusStatusLabel" class="text-[9px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-md border border-emerald-200">USE FIRST</span>
-        <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="useBonusToggle" class="sr-only peer" checked>
-            <div class="w-8 h-4 bg-gray-200 rounded-full ..."></div>
-        </label>
-    </div>
-</div>
 
-<div class="flex gap-3">
-    <button onclick="closeModalOnly()" class="flex-1 py-4 ...">Cancel</button>
-    <button id="finalConfirmBtn" class="flex-1 py-4 ...">Confirm & Pay</button>
-    <button id="modalTopupBtn" onclick="location.href='user_deposit.html'" class="hidden flex-1 py-4 bg-orange-500 text-white rounded-2xl font-bold text-xs uppercase shadow-lg active-scale">Top up Balance</button>
-</div>
-
-        <div id="successState" class="hidden flex flex-col h-full">
-            <div class="bg-brand-blue p-8 text-center relative overflow-hidden">
-                <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle, #fff 1px, transparent 1px); background-size: 20px 20px;"></div>
-                <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 backdrop-blur-sm relative z-10">
-                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                    </svg>
+                <div id="bonusSection" class="hidden py-3 px-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 text-left flex justify-between items-center">
+                    <div class="flex flex-col">
+                        <p class="text-[9px] font-bold text-emerald-700 uppercase tracking-wider">Referral Bonus</p>
+                        <p id="modalBonusBalanceNGN" class="text-sm font-black text-emerald-600">₦0.00</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="bonusStatusLabel" class="text-[9px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-md border border-emerald-200">USE FIRST</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="useBonusToggle" class="sr-only peer" checked>
+                            <div class="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
                 </div>
-                <h2 class="text-2xl font-bold text-white leading-tight relative z-10">Purchase Secured!</h2>
-                <p class="text-blue-100 text-[10px] mt-1 font-medium tracking-wide uppercase relative z-10">Transaction Successful</p>
+
+                <div class="py-3 px-4 bg-blue-50/50 rounded-2xl border border-brand-blue/10 text-left">
+                    <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider">Total Amount Due</p>
+                    <p id="modalPurchaseAmountNGN" class="text-lg font-black text-brand-darkText">₦0.00</p>
+                </div>
             </div>
 
-            <div class="p-6 md:p-8 bg-white flex-grow">
-                <div class="bg-brand-background rounded-2xl border border-brand-blue/10 p-5 space-y-4 shadow-inner">
-                    <div>
-                        <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider mb-1">Instructions</p>
-                        <p id="modalInstructions" class="text-[10px] text-brand-midText leading-relaxed italic">Your proxy is now active. Follow instructions...</p>
-                    </div>
-
-                    <div class="space-y-1">
-                        <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Activation Code / Link</p>
-                        <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-brand-blue/5">
-                            <p id="modalCode" class="text-xs font-mono font-bold text-brand-darkText tracking-wider break-all">-------</p>
-                            <button onclick="copyToClipboard('modalCode', this)" class="text-brand-blue hover:text-blue-700 transition-colors p-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <button onclick="location.href='user_dashboard.html'" class="w-full mt-6 py-4 bg-brand-blue text-white rounded-2xl text-xs font-bold shadow-xl shadow-blue-200 flex items-center justify-center gap-2 active-scale">
-                    <span>Finish & Go to Dashboard</span>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
-                    </svg>
+            <div class="flex gap-3">
+                <button onclick="closeModalOnly()" class="flex-1 py-4 border border-brand-border rounded-2xl font-bold text-xs text-brand-midText uppercase active-scale">Cancel</button>
+                <button id="finalConfirmBtn" class="flex-1 py-4 bg-brand-blue text-white rounded-2xl font-bold text-xs uppercase shadow-lg active-scale">
+                    Confirm & Pay
+                </button>
+                <button id="modalTopupBtn" onclick="window.location.href='topup.html'" class="hidden flex-1 py-4 bg-brand-darkText text-white rounded-2xl font-bold text-xs uppercase shadow-lg active-scale">
+                    Add Funds
                 </button>
             </div>
         </div>
-        
     </div>
 </div>
+
+      <div id="successState" class="hidden flex flex-col h-full">
+    <div class="bg-brand-blue p-8 text-center relative overflow-hidden">
+        <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle, #fff 1px, transparent 1px); background-size: 20px 20px;"></div>
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 backdrop-blur-sm relative z-10">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+        <h2 class="text-2xl font-bold text-white leading-tight relative z-10">Purchase Secured!</h2>
+        <p class="text-blue-100 text-[10px] mt-1 font-medium tracking-wide uppercase relative z-10">Transaction Successful</p>
+    </div>
+
+    <div class="p-6 md:p-8 bg-white flex-grow">
+        <div class="bg-brand-background rounded-2xl border border-brand-blue/10 p-5 space-y-4 shadow-inner">
+            <div>
+                <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider mb-1">Instructions</p>
+                <p id="modalInstructions" class="text-[10px] text-brand-midText leading-relaxed italic">Follow instructions...</p>
+            </div>
+
+            <div class="space-y-1">
+                <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Activation Code / Link</p>
+                <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-brand-blue/5">
+                    <p id="modalCode" class="text-xs font-mono font-bold text-brand-darkText tracking-wider break-all">-------</p>
+                    <button onclick="copyToClipboard('modalCode', this)" class="text-brand-blue hover:text-blue-700 transition-colors p-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <button onclick="location.href='user_dashboard.html'" class="w-full mt-6 py-4 bg-brand-blue text-white rounded-2xl text-xs font-bold shadow-xl shadow-blue-200 flex items-center justify-center gap-2 active-scale">
+            <span>Finish & Go to Dashboard</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+        </button>
+    </div>
 
 
 <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end space-y-4">
@@ -554,42 +558,30 @@ async function buyProxy(proxyId) {
                 bonusToggle.checked = false;
             }
 
-          // 3. Affordability Gatekeeper
-const checkAffordability = () => {
-    const isUsingBonus = bonusToggle ? bonusToggle.checked : false;
-    
-    const currentBuyingPower = (isUsingBonus && isUnlocked) ? (mainBal + bonusBal) : mainBal;
+            // 3. Affordability Gatekeeper
+            const checkAffordability = () => {
+                const isUsingBonus = bonusToggle.checked;
+                const currentBuyingPower = (isUsingBonus && isUnlocked) ? (mainBal + bonusBal) : mainBal;
 
-    if (!finalBtn || !topupBtn) return;
-
-    if (currentBuyingPower < priceNGN) {
-        finalBtn.classList.add('hidden');
-        topupBtn.classList.remove('hidden');
-        
-        // Suggest turning on bonus if it would make the difference
-        if (bonusStatusLabel && !isUsingBonus && (mainBal + bonusBal) >= priceNGN) {
-            bonusStatusLabel.innerText = "REQUIRED";
-            bonusStatusLabel.className = "text-[9px] font-bold text-red-600 bg-white px-2 py-1 rounded-md border border-red-200";
-        }
-    } else {
-        // CASE 2: Sufficient funds
-        finalBtn.classList.remove('hidden');
-        topupBtn.classList.add('hidden');
-        finalBtn.disabled = false;
-        finalBtn.innerText = "Confirm & Pay Now";
-        
-        // Update the label status if bonus is active
-        if (bonusStatusLabel) {
-            if (isUsingBonus) {
-                bonusStatusLabel.innerText = "USE FIRST";
-                bonusStatusLabel.className = "text-[9px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-md border border-emerald-200";
-            } else {
-                bonusStatusLabel.innerText = "SKIPPED";
-                bonusStatusLabel.className = "text-[9px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-md border border-gray-200";
-            }
-        }
-    }
-};
+                if (currentBuyingPower < priceNGN) {
+                    finalBtn.classList.add('hidden');
+                    topupBtn.classList.remove('hidden');
+                    if (!isUsingBonus && (mainBal + bonusBal) >= priceNGN) {
+                        bonusStatusLabel.innerText = "REQUIRED";
+                        bonusStatusLabel.className = "text-[9px] font-bold text-red-600 bg-white px-2 py-1 rounded-md border border-red-200";
+                    }
+                } else {
+                    finalBtn.classList.remove('hidden');
+                    topupBtn.classList.add('hidden');
+                    finalBtn.disabled = false;
+                    finalBtn.innerText = "Confirm & Pay Now";
+                    
+                    if (isUsingBonus) {
+                        bonusStatusLabel.innerText = "USE FIRST";
+                        bonusStatusLabel.className = "text-[9px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-md border border-emerald-200";
+                    }
+                }
+            };
 
             checkAffordability();
 
@@ -662,47 +654,47 @@ function closeModal() {
     window.location.href = 'user_dashboard.html';
 }
 
+
 function showSuccessModal(data) {
     const modal = document.getElementById('proxyModal');
     const confirmState = document.getElementById('confirmState');
     const successState = document.getElementById('successState');
     const modalCode = document.getElementById('modalCode');
     const modalInstructions = document.getElementById('modalInstructions');
-    const copyBtn = document.getElementById('copyCodeBtn');
-
-    // 1. Swap Visibility
     if (confirmState) confirmState.classList.add('hidden');
     
     if (successState) {
         successState.classList.remove('hidden');
         successState.classList.add('animate-in', 'fade-in', 'zoom-in', 'duration-500');
+        if (modal) modal.scrollTop = 0; 
     }
-
-    // 2. Parse Data Safely
     const credentials = data.credentials || {};
     const activationCode = credentials.activationCode || data.activationCode || data.code || "SUCCESSFUL";
+    
     const info = credentials.instructions || data.instructions || data.message || "Your proxy is now active. Use the code above to connect.";
-
-    // 3. Inject Content
-    if (modalCode) modalCode.innerText = activationCode;
-    if (modalInstructions) modalInstructions.innerText = info;
-
-    // 4. Handle Clipboard Logic
+    if (modalCode) {
+        modalCode.innerText = activationCode;
+    }
+    
+    if (modalInstructions) {
+        modalInstructions.innerText = info;
+    }
+    const copyBtn = document.querySelector('[onclick*="copyToClipboard"]') || document.getElementById('copyCodeBtn');
     if (copyBtn) {
         copyBtn.onclick = (e) => {
             e.preventDefault();
             navigator.clipboard.writeText(activationCode).then(() => {
-                const originalSVG = copyBtn.innerHTML;
+                const originalContent = copyBtn.innerHTML;
+                // Emerald-500 matches your brand's success feedback style
                 copyBtn.innerHTML = '<span class="text-[9px] text-emerald-500 font-bold uppercase">Copied!</span>';
-                setTimeout(() => { copyBtn.innerHTML = originalSVG; }, 2000);
+                setTimeout(() => { copyBtn.innerHTML = originalContent; }, 2000);
             });
         };
     }
-
-    // 5. Final Display Ensure
-    if (modal) modal.classList.remove('hidden');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
 }
-
     function closeModal() {
         document.getElementById('proxyModal').classList.add('hidden');
         window.location.href = 'user_dashboard.html';

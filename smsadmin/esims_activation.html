@@ -220,40 +220,84 @@ function viewActivationDetails(ref) {
     const date = new Date(order.createdAt).toLocaleString();
 
     container.innerHTML = `
-        <div class="space-y-4">
-            <div class="flex justify-end">
+        <div class="space-y-6">
+            <div class="flex justify-between items-center border-b pb-4">
+                <div>
+                    <span class="px-2 py-1 rounded text-[10px] font-bold uppercase ${
+                        order.status === 'completed' || order.status === 'successful' 
+                        ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                    }">
+                        ${order.status}
+                    </span>
+                </div>
                 <button id="modalGenReceiptBtn" 
-                    class="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-[11px] font-bold hover:bg-blue-700 transition-all">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    Generate Receipt (PDF/PNG)
+                    class="flex items-center gap-2 px-4 py-2 bg-brand-blue text-white rounded-xl text-xs font-bold hover:shadow-lg transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Generate Receipt
                 </button>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-                <div class="col-span-2 bg-blue-50 p-3 rounded-lg border border-blue-100">
-                    <p class="text-[10px] text-blue-600 font-bold uppercase">Transaction Reference</p>
-                    <p class="font-mono font-bold text-brand-darkText break-all">${order.paymentReference}</p>
-                </div>
+            <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <p class="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Transaction Reference</p>
+                <p class="font-mono font-bold text-brand-darkText break-all select-all">${order.paymentReference}</p>
+            </div>
 
+            <div class="grid grid-cols-2 gap-6">
                 <div>
-                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Plan</p>
-                    <p class="font-bold text-sm text-brand-blue uppercase">${order.planName}</p>
+                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Carrier / Network</p>
+                    <p class="font-bold text-sm text-brand-darkText uppercase">${order.nodeName || 'N/A'}</p>
                 </div>
                 <div>
-                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Date</p>
-                    <p class="font-medium text-sm">${date}</p>
+                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Device Model</p>
+                    <p class="font-bold text-sm text-brand-darkText">${order.targetNumber || 'N/A'}</p>
                 </div>
-
-                <div class="col-span-2 border-t border-b py-3">
-                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Activation Code / PIN</p>
-                    <p class="font-mono font-bold text-lg text-green-700">${order.confirmationNumber || 'PENDING'}</p>
+                <div>
+                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Activation Type</p>
+                    <p class="font-medium text-sm px-2 py-0.5 bg-gray-100 rounded-md w-fit">${order.activationType || 'Standard'}</p>
                 </div>
+                <div>
+                    <p class="text-[10px] text-brand-lightText font-bold uppercase">Order Date</p>
+                    <p class="font-medium text-sm text-gray-600">${date}</p>
+                </div>
+            </div>
 
-                <div class="col-span-2 bg-gray-50 p-3 rounded-xl border">
-                    <div class="flex justify-between text-sm">
-                        <span>Total Paid:</span>
-                        <b class="text-brand-blue">₦${parseFloat(order.amount).toLocaleString()}</b>
+            <div class="border-t pt-4">
+                <h4 class="text-[11px] font-bold text-brand-blue uppercase mb-3">Subscriber Information</h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <div class="col-span-1">
+                        <p class="text-[10px] text-brand-lightText font-bold uppercase">Full Name</p>
+                        <p class="font-bold text-sm">${order.fullName || 'N/A'}</p>
                     </div>
+                    <div class="col-span-1">
+                        <p class="text-[10px] text-brand-lightText font-bold uppercase">Activation Email</p>
+                        <p class="font-bold text-sm text-blue-600 underline underline-offset-2">${order.email || order.userEmail}</p>
+                    </div>
+                    <div class="col-span-2">
+                        <p class="text-[10px] text-brand-lightText font-bold uppercase">Residential Address</p>
+                        <p class="font-medium text-sm text-gray-700 leading-relaxed">${order.address || 'N/A'}</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-brand-lightText font-bold uppercase">Zip / Postal Code</p>
+                        <p class="font-bold text-sm">${order.zipCode || 'N/A'}</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-brand-lightText font-bold uppercase">Account Owner</p>
+                        <p class="font-medium text-xs text-gray-500">${order.userEmail}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="py-4 border-t border-b">
+                <p class="text-[10px] text-brand-lightText font-bold uppercase mb-1 text-center">eSIM Confirmation Number / PIN</p>
+                <div class="bg-green-50 border-2 border-dashed border-green-200 p-4 rounded-xl text-center">
+                    <p class="font-mono font-bold text-2xl text-green-700 tracking-widest">${order.confirmationNumber || 'PENDING'}</p>
+                </div>
+            </div>
+
+            <div class="bg-brand-dark text-white p-4 rounded-xl shadow-lg">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-medium text-gray-300">Total Amount Charged:</span>
+                    <b class="text-xl">₦${parseFloat(order.amount).toLocaleString()}</b>
                 </div>
             </div>
         </div>
@@ -263,7 +307,6 @@ function viewActivationDetails(ref) {
     document.getElementById('detailModal').classList.remove('hidden');
 }
 
-// --- MANAGE MODAL LOGIC ---
 function manageActivation(ref) {
     const order = currentOrders.find(o => o.paymentReference === ref);
     if (!order) return;
@@ -288,15 +331,40 @@ function manageActivation(ref) {
                     placeholder="e.g. LPA:1$SMSG.COM$...">
             </div>
 
+            <div>
+                <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Upload Receipt (Image or PDF)</label>
+                <div class="relative border-2 border-dashed border-gray-200 rounded-xl p-4 hover:border-brand-blue transition-colors group">
+                    <input type="file" id="receiptFile" accept="image/*,.pdf" 
+                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        onchange="handleFileSelect(this)">
+                    <div class="text-center">
+                        <svg class="w-8 h-8 mx-auto text-gray-400 group-hover:text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <p id="fileNameDisplay" class="text-xs text-gray-500 mt-2">Click to upload or drag and drop</p>
+                    </div>
+                </div>
+                ${order.receiptUrl ? `<p class="text-[10px] text-green-600 mt-1">✓ Current receipt exists</p>` : ''}
+            </div>
+
             <div class="pt-4 border-t">
                 <button id="saveOrderBtn" onclick="saveOrderUpdate('${order.paymentReference}')" 
-                    class="w-full bg-brand-blue text-white py-3 rounded-xl font-bold hover:bg-blue-800 transition-all shadow-lg shadow-blue-200">
-                    Update Order Details
+                    class="w-full bg-brand-blue text-white py-3 rounded-xl font-bold hover:bg-blue-800 transition-all shadow-lg shadow-blue-200 flex justify-center items-center gap-2">
+                    <span>Update Order Details</span>
                 </button>
             </div>
         </div>
     `;
     document.getElementById('detailModal').classList.remove('hidden');
+}
+
+// Visual helper for file selection
+function handleFileSelect(input) {
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    if (input.files && input.files[0]) {
+        fileNameDisplay.innerText = input.files[0].name;
+        fileNameDisplay.classList.add('text-brand-blue', 'font-bold');
+    }
 }
 
 async function saveOrderUpdate(tid) {
@@ -354,44 +422,108 @@ function showReceiptOptions(order) {
 
 async function generateUniversalReceipt(order, format) {
     const receiptDiv = document.createElement('div');
-    Object.assign(receiptDiv.style, { width: '320px', padding: '25px', background: '#fff', position: 'absolute', left: '-9999px', fontFamily: 'sans-serif' });
+    // Set position relative to allow absolute positioning of watermark
+    Object.assign(receiptDiv.style, { 
+        width: '350px', 
+        padding: '30px', 
+        background: '#fff', 
+        position: 'absolute', 
+        left: '-9999px', 
+        fontFamily: "'Inter', system-ui, sans-serif",
+        color: '#1a1a1a',
+        overflow: 'hidden' // Important for watermark
+    });
     
     const logoUrl = 'https://i.imgur.com/8YeZgfx.png';
+    const date = new Date(order.createdAt).toLocaleDateString('en-NG', {
+        year: 'numeric', month: 'long', day: 'numeric'
+    });
+
     receiptDiv.innerHTML = `
-        <div style="text-align:center; margin-bottom:20px;">
-            <img src="${logoUrl}" style="width:80px; margin-bottom:5px;">
-            <p style="font-size:10px; color:#888; text-transform:uppercase;">eSIM Activation Receipt</p>
+        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%) rotate(-45deg); 
+            font-size:40px; color:rgba(15, 84, 198, 0.05); font-weight:900; white-space:nowrap; pointer-events:none; z-index:0; text-transform:uppercase;">
+            SMS GLOBE GLOBAL
         </div>
-        <div style="border-top:1px solid #eee; padding:10px 0; font-size:11px;">
-            <p>Ref: <b>${order.paymentReference}</b></p>
-            <p>Plan: <b>${order.planName}</b></p>
-        </div>
-        <div style="background:#f8fafc; padding:15px; border-radius:8px; text-align:center; margin-bottom:20px;">
-            <p style="font-size:10px; color:#64748b; margin:0;">Total Amount Paid</p>
-            <h2 style="font-size:22px; color:#0f54c6; margin:5px 0;">₦${parseFloat(order.amount).toLocaleString()}</h2>
-        </div>
-        <div style="text-align:center; font-size:9px; color:#999;">
-            <p>Thank you for choosing SMS GLOBE</p>
+
+        <div style="position:relative; z-index:1;">
+            <div style="text-align:center; margin-bottom:25px;">
+                <img src="${logoUrl}" style="width:50px; height:auto; margin:0 auto 10px auto; display:block;">
+                <h1 style="font-size:14px; margin:0; color:#0f54c6; text-transform:uppercase; letter-spacing:1px;">Official Receipt</h1>
+                <p style="font-size:10px; color:#64748b; margin-top:4px;">${date}</p>
+            </div>
+
+            <div style="background:#f8fafc; border-radius:12px; padding:15px; margin-bottom:20px; border:1px solid #e2e8f0;">
+                <p style="font-size:9px; color:#64748b; margin:0 0 4px 0; text-transform:uppercase;">Total Amount Paid</p>
+                <h2 style="font-size:24px; color:#0f54c6; margin:0; font-weight:800;">₦${parseFloat(order.amount).toLocaleString()}</h2>
+            </div>
+
+            <div style="font-size:11px; line-height:1.6;">
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:6px 0;">
+                    <span style="color:#64748b;">Reference:</span>
+                    <span style="font-weight:700; font-family:monospace;">${order.paymentReference}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:6px 0;">
+                    <span style="color:#64748b;">Carrier:</span>
+                    <span style="font-weight:600;">${order.nodeName || 'N/A'}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:6px 0;">
+                    <span style="color:#64748b;">Device:</span>
+                    <span style="font-weight:600;">${order.targetNumber || 'eSIM Device'}</span>
+                </div>
+                 <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:6px 0;">
+                    <span style="color:#64748b;">Plan:</span>
+                    <span style="font-weight:600;">${order.planName}</span>
+                </div>
+            </div>
+
+            <div style="margin-top:20px; padding:12px; background:#fff; border:1px solid #f1f5f9; border-radius:8px;">
+                <p style="font-size:9px; color:#64748b; margin:0 0 5px 0; font-weight:bold; text-transform:uppercase;">Subscriber Info</p>
+                <p style="font-size:11px; margin:2px 0;"><b>Name:</b> ${order.fullName || 'N/A'}</p>
+                <p style="font-size:11px; margin:2px 0;"><b>Email:</b> ${order.email || order.userEmail}</p>
+                <p style="font-size:10px; margin:2px 0; color:#475569;"><b>Address:</b> ${order.address || 'N/A'}, ${order.zipCode || ''}</p>
+            </div>
+
+            <div style="margin-top:25px; text-align:center; padding-top:15px; border-top:2px dashed #e2e8f0;">
+                <p style="font-size:9px; color:#64748b; margin-bottom:5px;">CONFIRMATION NUMBER</p>
+                <p style="font-size:14px; font-weight:800; color:#16a34a; font-family:monospace; margin:0;">${order.confirmationNumber || 'VERIFIED'}</p>
+                <div style="margin-top:20px;">
+                    <p style="font-size:10px; font-weight:700; color:#0f54c6; margin:0;">SMS GLOBE GLOBAL CONNECTIVITY</p>
+                    <p style="font-size:8px; color:#94a3b8; margin-top:4px;">This is an electronically generated receipt.</p>
+                </div>
+            </div>
         </div>
     `;
+    
     document.body.appendChild(receiptDiv);
 
-    const canvas = await html2canvas(receiptDiv, { scale: 3, useCORS: true });
-    const imgData = canvas.toDataURL('image/png');
-    if (format === 'image') {
-        const link = document.createElement('a');
-        link.download = `Receipt-${order.paymentReference}.png`;
-        link.href = imgData;
-        link.click();
-    } else {
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('p', 'mm', [80, 120]);
-        pdf.addImage(imgData, 'PNG', 0, 0, 80, 120);
-        pdf.save(`Receipt-${order.paymentReference}.pdf`);
+    try {
+        const canvas = await html2canvas(receiptDiv, { 
+            scale: 3, 
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        
+        if (format === 'image') {
+            const link = document.createElement('a');
+            link.download = `SMS-GLOBE-Receipt-${order.paymentReference}.png`;
+            link.href = imgData;
+            link.click();
+        } else {
+            const { jsPDF } = window.jspdf;
+            // Height adjusted to 160mm to fit extra subscriber info
+            const pdf = new jsPDF('p', 'mm', [80, 160]); 
+            pdf.addImage(imgData, 'PNG', 0, 0, 80, 160);
+            pdf.save(`SMS-GLOBE-Receipt-${order.paymentReference}.pdf`);
+        }
+    } catch (error) {
+        console.error("Receipt Generation Error:", error);
+    } finally {
+        document.body.removeChild(receiptDiv);
     }
-    document.body.removeChild(receiptDiv);
 }
-
 function getStatusClass(status) {
     const s = status.toLowerCase();
     if (s === 'completed' || s === 'successful') return 'bg-green-100 text-green-700';

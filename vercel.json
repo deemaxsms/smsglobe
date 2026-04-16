@@ -8,7 +8,19 @@
       "use": "@vercel/node"
     },
     {
-      "src": "**/!(node_modules)/*.html",
+      "src": "*.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "style.css",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "sitemap.xml",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "robots.txt",
       "use": "@vercel/static"
     },
     {
@@ -16,7 +28,7 @@
       "use": "@vercel/static"
     },
     {
-      "src": "style.css",
+      "src": "smsuser/**/*.html",
       "use": "@vercel/static"
     },
     {
@@ -25,14 +37,6 @@
     }
   ],
   "rewrites": [
-    {
-      "source": "/sitemap.xml",
-      "destination": "/sitemap.xml"
-    },
-    {
-      "source": "/robots.txt",
-      "destination": "/robots.txt"
-    },
     {
       "source": "/api/(.*)",
       "destination": "/api.js"

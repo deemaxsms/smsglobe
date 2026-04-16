@@ -8,11 +8,15 @@
       "use": "@vercel/node"
     },
     {
+      "src": "**/!(node_modules)/*.html",
+      "use": "@vercel/static"
+    },
+    {
       "src": "assets/**/*",
       "use": "@vercel/static"
     },
     {
-      "src": "smsuser/**/*.html",
+      "src": "style.css",
       "use": "@vercel/static"
     },
     {

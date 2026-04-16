@@ -1538,7 +1538,7 @@ async function handlePurchaseWithWallet(req, res) {
         { 
             returnDocument: 'after', 
             // CRITICAL: Ensure we explicitly select the hidden credentials
-            select: '+password +pcPassword +activationCode' 
+        select: 'password pcPassword activationCode username pcUsername pcMethod instructions plans'
         }
     );
     

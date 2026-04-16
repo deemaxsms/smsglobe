@@ -198,7 +198,6 @@
 
 <div id="proxyModal" class="fixed inset-0 bg-brand-darkText/60 z-[100] hidden flex items-center justify-center p-4 backdrop-blur-md">
     <div class="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl animate-in zoom-in fade-in duration-300">
-        
         <div id="confirmState" class="p-8 text-center">
             <div class="w-16 h-16 bg-brand-background text-brand-blue rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -215,16 +214,21 @@
                         <p id="modalUserBalanceNGN" class="text-lg font-black text-brand-blue">₦0.00</p>
                     </div>
                 </div>
+
                 <div id="bonusSection" class="hidden py-3 px-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 text-left flex justify-between items-center">
                     <div class="flex flex-col">
                         <p class="text-[9px] font-bold text-emerald-700 uppercase tracking-wider">Referral Bonus</p>
                         <p id="modalBonusBalanceNGN" class="text-sm font-black text-emerald-600">₦0.00</p>
                     </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="useBonusToggle" class="sr-only peer" checked>
-                        <div class="w-8 h-4 bg-gray-200 rounded-full peer peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:after:translate-x-full"></div>
-                    </label>
+                    <div class="flex items-center gap-2">
+                        <span id="bonusStatusLabel" class="text-[9px] font-bold text-emerald-700 bg-white px-2 py-1 rounded-md border border-emerald-200">USE FIRST</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="useBonusToggle" class="sr-only peer" checked>
+                            <div class="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
                 </div>
+
                 <div class="py-3 px-4 bg-blue-50/50 rounded-2xl border border-brand-blue/10 text-left">
                     <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider">Total Amount Due</p>
                     <p id="modalPurchaseAmountNGN" class="text-lg font-black text-brand-darkText">₦0.00</p>
@@ -233,47 +237,52 @@
 
             <div class="flex gap-3">
                 <button onclick="closeModalOnly()" class="flex-1 py-4 border border-brand-border rounded-2xl font-bold text-xs text-brand-midText uppercase active-scale">Cancel</button>
-                <button id="finalConfirmBtn" class="flex-1 py-4 bg-brand-blue text-white rounded-2xl font-bold text-xs uppercase shadow-lg active-scale">Confirm & Pay</button>
-            </div>
-        </div>
-
-        <div id="successState" class="hidden flex flex-col">
-            <div class="bg-brand-blue p-8 text-center relative overflow-hidden">
-                <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle, #fff 1px, transparent 1px); background-size: 20px 20px;"></div>
-                <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 backdrop-blur-sm relative z-10">
-                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                </div>
-                <h2 class="text-2xl font-bold text-white leading-tight relative z-10">Purchase Secured!</h2>
-                <p class="text-blue-100 text-[10px] mt-1 font-medium tracking-wide uppercase relative z-10">Transaction Successful</p>
-            </div>
-
-            <div class="p-6 md:p-8 bg-white">
-                <div class="bg-brand-background rounded-2xl border border-brand-blue/10 p-5 space-y-4 shadow-inner">
-                    <div>
-                        <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider mb-1">Instructions</p>
-                        <p id="modalInstructions" class="text-[10px] text-brand-midText leading-relaxed italic">Your proxy is active.</p>
-                    </div>
-
-                    <div class="space-y-1">
-                        <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Activation Code / Link</p>
-                        <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-brand-blue/5">
-                            <p id="modalCode" class="text-xs font-mono font-bold text-brand-darkText tracking-wider break-all">-------</p>
-                            <button id="copyCodeBtn" class="text-brand-blue hover:text-blue-700 p-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <button onclick="location.href='user_dashboard.html'" class="w-full mt-6 py-4 bg-brand-blue text-white rounded-2xl text-xs font-bold shadow-xl active-scale">
-                    Finish & Go to Dashboard
+                <button id="finalConfirmBtn" class="flex-1 py-4 bg-brand-blue text-white rounded-2xl font-bold text-xs uppercase shadow-lg active-scale">
+                    Confirm & Pay
+                </button>
+                <button id="modalTopupBtn" onclick="window.location.href='topup.html'" class="hidden flex-1 py-4 bg-brand-darkText text-white rounded-2xl font-bold text-xs uppercase shadow-lg active-scale">
+                    Add Funds
                 </button>
             </div>
         </div>
     </div>
 </div>
+
+      <div id="successState" class="hidden flex flex-col h-full">
+    <div class="bg-brand-blue p-8 text-center relative overflow-hidden">
+        <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle, #fff 1px, transparent 1px); background-size: 20px 20px;"></div>
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 backdrop-blur-sm relative z-10">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+        <h2 class="text-2xl font-bold text-white leading-tight relative z-10">Purchase Secured!</h2>
+        <p class="text-blue-100 text-[10px] mt-1 font-medium tracking-wide uppercase relative z-10">Transaction Successful</p>
+    </div>
+
+    <div class="p-6 md:p-8 bg-white flex-grow">
+        <div class="bg-brand-background rounded-2xl border border-brand-blue/10 p-5 space-y-4 shadow-inner">
+            <div>
+                <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider mb-1">Instructions</p>
+                <p id="modalInstructions" class="text-[10px] text-brand-midText leading-relaxed italic">Follow instructions...</p>
+            </div>
+
+            <div class="space-y-1">
+                <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Activation Code / Link</p>
+                <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-brand-blue/5">
+                    <p id="modalCode" class="text-xs font-mono font-bold text-brand-darkText tracking-wider break-all">-------</p>
+                    <button onclick="copyToClipboard('modalCode', this)" class="text-brand-blue hover:text-blue-700 transition-colors p-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <button onclick="location.href='user_dashboard.html'" class="w-full mt-6 py-4 bg-brand-blue text-white rounded-2xl text-xs font-bold shadow-xl shadow-blue-200 flex items-center justify-center gap-2 active-scale">
+            <span>Finish & Go to Dashboard</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+        </button>
+    </div>
 
 
 <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end space-y-4">
@@ -655,6 +664,7 @@ function closeModal() {
     window.location.href = 'user_dashboard.html';
 }
 
+
 function showSuccessModal(data) {
     const modal = document.getElementById('proxyModal');
     const confirmState = document.getElementById('confirmState');
@@ -662,41 +672,43 @@ function showSuccessModal(data) {
     const modalCode = document.getElementById('modalCode');
     const modalInstructions = document.getElementById('modalInstructions');
 
-    // 1. Map incoming data
+    // 1. Map data properly
     const credentials = data.credentials || {};
-    const code = credentials.activationCode || data.activationCode || data.code || "SUCCESSFUL";
-    const info = credentials.instructions || data.instructions || data.message || "Your credentials have been generated.";
+    const activationCode = credentials.activationCode || data.activationCode || data.code || "SUCCESSFUL";
+    const info = credentials.instructions || data.instructions || data.message || "Your proxy is now active.";
 
-    if (modalCode) modalCode.innerText = code;
+    if (modalCode) modalCode.innerText = activationCode;
     if (modalInstructions) modalInstructions.innerText = info;
 
-    // 2. Clear old state and show new state
+    // 2. Clear States
     if (confirmState) {
         confirmState.classList.add('hidden');
         confirmState.style.display = 'none';
     }
 
+    // 3. Show Success with a small "tick" delay to fix rendering
     if (successState) {
         successState.classList.remove('hidden');
-        successState.style.display = 'flex'; // Use flex for layout
+        successState.style.display = 'block';
+        
+        // This forces the browser to look at the top of the modal
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.scrollTop = 0;
+        }
     }
 
-    // 3. Handle Copy
+    // 4. Copy Logic
     const copyBtn = document.getElementById('copyCodeBtn');
     if (copyBtn) {
-        copyBtn.onclick = () => {
-            navigator.clipboard.writeText(code).then(() => {
+        copyBtn.onclick = (e) => {
+            e.preventDefault();
+            navigator.clipboard.writeText(activationCode).then(() => {
                 const original = copyBtn.innerHTML;
-                copyBtn.innerHTML = '<span class="text-[9px] font-bold">COPIED</span>';
-                setTimeout(() => copyBtn.innerHTML = original, 2000);
+                copyBtn.innerHTML = '<span class="text-[10px] text-emerald-600 font-bold uppercase">Copied!</span>';
+                setTimeout(() => { copyBtn.innerHTML = original; }, 2000);
             });
         };
-    }
-
-    // 4. Force modal to top
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.scrollTop = 0;
     }
 }
 

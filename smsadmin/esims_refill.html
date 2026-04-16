@@ -306,14 +306,13 @@ function viewOrderDetails(order) {
     const container = document.getElementById('detailContent');
     const date = new Date(order.createdAt).toLocaleString();
     
-    // --- FIXED: Changed 'refill' to 'order' to match the function parameter ---
-    const carrierName = order.nodeName || (order.carrier && order.carrier.name) || 'eSIM Service';
-    const targetDisplay = order.targetNumber || (order.target && order.target.number) || 'N/A';
+    // --- UPDATED LOGIC TO MATCH YOUR BACKEND RENDER ---
+    // Your backend sends 'carrier', 'targetNumber', and 'country' as top-level strings
+    const carrierName = order.carrier || order.nodeName || 'eSIM Service';
+    const targetNo = order.targetNumber || 'N/A';
+    const targetCountry = order.country || 'N/A';
     
-    // Fallback logic for payment data
     const finalAmount = order.amount || order.amountNGN || 0;
-    const targetNo = order.targetNumber || order.target?.number || 'N/A';
-    const targetCountry = order.country || order.target?.country || 'N/A';
 
     container.innerHTML = `
         <div class="space-y-4">
@@ -365,7 +364,7 @@ function viewOrderDetails(order) {
                     <div class="bg-gray-50 p-3 rounded-xl border border-dashed border-brand-border">
                         <div class="flex justify-between mb-1 text-sm">
                             <span>Amount Paid:</span>
-                            <span class="font-bold text-green-700">₦${finalAmount.toLocaleString()}</span>
+                            <span class="font-bold text-green-700">${typeof finalAmount === 'number' ? '₦' + finalAmount.toLocaleString() : finalAmount}</span>
                         </div>
                         <div class="flex justify-between text-[11px] text-brand-lightText">
                             <span>Current Status:</span>
@@ -374,7 +373,7 @@ function viewOrderDetails(order) {
                     </div>
                 </div>
 
-                ${order.confirmationNumber ? `
+                ${order.confirmationNumber && order.confirmationNumber !== 'PENDING' ? `
                 <div class="col-span-2 bg-green-50 p-3 rounded-lg border border-green-200">
                     <p class="text-[10px] text-green-600 font-bold uppercase">Confirmation Number</p>
                     <p class="font-mono font-bold text-green-700">${order.confirmationNumber}</p>
@@ -386,6 +385,7 @@ function viewOrderDetails(order) {
     document.getElementById('modalGenReceiptBtn').onclick = () => showReceiptOptions(order);
     document.getElementById('detailModal').classList.remove('hidden');
 }
+
     function updateFileName(input) {
     const display = document.getElementById('fileNameDisplay');
     if (input.files && input.files[0]) {
@@ -617,7 +617,7 @@ function resetSubmitButton(btn, text) {
         <div style="position: relative; z-index: 1;">
             <div style="text-align: center; margin-bottom: 15px;">
                 <img src="${logoUrl}" crossorigin="anonymous" style="max-width: 80px; height: auto; margin-bottom: 5px; display: inline-block;">
-                <p style="margin: 0; font-size: 8px; color: #888; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600;">Official Delivery Receipt</p>
+                <p style="margin: 0; font-size: 8px; color: #888; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600;">Official Receipt</p>
             </div>
             
             <div style="border-top: 0.5px solid #eee; border-bottom: 0.5px solid #eee; padding: 10px 0; margin-bottom: 15px;">

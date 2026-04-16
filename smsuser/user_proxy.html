@@ -666,7 +666,6 @@ function closeModal() {
     document.getElementById('proxyModal').classList.add('hidden');
     window.location.href = 'user_dashboard.html';
 }
-
 function showSuccessModal(data) {
     const modal = document.getElementById('proxyModal');
     const confirmState = document.getElementById('confirmState');
@@ -674,15 +673,16 @@ function showSuccessModal(data) {
     const modalCode = document.getElementById('modalCode');
     const modalInstructions = document.getElementById('modalInstructions');
 
-    // 1. Precise Data Mapping
-    // Use data.activationCode and data.instructions directly from the Order response
-    const code = data.activationCode || "NOT_FOUND";
-    const info = data.instructions || data.adminNote || "Your proxy is active. Check dashboard for details.";
+    // 1. Direct Mapping from your JSON response
+    // Uses the exact keys: 'activationCode' and 'instructions'
+    const code = data.activationCode || "N/A";
+    const info = data.instructions || "Your purchase was successful. Check your dashboard for details.";
 
+    // Update the HTML elements
     if (modalCode) modalCode.innerText = code;
     if (modalInstructions) modalInstructions.innerText = info;
 
-    // 2. Clear old state and show success state
+    // 2. State Toggle
     if (confirmState) {
         confirmState.classList.add('hidden');
         confirmState.style.display = 'none';
@@ -693,18 +693,21 @@ function showSuccessModal(data) {
         successState.style.display = 'flex'; 
     }
 
-    // 3. Handle Copy
+    // 3. Clipboard Functionality
     const copyBtn = document.getElementById('copyCodeBtn');
     if (copyBtn) {
         copyBtn.onclick = () => {
             navigator.clipboard.writeText(code).then(() => {
                 const original = copyBtn.innerHTML;
                 copyBtn.innerHTML = '<span class="text-[9px] font-bold text-emerald-600">COPIED</span>';
-                setTimeout(() => copyBtn.innerHTML = original, 2000);
+                setTimeout(() => {
+                    copyBtn.innerHTML = original;
+                }, 2000);
             });
         };
     }
 
+    // 4. Show Modal
     if (modal) {
         modal.classList.remove('hidden');
         modal.scrollTop = 0;

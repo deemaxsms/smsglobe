@@ -495,23 +495,26 @@
             }
         }
 
-        // 3. CLOUDINARY UPLOAD (Same as eSIM logic)
-        if (receiptFile) {
-            const cloudData = new FormData();
-            cloudData.append("file", receiptFile);
-            cloudData.append("upload_preset", "your_upload_preset"); // Replace with your actual preset
-            cloudData.append("folder", "rdp_receipts");
+      if (receiptInput.files.length > 0) {
+            btn.innerText = "Uploading Receipt...";
+            const file = receiptInput.files[0];
+            const cloudFormData = new FormData();
+            
+            // Values from your Cloudinary Dashboard
+            cloudFormData.append('file', file);
+            cloudFormData.append('upload_preset', 'smsglobe_unsigned'); 
 
-            const cloudRes = await fetch("https://api.cloudinary.com/v1_1/your_cloud_name/image/upload", {
-                method: "POST",
-                body: cloudData
+            const cloudRes = await fetch('https://api.cloudinary.com/v1_1/dycksm1kp/image/upload', {
+                method: 'POST',
+                body: cloudFormData
             });
-
-            const cloudJson = await cloudRes.json();
-            if (cloudJson.secure_url) {
-                finalReceiptUrl = cloudJson.secure_url;
+            
+            const cloudData = await cloudRes.json();
+            
+            if (cloudData.secure_url) {
+                receiptUrl = cloudData.secure_url;
             } else {
-                console.error("Cloudinary Error:", cloudJson);
+                throw new Error(cloudData.error?.message || "Cloudinary upload failed.");
             }
         }
 

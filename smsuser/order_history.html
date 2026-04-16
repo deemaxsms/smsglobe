@@ -327,7 +327,9 @@ function openOrderDetails(order) {
     const modal = document.getElementById('orderModal');
     
     // 1. Basic Information
-    document.getElementById('modalProduct').innerText = `${order.productType.replace('_', ' ')} - ${order.nodeName || 'Standard'}`;
+    // Replaces underscores (e.g., eSIM_Refill -> eSIM Refill)
+    const displayProduct = (order.productType || 'Service').replace('_', ' ');
+    document.getElementById('modalProduct').innerText = `${displayProduct} - ${order.nodeName || 'Standard'}`;
     document.getElementById('modalID').innerText = order.paymentReference || order._id;
     document.getElementById('modalAmount').innerText = `₦${(order.amount || 0).toLocaleString()}`;
     document.getElementById('modalPayment').innerText = order.paymentMethod || (order.bonusBalanceUsed > 0 ? 'Bonus Wallet' : 'Main Wallet');
@@ -336,36 +338,62 @@ function openOrderDetails(order) {
     const detailsContainer = document.getElementById('modalDynamicDetails');
     let dynamicHtml = '';
 
-    // Helper to add a detail row
+    // Helper to add a detail row only if value exists
     const addRow = (label, value) => {
-        if (!value) return;
+        if (value === undefined || value === null || value === "") return;
         dynamicHtml += `
-            <div class="flex justify-between items-center">
-                <span class="text-[9px] font-bold text-brand-lightText uppercase">${label}</span>
-                <span class="text-[10px] font-semibold text-brand-darkText">${value}</span>
+            <div class="flex justify-between items-start gap-4 mb-2">
+                <span class="text-[9px] font-bold text-brand-lightText uppercase shrink-0 mt-0.5">${label}</span>
+                <span class="text-[10px] font-semibold text-brand-darkText text-right break-all">${value}</span>
             </div>`;
     };
 
-    // Product-Specific Logic
-    if (order.productType.includes('eSIM')) {
-        addRow('Phone/Device', order.targetNumber);
+    // --- PRODUCT SPECIFIC MAPPING ---
+
+    if (order.productType === 'VPN') {
+        addRow('Service Provider', order.nodeName);
+        addRow('Plan Duration', order.planName);
+        // If your database has vpnCredentials object, you can display specific keys
+        if (order.vpnCredentials) {
+            addRow('VPN Username', order.vpnCredentials.username);
+            addRow('VPN Password', order.vpnCredentials.password);
+            addRow('Config/Link', order.vpnCredentials.configUrl);
+        }
+    } 
+    
+    else if (order.productType === 'eSIM_Refill' || order.productType === 'eSIM_Activation') {
+        addRow('Network', order.nodeName);
+        addRow('Phone Number', order.targetNumber);
         addRow('Country', order.country);
-        addRow('Plan', order.planName);
-        addRow('Confirmation', order.confirmationNumber);
-    } else if (order.productType === 'RDP') {
-        addRow('Port', order.port);
-        addRow('CPU/Storage', `${order.extraCPU} Core / ${order.extraStorage}GB`);
-    } else if (order.productType === 'VPN' || order.productType === 'Proxy') {
-        addRow('Region', order.country || order.nodeName);
-        addRow('Target', order.targetNumber);
+        addRow('Refill Value', order.planName);
+    } 
+    
+    else if (order.productType === 'RDP') {
+        addRow('Server Location', order.nodeName);
+        addRow('IP Address', order.targetNumber); // Assuming IP is stored here
+        addRow('Access Port', order.port);
+        if (order.extraCPU > 0 || order.extraStorage > 0) {
+            addRow('Resources', `+${order.extraCPU} Core / +${order.extraStorage}GB SSD`);
+        }
+    } 
+    
+    else if (order.productType === 'Proxy') {
+        addRow('Proxy Type', order.nodeName);
+        addRow('Target/IP', order.targetNumber);
+        addRow('Region', order.country);
     }
 
-    // Fallback for general metadata
+    // --- GENERIC EXTRAS ---
+    if (order.activationCode) addRow('Activation Code', order.activationCode);
     if (order.adminNote) {
-        dynamicHtml += `<div class="mt-2 p-2 bg-orange-50 text-orange-700 text-[9px] rounded border border-orange-100 italic"><b>Note:</b> ${order.adminNote}</div>`;
+        dynamicHtml += `
+            <div class="mt-3 p-3 bg-orange-50 text-orange-700 text-[10px] rounded-xl border border-orange-100 italic">
+                <b class="uppercase text-[9px] block not-italic mb-1">Admin Note:</b> 
+                ${order.adminNote}
+            </div>`;
     }
 
-    detailsContainer.innerHTML = dynamicHtml || '<p class="text-[9px] text-gray-400">No additional details.</p>';
+    detailsContainer.innerHTML = dynamicHtml || '<p class="text-[10px] text-gray-400 text-center py-2">Standard transaction details.</p>';
 
     // 3. Handle Admin Receipt Image
     const receiptImg = document.getElementById('receiptImg');
@@ -389,6 +417,7 @@ function openOrderDetails(order) {
     modal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
 }
+
 
 function closeOrderModal() {
     document.getElementById('orderModal').classList.add('hidden');

@@ -2345,7 +2345,7 @@ else {
                                 </table>
                             </div>
                             <div style="text-align: center; margin-top: 30px;">
-                                <a href="https://smsglobe.netlify.app" style="background-color: #0F54C6; color: #ffffff; padding: 12px 24px; text-decoration: none; font-size: 13px; font-weight: bold; border-radius: 8px; display: inline-block;">Access Dashboard</a>
+                                <a href="https://smsglobe.net" style="background-color: #0F54C6; color: #ffffff; padding: 12px 24px; text-decoration: none; font-size: 13px; font-weight: bold; border-radius: 8px; display: inline-block;">Access Dashboard</a>
                             </div>
                         </div>
                         <div style="background: #F9FAFB; padding: 20px; text-align: center; border-top: 1px solid #EAECF0;">

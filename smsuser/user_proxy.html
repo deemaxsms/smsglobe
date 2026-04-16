@@ -247,41 +247,43 @@
             </div>
         </div>
 
-        <div id="successState" class="hidden flex flex-col">
-            <div class="bg-brand-blue p-8 text-center relative overflow-hidden">
-                <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle, #fff 1px, transparent 1px); background-size: 20px 20px;"></div>
-                <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 backdrop-blur-sm relative z-10">
-                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                </div>
-                <h2 class="text-2xl font-bold text-white leading-tight relative z-10">Purchase Secured!</h2>
-                <p class="text-blue-100 text-[10px] mt-1 font-medium tracking-wide uppercase relative z-10">Transaction Successful</p>
+      <div id="successState" class="hidden flex flex-col">
+    <div class="bg-brand-blue p-8 text-center relative overflow-hidden">
+        <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle, #fff 1px, transparent 1px); background-size: 20px 20px;"></div>
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4 backdrop-blur-sm relative z-10">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+        <h2 class="text-2xl font-bold text-white leading-tight relative z-10">Purchase Secured!</h2>
+        <p class="text-blue-100 text-[10px] mt-1 font-medium tracking-wide uppercase relative z-10">Transaction Successful</p>
+    </div>
+
+    <div class="p-6 md:p-8 bg-white">
+        <div class="bg-brand-background rounded-2xl border border-brand-blue/10 p-5 space-y-4 shadow-inner">
+            <div>
+                <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider mb-1">Instructions</p>
+                <p id="modalInstructions" class="text-[11px] text-brand-darkText leading-relaxed italic whitespace-pre-line">
+                    Loading instructions...
+                </p>
             </div>
 
-            <div class="p-6 md:p-8 bg-white">
-                <div class="bg-brand-background rounded-2xl border border-brand-blue/10 p-5 space-y-4 shadow-inner">
-                    <div>
-                        <p class="text-[9px] font-bold text-brand-blue uppercase tracking-wider mb-1">Instructions</p>
-                        <p id="modalInstructions" class="text-[10px] text-brand-midText leading-relaxed italic">Your proxy is active.</p>
-                    </div>
-
-                    <div class="space-y-1">
-                        <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Activation Code / Link</p>
-                        <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-brand-blue/5">
-                            <p id="modalCode" class="text-xs font-mono font-bold text-brand-darkText tracking-wider break-all">-------</p>
-                            <button id="copyCodeBtn" class="text-brand-blue hover:text-blue-700 p-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            </button>
-                        </div>
-                    </div>
+            <div class="space-y-1">
+                <p class="text-[9px] font-bold text-brand-lightText uppercase tracking-wider">Activation Code / Link</p>
+                <div class="flex items-center justify-between bg-white p-3 rounded-xl border border-brand-blue/5">
+                    <p id="modalCode" class="text-xs font-mono font-bold text-brand-blue tracking-wider break-all">-------</p>
+                    <button id="copyCodeBtn" class="text-brand-blue hover:text-blue-700 p-2 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                    </button>
                 </div>
-
-                <button onclick="location.href='user_dashboard.html'" class="w-full mt-6 py-4 bg-brand-blue text-white rounded-2xl text-xs font-bold shadow-xl active-scale">
-                    Finish & Go to Dashboard
-                </button>
             </div>
         </div>
+
+        <button onclick="location.href='user_dashboard.html'" class="w-full mt-6 py-4 bg-brand-blue text-white rounded-2xl text-xs font-bold shadow-xl active-scale transition-all hover:bg-blue-700">
+            Finish & Go to Dashboard
+        </button>
     </div>
 </div>
 
@@ -664,7 +666,6 @@ function closeModal() {
     document.getElementById('proxyModal').classList.add('hidden');
     window.location.href = 'user_dashboard.html';
 }
-
 function showSuccessModal(data) {
     const modal = document.getElementById('proxyModal');
     const confirmState = document.getElementById('confirmState');
@@ -672,15 +673,15 @@ function showSuccessModal(data) {
     const modalCode = document.getElementById('modalCode');
     const modalInstructions = document.getElementById('modalInstructions');
 
-    // 1. Map incoming data
-    const credentials = data.credentials || {};
-    const code = credentials.activationCode || data.activationCode || data.code || "SUCCESSFUL";
-    const info = credentials.instructions || data.instructions || data.message || "Your credentials have been generated.";
+    // 1. Precise Data Mapping
+    // Prioritize direct properties from your admin-set data
+    const code = data.activationCode || (data.credentials && data.credentials.activationCode) || data.code || "SUCCESSFUL";
+    const info = data.instructions || (data.credentials && data.credentials.instructions) || data.message || "Your credentials have been generated.";
 
     if (modalCode) modalCode.innerText = code;
     if (modalInstructions) modalInstructions.innerText = info;
 
-    // 2. Clear old state and show new state
+    // 2. State Management
     if (confirmState) {
         confirmState.classList.add('hidden');
         confirmState.style.display = 'none';
@@ -688,28 +689,32 @@ function showSuccessModal(data) {
 
     if (successState) {
         successState.classList.remove('hidden');
-        successState.style.display = 'flex'; // Use flex for layout
+        successState.style.display = 'flex';
     }
 
-    // 3. Handle Copy
+    // 3. Robust Clipboard Handling
     const copyBtn = document.getElementById('copyCodeBtn');
     if (copyBtn) {
         copyBtn.onclick = () => {
+            // Use the 'code' variable derived above
             navigator.clipboard.writeText(code).then(() => {
                 const original = copyBtn.innerHTML;
-                copyBtn.innerHTML = '<span class="text-[9px] font-bold">COPIED</span>';
-                setTimeout(() => copyBtn.innerHTML = original, 2000);
+                copyBtn.innerHTML = '<span class="text-[9px] font-bold text-emerald-600">COPIED</span>';
+                setTimeout(() => {
+                    copyBtn.innerHTML = original;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy code:', err);
             });
         };
     }
 
-    // 4. Force modal to top
+    // 4. Modal Visibility
     if (modal) {
         modal.classList.remove('hidden');
         modal.scrollTop = 0;
     }
 }
-
     function closeModal() {
         document.getElementById('proxyModal').classList.add('hidden');
         window.location.href = 'user_dashboard.html';

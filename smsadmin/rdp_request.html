@@ -233,179 +233,204 @@
     }
 
     function viewOrderDetails(ref) {
-        const order = allOrders.find(o => o.paymentReference === ref);
-        if (!order) return;
+    const order = allOrders.find(o => o.paymentReference === ref);
+    if (!order) return;
 
-        const ramVal = order.ram || order.metadata?.ram || 'N/A';
-        const cpuVal = order.cpu || order.metadata?.cpu || 'N/A';
-        const netVal = order.net || order.metadata?.net || 'N/A';
-        const storageVal = order.storage || order.metadata?.storage || 'N/A';
-        const osVal = order.os || order.metadata?.osChoice || '';
+    // Data Mapping
+    const ramVal = order.ram || order.metadata?.ram || 'N/A';
+    const cpuVal = order.cpu || order.metadata?.cpu || 'N/A';
+    const netVal = order.net || order.metadata?.net || 'N/A';
+    const storageVal = order.storage || order.metadata?.storage || 'N/A';
+    const osVal = order.os || order.metadata?.osChoice || '';
 
-        const ipVal = order.ipAddress || '';
-        const portVal = order.port || '';
-        const userVal = order.rdpUsername || '';
-        const passVal = order.rdpPassword || '';
-        const confVal = order.confirmationNumber || '.';
-        
-        const extraCPUVal = order.extraCPU ?? order.metadata?.extraCPU ?? 0;
-        const extraStorageVal = order.extraStorage ?? order.metadata?.extraStorage ?? 0;
+    const ipVal = order.ipAddress || '';
+    const portVal = order.port || '';
+    const userVal = order.rdpUsername || '';
+    const passVal = order.rdpPassword || '';
+    const confVal = order.confirmationNumber || '.';
+    
+    const extraCPUVal = order.extraCPU ?? order.metadata?.extraCPU ?? 0;
+    const extraStorageVal = order.extraStorage ?? order.metadata?.extraStorage ?? 0;
 
-        const status = order.status.toLowerCase();
-        const modal = document.getElementById('viewModal');
-        const container = document.getElementById('modalContainer'); 
+    const status = order.status.toLowerCase();
+    const modal = document.getElementById('viewModal');
+    const container = document.getElementById('modalContainer'); 
 
-        if (!modal) return;
+    if (!modal) return;
 
-        document.getElementById('m-ref').innerText = `Order #${order.paymentReference.slice(-8)}`;
-        document.getElementById('m-date').innerText = `Product: ${order.productType || 'RDP'} | ${order.nodeName || 'Global'}`;
+    // --- HEADER: Title and Generate Receipt Button ---
+    // We use a safe attribute to pass the ref to a helper function instead of passing the whole object as a string
+    document.getElementById('m-ref').innerHTML = `
+        <div class="flex justify-between items-center w-full">
+            <span>Order #${order.paymentReference.slice(-8)}</span>
+            <button onclick="generateUniversalReceipt(allOrders.find(o=>o.paymentReference==='${order.paymentReference}'), 'pdf')" 
+                class="flex items-center gap-1.5 px-3 py-1 bg-white border border-brand-blue text-brand-blue rounded-lg text-[10px] font-bold hover:bg-brand-blue hover:text-white transition-all shadow-sm">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                Generate Receipt
+            </button>
+        </div>
+    `;
+    document.getElementById('m-date').innerText = `Product: ${order.productType || 'RDP'} | ${order.nodeName || 'Global'}`;
 
-        let actionHTML = '';
+    let actionHTML = '';
 
-        if (['successful', 'processing', 'pending', 'completed'].includes(status)) {
-            if (status !== 'completed') {
-                actionHTML = `
-                    <div class="mt-6 p-5 bg-blue-50 rounded-2xl border border-blue-100 text-left">
-                        <div class="flex items-center gap-2 mb-4">
-                            <div class="w-1.5 h-4 bg-brand-blue rounded-full"></div>
-                            <h4 class="text-[11px] font-bold text-brand-blue uppercase tracking-wider">RDP Access Logs (Fulfillment)</h4>
-                        </div>
-                        
-                        <div class="grid grid-cols-2 gap-3 mb-4">
-                            <div>
-                                <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Primary IP Address</label>
-                                <input type="text" id="log-ip-${order.paymentReference}" placeholder="0.0.0.0" 
-                                       class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
-                            </div>
-                            <div>
-                                <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Access Port</label>
-                                <input type="text" id="log-port-${order.paymentReference}" placeholder="3389" 
-                                       class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3 mb-4">
-                            <div>
-                                <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Login Username</label>
-                                <input type="text" id="log-user-${order.paymentReference}" placeholder="Administrator" 
-                                       class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
-                            </div>
-                            <div>
-                                <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Login Password</label>
-                                <input type="text" id="log-pass-${order.paymentReference}" placeholder="********" 
-                                       class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Confirmation Number / Admin Note</label>
-                            <input type="text" id="log-conf-${order.paymentReference}" placeholder="Enter confirmation or internal ref" 
+    if (['successful', 'processing', 'pending', 'completed'].includes(status)) {
+        if (status !== 'completed') {
+            actionHTML = `
+                <div class="mt-6 p-5 bg-blue-50 rounded-2xl border border-blue-100 text-left">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-1.5 h-4 bg-brand-blue rounded-full"></div>
+                        <h4 class="text-[11px] font-bold text-brand-blue uppercase tracking-wider">RDP Access Logs (Fulfillment)</h4>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Primary IP Address</label>
+                            <input type="text" id="log-ip-${order.paymentReference}" placeholder="0.0.0.0" value="${ipVal}"
                                    class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
                         </div>
-
-                        <button onclick="processRDPDeployment('${order.paymentReference}', event)" 
-                                class="bg-brand-blue text-white w-full py-3.5 rounded-xl text-xs font-bold hover:bg-blue-700 transition-all shadow-lg">
-                            Deploy RDP & Mark Completed
-                        </button>
-                    </div>`;
-            } else {
-              actionHTML = `
-    <div class="mt-6 p-5 bg-green-50 rounded-2xl border border-green-100 text-left">
-        <div class="flex items-center gap-2 mb-4">
-            <div class="w-1.5 h-4 bg-green-500 rounded-full"></div>
-            <h4 class="text-[11px] font-bold text-green-700 uppercase tracking-wider">Active Credentials</h4>
-        </div>
-        <div class="grid grid-cols-2 gap-4 bg-white p-4 rounded-xl border border-green-100 shadow-sm mb-4">
-            <div>
-                <p class="text-[9px] text-gray-400 uppercase font-bold">IP Address</p>
-                <p class="text-xs font-mono font-bold">${ipVal}</p>
-            </div>
-            <div>
-                <p class="text-[9px] text-gray-400 uppercase font-bold">Port</p>
-                <p class="text-xs font-mono font-bold">${portVal}</p>
-            </div>
-            <div>
-                <p class="text-[9px] text-gray-400 uppercase font-bold">Username</p>
-                <p class="text-xs font-mono font-bold">${userVal}</p>
-            </div>
-            <div>
-                <p class="text-[9px] text-gray-400 uppercase font-bold">Password</p>
-                <p class="text-xs font-mono font-bold">${passVal}</p>
-            </div>
-        </div>
-        <div class="bg-white p-3 rounded-xl border border-green-100">
-            <p class="text-[9px] text-gray-400 uppercase font-bold mb-1">Confirmation Note / Logs</p>
-            <p class="text-[11px] font-mono text-brand-darkText break-all">${confVal}</p>
-        </div>
-    </div>`;
-            }
-        }
-
-        document.getElementById('modalContent').innerHTML = `
-            <div class="mb-6 bg-brand-blue/5 p-4 rounded-2xl border border-brand-blue/10 flex items-center gap-4">
-                 <div class="h-12 w-12 rounded-full bg-brand-blue text-white flex items-center justify-center font-bold text-lg">
-                    ${(order.fullName || "U").charAt(0)}
-                 </div>
-                 <div class="text-left">
-                    <h3 class="text-sm font-bold text-brand-darkText">${order.fullName || 'User'}</h3>
-                    <p class="text-[11px] text-brand-lightText">${order.userEmail}</p>
-                 </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4 mb-6 text-left">
-                <div class="bg-gray-50 p-4 rounded-2xl border border-brand-border">
-                    <h4 class="text-[9px] font-bold text-brand-lightText uppercase mb-2">Configuration</h4>
-                    <p class="text-xs font-bold">${order.planName}</p>
-                    <p class="text-[11px] text-brand-orange font-bold">${osVal}</p>
-                    <div class="mt-3 pt-3 border-t border-gray-200 flex justify-between">
-                        <span class="text-[10px] text-brand-lightText">Region</span>
-                        <span class="text-[10px] font-bold uppercase">${order.nodeName}</span>
+                        <div>
+                            <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Access Port</label>
+                            <input type="text" id="log-port-${order.paymentReference}" placeholder="3389" value="${portVal}"
+                                   class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
+                        </div>
                     </div>
-                </div>
 
-<div class="bg-gray-50 p-4 rounded-2xl border border-brand-border">
-    <h4 class="text-[9px] font-bold text-brand-lightText uppercase mb-2">Hardware Specs</h4>
-    <div class="space-y-1 text-[11px]">
-        <div class="flex justify-between"><span>RAM:</span> <span class="font-bold">${ramVal}</span></div>
-        <div class="flex justify-between"><span>Base CPU:</span> <span class="font-bold text-brand-blue">${cpuVal}</span></div>
-        <div class="flex justify-between"><span>Base Disk:</span> <span class="font-bold">${storageVal}</span></div>
-        <div class="flex justify-between"><span>Network:</span> <span class="font-bold text-green-600">${netVal}</span></div>
-    </div>
-    <div class="mt-2 pt-2 border-t border-dashed border-gray-300">
-        <div class="flex justify-between items-center text-[10px] text-brand-orange font-bold">
-            <span>Extra Cores:</span> 
-            <span class="bg-orange-100 px-1.5 py-0.5 rounded">+${extraCPUVal} vCPU</span>
-        </div>
-        <div class="flex justify-between items-center text-[10px] text-brand-orange font-bold mt-1">
-            <span>Extra Disk:</span> 
-            <span class="bg-orange-100 px-1.5 py-0.5 rounded">+${extraStorageVal} GB</span>
-        </div>
-    </div>
-</div>
-            </div>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Login Username</label>
+                            <input type="text" id="log-user-${order.paymentReference}" placeholder="Administrator" value="${userVal}"
+                                   class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
+                        </div>
+                        <div>
+                            <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Login Password</label>
+                            <input type="text" id="log-pass-${order.paymentReference}" placeholder="********" value="${passVal}"
+                                   class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
+                        </div>
+                    </div>
 
-            <div class="bg-brand-darkText p-4 rounded-2xl text-white flex justify-between items-center mb-4 shadow-xl">
-                <div class="text-left">
-                    <p class="text-[10px] opacity-70 uppercase font-bold">Revenue Generated</p>
-                    <p class="text-xl font-bold">₦${Number(order.amount).toLocaleString()}</p>
-                </div>
-                <div class="text-right">
-                    <p class="text-[10px] opacity-70 uppercase">Reference</p>
-                    <p class="text-[10px] font-mono opacity-90">${order.paymentReference}</p>
-                </div>
-            </div>
+                    <div class="mb-4">
+                        <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Confirmation Number / Admin Note</label>
+                        <input type="text" id="log-conf-${order.paymentReference}" placeholder="Enter confirmation or internal ref" value="${confVal === '.' ? '' : confVal}"
+                                   class="w-full border border-brand-border rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-brand-blue bg-white font-mono">
+                    </div>
 
-            ${actionHTML}
-        `;
+                    <div class="mb-5">
+                        <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Upload Delivery Receipt (PDF/IMG)</label>
+                        <div class="relative border-2 border-dashed border-blue-200 rounded-xl p-4 bg-white hover:border-brand-blue transition-all group">
+                            <input type="file" id="log-file-${order.paymentReference}" accept="image/*,.pdf" 
+                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                onchange="const display = document.getElementById('file-name-${order.paymentReference}'); display.innerText = this.files[0].name; display.classList.add('text-brand-blue', 'font-bold');">
+                            <div class="text-center pointer-events-none">
+                                <svg class="w-6 h-6 mx-auto text-blue-300 group-hover:text-brand-blue mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                <p id="file-name-${order.paymentReference}" class="text-[10px] text-gray-400">Click to attach proof of delivery</p>
+                            </div>
+                        </div>
+                    </div>
 
-        modal.classList.remove('hidden');
-        if (container) {
-            setTimeout(() => {
-                container.classList.remove('scale-95', 'opacity-0');
-                container.classList.add('scale-100', 'opacity-100');
-            }, 10);
+                    <button onclick="processRDPDeployment('${order.paymentReference}', event)" 
+                            class="bg-brand-blue text-white w-full py-3.5 rounded-xl text-xs font-bold hover:bg-blue-700 transition-all shadow-lg">
+                        Deploy RDP & Mark Completed
+                    </button>
+                </div>`;
+        } else {
+            actionHTML = `
+                <div class="mt-6 p-5 bg-green-50 rounded-2xl border border-green-100 text-left">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-1.5 h-4 bg-green-500 rounded-full"></div>
+                        <h4 class="text-[11px] font-bold text-green-700 uppercase tracking-wider">Active Credentials</h4>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 bg-white p-4 rounded-xl border border-green-100 shadow-sm mb-4">
+                        <div>
+                            <p class="text-[9px] text-gray-400 uppercase font-bold">IP Address</p>
+                            <p class="text-xs font-mono font-bold text-gray-800">${ipVal}</p>
+                        </div>
+                        <div>
+                            <p class="text-[9px] text-gray-400 uppercase font-bold">Port</p>
+                            <p class="text-xs font-mono font-bold text-gray-800">${portVal}</p>
+                        </div>
+                        <div>
+                            <p class="text-[9px] text-gray-400 uppercase font-bold">Username</p>
+                            <p class="text-xs font-mono font-bold text-gray-800">${userVal}</p>
+                        </div>
+                        <div>
+                            <p class="text-[9px] text-gray-400 uppercase font-bold">Password</p>
+                            <p class="text-xs font-mono font-bold text-gray-800">${passVal}</p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-3 rounded-xl border border-green-100">
+                        <p class="text-[9px] text-gray-400 uppercase font-bold mb-1">Confirmation Note / Logs</p>
+                        <p class="text-[11px] font-mono text-brand-darkText break-all">${confVal}</p>
+                    </div>
+                </div>`;
         }
     }
+
+    document.getElementById('modalContent').innerHTML = `
+        <div class="mb-6 bg-brand-blue/5 p-4 rounded-2xl border border-brand-blue/10 flex items-center gap-4">
+             <div class="h-12 w-12 rounded-full bg-brand-blue text-white flex items-center justify-center font-bold text-lg">
+                ${(order.fullName || "U").charAt(0)}
+             </div>
+             <div class="text-left">
+                <h3 class="text-sm font-bold text-brand-darkText">${order.fullName || 'User'}</h3>
+                <p class="text-[11px] text-brand-lightText">${order.userEmail}</p>
+             </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-6 text-left">
+            <div class="bg-gray-50 p-4 rounded-2xl border border-brand-border">
+                <h4 class="text-[9px] font-bold text-brand-lightText uppercase mb-2">Configuration</h4>
+                <p class="text-xs font-bold">${order.planName}</p>
+                <p class="text-[11px] text-brand-orange font-bold">${osVal}</p>
+                <div class="mt-3 pt-3 border-t border-gray-200 flex justify-between">
+                    <span class="text-[10px] text-brand-lightText">Region</span>
+                    <span class="text-[10px] font-bold uppercase">${order.nodeName}</span>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-2xl border border-brand-border">
+                <h4 class="text-[9px] font-bold text-brand-lightText uppercase mb-2">Hardware Specs</h4>
+                <div class="space-y-1 text-[11px]">
+                    <div class="flex justify-between"><span>RAM:</span> <span class="font-bold">${ramVal}</span></div>
+                    <div class="flex justify-between"><span>Base CPU:</span> <span class="font-bold text-brand-blue">${cpuVal}</span></div>
+                    <div class="flex justify-between"><span>Base Disk:</span> <span class="font-bold">${storageVal}</span></div>
+                    <div class="flex justify-between"><span>Network:</span> <span class="font-bold text-green-600">${netVal}</span></div>
+                </div>
+                <div class="mt-2 pt-2 border-t border-dashed border-gray-300">
+                    <div class="flex justify-between items-center text-[10px] text-brand-orange font-bold">
+                        <span>Extra Cores:</span> 
+                        <span class="bg-orange-100 px-1.5 py-0.5 rounded">+${extraCPUVal} vCPU</span>
+                    </div>
+                    <div class="flex justify-between items-center text-[10px] text-brand-orange font-bold mt-1">
+                        <span>Extra Disk:</span> 
+                        <span class="bg-orange-100 px-1.5 py-0.5 rounded">+${extraStorageVal} GB</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-brand-darkText p-4 rounded-2xl text-white flex justify-between items-center mb-4 shadow-xl">
+            <div class="text-left">
+                <p class="text-[10px] opacity-70 uppercase font-bold">Revenue Generated</p>
+                <p class="text-xl font-bold">₦${Number(order.amount).toLocaleString()}</p>
+            </div>
+            <div class="text-right">
+                <p class="text-[10px] opacity-70 uppercase">Reference</p>
+                <p class="text-[10px] font-mono opacity-90">${order.paymentReference}</p>
+            </div>
+        </div>
+
+        ${actionHTML}
+    `;
+
+    modal.classList.remove('hidden');
+    if (container) {
+        setTimeout(() => {
+            container.classList.remove('scale-95', 'opacity-0');
+            container.classList.add('scale-100', 'opacity-100');
+        }, 10);
+    }
+}
 
     function closeModal() {
         const modal = document.getElementById('viewModal');
@@ -424,80 +449,192 @@
     }
 
     // RENAMED TO processRDPDeployment TO MATCH HTML
-    async function processRDPDeployment(tid, event) {
-        const ipInput = document.getElementById(`log-ip-${tid}`);
-        const portInput = document.getElementById(`log-port-${tid}`);
-        const userInput = document.getElementById(`log-user-${tid}`);
-        const passInput = document.getElementById(`log-pass-${tid}`);
-        const notesInput = document.getElementById(`log-conf-${tid}`);
+   async function processRDPDeployment(tid, event) {
+    const ipInput = document.getElementById(`log-ip-${tid}`);
+    const portInput = document.getElementById(`log-port-${tid}`);
+    const userInput = document.getElementById(`log-user-${tid}`);
+    const passInput = document.getElementById(`log-pass-${tid}`);
+    const notesInput = document.getElementById(`log-conf-${tid}`);
+    const fileInput = document.getElementById(`log-file-${tid}`); // The new file input
 
-        const ip = ipInput.value.trim();
-        const port = portInput.value.trim() || '';
-        const user = userInput.value.trim();
-        const pass = passInput.value.trim();
-        const notes = notesInput.value.trim();
+    const ip = ipInput.value.trim();
+    const port = portInput.value.trim() || '';
+    const user = userInput.value.trim();
+    const pass = passInput.value.trim();
+    const notes = notesInput.value.trim();
+    const receiptFile = fileInput ? fileInput.files[0] : null;
 
-        const btn = event.currentTarget || event.target;
+    const btn = event.currentTarget || event.target;
 
-        if (!ip || !user || !pass) {
-            alert("Please enter the required RDP details: IP Address, Username, and Password.");
-            if (!ip) ipInput.focus();
-            else if (!user) userInput.focus();
-            else passInput.focus();
-            return;
-        }
+    // Validation
+    if (!ip || !user || !pass) {
+        alert("Please enter the required RDP details: IP Address, Username, and Password.");
+        if (!ip) ipInput.focus();
+        else if (!user) userInput.focus();
+        else passInput.focus();
+        return;
+    }
 
-        if (!confirm("Confirm delivery? The user will receive these login details immediately.")) return;
+    if (!confirm("Confirm delivery? The user will receive these login details immediately.")) return;
 
-        const originalText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerText = "Deploying...";
-        btn.classList.add('opacity-50', 'cursor-not-allowed');
+    // UI Feedback
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerText = "Deploying & Uploading...";
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
 
-        const token = localStorage.getItem('smsglobe_admin_token');
+    const token = localStorage.getItem('smsglobe_admin_token');
 
-        try {
-            const response = await fetch('/api/rdp-request-complete', {
-                method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json' 
-                },
-                body: JSON.stringify({ 
-                    tid: tid, 
-                    status: 'completed', 
-                    ipAddress: ip,
-                    port: port,
-                    rdpUsername: user,
-                    rdpPassword: pass,
-                    confirmationNumber: notes
-                })
-            });
+    // Prepare FormData for file upload support
+    const formData = new FormData();
+    formData.append('tid', tid);
+    formData.append('status', 'completed');
+    formData.append('ipAddress', ip);
+    formData.append('port', port);
+    formData.append('rdpUsername', user);
+    formData.append('rdpPassword', pass);
+    formData.append('confirmationNumber', notes);
+    
+    // Add the file if it exists
+    if (receiptFile) {
+        formData.append('receiptFile', receiptFile);
+    }
 
-            const data = await response.json();
+    try {
+        const response = await fetch('/api/rdp-request-complete', {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${token}`
+                // Note: Content-Type is NOT set here. 
+                // The browser will automatically set it to multipart/form-data with the correct boundary.
+            },
+            body: formData
+        });
 
-            if (data.success) {
-                alert('RDP Provisioned successfully!');
-                const modal = document.getElementById('viewModal');
-                if (modal) modal.classList.add('hidden');
-                await fetchRDPRequests(); 
-            } else {
-                alert('Error: ' + (data.message || 'Update failed'));
-                resetButton(btn, originalText);
-            }
-        } catch (err) {
-            console.error(err);
-            alert('Connection error. Please check your internet.');
+        const data = await response.json();
+
+        if (data.success) {
+            alert('RDP Provisioned and Receipt Uploaded successfully!');
+            const modal = document.getElementById('viewModal');
+            if (modal) modal.classList.add('hidden');
+            await fetchRDPRequests(); 
+        } else {
+            alert('Error: ' + (data.message || 'Update failed'));
             resetButton(btn, originalText);
         }
+    } catch (err) {
+        console.error(err);
+        alert('Connection error. Please check your internet.');
+        resetButton(btn, originalText);
     }
+}
 
-    function resetButton(btn, originalText) {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+async function generateUniversalReceipt(order) {
+    const receiptDiv = document.createElement('div');
+    
+    // Receipt Container Styles
+    Object.assign(receiptDiv.style, { 
+        width: '350px', 
+        padding: '30px', 
+        background: '#fff', 
+        position: 'absolute', 
+        left: '-9999px', 
+        fontFamily: "'Inter', system-ui, sans-serif",
+        color: '#1a1a1a'
+    });
+    
+    const logoUrl = 'https://i.imgur.com/8YeZgfx.png';
+    const dateTime = new Date(order.createdAt || Date.now()).toLocaleString('en-NG', {
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true
+    });
+
+    // Content mapping for RDP specs
+    const ram = order.ram || order.metadata?.ram || 'N/A';
+    const cpu = order.cpu || order.metadata?.cpu || 'N/A';
+    const storage = order.storage || order.metadata?.storage || 'N/A';
+
+    receiptDiv.innerHTML = `
+        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%) rotate(-45deg); 
+            font-size:40px; color:rgba(15, 84, 198, 0.04); font-weight:900; white-space:nowrap; pointer-events:none; z-index:0;">
+            SMS GLOBE
+        </div>
+
+        <div style="position:relative; z-index:1;">
+            <div style="text-align:center; margin-bottom:20px;">
+                <img src="${logoUrl}" style="width:45px; margin:0 auto 8px auto; display:block;">
+                <h1 style="font-size:12px; margin:0; color:#0f54c6; text-transform:uppercase; letter-spacing:1px; font-weight:800;">Official Delivery Receipt</h1>
+                <p style="font-size:9px; color:#64748b; margin-top:4px;">${dateTime}</p>
+            </div>
+
+            <div style="background:#f8fafc; border-radius:12px; padding:12px; margin-bottom:15px; border:1px solid #e2e8f0; text-align:center;">
+                <p style="font-size:8px; color:#64748b; margin:0; text-transform:uppercase;">Total Amount</p>
+                <h2 style="font-size:20px; color:#0f54c6; margin:0; font-weight:800;">₦${parseFloat(order.amount).toLocaleString()}</h2>
+            </div>
+
+            <div style="font-size:10px; line-height:1.5;">
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:5px 0;">
+                    <span style="color:#64748b;">Reference:</span>
+                    <span style="font-weight:700;">${order.paymentReference}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:5px 0;">
+                    <span style="color:#64748b;">Plan:</span>
+                    <span style="font-weight:600;">${order.planName}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:5px 0;">
+                    <span style="color:#64748b;">Specs:</span>
+                    <span style="font-weight:600;">${cpu} CPU / ${ram} RAM</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:5px 0;">
+                    <span style="color:#64748b;">Region:</span>
+                    <span style="font-weight:600;">${order.nodeName}</span>
+                </div>
+            </div>
+
+            <div style="margin-top:15px; padding:10px; background:#fff; border:1px solid #f1f5f9; border-radius:8px;">
+                <p style="font-size:8px; color:#64748b; margin:0 0 3px 0; font-weight:bold; text-transform:uppercase;">Subscriber</p>
+                <p style="font-size:10px; margin:0;"><b>${order.fullName || 'Valued Client'}</b></p>
+                <p style="font-size:9px; color:#64748b; margin:0;">${order.userEmail}</p>
+            </div>
+
+            <div style="margin-top:20px; text-align:center; padding-top:10px; border-top:1px dashed #e2e8f0;">
+                <p style="font-size:11px; font-weight:800; color:#16a34a; margin:0;">PROVISIONED & VERIFIED</p>
+                <p style="font-size:7px; color:#94a3b8; margin-top:4px;">SMS GLOBE GLOBAL CONNECTIVITY • SECURE RDP NODE</p>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(receiptDiv);
+
+    try {
+        const canvas = await html2canvas(receiptDiv, { 
+            scale: 2, 
+            useCORS: true,
+            backgroundColor: '#ffffff'
+        });
+        
+        return new Promise((resolve) => {
+            canvas.toBlob((blob) => {
+                // Create a file object from the blob
+                const file = new File([blob], `Receipt-${order.paymentReference.slice(-6)}.png`, { type: "image/png" });
+                resolve(file);
+            }, 'image/png');
+        });
+    } catch (error) {
+        console.error("Receipt Generation Error:", error);
+        return null;
+    } finally {
+        document.body.removeChild(receiptDiv);
     }
+}
 
+// Helper to reset button state on failure
+function resetButton(btn, originalText) {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+}
+    
     function logout() {
         localStorage.removeItem('smsglobe_admin_token');
         window.location.href = 'sms_login.html';

@@ -166,6 +166,7 @@ const rdpSchema = new mongoose.Schema({
     net: String, 
     os: String,
     amount: Number,
+    receiptUrl: String,
     extraCPU: { type: Number, default: 0 },
     extraStorage: { type: Number, default: 0 },
     currency: { type: String, default: "NGN" },
@@ -2086,8 +2087,21 @@ if (isRDP) {
 
         <tr>
             <td colspan="2" style="border-top: 1px dashed #e2e8f0; padding-top: 10px; margin-top: 10px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Network Speed</span><br>
-                <strong style="font-size: 12px; color: #101828;">${netValue}</strong>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Network Speed</span><br>
+                        <strong style="font-size: 12px; color: #101828;">${netValue}</strong>
+                    </div>
+                    
+                    ${credentials.receiptUrl ? `
+                    <div style="text-align: right;">
+                        <a href="${credentials.receiptUrl}" target="_blank" 
+                           style="display: inline-block; padding: 8px 12px; background-color: #0F54C6; color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 10px; font-weight: bold; text-transform: uppercase;">
+                           View Delivery Receipt
+                        </a>
+                    </div>
+                    ` : ''}
+                </div>
             </td>
         </tr>
     `;
@@ -2966,6 +2980,7 @@ async function handleAddRDP(req, res) {
     }
 }
 
+// Updated: Complete RDP Order with Receipt Support
 async function handleCompleteRDPOrder(req, res) {
     const { 
         tid, 
@@ -2976,19 +2991,28 @@ async function handleCompleteRDPOrder(req, res) {
         rdpUsername, 
         rdpPassword 
     } = req.body;
+    const file = req.file; 
 
     try {
-        // 1. Update the order in MongoDB
-        // We include ipAddress, port, etc., in case you want to store them as individual fields
+        let receiptUrl = '';
+
+        // 1. Handle File Upload (Example using a Cloudinary helper)
+        if (file) {
+            const uploadResult = await uploadToCloudinary(file.path); 
+            receiptUrl = uploadResult.secure_url;
+        }
+
+        // 2. Update the order in MongoDB
         const order = await Order.findOneAndUpdate(
             { paymentReference: tid },
             { 
                 status: status || 'completed',
-                confirmationNumber: confirmationNumber, // General notes/logs
+                confirmationNumber: confirmationNumber, 
                 ipAddress: ipAddress,
                 port: port || '3389',
                 rdpUsername: rdpUsername,
                 rdpPassword: rdpPassword,
+                receiptUrl: receiptUrl, // Store the URL in the database
                 deliveredAt: new Date()
             },
             { new: true } 
@@ -2997,37 +3021,31 @@ async function handleCompleteRDPOrder(req, res) {
         if (!order) {
             return res.status(404).json({ success: false, message: "Order not found" });
         }
-
-        // 2. Trigger the Email Notification
         try {
             await sendDeliveryEmail(order.userEmail, { 
                 productType: 'RDP', 
-                fullName: order.fullName, // Added for personalized email greeting
+                fullName: order.fullName,
                 confirmationNumber: confirmationNumber,         
                 os: order.os || 'Windows Server',
                 ram: order.ram || 'N/A',
                 cpu: order.cpu || 'N/A',
                 storage: order.storage || 'N/A',        
                 net: order.net || '1Gbps',
-                extraCPU: order.extraCPU || 0,
-                extraStorage: order.extraStorage || 0,
-                // Connection details for the email template
                 ipAddress: ipAddress || order.ipAddress,
                 port: port || order.port || '3389',
                 rdpUsername: rdpUsername || order.rdpUsername,
                 rdpPassword: rdpPassword || order.rdpPassword,
-
+                receiptUrl: receiptUrl, // Pass to email template
                 planName: order.planName || "RDP Service",
-                amount: order.amount,
-                instructions: order.instructions || "Your RDP server is now active. Use the credentials below to connect via Remote Desktop Connection."
+                amount: order.amount
             });
         } catch (mailError) {
-            console.error("Email failed to send, but order was updated:", mailError);
+            console.error("Email failed but database updated:", mailError);
         }
 
         return res.status(200).json({ 
             success: true, 
-            message: "RDP Provisioned successfully", 
+            message: "RDP Provisioned & Receipt Uploaded", 
             order 
         });
 
@@ -3036,7 +3054,6 @@ async function handleCompleteRDPOrder(req, res) {
         return res.status(500).json({ success: false, message: "Internal Server Error" });
     }
 }
-
 
 // DELETE: Remove an RDP plan
 async function handleDeleteRDP(req, res) {
@@ -3074,7 +3091,7 @@ async function handleGetRdpRequests(req, res) {
                 net: order.net || meta.net || 'N/A',
                 os: order.os || meta.osChoice || 'Windows',
 
-                // Credentials - These must be sent to the frontend
+                receiptUrl: order.receiptUrl || '',
                 ipAddress: order.ipAddress || '',
                 port: order.port || '',
                 rdpUsername: order.rdpUsername || '',

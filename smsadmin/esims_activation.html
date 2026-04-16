@@ -422,7 +422,7 @@ function showReceiptOptions(order) {
 
 async function generateUniversalReceipt(order, format) {
     const receiptDiv = document.createElement('div');
-    // Set position relative to allow absolute positioning of watermark
+    
     Object.assign(receiptDiv.style, { 
         width: '350px', 
         padding: '30px', 
@@ -431,25 +431,36 @@ async function generateUniversalReceipt(order, format) {
         left: '-9999px', 
         fontFamily: "'Inter', system-ui, sans-serif",
         color: '#1a1a1a',
-        overflow: 'hidden' // Important for watermark
+        overflow: 'hidden'
     });
     
     const logoUrl = 'https://i.imgur.com/8YeZgfx.png';
-    const date = new Date(order.createdAt).toLocaleDateString('en-NG', {
-        year: 'numeric', month: 'long', day: 'numeric'
+
+    // 1. UPDATED DATE & TIME FORMATTING
+    const dateTime = new Date(order.createdAt).toLocaleString('en-NG', {
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true
     });
+
+    // 2. FETCH CORRECT DATA POINTS
+    const deviceName = order.nodeName || order.targetNumber || 'eSIM Device';
+    const activationType = order.activationType || 'Standard Activation';
 
     receiptDiv.innerHTML = `
         <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%) rotate(-45deg); 
             font-size:40px; color:rgba(15, 84, 198, 0.05); font-weight:900; white-space:nowrap; pointer-events:none; z-index:0; text-transform:uppercase;">
-            SMS GLOBE GLOBAL
+            SMS GLOBE 
         </div>
 
         <div style="position:relative; z-index:1;">
             <div style="text-align:center; margin-bottom:25px;">
-                <img src="${logoUrl}" style="width:50px; height:auto; margin:0 auto 10px auto; display:block;">
+                <img src="${logoUrl}" style="width:45px; height:auto; margin:0 auto 10px auto; display:block;">
                 <h1 style="font-size:14px; margin:0; color:#0f54c6; text-transform:uppercase; letter-spacing:1px;">Official Receipt</h1>
-                <p style="font-size:10px; color:#64748b; margin-top:4px;">${date}</p>
+                <p style="font-size:10px; color:#64748b; margin-top:4px;">${dateTime}</p>
             </div>
 
             <div style="background:#f8fafc; border-radius:12px; padding:15px; margin-bottom:20px; border:1px solid #e2e8f0;">
@@ -468,11 +479,15 @@ async function generateUniversalReceipt(order, format) {
                 </div>
                 <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:6px 0;">
                     <span style="color:#64748b;">Device:</span>
-                    <span style="font-weight:600;">${order.targetNumber || 'eSIM Device'}</span>
+                    <span style="font-weight:600;">${deviceName}</span>
                 </div>
-                 <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:6px 0;">
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:6px 0;">
                     <span style="color:#64748b;">Plan:</span>
                     <span style="font-weight:600;">${order.planName}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; border-bottom:1px solid #f1f5f9; padding:6px 0;">
+                    <span style="color:#64748b;">Type:</span>
+                    <span style="font-weight:600; color:#0f54c6;">${activationType}</span>
                 </div>
             </div>
 
@@ -487,7 +502,7 @@ async function generateUniversalReceipt(order, format) {
                 <p style="font-size:9px; color:#64748b; margin-bottom:5px;">CONFIRMATION NUMBER</p>
                 <p style="font-size:14px; font-weight:800; color:#16a34a; font-family:monospace; margin:0;">${order.confirmationNumber || 'VERIFIED'}</p>
                 <div style="margin-top:20px;">
-                    <p style="font-size:10px; font-weight:700; color:#0f54c6; margin:0;">SMS GLOBE GLOBAL CONNECTIVITY</p>
+                    <p style="font-size:10px; font-weight:700; color:#0f54c6; margin:0;">SMS GLOBE</p>
                     <p style="font-size:8px; color:#94a3b8; margin-top:4px;">This is an electronically generated receipt.</p>
                 </div>
             </div>
@@ -513,9 +528,8 @@ async function generateUniversalReceipt(order, format) {
             link.click();
         } else {
             const { jsPDF } = window.jspdf;
-            // Height adjusted to 160mm to fit extra subscriber info
-            const pdf = new jsPDF('p', 'mm', [80, 160]); 
-            pdf.addImage(imgData, 'PNG', 0, 0, 80, 160);
+            const pdf = new jsPDF('p', 'mm', [80, 165]); 
+            pdf.addImage(imgData, 'PNG', 0, 0, 80, 165);
             pdf.save(`SMS-GLOBE-Receipt-${order.paymentReference}.pdf`);
         }
     } catch (error) {

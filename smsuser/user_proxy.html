@@ -43,6 +43,8 @@
         input, select, textarea {
   font-size: 16px !important;
 }
+.hidden { display: none !important; }
+#successState:not(.hidden) { display: block !important; }
     </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
@@ -670,25 +672,33 @@ function showSuccessModal(data) {
     const modalCode = document.getElementById('modalCode');
     const modalInstructions = document.getElementById('modalInstructions');
 
-    // 1. Completely hide the confirmation UI
-    if (confirmState) {
-        confirmState.classList.add('hidden');
-        confirmState.style.display = 'none'; // Force layout removal
-    }
-
-    // 2. Show the success UI
-    if (successState) {
-        successState.classList.remove('hidden');
-        successState.style.display = 'block'; // Force visibility
-        if (modal) modal.scrollTop = 0; 
-    }
+    // 1. Map data properly
     const credentials = data.credentials || {};
     const activationCode = credentials.activationCode || data.activationCode || data.code || "SUCCESSFUL";
-    const info = credentials.instructions || data.instructions || data.message || "Your proxy is now active. Use the code above to connect.";
+    const info = credentials.instructions || data.instructions || data.message || "Your proxy is now active.";
 
     if (modalCode) modalCode.innerText = activationCode;
     if (modalInstructions) modalInstructions.innerText = info;
 
+    // 2. Clear States
+    if (confirmState) {
+        confirmState.classList.add('hidden');
+        confirmState.style.display = 'none';
+    }
+
+    // 3. Show Success with a small "tick" delay to fix rendering
+    if (successState) {
+        successState.classList.remove('hidden');
+        successState.style.display = 'block';
+        
+        // This forces the browser to look at the top of the modal
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.scrollTop = 0;
+        }
+    }
+
+    // 4. Copy Logic
     const copyBtn = document.getElementById('copyCodeBtn');
     if (copyBtn) {
         copyBtn.onclick = (e) => {
@@ -700,8 +710,6 @@ function showSuccessModal(data) {
             });
         };
     }
-
-    if (modal) modal.classList.remove('hidden');
 }
 
     function closeModal() {

@@ -661,40 +661,41 @@ function showSuccessModal(data) {
     const successState = document.getElementById('successState');
     const modalCode = document.getElementById('modalCode');
     const modalInstructions = document.getElementById('modalInstructions');
+    const copyBtn = document.getElementById('copyCodeBtn');
+
+    // 1. Swap Visibility
     if (confirmState) confirmState.classList.add('hidden');
     
     if (successState) {
         successState.classList.remove('hidden');
         successState.classList.add('animate-in', 'fade-in', 'zoom-in', 'duration-500');
-        if (modal) modal.scrollTop = 0; 
     }
+
+    // 2. Parse Data Safely
     const credentials = data.credentials || {};
     const activationCode = credentials.activationCode || data.activationCode || data.code || "SUCCESSFUL";
-    
     const info = credentials.instructions || data.instructions || data.message || "Your proxy is now active. Use the code above to connect.";
-    if (modalCode) {
-        modalCode.innerText = activationCode;
-    }
-    
-    if (modalInstructions) {
-        modalInstructions.innerText = info;
-    }
-    const copyBtn = document.querySelector('[onclick*="copyToClipboard"]') || document.getElementById('copyCodeBtn');
+
+    // 3. Inject Content
+    if (modalCode) modalCode.innerText = activationCode;
+    if (modalInstructions) modalInstructions.innerText = info;
+
+    // 4. Handle Clipboard Logic
     if (copyBtn) {
         copyBtn.onclick = (e) => {
             e.preventDefault();
             navigator.clipboard.writeText(activationCode).then(() => {
-                const originalContent = copyBtn.innerHTML;
-                // Emerald-500 matches your brand's success feedback style
+                const originalSVG = copyBtn.innerHTML;
                 copyBtn.innerHTML = '<span class="text-[9px] text-emerald-500 font-bold uppercase">Copied!</span>';
-                setTimeout(() => { copyBtn.innerHTML = originalContent; }, 2000);
+                setTimeout(() => { copyBtn.innerHTML = originalSVG; }, 2000);
             });
         };
     }
-    if (modal) {
-        modal.classList.remove('hidden');
-    }
+
+    // 5. Final Display Ensure
+    if (modal) modal.classList.remove('hidden');
 }
+
     function closeModal() {
         document.getElementById('proxyModal').classList.add('hidden');
         window.location.href = 'user_dashboard.html';

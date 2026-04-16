@@ -356,6 +356,45 @@
 
     // Initialize dashboard on load
     document.addEventListener('DOMContentLoaded', fetchDashboardData);
+
+
+function logout() {
+    localStorage.removeItem('smsglobe_admin_token');
+    window.location.href = 'login.html';
+}
+
+/**
+ * Toggles the mobile sidebar and its overlay
+ */
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    
+    if (sidebar && overlay) {
+        // Toggle the translation class (moves it in/out of view)
+        sidebar.classList.toggle('-translate-x-full');
+        
+        // Toggle the hidden class on the overlay
+        overlay.classList.toggle('hidden');
+    }
+}
+
+// 2. Updated Initialization
+document.addEventListener('DOMContentLoaded', async () => {
+    const token = localStorage.getItem('smsglobe_admin_token');
+    
+    if (!token) {
+        // Redirect immediately if not logged in
+        window.location.href = 'login.html';
+        return;
+    }
+
+    // Run both fetches in parallel for better performance
+    await Promise.all([
+        fetchDashboardData(),
+        fetchAllTransactions()
+    ]);
+});
 </script>
 </body>
 </html>

@@ -673,15 +673,19 @@ function showSuccessModal(data) {
     const modalCode = document.getElementById('modalCode');
     const modalInstructions = document.getElementById('modalInstructions');
 
-    // 1. Precise Data Mapping
-    // Prioritize direct properties from your admin-set data
-    const code = data.activationCode || (data.credentials && data.credentials.activationCode) || data.code || "SUCCESSFUL";
-    const info = data.instructions || (data.credentials && data.credentials.instructions) || data.message || "Your credentials have been generated.";
+    // 1. Map incoming data exactly to your transaction structure
+    // Primary: data.activationCode (from your snippet)
+    // Secondary: data.credentials.activationCode (backup for different products)
+    const code = data.activationCode || (data.credentials && data.credentials.activationCode) || "N/A";
+    
+    // Check for admin instructions in data.instructions or data.message
+    const info = data.instructions || data.message || (data.credentials && data.credentials.instructions) || "Your proxy has been provisioned successfully. You can manage it from your dashboard.";
 
+    // Update the UI
     if (modalCode) modalCode.innerText = code;
     if (modalInstructions) modalInstructions.innerText = info;
 
-    // 2. State Management
+    // 2. Clear old state and show success state
     if (confirmState) {
         confirmState.classList.add('hidden');
         confirmState.style.display = 'none';
@@ -689,32 +693,28 @@ function showSuccessModal(data) {
 
     if (successState) {
         successState.classList.remove('hidden');
-        successState.style.display = 'flex';
+        successState.style.display = 'flex'; 
     }
 
-    // 3. Robust Clipboard Handling
+    // 3. Handle Copy Functionality
     const copyBtn = document.getElementById('copyCodeBtn');
     if (copyBtn) {
         copyBtn.onclick = () => {
-            // Use the 'code' variable derived above
             navigator.clipboard.writeText(code).then(() => {
                 const original = copyBtn.innerHTML;
                 copyBtn.innerHTML = '<span class="text-[9px] font-bold text-emerald-600">COPIED</span>';
-                setTimeout(() => {
-                    copyBtn.innerHTML = original;
-                }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy code:', err);
+                setTimeout(() => copyBtn.innerHTML = original, 2000);
             });
         };
     }
 
-    // 4. Modal Visibility
+    // 4. Reset modal scroll
     if (modal) {
         modal.classList.remove('hidden');
         modal.scrollTop = 0;
     }
 }
+
     function closeModal() {
         document.getElementById('proxyModal').classList.add('hidden');
         window.location.href = 'user_dashboard.html';

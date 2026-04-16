@@ -667,22 +667,47 @@ function closeModal() {
     window.location.href = 'user_dashboard.html';
 }
 function showSuccessModal(data) {
+    // --- DIAGNOSTIC LOGS ---
+    console.log("--- SUCCESS MODAL DEBUG START ---");
+    console.log("Full Data Received from Backend:", data);
+    console.log("Type of Data:", typeof data);
+    
+    if (data && typeof data === 'object') {
+        console.log("Check Activation Code:", data.activationCode);
+        console.log("Check Instructions:", data.instructions);
+    } else {
+        console.error("Critical Error: Data received is not an object or is null.");
+    }
+    // -----------------------
+
     const modal = document.getElementById('proxyModal');
     const confirmState = document.getElementById('confirmState');
     const successState = document.getElementById('successState');
     const modalCode = document.getElementById('modalCode');
     const modalInstructions = document.getElementById('modalInstructions');
 
-    // 1. Direct Mapping from your JSON response
-    // Uses the exact keys: 'activationCode' and 'instructions'
+    // Mapping keys exactly as they appear in your successful backend JSON snippet
     const code = data.activationCode || "N/A";
     const info = data.instructions || "Your purchase was successful. Check your dashboard for details.";
 
-    // Update the HTML elements
-    if (modalCode) modalCode.innerText = code;
-    if (modalInstructions) modalInstructions.innerText = info;
+    console.log("Variables to be displayed:", { displayedCode: code, displayedInfo: info });
 
-    // 2. State Toggle
+    // Update the HTML elements
+    if (modalCode) {
+        modalCode.innerText = code;
+        console.log("modalCode element found and updated.");
+    } else {
+        console.warn("Element #modalCode not found in DOM.");
+    }
+
+    if (modalInstructions) {
+        modalInstructions.innerText = info;
+        console.log("modalInstructions element found and updated.");
+    } else {
+        console.warn("Element #modalInstructions not found in DOM.");
+    }
+
+    // State Toggle
     if (confirmState) {
         confirmState.classList.add('hidden');
         confirmState.style.display = 'none';
@@ -693,26 +718,26 @@ function showSuccessModal(data) {
         successState.style.display = 'flex'; 
     }
 
-    // 3. Clipboard Functionality
+    // Clipboard Functionality
     const copyBtn = document.getElementById('copyCodeBtn');
     if (copyBtn) {
         copyBtn.onclick = () => {
             navigator.clipboard.writeText(code).then(() => {
                 const original = copyBtn.innerHTML;
                 copyBtn.innerHTML = '<span class="text-[9px] font-bold text-emerald-600">COPIED</span>';
-                setTimeout(() => {
-                    copyBtn.innerHTML = original;
-                }, 2000);
+                setTimeout(() => { copyBtn.innerHTML = original; }, 2000);
             });
         };
     }
 
-    // 4. Show Modal
     if (modal) {
         modal.classList.remove('hidden');
         modal.scrollTop = 0;
     }
+    
+    console.log("--- SUCCESS MODAL DEBUG END ---");
 }
+
 
     function closeModal() {
         document.getElementById('proxyModal').classList.add('hidden');

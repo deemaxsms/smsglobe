@@ -1,0 +1,31 @@
+PROPRIETARY AND CONFIDENTIAL LICENSE
+Project Name: SMSGlobe (smsglobe.net)
+
+Copyright © 2026 Arogundade Oladipupo. All Rights Reserved.
+
+1. OWNERSHIP OF INTELLECTUAL PROPERTY
+The source code, including but not limited to the backend logic (api.js), the administrative dashboard structures (smsadmin/), user interface designs (smsuser/), and custom styling (style.css), are the exclusive property of Lawrence Young. The specific implementation of the "Online Claiming Agent" workflow is protected as proprietary business logic.
+
+2. RESTRICTIONS
+No person, entity, or organization is permitted to:
+
+Duplicate or Redistribute: Copy, share, or redistribute the source code or design assets in any format without express written permission from Arogundade Oladipupo.
+
+Reverse Engineer: Attempt to decompile, disassemble, or derive the source code from the deployed serverless functions on Vercel.
+
+Unauthorized Deployment: Use the SMSGlobe architecture for any commercial or private service outside of the official smsglobe.net domain.
+
+3. DEVELOPER RIGHTS
+Arogundade Oladipupo reserves the right to:
+
+Modify or update the codebase at any time.
+
+Revoke access to the administrative dashboard (smsadmin/) if security tokens or the smsglobe_admin_token are compromised.
+
+Pursue legal action against any party found to be infringing upon these copyright protections.
+
+4. DISCLAIMER
+The software is provided "as is," without warranty of any kind. In no event shall the author be liable for any claim, damages, or other liability arising from the use of the proprietary claim-processing logic or RDP/VPN provisioning systems.
+
+Developer Identification:
+Arogundade Oladipupo Web Application Developer & Bonafide Online Claiming Agent Date of Certification: April 16, 2026

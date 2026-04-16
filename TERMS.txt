@@ -1,0 +1,36 @@
+SMSGLOBE TERMS OF SERVICE & SERVICE AGREEMENT
+Last Updated: April 16, 2026
+
+1. ACCEPTANCE OF TERMS
+By accessing smsglobe.net and utilizing the services provided by Lawrence Young, you agree to be bound by these Terms of Service. If you do not agree to these terms, please discontinue use of the platform immediately.
+
+2. CLAIMING AGENT SERVICES
+Arogundade Oaldipupo operates as a "Bonafide Online Claiming Agent." Our role is to facilitate the processing and verification of digital claims and winnings. We act as an intermediary to ensure that all documentation and claim requirements are met through our secure digital portal.
+
+3. PAYMENT VERIFICATION & SERVICE PROVISIONING
+All services provided through the SMSGlobe platform are subject to successful payment verification via the integrated api.js handler. No service will be provisioned until payment is confirmed. This applies to the following categories:
+
+RDP (Remote Desktop Protocol): Provisioning of secure server access upon payment confirmation.
+
+VPN (Virtual Private Network): Delivery of activation codes and subscriptions (e.g., CyberGhost VPN).
+
+Proxy Services: Assignment of dedicated or shared IP proxies.
+
+eSIM Refill: Adding balance or data to existing digital SIM profiles.
+
+eSIM Activation: Initial setup and activation of new global eSIM profiles.
+
+4. USER RESPONSIBILITIES
+Users are responsible for providing accurate information during the claim or purchase process. Any attempt to bypass the api.js verification logic or provide fraudulent payment information will result in an immediate permanent ban and revocation of the smsglobe_admin_token where applicable.
+
+5. REFUND & CANCELLATION POLICY
+Due to the digital nature of eSIM activations, VPN codes, and RDP provisioning, all verified transactions are considered final. Refunds are only issued at the sole discretion of the developer in cases of technical failure of the SMSGlobe system.
+
+6. DATA PRIVACY
+All personal information submitted for claim processing or service top-ups is handled according to our Privacy Policy. We utilize industry-standard encryption to protect your transaction history.
+
+7. LIMITATION OF LIABILITY
+Arogundade Oladipupo shall not be held liable for any service interruptions caused by third-party providers (e.g., network carriers for eSIMs or server uptimes for VPN/RDP).
+
+Service Provider:
+Arogundade Oladipupo Web Application Developer : [arogundaded.dipupo01@gmail.com]

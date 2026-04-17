@@ -119,26 +119,36 @@ const vpnSchema = new mongoose.Schema({
     name: { type: String, required: true },
     provider: { type: String, required: true },
     region: { type: String, required: true },
-    image: { type: String },     
-    deviceType: { type: String, enum: ['Phone', 'PC', 'Both'], default: 'Both' },
+    image: { type: String },    
+    deviceType: { type: String, enum: ['Phone', 'PC', 'Both'], default: 'Phone' },
     stock: { type: Number, default: 0 },
-    deviceLimit: { type: Number, default: 1 }, // Added to match your frontend
+    deviceLimit: { type: Number, default: 1 },
     plans: [{
         duration: { type: String, required: true },
-        price: { type: Number, required: true } // Price in NGN
+        price: { type: Number, required: true }
     }],        
-    username: { type: String },
-    password: { type: String, select: false },     
-    pcMethod: { type: String }, // e.g., 'User/Pass' or 'Activation Code'
-    pcUsername: { type: String },
-    pcPassword: { type: String, select: false },
-    activationCode: { type: String },
-    vpnCredentials: {
+    
+    phoneAccounts: [{
         username: { type: String },
         password: { type: String }
-    },
+    }],
+
+    pcMethod: { type: String, enum: ['userpass', 'code'] }, 
+    pcAccounts: [{
+        username: { type: String }, // Used if method is 'userpass'
+        password: { type: String }, // Used if method is 'userpass'
+        activationCode: { type: String } // Used if method is 'code'
+    }],
+
     instructions: { type: String }
 }, { timestamps: true });
+
+vpnSchema.pre('save', function(next) {
+    const phoneCount = this.phoneAccounts ? this.phoneAccounts.length : 0;
+    const pcCount = this.pcAccounts ? this.pcAccounts.length : 0;
+    this.stock = phoneCount + pcCount;
+    next();
+});
 
 const VPN = mongoose.models.VPN || mongoose.model('VPN', vpnSchema);
 
@@ -831,19 +841,26 @@ async function handleManageUser(req, res) {
         return res.status(500).json({ success: false, message: err.message });
     }
 }
-async function handleGetVPNs(req, res) {
+
+async function handleAddVPN(req, res) {
     try {
-        const vpns = await VPN.find({})
-            .sort({ createdAt: -1 })
-            // Ensure stock and deviceLimit are included in the selection
-            .select('+password +pcPassword +activationCode +deviceType +stock +deviceLimit'); 
-            
-        res.json({ success: true, products: vpns }); 
+        const { phoneAccounts, pcAccounts, ...data } = req.body;
+        
+        const newVPN = new VPN({
+            ...data,
+            phoneAccounts: phoneAccounts || [],
+            pcAccounts: pcAccounts || [],
+            // Stock is the sum of available accounts
+            stock: (phoneAccounts?.length || 0) + (pcAccounts?.length || 0)
+        });
+
+        await newVPN.save();
+        res.status(201).json({ success: true, message: "VPN Created with Bulk Inventory" });
     } catch (err) {
-        console.error("Fetch VPN Error:", err);
-        res.status(500).json({ success: false, message: "Failed to fetch VPN list" });
+        res.status(500).json({ success: false, message: err.message });
     }
 }
+
 async function handleAddVPN(req, res) {
     try {
         // 1. Destructure to extract plans and deviceType for explicit handling

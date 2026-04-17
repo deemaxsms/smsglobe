@@ -465,97 +465,181 @@
         document.getElementById('vpnModal').classList.add('hidden');
     }
 
-    function addBulkRow(type) {
+/**
+ * Helper to update row labels (e.g., "Account #1", "Account #2")
+ * ensures numbers stay correct after deletions.
+ */
+function updateRowNumbers(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const labels = container.querySelectorAll('.row-number-label');
+    labels.forEach((label, index) => {
+        label.innerText = `Account #${index + 1}:`;
+    });
+}
+
+/**
+ * Adds a new credential row with a max limit of 10.
+ * Handles Phone (User/Pass), PC (User/Pass), and PC (Code).
+ */
+function addBulkRow(type) {
+    let containerId;
+    let isCode = false;
+
+    // 1. Determine the target container
     if (type === 'phone') {
-        const container = document.getElementById('phoneInputsContainer');
-        const div = document.createElement('div');
-        div.className = "grid grid-cols-1 md:grid-cols-2 gap-4 relative animate-in fade-in duration-200";
-        div.innerHTML = `
-            <input type="text" name="phone_user[]" placeholder="Phone Username" class="w-full bg-white border border-brand-border p-2.5 rounded-lg text-sm">
-            <div class="relative">
-                <input type="text" name="phone_pass[]" placeholder="Phone Password" class="w-full bg-white border border-brand-border p-2.5 rounded-lg text-sm pr-10">
-                <button type="button" onclick="this.parentElement.parentElement.remove()" class="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-600">✕</button>
-            </div>
-        `;
-        container.appendChild(div);
+        containerId = 'phoneInputsContainer';
     } else if (type === 'pc') {
         const method = document.getElementById('pcMethod').value;
         if (method === 'userpass') {
-            const container = document.getElementById('pcUserPassInputs');
-            const div = document.createElement('div');
-            div.className = "grid grid-cols-1 md:grid-cols-2 gap-4 relative animate-in fade-in duration-200";
-            div.innerHTML = `
-                <input type="text" name="pc_user[]" placeholder="PC Account ID" class="w-full bg-white border border-brand-border p-2.5 rounded-lg text-sm">
-                <div class="relative">
-                    <input type="text" name="pc_pass[]" placeholder="PC Password" class="w-full bg-white border border-brand-border p-2.5 rounded-lg text-sm pr-10">
-                    <button type="button" onclick="this.parentElement.parentElement.remove()" class="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-600">✕</button>
-                </div>
-            `;
-            container.appendChild(div);
+            containerId = 'pcUserPassInputs';
         } else {
-            const container = document.getElementById('pcCodeInput');
-            const div = document.createElement('div');
-            div.className = "relative animate-in fade-in duration-200";
-            div.innerHTML = `
-                <input type="text" name="pc_code[]" placeholder="Enter 16-digit Activation Code" class="w-full bg-white border border-brand-border p-2.5 rounded-lg text-sm pr-10">
-                <button type="button" onclick="this.parentElement.remove()" class="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-600">✕</button>
-            `;
-            container.appendChild(div);
+            containerId = 'pcCodeInput';
+            isCode = true;
         }
     }
+
+    const container = document.getElementById(containerId);
+
+    // 2. Enforce the 10-account limit
+    if (container.children.length >= 10) {
+        alert("Maximum of 10 credentials allowed per VPN node.");
+        return;
+    }
+
+    const div = document.createElement('div');
+    div.className = "space-y-1 animate-in slide-in-from-top-1 duration-200 mb-4";
+
+    // 3. Define the Inner HTML based on type
+    let inputsHtml = '';
+    if (!isCode) {
+        const prefix = type === 'phone' ? 'phone' : 'pc';
+        inputsHtml = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
+                <input type="text" name="${prefix}_user[]" placeholder="Username" class="w-full bg-white border border-brand-border p-2.5 rounded-lg text-sm">
+                <div class="relative">
+                    <input type="text" name="${prefix}_pass[]" placeholder="Password" class="w-full bg-white border border-brand-border p-2.5 rounded-lg text-sm pr-10">
+                    <button type="button" onclick="this.parentElement.parentElement.parentElement.remove(); updateRowNumbers('${containerId}')" 
+                            class="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-600 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            </div>`;
+    } else {
+        inputsHtml = `
+            <div class="relative">
+                <input type="text" name="pc_code[]" placeholder="Enter 16-digit Activation Code" class="w-full bg-white border border-brand-border p-2.5 rounded-lg text-sm pr-10">
+                <button type="button" onclick="this.parentElement.parentElement.remove(); updateRowNumbers('${containerId}')" 
+                        class="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-600 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>`;
+    }
+
+    div.innerHTML = `<p class="row-number-label text-[9px] font-bold text-brand-blue uppercase tracking-tighter mb-1"></p>` + inputsHtml;
+    
+    container.appendChild(div);
+    updateRowNumbers(containerId);
 }
+  
+   document.getElementById('vpnForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const token = localStorage.getItem('smsglobe_admin_token');
+    const id = document.getElementById('vpnId').value;
+    const btn = document.getElementById('submitBtn');
+    
+    // 1. Get basic form fields
+    const formData = new FormData(e.target);
+    const vpnData = Object.fromEntries(formData.entries());
 
-    document.getElementById('vpnForm').onsubmit = async (e) => {
-        e.preventDefault();
-        const token = localStorage.getItem('smsglobe_admin_token');
-        const id = document.getElementById('vpnId').value;
-        
-        const formData = new FormData(e.target);
-        const vpnData = Object.fromEntries(formData.entries());
+    // 2. Normalize Device Type
+    if (vpnData.deviceType) {
+        if (vpnData.deviceType.toLowerCase() === 'phone') vpnData.deviceType = 'Phone';
+        if (vpnData.deviceType.toLowerCase() === 'pc') vpnData.deviceType = 'PC';
+    }
 
-        if (vpnData.deviceType) {
-            if (vpnData.deviceType.toLowerCase() === 'phone') vpnData.deviceType = 'Phone';
-            if (vpnData.deviceType.toLowerCase() === 'pc') vpnData.deviceType = 'PC';
-        }
-
-        const planRows = document.querySelectorAll('.pricing-row');
-        vpnData.plans = Array.from(planRows).map(row => ({
-            duration: row.querySelector('.plan-duration').value.trim(),
-            price: row.querySelector('.plan-price').value.trim()
-        })).filter(p => p.duration && p.price);
-
-        vpnData.type = 'vpn';
-
-        const method = id ? 'PATCH' : 'POST';
-        const btn = document.getElementById('submitBtn');
-        btn.disabled = true;
-        btn.innerText = 'Syncing...';
-
-        try {
-            const res = await fetch('/api/products', {
-                method: method,
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(vpnData)
+    // 3. BULK COLLECTION: Phone Accounts
+    const phoneAccounts = [];
+    const pUsers = formData.getAll('phone_user[]');
+    const pPasses = formData.getAll('phone_pass[]');
+    
+    pUsers.forEach((user, index) => {
+        if (user.trim() !== "" || pPasses[index].trim() !== "") {
+            phoneAccounts.push({
+                username: user.trim(),
+                password: pPasses[index].trim()
             });
-
-            if (res.ok) {
-                closeModal();
-                fetchVPNs();
-            } else {
-                const errorData = await res.json();
-                alert('Sync failed: ' + (errorData.message || 'Check backend logs'));
-            }
-        } catch (e) {
-            console.error("Submission error:", e);
-            alert('Network error. Is the server running?');
-        } finally {
-            btn.disabled = false;
-            btn.innerText = id ? 'Save Changes' : 'Sync VPN Data';
         }
-    };
+    });
+    vpnData.phoneAccounts = phoneAccounts;
+
+    // 4. BULK COLLECTION: PC Accounts
+    const pcAccounts = [];
+    if (vpnData.pcMethod === 'userpass') {
+        const pcUsers = formData.getAll('pc_user[]');
+        const pcPasses = formData.getAll('pc_pass[]');
+        pcUsers.forEach((user, index) => {
+            if (user.trim() !== "" || pcPasses[index].trim() !== "") {
+                pcAccounts.push({
+                    username: user.trim(),
+                    password: pcPasses[index].trim()
+                });
+            }
+        });
+    } else if (vpnData.pcMethod === 'code') {
+        const pcCodes = formData.getAll('pc_code[]');
+        pcCodes.forEach(code => {
+            if (code.trim() !== "") {
+                pcAccounts.push({
+                    activationCode: code.trim()
+                });
+            }
+        });
+    }
+    vpnData.pcAccounts = pcAccounts;
+
+    // 5. Handle Pricing Plans
+    const planRows = document.querySelectorAll('.pricing-row');
+    vpnData.plans = Array.from(planRows).map(row => ({
+        duration: row.querySelector('.plan-duration').value.trim(),
+        price: row.querySelector('.plan-price').value.trim()
+    })).filter(p => p.duration && p.price);
+
+    // 6. Set Metadata & UI State
+    vpnData.type = 'vpn';
+    // ID handling for Update vs Create
+    if (id) vpnData.vpnId = id; 
+
+    const method = id ? 'PATCH' : 'POST';
+    btn.disabled = true;
+    btn.innerText = 'Syncing...';
+
+    try {
+        const res = await fetch('/api/products', {
+            method: method,
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(vpnData)
+        });
+
+        if (res.ok) {
+            closeModal();
+            fetchVPNs();
+        } else {
+            const errorData = await res.json();
+            alert('Sync failed: ' + (errorData.message || 'Check backend logs'));
+        }
+    } catch (e) {
+        console.error("Submission error:", e);
+        alert('Network error. Is the server running?');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = id ? 'Save Changes' : 'Sync VPN Data';
+    }
+};
+
 
     function logout() {
         localStorage.removeItem('smsglobe_admin_token');

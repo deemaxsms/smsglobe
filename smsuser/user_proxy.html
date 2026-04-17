@@ -247,6 +247,21 @@
             </div>
         </div>
 
+        <div id="loadingState" class="hidden p-12 text-center flex flex-col items-center justify-center">
+            <div class="relative w-20 h-20 mb-6">
+                <div class="absolute inset-0 border-4 border-brand-blue/20 rounded-full"></div>
+                <div class="absolute inset-0 border-4 border-brand-blue border-t-transparent rounded-full animate-spin"></div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <svg class="w-8 h-8 text-brand-blue animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                    </svg>
+                </div>
+            </div>
+            <h2 class="text-xl font-black text-brand-darkText uppercase tracking-tighter mb-2">Processing Payment</h2>
+            <p class="text-brand-lightText text-[10px] uppercase tracking-widest animate-pulse">Securing your proxy connection...</p>
+        </div>
+
+
       <div id="successState" class="hidden flex flex-col">
     <div class="bg-brand-blue p-8 text-center relative overflow-hidden">
         <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle, #fff 1px, transparent 1px); background-size: 20px 20px;"></div>
@@ -625,10 +640,22 @@ async function executeFinalPurchase() {
 
     const { proxyId, planIndex } = currentPendingPurchase;
     const token = localStorage.getItem('userToken');
-    const btn = document.getElementById('finalConfirmBtn');
+    const confirmState = document.getElementById('confirmState');
+    const loadingState = document.getElementById('loadingState');
     const useBonus = document.getElementById('useBonusToggle').checked;
 
-    btn.disabled = true;
+    // 1. Immediate UI Switch to Professional Loading State
+    if (confirmState) {
+        confirmState.classList.add('hidden');
+        confirmState.style.display = 'none';
+    }
+    if (loadingState) {
+        loadingState.classList.remove('hidden');
+        loadingState.style.display = 'flex';
+    }
+
+    // Start a timer to track the "Professional Delay"
+    const startTime = Date.now();
 
     try {
         const res = await fetch(`${API_BASE_URL}/purchase-with-wallet`, {
@@ -645,16 +672,41 @@ async function executeFinalPurchase() {
         });
 
         const data = await res.json();
-        if (data.success) {
-            showSuccessModal(data); 
-        } else {
-            alert(data.message || "Purchase failed.");
-        }
+
+        // 2. Calculate remaining time to hit exactly 3 seconds
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = Math.max(0, 3000 - elapsedTime);
+
+        setTimeout(() => {
+            if (data.success) {
+                showSuccessModal(data); 
+            } else {
+                // If failed, hide loading and go back to confirm state
+                alert(data.message || "Purchase failed.");
+                if (loadingState) {
+                    loadingState.classList.add('hidden');
+                    loadingState.style.display = 'none';
+                }
+                if (confirmState) {
+                    confirmState.classList.remove('hidden');
+                    confirmState.style.display = 'block';
+                }
+            }
+        }, remainingTime);
+
     } catch (err) {
-        alert("Transaction failed. Check network.");
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "Confirm & Pay Now";
+        // Handle network errors
+        setTimeout(() => {
+            alert("Transaction failed. Check network.");
+            if (loadingState) {
+                loadingState.classList.add('hidden');
+                loadingState.style.display = 'none';
+            }
+            if (confirmState) {
+                confirmState.classList.remove('hidden');
+                confirmState.style.display = 'block';
+            }
+        }, 1000);
     }
 }
 
@@ -669,12 +721,12 @@ function closeModal() {
 
 function showSuccessModal(data) {
     const modal = document.getElementById('proxyModal');
-    const confirmState = document.getElementById('confirmState');
+    const loadingState = document.getElementById('loadingState'); // Added this
     const successState = document.getElementById('successState');
     const modalCode = document.getElementById('modalCode');
     const modalInstructions = document.getElementById('modalInstructions');
 
-    // FIX: Extract data from the 'order' property returned by the server
+    // Extract data from the 'order' property returned by the server
     const orderDetails = data.order || data; 
 
     // Mapping keys from the order object
@@ -685,10 +737,10 @@ function showSuccessModal(data) {
     if (modalCode) modalCode.innerText = code;
     if (modalInstructions) modalInstructions.innerText = info;
 
-    // State Toggle
-    if (confirmState) {
-        confirmState.classList.add('hidden');
-        confirmState.style.display = 'none';
+    // 3. Final State Toggle: Hide Loading -> Show Success
+    if (loadingState) {
+        loadingState.classList.add('hidden');
+        loadingState.style.display = 'none';
     }
 
     if (successState) {
@@ -710,7 +762,7 @@ function showSuccessModal(data) {
         };
     }
 
-    // Show Modal
+    // Ensure modal is visible and scrolled to top
     if (modal) {
         modal.classList.remove('hidden');
         modal.scrollTop = 0;

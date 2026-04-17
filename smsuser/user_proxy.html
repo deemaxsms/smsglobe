@@ -674,16 +674,18 @@ function showSuccessModal(data) {
     const modalCode = document.getElementById('modalCode');
     const modalInstructions = document.getElementById('modalInstructions');
 
-    // 1. Direct Mapping from your JSON response
-    // Uses the exact keys: 'activationCode' and 'instructions'
-    const code = data.activationCode || "N/A";
-    const info = data.instructions || "Your purchase was successful. Check your dashboard for details.";
+    // FIX: Extract data from the 'order' property returned by the server
+    const orderDetails = data.order || data; 
+
+    // Mapping keys from the order object
+    const code = orderDetails.activationCode || "N/A";
+    const info = orderDetails.instructions || "N/A";
 
     // Update the HTML elements
     if (modalCode) modalCode.innerText = code;
     if (modalInstructions) modalInstructions.innerText = info;
 
-    // 2. State Toggle
+    // State Toggle
     if (confirmState) {
         confirmState.classList.add('hidden');
         confirmState.style.display = 'none';
@@ -694,7 +696,7 @@ function showSuccessModal(data) {
         successState.style.display = 'flex'; 
     }
 
-    // 3. Clipboard Functionality
+    // Clipboard Functionality
     const copyBtn = document.getElementById('copyCodeBtn');
     if (copyBtn) {
         copyBtn.onclick = () => {
@@ -708,7 +710,7 @@ function showSuccessModal(data) {
         };
     }
 
-    // 4. Show Modal
+    // Show Modal
     if (modal) {
         modal.classList.remove('hidden');
         modal.scrollTop = 0;

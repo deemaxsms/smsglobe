@@ -177,9 +177,9 @@
                 </button>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="md:col-span-2 space-y-6">
-                        <div class="bg-white border border-brand-border rounded-3xl p-8 shadow-sm">
-                            <div class="flex justify-between items-start mb-6">
+                    <div class="md:col-span-2 space-y-5">
+                        <div class="bg-white border border-brand-border rounded-3xl p-6 shadow-sm">
+                            <div class="flex justify-between items-start mb-4">
                                 <div>
                                     <h2 id="displayPlanName" class="text-2xl font-black text-brand-darkText">USA Tier 1</h2>
                                     <p class="text-brand-blue font-bold text-sm mt-1">Enterprise Configuration</p>
@@ -567,8 +567,8 @@ if (data.success) {
     tableBody.innerHTML = Object.values(plans).map(plan => `
         <tr onclick="selectPlan('${plan.id}')" class="group cursor-pointer hover:bg-gray-50 transition-all active-scale">
             <td class="px-6 py-6 border-b border-brand-border">
-                <p class="text-sm font-bold text-brand-darkText group-hover:text-brand-blue transition-colors">${plan.name}</p>
-                <p class="text-[11px] text-brand-lightText">${plan.hardware}</p>
+                <p class="text-xm font-bold text-brand-darkText group-hover:text-brand-blue transition-colors">${plan.name}</p>
+                <p class="text-[7px] text-brand-lightText">${plan.hardware}</p>
             </td>
             <td class="px-6 py-6 border-b border-brand-border">
                 <p class="text-[11px] font-bold text-brand-darkText">${plan.storage}</p>
@@ -581,7 +581,7 @@ if (data.success) {
                 <p class="text-[6px] text-brand-lightText uppercase tracking-widest">Monthly</p>
             </td>
             <td class="px-6 py-6 border-b border-brand-border text-right">
-                <span class="bg-brand-blue text-white text-[10px] font-bold px-6 py-2.5 rounded-xl shadow-sm group-hover:bg-brand-darkText transition-all">
+                <span class="bg-brand-blue text-white text-[6px] font-bold px-4 py-2.2 rounded-xl shadow-sm group-hover:bg-brand-darkText transition-all">
                     Continue
                 </span>
             </td>

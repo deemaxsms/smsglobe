@@ -133,7 +133,10 @@ const vpnSchema = new mongoose.Schema({
     pcUsername: { type: String },
     pcPassword: { type: String, select: false },
     activationCode: { type: String },
-    
+    vpnCredentials: {
+        username: { type: String },
+        password: { type: String }
+    },
     instructions: { type: String }
 }, { timestamps: true });
 
@@ -1737,6 +1740,14 @@ if (!isManual) {
         planName: productDetails.plan || newOrder.planName,
         amount: costNGN, // Pass as number so .toLocaleString() works inside the function
         paymentReference: paymentReference,
+        credentials: {
+            activationCode: proxyCode,
+            instructions: proxyInstructions,
+            nodeName: productDetails.name,
+            planName: productDetails.plan || newOrder.planName,
+            amount: costNGN,
+            paymentReference: paymentReference
+        },
         confirmationNumber: paymentReference,     
         targetNumber: mobileNumber || newOrder.metadata?.targetNumber || "N/A",
         country: coverageCountry || newOrder.metadata?.country || "N/A", 
@@ -2172,6 +2183,9 @@ else if (isVPN) {
     const displayPCUser = credentials.pcUsername || "N/A";
     const displayPCPass = credentials.pcPassword || "N/A";
     const displayCode = credentials.activationCode || "N/A";
+    
+    // FETCH THE INSTRUCTIONS
+    const adminInstructions = credentials.instructions || "Follow the setup guide in your dashboard.";
 
     // 2. Logic Flags
     const hasMobile = !!(displayUser && displayUser !== "N/A");
@@ -2213,6 +2227,17 @@ else if (isVPN) {
             <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>PC Password:</strong></td>
             <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right;">${displayPCPass}</td>
         </tr>` : ''}
+
+        <tr>
+            <td colspan="2" style="padding-top: 20px;">
+                <div style="background: #FFF5F5; border-left: 4px solid #E11D48; padding: 15px; border-radius: 4px;">
+                    <span style="font-size: 10px; color: #E11D48; text-transform: uppercase; font-weight: bold;">Setup Instructions:</span>
+                    <p style="margin: 5px 0 0 0; font-size: 12px; color: #101828; line-height: 1.5; font-weight: 500;">
+                        ${adminInstructions}
+                    </p>
+                </div>
+            </td>
+        </tr>
     `;
 
     } else if (isESIM_Activation) {

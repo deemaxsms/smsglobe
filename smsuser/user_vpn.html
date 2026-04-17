@@ -699,45 +699,51 @@ function showSuccessDetails(order, vpnData) {
     const passWrap = document.getElementById('wrapPass');
     const codeWrap = document.getElementById('wrapCode');
     
-    // Reset visibility
     [userWrap, passWrap, codeWrap].forEach(el => el?.classList.add('hidden'));
 
     if (!order) return;
 
-    // 1. Handle Credentials (VPN/RDP)
-    // We check the top level because the API spreads orderSpecifics
-    const finalUser = order.rdpUsername || (order.vpnCredentials && order.vpnCredentials.username) || order.username;
-    const finalPass = order.rdpPassword || (order.vpnCredentials && order.vpnCredentials.password) || order.password;
+    // --- LOGIC FOR PC CREDENTIALS VS MOBILE ---
+    // If pcUsername exists, we prioritize it, otherwise fallback to standard vpnCredentials
+    const finalUser = order.pcUsername || order.rdpUsername || (order.vpnCredentials && order.vpnCredentials.username) || order.username;
+    const finalPass = order.pcPassword || order.rdpPassword || (order.vpnCredentials && order.vpnCredentials.password) || order.password;
     const finalCode = order.activationCode;
 
-    // If it's an RDP, show the IP in the username field for convenience
+    // 1. Display Username / IP
     if (finalUser) {
-        const displayUser = order.ipAddress ? `${order.ipAddress} | ${finalUser}` : finalUser;
+        let displayUser = order.ipAddress ? `${order.ipAddress} | ${finalUser}` : finalUser;
+        
+        // Label helper: if it's a PC login, maybe let them know
+        if (order.pcUsername) displayUser = `[PC] ${displayUser}`;
+        
         document.getElementById('resUser').innerText = displayUser;
         userWrap.classList.remove('hidden');
     }
     
+    // 2. Display Password
     if (finalPass) {
         document.getElementById('resPass').innerText = finalPass;
         passWrap.classList.remove('hidden');
     }
     
+    // 3. Display Activation Code
     if (finalCode) {
         document.getElementById('resCode').innerText = finalCode;
         codeWrap.classList.remove('hidden');
     }
 
-    // 2. Handle Instructions
+    // 4. Instructions
     const defaultInstr = "Your order is being processed. Check your email or dashboard history for updates.";
     document.getElementById('resInstructions').innerText = order.instructions || vpnData?.instructions || defaultInstr;
 
-    // 3. Handle Limits
+    // 5. Limits
     if (document.getElementById('resLimit')) {
         document.getElementById('resLimit').innerText = order.productType === 'RDP' 
             ? `${order.ram} RAM / ${order.cpu} CPU` 
             : `${vpnData?.deviceLimit || 1} Device(s)`;
     }
 }
+
         function copyText(id) {
             const text = document.getElementById(id).innerText;
             navigator.clipboard.writeText(text);

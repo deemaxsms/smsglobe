@@ -235,7 +235,7 @@
             }
         }
 
-     function renderHistory(orders) {
+    function renderHistory(orders) {
     const container = document.getElementById('historyBody');
     const totalCount = document.getElementById('totalOrdersCount');
     const successCount = document.getElementById('successfulCount');
@@ -253,7 +253,7 @@
 
     container.innerHTML = ''; 
 
-    orders.forEach(order => {
+    orders.forEach((order, index) => {
         const statusColors = {
             successful: 'bg-green-50 text-green-600 border-green-100',
             completed: 'bg-green-50 text-green-600 border-green-100',
@@ -264,7 +264,6 @@
         const currentStatus = (order.status || 'pending').toLowerCase();
         const colorClass = statusColors[currentStatus] || 'bg-gray-50 text-gray-600 border-gray-100';
         
-        // Date Formatting
         let dateStr = "N/A", timeStr = "---";
         const rawDate = order.createdAt || order.date;
         if (rawDate) {
@@ -276,45 +275,51 @@
         const isBonus = order.paymentMethod === 'Referral Bonus' || order.useBonus === true;
         const sourceLabel = isBonus ? 'BONUS' : 'WALLET';
 
-        // Prepare order data for the modal button (escapes quotes safely)
-        const orderData = encodeURIComponent(JSON.stringify(order));
+        // 1. Create the table row element
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-gray-50/50 transition-colors border-b border-brand-border";
 
-        const row = `
-            <tr class="hover:bg-gray-50/50 transition-colors">
-                <td class="px-5 py-4">
-                    <div class="flex flex-col">
-                        <span class="text-[11px] font-bold text-brand-darkText uppercase">${order.productType || 'SERVICE'}</span>
-                        <span class="text-[9px] text-brand-lightText">${order.nodeName || order.product || 'Details'}</span>
-                    </div>
-                </td>
-                <td class="px-5 py-4 text-[11px] font-black text-brand-darkText">
-                    ₦${(order.amount || 0).toLocaleString()}
-                </td>
-                <td class="px-5 py-4">
-                    <span class="px-2 py-0.5 rounded text-[8px] font-black border ${isBonus ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-blue-50 text-blue-600 border-blue-100'} uppercase">
-                        ${sourceLabel}
-                    </span>
-                </td>
-                <td class="px-5 py-4">
-                    <span class="px-2 py-0.5 rounded-full text-[9px] font-bold border ${colorClass} uppercase">
-                        ${currentStatus}
-                    </span>
-                </td>
-                <td class="px-5 py-4">
-                    <div class="flex flex-col">
-                        <span class="text-[10px] text-brand-darkText font-semibold">${dateStr}</span>
-                        <span class="text-[8px] text-brand-lightText uppercase">${timeStr}</span>
-                    </div>
-                </td>
-                <td class="px-5 py-4">
-                    <button onclick="viewOrderDetails('${orderData}')" 
-                        class="bg-brand-blue/10 text-brand-blue hover:bg-brand-blue hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all active-scale">
-                        View
-                    </button>
-                </td>
-            </tr>
+        // 2. Set the internal HTML (Notice the View button has no onclick attribute yet)
+        tr.innerHTML = `
+            <td class="px-5 py-4">
+                <div class="flex flex-col">
+                    <span class="text-[11px] font-bold text-brand-darkText uppercase">${order.productType || 'SERVICE'}</span>
+                    <span class="text-[9px] text-brand-lightText">${order.nodeName || order.product || 'Details'}</span>
+                </div>
+            </td>
+            <td class="px-5 py-4 text-[11px] font-black text-brand-darkText">
+                ₦${(order.amount || 0).toLocaleString()}
+            </td>
+            <td class="px-5 py-4">
+                <span class="px-2 py-0.5 rounded text-[8px] font-black border ${isBonus ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-blue-50 text-blue-600 border-blue-100'} uppercase">
+                    ${sourceLabel}
+                </span>
+            </td>
+            <td class="px-5 py-4">
+                <span class="px-2 py-0.5 rounded-full text-[9px] font-bold border ${colorClass} uppercase">
+                    ${currentStatus}
+                </span>
+            </td>
+            <td class="px-5 py-4">
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-brand-darkText font-semibold">${dateStr}</span>
+                    <span class="text-[8px] text-brand-lightText uppercase">${timeStr}</span>
+                </div>
+            </td>
+            <td class="px-5 py-4">
+                <button id="view-btn-${index}" 
+                    class="bg-brand-blue/10 text-brand-blue hover:bg-brand-blue hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all active-scale">
+                    View
+                </button>
+            </td>
         `;
-        container.insertAdjacentHTML('beforeend', row);
+
+        container.appendChild(tr);
+
+        // 3. Attach the click event directly to the button object
+        // This avoids all string/JSON quoting issues entirely
+        const btn = document.getElementById(`view-btn-${index}`);
+        btn.addEventListener('click', () => openOrderDetails(order));
     });
 }
 

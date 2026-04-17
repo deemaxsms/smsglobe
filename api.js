@@ -2042,14 +2042,16 @@ const isESIM_Activation = type === "eSIM_Activation";
     }
     
     let dataTableHtml = '';
-  if (isProxy) {
-    // 1. Correct the mapping to look at the top level if nested is missing
+if (isProxy) {
+    
     const displayCode = credentials.activationCode || credentials.code || 'PENDING';
     const displayInstructions = credentials.instructions || 'Follow the dashboard instructions to activate.';
     
     // Ensure amount and names are also pulled correctly
-    const displayService = credentials.nodeName || 'Premium Proxy';
-    const displayPlan = credentials.planName || 'Standard';
+    const displayService = credentials.nodeName || '';
+    const displayPlan = credentials.planName || '';
+    
+    // Fix: Use the 'amount' field from your DB object
     const displayAmount = Number(credentials.amount || 0).toLocaleString();
     const displayRef = credentials.paymentReference || 'N/A';
 

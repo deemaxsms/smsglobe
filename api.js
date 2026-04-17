@@ -1727,12 +1727,13 @@ else if (rdpId) {
         
 const manualProducts = ["eSIM_Refill", "eSIM_Activation", "RDP"];
 const isManual = manualProducts.includes(itemType);
-// 1. Customer Delivery (Only for Automated products)
+
 if (!isManual) {
     await sendDeliveryEmail(user.email, { 
         ...orderSpecifics, 
         productType: itemType, 
         nodeName: productDetails.name, 
+        credentials: orderSpecifics,
         planName: productDetails.plan || newOrder.planName,
         amount: costNGN, // Pass as number so .toLocaleString() works inside the function
         paymentReference: paymentReference,
@@ -1741,7 +1742,8 @@ if (!isManual) {
         country: coverageCountry || newOrder.metadata?.country || "N/A",        
         mainBalanceUsed: newOrder.mainBalanceUsed || 0,
         bonusBalanceUsed: newOrder.bonusBalanceUsed || 0,
-        metadata: newOrder.metadata
+        metadata: newOrder.metadata,
+        purchaseDate: newOrder.createdAt || new Date()
     }).catch(err => console.error("📧 Customer Email Error:", err.message));
 }
 // 2. Admin Notification (Only for Manual products)
@@ -2147,27 +2149,52 @@ if (isRDP) {
 }
 
 else if (isVPN) {
-        const vpnCreds = credentials.vpnCredentials || {};    
-        const displayUser = vpnCreds.username || credentials.username;
-        const displayPass = vpnCreds.password || credentials.password;    
-        const displayPCUser = credentials.pcUsername;
-        const displayPCPass = credentials.pcPassword;
-        const displayCode = credentials.activationCode;
-        const hasMobile = !!(displayUser && displayUser.trim() !== "");
-        const hasPC = !!(displayPCUser && displayPCUser.trim() !== "");
-        const hasCode = !!(displayCode && displayCode.trim() !== "");
+    // Check both nested vpnCredentials or top-level keys
+    const vpnCreds = credentials.vpnCredentials || {};    
+    const displayUser = vpnCreds.username || credentials.username || "N/A";
+    const displayPass = vpnCreds.password || credentials.password || "N/A";    
+    
+    // PC Credentials
+    const displayPCUser = credentials.pcUsername || "N/A";
+    const displayPCPass = credentials.pcPassword || "N/A";
+    
+    // Activation Code
+    const displayCode = credentials.activationCode || "N/A";
 
-        dataTableHtml = `
-            <tr>
-                <td colspan="2" valign="top" style="padding-bottom: 20px;">
-                    <div style="background: #f9fafb; border: 1px solid #eaecf0; padding: 12px; border-radius: 8px; text-align: center;">
-                        <span style="font-size: 10px; color: #667085; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;">Connection Limit</span><br>
-                        <strong style="font-size: 15px; color: #0F54C6;">${credentials.deviceLimit || 1} Device(s) Allowed</strong>
-                    </div>
-                </td>
-            </tr>
-            ${hasMobile ? `<tr><td width="50%" valign="top">...</td><td width="50%" style="text-align:right">...</td></tr>` : ''} 
-            `;
+    const hasMobile = !!(displayUser && displayUser !== "N/A");
+    const hasPC = !!(displayPCUser && displayPCUser !== "N/A");
+    const hasCode = !!(displayCode && displayCode !== "N/A");
+
+    dataTableHtml = `
+        <tr>
+            <td colspan="2" valign="top" style="padding-bottom: 20px;">
+                <div style="background: #f9fafb; border: 1px solid #eaecf0; padding: 12px; border-radius: 8px; text-align: center;">
+                    <span style="font-size: 10px; color: #667085; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;">Connection Limit</span><br>
+                    <strong style="font-size: 15px; color: #0F54C6;">${credentials.deviceLimit || 1} Device(s) Allowed</strong>
+                </div>
+            </td>
+        </tr>
+        
+        ${hasMobile ? `
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Mobile User:</strong></td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right;">${displayUser}</td>
+        </tr>
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Mobile Pass:</strong></td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right;">${displayPass}</td>
+        </tr>` : ''}
+
+        ${hasPC ? `
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>PC Username:</strong></td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right;">${displayPCUser}</td>
+        </tr>
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>PC Password:</strong></td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right;">${displayPCPass}</td>
+        </tr>` : ''}
+    `;
     } else if (isESIM_Activation) {
         const confNo = credentials.confirmationNumber || credentials.activationCode;
         const meta = credentials.metadata || {};

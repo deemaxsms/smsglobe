@@ -1964,21 +1964,27 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
         }
     });
 
-    // FIX 1: Normalize type once. 
-    const type = (credentials.type || credentials.productType || "").trim();
-    
-    if (!type) {
-        console.error("📧 Email Error: No product type provided in credentials object.");
-        return;
-    }
+   const type = (credentials.type || credentials.productType || "").trim();
+const upperType = type.toUpperCase(); // Define this to use for the checks below
 
-    // FIX 2: Boolean flags based on Normalized Type (Case-Insensitive check)
-    const isVPN = type.toUpperCase() === "VPN";
-    const isRDP = type.toUpperCase() === "RDP";
-    const isESIM_Refill = type === "eSIM_Refill";
-    const isESIM_Activation = type === "eSIM_Activation";
-    const isProxy = type.toUpperCase() === "PROXY";
-    
+// 2. Format the Date
+const rawDate = credentials.purchaseDate || new Date();
+const purchaseDate = new Date(rawDate).toLocaleString('en-NG', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+});
+
+if (!type) {
+    console.error("📧 Email Error: No product type provided in credentials object.");
+    return;
+}
+
+const isVPN = upperType === "VPN";
+const isRDP = upperType === "RDP";
+const isProxy = upperType === "PROXY" || upperType === "PREMIUM PROXY"; 
+const isESIM_Refill = type === "eSIM_Refill";       
+const isESIM_Activation = type === "eSIM_Activation"; 
+
     let subject, headerTitle, subHeader;
 
     // 2. Determine Subject and Headers
@@ -2005,7 +2011,7 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
     }
     
     let dataTableHtml = '';
-    if (isProxy) {
+   if (isProxy) {
         dataTableHtml = `
             <tr>
                 <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
@@ -2036,13 +2042,15 @@ const sendDeliveryEmail = async (userEmail, credentials) => {
                                 ${credentials.activationCode || 'PENDING'}
                             </strong>
                         </div>
-                        <p style="font-size: 10px; color: #667085; margin-top: 12px;">Copy this code into your ${credentials.nodeName || 'Proxy'} dashboard to activate.</p>
+                        <p style="font-size: 10px; color: #667085; margin-top: 12px;">
+                            Copy this code into your <strong>${credentials.nodeName || 'Proxy'}</strong> dashboard to activate.
+                        </p>
                     </div>
                 </td>
             </tr>
             <tr>
                 <td colspan="2" style="padding-top: 15px; text-align: center;">
-                    <span style="font-size: 9px; color: #667085; text-transform: uppercase;">Transaction Ref:</span>
+                    <span style="font-size: 9px; color: #667085; text-transform: uppercase;">Transaction Ref:</span><br>
                     <code style="font-size: 10px; color: #98A2B3;">${credentials.paymentReference || 'N/A'}</code>
                 </td>
             </tr>
@@ -2147,20 +2155,16 @@ if (isRDP) {
         </tr>
     `;
 }
-
 else if (isVPN) {
-    // Check both nested vpnCredentials or top-level keys
+    // 1. Data Extraction
     const vpnCreds = credentials.vpnCredentials || {};    
     const displayUser = vpnCreds.username || credentials.username || "N/A";
     const displayPass = vpnCreds.password || credentials.password || "N/A";    
-    
-    // PC Credentials
     const displayPCUser = credentials.pcUsername || "N/A";
     const displayPCPass = credentials.pcPassword || "N/A";
-    
-    // Activation Code
     const displayCode = credentials.activationCode || "N/A";
 
+    // 2. Logic Flags
     const hasMobile = !!(displayUser && displayUser !== "N/A");
     const hasPC = !!(displayPCUser && displayPCUser !== "N/A");
     const hasCode = !!(displayCode && displayCode !== "N/A");
@@ -2175,6 +2179,12 @@ else if (isVPN) {
             </td>
         </tr>
         
+        ${hasCode ? `
+        <tr>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Activation Code:</strong></td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right; font-family: monospace; color: #0F54C6;"><strong>${displayCode}</strong></td>
+        </tr>` : ''}
+
         ${hasMobile ? `
         <tr>
             <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Mobile User:</strong></td>
@@ -2187,7 +2197,7 @@ else if (isVPN) {
 
         ${hasPC ? `
         <tr>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>PC Username:</strong></td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>PC Username/ID:</strong></td>
             <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right;">${displayPCUser}</td>
         </tr>
         <tr>
@@ -2195,6 +2205,7 @@ else if (isVPN) {
             <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right;">${displayPCPass}</td>
         </tr>` : ''}
     `;
+
     } else if (isESIM_Activation) {
         const confNo = credentials.confirmationNumber || credentials.activationCode;
         const meta = credentials.metadata || {};
@@ -2409,6 +2420,7 @@ const emailAttachments = [];
         console.error("Nodemailer Error:", error);
     }
 };
+
 const sendResetPasswordEmail = async (userEmail, resetLink, isAdmin = false) => {
     const transporter = nodemailer.createTransport({
         service: 'gmail',

@@ -151,8 +151,8 @@
                             <input type="text" id="targetNumber" placeholder="+1 (000) 000-0000" class="w-full bg-brand-background border border-brand-border p-3 md:p-4 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold focus:ring-2 focus:ring-brand-blue outline-none transition-all mobile-input">
                         </div>
                         <div>
-                <label class="text-[9px] md:text-[10px] font-bold text-brand-blue uppercase tracking-wider mb-2 block mobile-label">Coverage Country</label>
-                <input type="text" id="coverageCountry" placeholder="e.g. United States, United Kingdom" class="w-full bg-brand-background border border-brand-border p-3 md:p-4 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold focus:ring-2 focus:ring-brand-blue outline-none transition-all mobile-input">
+                <label class="text-[9px] md:text-[10px] font-bold text-brand-blue uppercase tracking-wider mb-2 block mobile-label"> Country</label>
+                <input type="text" id="coverageCountry" placeholder="e.g. United States" class="w-full bg-brand-background border border-brand-border p-3 md:p-4 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold focus:ring-2 focus:ring-brand-blue outline-none transition-all mobile-input">
             </div>
                         <div>
                             <label class="text-[9px] md:text-[10px] font-bold text-brand-blue uppercase tracking-wider mb-2 block mobile-label">Refill Amount (NGN)</label>
@@ -183,7 +183,7 @@
         <div class="my-5 space-y-2.5 border-t border-b border-dashed border-brand-border py-5 font-mono text-[10px] md:text-xs">
             <div class="flex justify-between items-center"><span class="text-brand-lightText">Carrier:</span> <span id="rCarrier" class="font-bold text-right text-brand-darkText uppercase">--</span></div>
             <div class="flex justify-between items-center"><span class="text-brand-lightText">Target Number:</span> <span id="rNumber" class="font-bold text-right text-brand-darkText">--</span></div>
-           <div class="flex justify-between items-center"><span class="text-brand-lightText">Coverage Country:</span>  <span id="rCountry" class="font-bold text-right text-brand-darkText uppercase">--</span></div>
+           <div class="flex justify-between items-center"><span class="text-brand-lightText">Country:</span>  <span id="rCountry" class="font-bold text-right text-brand-darkText uppercase">--</span></div>
             <div class="flex justify-between items-center"><span class="text-brand-lightText">Plan Paid:</span> <span id="rPlan" class="font-bold text-right text-brand-darkText">--</span></div>
             <div class="flex justify-between items-center"><span class="text-brand-lightText">Payment Method:</span> <span class="bg-brand-blue text-white px-2 py-0.5 rounded font-bold text-[8px] md:text-[9px] uppercase">Wallet Balance 💳</span></div>
             <div class="flex justify-between items-center pt-1"><span class="text-brand-lightText">Refill Status:</span> <span class="text-orange-600 font-bold text-[9px] uppercase animate-pulse">Processing by SmsGlobe</span></div>
@@ -372,7 +372,6 @@ if (data.success) {
     }
 }
 
-// Keep your loadUserData as is, it will now work with the fixed object
 async function loadUserData() {
     const success = await fetchUserProfile();
     if (success) {

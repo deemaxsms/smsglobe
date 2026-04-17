@@ -2371,7 +2371,7 @@ else if (isVPN) {
         </tr>
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Coverage Country</span><br>
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Country</span><br>
                 <strong style="font-size: 13px; color: #101828;">${displayCountry}</strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">

@@ -447,6 +447,39 @@
         document.getElementById('vpnModal').classList.add('hidden');
     }
 
+    function addBulkRow(type, user = '', pass = '') {
+    const container = document.getElementById(`${type}BulkContainer`);
+    const row = document.createElement('div');
+    row.className = `bulk-row-${type} flex gap-2 items-center mb-2`;
+    row.innerHTML = `
+        <input type="text" placeholder="User/ID" value="${user}" class="bulk-user w-full bg-white border border-brand-border p-2 rounded-lg text-xs outline-none focus:border-brand-blue">
+        <input type="text" placeholder="Pass/Code" value="${pass}" class="bulk-pass w-full bg-white border border-brand-border p-2 rounded-lg text-xs outline-none focus:border-brand-blue">
+        <button type="button" onclick="this.parentElement.remove(); updateCounts();" class="text-red-400 hover:text-red-600">✕</button>
+    `;
+    container.appendChild(row);
+    updateCounts();
+}
+
+function updateCounts() {
+    const pCount = document.querySelectorAll('.bulk-row-phone').length;
+    const pcCount = document.querySelectorAll('.bulk-row-pc').length;
+    document.getElementById('phoneCount').innerText = `${pCount} Loaded`;
+    document.getElementById('pcCount').innerText = `${pcCount} Loaded`;
+}
+
+function handleDeviceChange(type) {
+    const phoneBox = document.getElementById('phoneSection');
+    const pcBox = document.getElementById('pcSection');
+    
+    if (type === 'Phone') {
+        phoneBox.style.opacity = '1';
+        pcBox.style.opacity = '0.5';
+    } else {
+        phoneBox.style.opacity = '0.5';
+        pcBox.style.opacity = '1';
+    }
+}
+
     document.getElementById('vpnForm').onsubmit = async (e) => {
         e.preventDefault();
         const token = localStorage.getItem('smsglobe_admin_token');

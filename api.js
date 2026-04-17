@@ -1732,33 +1732,41 @@ const manualProducts = ["eSIM_Refill", "eSIM_Activation", "RDP"];
 const isManual = manualProducts.includes(itemType);
 
 if (!isManual) {
+    // 1. Define the variables so the code doesn't crash
+    const deliveryCode = orderSpecifics.activationCode || newOrder.activationCode || "N/A";
+    const deliveryInstructions = orderSpecifics.instructions || newOrder.instructions || "Check dashboard for details.";
+
     await sendDeliveryEmail(user.email, { 
         ...orderSpecifics, 
         productType: itemType, 
         nodeName: productDetails.name, 
-        credentials: orderSpecifics,
         planName: productDetails.plan || newOrder.planName,
-        amount: costNGN, // Pass as number so .toLocaleString() works inside the function
+        amount: costNGN, 
         paymentReference: paymentReference,
+        
+        // 2. Pass the credentials object correctly for the template
         credentials: {
-            activationCode: proxyCode,
-            instructions: proxyInstructions,
+            ...orderSpecifics, // Spread existing specifics (VPN creds, PC creds, etc.)
+            activationCode: deliveryCode,
+            instructions: deliveryInstructions,
             nodeName: productDetails.name,
             planName: productDetails.plan || newOrder.planName,
             amount: costNGN,
             paymentReference: paymentReference
         },
+
         confirmationNumber: paymentReference,     
         targetNumber: mobileNumber || newOrder.metadata?.targetNumber || "N/A",
         country: coverageCountry || newOrder.metadata?.country || "N/A", 
-        activationCode: orderSpecifics.activationCode || newOrder.activationCode || "N/A",     
-        instructions: orderSpecifics.instructions || newOrder.instructions || "Check dashboard for details.",  
+        activationCode: deliveryCode,     
+        instructions: deliveryInstructions,  
         mainBalanceUsed: newOrder.mainBalanceUsed || 0,
         bonusBalanceUsed: newOrder.bonusBalanceUsed || 0,
         metadata: newOrder.metadata,
         purchaseDate: newOrder.createdAt || new Date()
     }).catch(err => console.error("📧 Customer Email Error:", err.message));
 }
+
 // 2. Admin Notification (Only for Manual products)
 if (isManual) { // Use the variable here instead of re-checking the array
     try {

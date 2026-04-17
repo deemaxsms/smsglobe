@@ -332,6 +332,9 @@ const orderSchema = new mongoose.Schema({
     extraStorage: { type: Number, default: 0 },    
     activationCode: String, 
     vpnCredentials: { username: String, password: { type: String } },
+    pcUsername: String,
+    pcPassword: String,
+    pcMethod: String, 
     metadata: { type: mongoose.Schema.Types.Mixed } 
     
 }, { timestamps: true });
@@ -1502,20 +1505,25 @@ async function handlePurchaseWithWallet(req, res) {
         let productDetails = { name: "", plan: "" };
         let orderSpecifics = {};
 
-        if (vpnId) {
-    // We use .select('+password...') because these fields are likely hidden in your schema
+      if (vpnId) {
+    // 1. Fetch the VPN and decrement stock
     const item = await VPN.findOneAndUpdate(
         { _id: vpnId, stock: { $gt: 0 } },
         { $inc: { stock: -1 } },
         { 
             returnDocument: 'after', 
-            // CRITICAL: Ensure we explicitly select the hidden credentials
+            // We select +password and +pcPassword because they are likely hidden ('select: false') in VPN schema
             select: '+password +pcPassword +activationCode' 
         }
     );
     
-    if (!item || !item.plans[planIndex]) {
+    if (!item) {
         return res.status(404).json({ success: false, message: "VPN unavailable or out of stock" });
+    }
+
+    // 2. Validate plan existence
+    if (!item.plans || !item.plans[planIndex]) {
+        return res.status(400).json({ success: false, message: "Invalid plan selected" });
     }
 
     itemType = "VPN";
@@ -1523,21 +1531,23 @@ async function handlePurchaseWithWallet(req, res) {
     productDetails.name = item.name;
     productDetails.plan = item.plans[planIndex].duration;
     
-    // MATCHING YOUR ORDER SCHEMA:
-    // Your schema uses 'vpnCredentials: { username, password }'
+    // 3. Define EXACTLY what gets saved to the Order collection
     orderSpecifics = {
+        // Standard VPN Credentials
         vpnCredentials: {
             username: item.username || "",
             password: item.password || ""
         },
-        // These fields are flat in your Order schema
+        // PC / Specific Credentials (CRITICAL: These must exist in your Order Schema)
         pcUsername: item.pcUsername || "",
         pcPassword: item.pcPassword || "",
-        activationCode: item.activationCode || "",
         pcMethod: item.pcMethod || "",
-        instructions: item.instructions || "Follow the setup guide provided in your dashboard."
+        activationCode: item.activationCode || "",
+        
+        // Pass the admin instructions to the order so the user sees them
+        instructions: item.instructions || vpnData?.instructions || "Check your dashboard for login details."
     };
-        } 
+}
  if (proxyId) {
     const item = await Proxy.findOneAndUpdate(
         { _id: proxyId, stock: { $gt: 0 } },
@@ -2032,20 +2042,26 @@ const isESIM_Activation = type === "eSIM_Activation";
     }
     
     let dataTableHtml = '';
-   if (isProxy) {
-    // Mapping the data to the template
-    const displayCode = credentials.activationCode || 'PENDING';
+  if (isProxy) {
+    // 1. Correct the mapping to look at the top level if nested is missing
+    const displayCode = credentials.activationCode || credentials.code || 'PENDING';
     const displayInstructions = credentials.instructions || 'Follow the dashboard instructions to activate.';
+    
+    // Ensure amount and names are also pulled correctly
+    const displayService = credentials.nodeName || 'Premium Proxy';
+    const displayPlan = credentials.planName || 'Standard';
+    const displayAmount = Number(credentials.amount || 0).toLocaleString();
+    const displayRef = credentials.paymentReference || 'N/A';
 
     dataTableHtml = `
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Service</span><br>
-                <strong style="font-size: 13px; color: #0F54C6;">${credentials.nodeName || 'Premium Proxy'}</strong>
+                <strong style="font-size: 13px; color: #0F54C6;">${displayService}</strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Plan</span><br>
-                <strong style="font-size: 13px; color: #101828;">${credentials.planName || 'Standard'}</strong>
+                <strong style="font-size: 13px; color: #101828;">${displayPlan}</strong>
             </td>
         </tr>
         <tr>
@@ -2055,7 +2071,7 @@ const isESIM_Activation = type === "eSIM_Activation";
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
-                <strong style="font-size: 13px; color: #101828;">₦${Number(credentials.amount || 0).toLocaleString()}</strong>
+                <strong style="font-size: 13px; color: #101828;">₦${displayAmount}</strong>
             </td>
         </tr>
         <tr>
@@ -2071,7 +2087,7 @@ const isESIM_Activation = type === "eSIM_Activation";
                         ${displayInstructions}
                     </p>
                     <p style="font-size: 10px; color: #667085; margin-top: 5px;">
-                        Copy this code into your <strong>${credentials.nodeName || 'Proxy'}</strong> dashboard to activate.
+                        Copy this code into your <strong>${displayService}</strong> dashboard to activate.
                     </p>
                 </div>
             </td>
@@ -2079,7 +2095,7 @@ const isESIM_Activation = type === "eSIM_Activation";
         <tr>
             <td colspan="2" style="padding-top: 15px; text-align: center;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase;">Transaction Ref:</span><br>
-                <code style="font-size: 10px; color: #98A2B3;">${credentials.paymentReference || 'N/A'}</code>
+                <code style="font-size: 10px; color: #98A2B3;">${displayRef}</code>
             </td>
         </tr>
     `;

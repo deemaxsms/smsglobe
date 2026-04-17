@@ -690,8 +690,8 @@ async function buyVPN(vpnId) {
         }
     }
 
-    
-function showSuccessDetails(order, vpnData) {
+  function showSuccessDetails(order, vpnData) {
+    // 1. Basic State Toggle
     document.getElementById('confirmState').classList.add('hidden');
     document.getElementById('successState').classList.remove('hidden');
 
@@ -699,48 +699,58 @@ function showSuccessDetails(order, vpnData) {
     const passWrap = document.getElementById('wrapPass');
     const codeWrap = document.getElementById('wrapCode');
     
+    // Reset visibility (start hidden)
     [userWrap, passWrap, codeWrap].forEach(el => el?.classList.add('hidden'));
 
-    if (!order) return;
+    if (!order) {
+        console.error("VPN Order object is missing!");
+        return;
+    }
 
-    // --- LOGIC FOR PC CREDENTIALS VS MOBILE ---
-    // If pcUsername exists, we prioritize it, otherwise fallback to standard vpnCredentials
-    const finalUser = order.pcUsername || order.rdpUsername || (order.vpnCredentials && order.vpnCredentials.username) || order.username;
-    const finalPass = order.pcPassword || order.rdpPassword || (order.vpnCredentials && order.vpnCredentials.password) || order.password;
+    // 2. EXTRACTION LOGIC (VPN & PC PRIORITIZED)
+    // Checks for PC-specific fields first, then standard VPN nested credentials
+    const finalUser = order.pcUsername || 
+                     (order.vpnCredentials && order.vpnCredentials.username) || 
+                     order.username;
+
+    const finalPass = order.pcPassword || 
+                     (order.vpnCredentials && order.vpnCredentials.password) || 
+                     order.password;
+
     const finalCode = order.activationCode;
 
-    // 1. Display Username / IP
-    if (finalUser) {
-        let displayUser = order.ipAddress ? `${order.ipAddress} | ${finalUser}` : finalUser;
+    // 3. DISPLAY VPN USERNAME / PC ID
+    if (finalUser && finalUser !== "N/A" && finalUser !== "---") {
+        let displayUser = finalUser;
         
-        // Label helper: if it's a PC login, maybe let them know
+        // Add indicator if this is a PC-specific VPN login
         if (order.pcUsername) displayUser = `[PC] ${displayUser}`;
         
         document.getElementById('resUser').innerText = displayUser;
-        userWrap.classList.remove('hidden');
+        userWrap?.classList.remove('hidden');
     }
     
-    // 2. Display Password
-    if (finalPass) {
+    // 4. DISPLAY VPN PASSWORD
+    if (finalPass && finalPass !== "N/A" && finalPass !== "---") {
         document.getElementById('resPass').innerText = finalPass;
-        passWrap.classList.remove('hidden');
+        passWrap?.classList.remove('hidden');
     }
     
-    // 3. Display Activation Code
-    if (finalCode) {
+    // 5. DISPLAY ACTIVATION CODE (If applicable for the VPN provider)
+    if (finalCode && finalCode !== "N/A" && finalCode !== "") {
         document.getElementById('resCode').innerText = finalCode;
-        codeWrap.classList.remove('hidden');
+        codeWrap?.classList.remove('hidden');
     }
 
-    // 4. Instructions
-    const defaultInstr = "Your order is being processed. Check your email or dashboard history for updates.";
+    // 6. VPN SETUP INSTRUCTIONS
+    const defaultInstr = "Your VPN is ready. Follow the setup instructions below or check your email for a copy of your login details.";
     document.getElementById('resInstructions').innerText = order.instructions || vpnData?.instructions || defaultInstr;
 
-    // 5. Limits
-    if (document.getElementById('resLimit')) {
-        document.getElementById('resLimit').innerText = order.productType === 'RDP' 
-            ? `${order.ram} RAM / ${order.cpu} CPU` 
-            : `${vpnData?.deviceLimit || 1} Device(s)`;
+    // 7. DEVICE LIMITS
+    const limitEl = document.getElementById('resLimit');
+    if (limitEl) {
+        const limit = vpnData?.deviceLimit || order.deviceLimit || 1;
+        limitEl.innerText = `${limit} Device(s)`;
     }
 }
 

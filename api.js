@@ -3377,7 +3377,7 @@ async function handleGetRdpRequests(req, res) {
     }
 }
 async function handleGetNumbers(req, res) {
-    try { await connectDB(); } catch (e) { return res.status(500).json({ success: false, message: "DB Connection Error" }); }
+    try { await connectDB(); } catch (e) { return res.status(500).json({ success: false, message: "DB Down" }); }
 
     const { country, service } = req.query; 
 
@@ -3389,24 +3389,15 @@ async function handleGetNumbers(req, res) {
             const cleanId = deviceId.trim();
             const cleanKey = textBeeKey.trim();
 
-            // PATH 1: The most common modern path
-            let tbUrl = `https://api.textbee.dev/api/v1/devices/${cleanId}`;
-            let tbResponse;
+            // THE FIX: Most 2026 accounts use this DIRECT path without '/gateway'
+            const tbUrl = `https://api.textbee.dev/api/v1/devices/${cleanId}`;
+            
+            console.log("Hitting Direct Path:", tbUrl);
 
-            try {
-                tbResponse = await axios.get(tbUrl, {
-                    headers: { 'x-api-key': cleanKey },
-                    timeout: 5000 
-                });
-            } catch (err1) {
-                // PATH 2: The legacy/alternate gateway path if PATH 1 fails
-                console.log("Path 1 failed, trying Path 2...");
-                tbUrl = `https://api.textbee.dev/api/v1/gateway/devices/${cleanId}`;
-                tbResponse = await axios.get(tbUrl, {
-                    headers: { 'x-api-key': cleanKey },
-                    timeout: 5000
-                });
-            }
+            const tbResponse = await axios.get(tbUrl, {
+                headers: { 'x-api-key': cleanKey },
+                timeout: 10000 
+            });
 
             const status = tbResponse.data?.status;
 
@@ -3423,21 +3414,20 @@ async function handleGetNumbers(req, res) {
             
             return res.status(400).json({ 
                 success: false, 
-                message: `Samsung is ${status || 'Offline'}. Check the TextBee app.` 
+                message: `Device is ${status || 'Offline'}. Open TextBee on your Samsung.` 
             });
         }
 
         return res.status(404).json({ success: false, message: "Country not supported." });
 
     } catch (err) {
-        // This will now catch if BOTH paths fail
-        const finalError = err.response?.data || err.message;
-        console.error("TEXTBEE_FINAL_ERROR:", finalError);
+        const apiErr = err.response?.data || err.message;
+        console.error("TEXTBEE_FINAL_DEBUG:", apiErr);
 
         return res.status(500).json({ 
             success: false, 
-            message: "TextBee API rejected all connection paths.",
-            debug: finalError
+            message: "TextBee Endpoint Mismatch (404).",
+            debug: apiErr.message || apiErr 
         });
     }
 }

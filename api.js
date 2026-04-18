@@ -3382,29 +3382,30 @@ async function handleGetNumbers(req, res) {
     const { country, service } = req.query; 
 
     try {
-        const textBeeKey = process.env.TEXTBEE_API_KEY;
-        const deviceId = process.env.TEXTBEE_DEVICE_ID;
+        const textBeeKey = process.env.TEXTBEE_API_KEY; // 5d950684...
+        const deviceId = process.env.TEXTBEE_DEVICE_ID; // 69e38277...
 
         if (country === 'NG') {
             const cleanId = deviceId.trim();
             const cleanKey = textBeeKey.trim();
 
-            // THE FIX: Most 2026 accounts use this DIRECT path without '/gateway'
-            const tbUrl = `https://api.textbee.dev/api/v1/devices/${cleanId}`;
-            
-            console.log("Hitting Direct Path:", tbUrl);
+            // DASHBOARD MATCH: Using app.textbee.dev instead of api.textbee.dev
+            const tbUrl = `https://app.textbee.dev/api/v1/gateway/devices/${cleanId}`;
+
+            console.log("Hitting Dashboard-Verified Path:", tbUrl);
 
             const tbResponse = await axios.get(tbUrl, {
                 headers: { 'x-api-key': cleanKey },
                 timeout: 10000 
             });
 
+            // Your dashboard shows status "Enabled" (Green badge)
             const status = tbResponse.data?.status;
 
             if (status === 'Enabled' || status === 'Online') {
                 return res.json({
                     success: true,
-                    numbers: ["+234... (Samsung SIM)"], 
+                    numbers: ["+234... (Samsung SM-A075F)"], 
                     targetId: cleanId, 
                     provider: 'textbee',
                     cost: 850,
@@ -3414,7 +3415,7 @@ async function handleGetNumbers(req, res) {
             
             return res.status(400).json({ 
                 success: false, 
-                message: `Device is ${status || 'Offline'}. Open TextBee on your Samsung.` 
+                message: `Device is currently ${status || 'Offline'}. Check your Samsung phone.` 
             });
         }
 
@@ -3422,11 +3423,11 @@ async function handleGetNumbers(req, res) {
 
     } catch (err) {
         const apiErr = err.response?.data || err.message;
-        console.error("TEXTBEE_FINAL_DEBUG:", apiErr);
+        console.error("TEXTBEE_DASHBOARD_ERROR:", apiErr);
 
         return res.status(500).json({ 
             success: false, 
-            message: "TextBee Endpoint Mismatch (404).",
+            message: "Failed to sync with Samsung Dashboard.",
             debug: apiErr.message || apiErr 
         });
     }

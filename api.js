@@ -537,13 +537,9 @@ app.all('/api/:action', async (req, res) => {
     if (req.method === 'POST') return handleCompleteRDPOrder(req, res);
     break;
         case 'get-numbers/numbers': 
-    case 'get-numbers': 
-    return handleGetNumbers(req, res);
-
-       case 'rentals/activate':
-case 'purchase/process':
-case 'activate-number': // If your frontend uses this
-    return handleActivatePurchase(req, res);
+    case 'get-numbers': return handleGetNumbers(req, res);
+     case 'get-stock':  return handleGetStock(req, res);
+     case 'sms-receive':  return handleSmsReceive(req, res);
 case 'change-passwords': 
     if (req.method === 'POST') return handleAdminChangePassword(req, res);
     break;
@@ -3351,154 +3347,95 @@ async function handleGetRdpRequests(req, res) {
     }
 }
 
-async function getTextverifiedToken() {
-    try {
-        const response = await axios.post(
-            'https://www.textverified.com/api/SimpleAuthentication', 
-            {}, 
-            { 
-                headers: { 
-                    'X-API-KEY': process.env.TEXTVERIFIED_V2_KEY,
-                    'Accept': 'application/json'
-                } 
-            }
-        );
-        
-        // V2 returns "token", V1 returned "bearer_token". We check both to be safe.
-        const token = response.data.token || response.data.bearer_token;
-        
-        if (!token) {
-            console.error("Auth response received but no token found:", response.data);
-        }
-        
-        return token;
-    } catch (err) {
-        // This will show you the REAL reason in Vercel Logs (Unauthorized, Invalid Key, etc.)
-        console.error("Textverified Auth Failed:", err.response?.data || err.message);
-        return null;
-    }
-}
-// --- Updated: Fetch Numbers (Inventory) ---
 async function handleGetNumbers(req, res) {
-    const { service } = req.query; 
+    const { country, service } = req.query; 
 
     try {
-        const apiKey = process.env.TELLABOT_API_KEY;
-        const apiUser = process.env.TELLABOT_USER;
+        const textBeeKey = process.env.TEXTBEE_API_KEY;
+        const deviceId = process.env.TEXTBEE_DEVICE_ID; // Your Samsung ID
 
-        if (!apiKey || !apiUser) {
-            return res.status(500).json({ success: false, message: "Server config missing (API Key or User)." });
-        }
+        // We only process 'NG' (Nigeria) for the physical SIM test
+        if (country === 'NG') {
+            const tbResponse = await axios.get(`https://api.textbee.dev/api/v1/devices/${deviceId}`, {
+                headers: { 'x-api-key': textBeeKey }
+            });
 
-        // According to your screenshot, cmd is 'list_services'
-        const response = await axios.get('https://www.tellabot.com/api_command.php', {
-            params: {
-                cmd: 'list_services',
-                user: apiUser,
-                api_key: apiKey
-            }
-        });
-
-        // Tell A Bot format: { status: "ok", message: [ {service: "Amazon", price: "0.50"}, ... ] }
-        if (response.data.status === 'ok' && Array.isArray(response.data.message)) {
-            const services = response.data.message;
-            
-            // Search by 'service' field from the API response
-            const target = services.find(s => 
-                s.service && s.service.toLowerCase().includes(service.toLowerCase())
-            );
-
-            if (target) {
-                return res.json({ 
-                    success: true, 
-                    numbers: [`Secure ${target.service} Line`], 
-                    targetId: target.service, // Tell A Bot 'request' uses the name string
-                    cost: target.price,
-                    name: target.service
+            // Check if your Samsung is Online/Enabled
+            if (tbResponse.data && tbResponse.data.status === 'Enabled') {
+                return res.json({
+                    success: true,
+                    // We label it clearly so the user knows it's a private line
+                    numbers: ["+234... (Private SIM)"], 
+                    targetId: deviceId, 
+                    provider: 'textbee',
+                    cost: 850,
+                    serviceName: service // e.g., 'WhatsApp'
                 });
             }
+            return res.json({ success: false, message: "Samsung Device is Offline." });
         }
 
-        return res.json({ success: false, message: `Service '${service}' not found or out of stock.` });
+        // Placeholder for future international providers
+        return res.json({ success: false, message: "International lines coming soon." });
 
     } catch (err) {
-        console.error("Tell A Bot Sync Error:", err.message);
-        return res.status(500).json({ success: false, message: "Sync Failed: " + err.message });
+        console.error("TextBee Status Error:", err.message);
+        return res.status(500).json({ success: false, message: "Failed to connect to Samsung device." });
     }
 }
-
-// --- Updated: Handle Stock Mapping ---
 async function handleGetStock(req, res) {
     try {
-        const apiKey = process.env.TELLABOT_API_KEY;
-        const apiUser = process.env.TELLABOT_USER;
+        const textBeeKey = process.env.TEXTBEE_API_KEY;
+        const deviceId = process.env.TEXTBEE_DEVICE_ID;
 
-        if (!apiKey || !apiUser) return res.json({ success: false, message: "Server config missing" });
-
-        const response = await axios.get('https://www.tellabot.com/api_command.php', {
-            params: {
-                cmd: 'list_services',
-                user: apiUser,
-                api_key: apiKey
-            }
+        const response = await axios.get(`https://api.textbee.dev/api/v1/devices/${deviceId}`, {
+            headers: { 'x-api-key': textBeeKey }
         });
 
-        const stockData = {};
-        if (response.data.status === 'ok' && Array.isArray(response.data.message)) {
-            response.data.message.forEach(s => {
-                // Map the Service Name (used as ID) to its Price
-                stockData[s.service] = s.price; 
-            });
-        }
+        const isOnline = response.data && response.data.status === 'Enabled';
 
         return res.json({ 
             success: true, 
-            stock: stockData 
+            stock: { 
+                "NG": isOnline ? 1 : 0 
+            } 
         });
     } catch (err) {
-        console.error("Tell A Bot Stock Sync Error:", err.message);
-        return res.json({ success: false, stock: {}, message: "Stock sync failed" });
+        return res.json({ success: false, stock: { "NG": 0 } });
     }
 }
 
-// --- Updated: Activate/Purchase Number ---
-async function handleActivatePurchase(req, res) {
-    const { targetId } = req.body; // This is the service name (e.g., 'WhatsApp')
+async function handleSmsReceive(req, res) {
+    const { message, deviceId, phoneNumber } = req.body;
+    const signingSecret = req.headers['x-signing-secret'];
+
+    // Verify it's actually from your TextBee configuration
+    if (signingSecret !== "c5d55ea9-1dc3-4569-81d8-9a49114c2155") {
+        return res.status(401).send("Unauthorized");
+    }
 
     try {
-        const apiKey = process.env.TELLABOT_API_KEY;
-        const apiUser = process.env.TELLABOT_USER;
+        // Extract 4-6 digit OTP
+        const otpCode = message.match(/\d{4,6}/)?.[0];
 
-        const response = await axios.get('https://www.tellabot.com/api_command.php', {
-            params: {
-                cmd: 'request', 
-                user: apiUser,
-                api_key: apiKey,
-                service: targetId
-            }
-        });
-
-        // According to your screenshot:
-        // Success returns { "status": "ok", "message": [ { "mdn": "15302286946", "id": "10000001", ... } ] }
-        if (response.data.status === 'ok' && response.data.message && response.data.message.length > 0) {
-            const order = response.data.message[0];
-            return res.json({
-                success: true,
-                rentalId: order.id,
-                number: order.mdn, // MDN is the phone number field
-                message: "Number Reserved!"
-            });
+        if (otpCode) {
+            // Find the last pending order for this device and update it
+            // This allows the 'Purchase with Wallet' flow to see the code
+            await Order.findOneAndUpdate(
+                { deviceId: deviceId, status: 'pending' },
+                { 
+                    smsCode: otpCode, 
+                    fullMessage: message, 
+                    status: 'completed' 
+                },
+                { sort: { createdAt: -1 } }
+            );
         }
 
-        // Error returns { "status": "error", "message": "Reason here" }
-        return res.status(400).json({ 
-            success: false, 
-            message: response.data.message || "No numbers available or insufficient balance." 
-        });
-
+        return res.status(200).send("OK");
     } catch (err) {
-        console.error("Tell A Bot Purchase Error:", err.message);
-        return res.status(500).json({ success: false, message: "Purchase failed." });
+        console.error("Webhook Error:", err);
+        return res.status(500).send("Error");
     }
 }
 

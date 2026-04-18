@@ -3388,9 +3388,6 @@ async function handleGetNumbers(req, res) {
 
         if (country === 'NG') {
             const cleanId = deviceId.trim();
-            
-            // THE 2026 STABLE ENDPOINT: Get all devices
-            // This avoids the 'Cannot GET /device/ID' 404 error
             const tbUrl = `https://api.textbee.dev/api/v1/gateway/devices`;
 
             const tbResponse = await axios.get(tbUrl, {
@@ -3398,12 +3395,17 @@ async function handleGetNumbers(req, res) {
                 timeout: 10000 
             });
 
-            // TextBee returns an array of devices. We find yours in the list.
             const devices = tbResponse.data;
             const myDevice = Array.isArray(devices) ? devices.find(d => d.deviceId === cleanId) : null;
 
-            // Check if found and if status is 'Enabled' (as seen in your screenshot)
-            if (myDevice && (myDevice.status === 'Enabled' || myDevice.status === 'Online')) {
+            // LOG THE STATUS: Check your Vercel logs to see what this says!
+            console.log("Device Found:", myDevice ? myDevice.status : "NOT FOUND IN LIST");
+
+            // FIX: Accepting multiple "Online" variations
+            const isOnline = myDevice && 
+                ['Enabled', 'Online', 'Active', 'enabled', 'online'].includes(myDevice.status);
+
+            if (isOnline) {
                 return res.json({
                     success: true,
                     numbers: ["+234... (Samsung SM-A075F)"], 
@@ -3414,24 +3416,18 @@ async function handleGetNumbers(req, res) {
                 });
             }
             
+            // If we reach here, the device was found but status wasn't 'Enabled'
             return res.status(400).json({ 
                 success: false, 
-                message: "Samsung is Offline. Ensure the TextBee app is open on the phone." 
+                message: `Samsung is ${myDevice?.status || 'not recognized'}. Please refresh the TextBee app.` 
             });
         }
 
-        // Add logic for international providers (Textverified/5sim) here later
-        return res.status(404).json({ success: false, message: "International lines coming soon." });
+        return res.status(404).json({ success: false, message: "Country not supported." });
 
     } catch (err) {
-        const apiErr = err.response?.data || err.message;
-        console.error("TEXTBEE_SYNC_ERROR:", apiErr);
-
-        return res.status(500).json({ 
-            success: false, 
-            message: "Failed to sync with Samsung Dashboard.",
-            debug: apiErr.message || apiErr 
-        });
+        console.error("TEXTBEE_LIST_ERROR:", err.response?.data || err.message);
+        return res.status(500).json({ success: false, message: "Sync Error", debug: err.message });
     }
 }
 

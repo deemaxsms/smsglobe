@@ -846,8 +846,7 @@ async function handleGetVPNs(req, res) {
     try {
         const vpns = await VPN.find({})
             .sort({ createdAt: -1 })
-            // We now select the new account arrays and the pcMethod
-            .select('+phoneAccounts +pcAccounts +pcMethod +deviceType +stock +deviceLimit'); 
+            .select('+phoneAccounts +pcAccounts +pcMethod +deviceType +stock +deviceLimit +instructions'); 
             
         res.json({ success: true, products: vpns }); 
     } catch (err) {
@@ -855,7 +854,6 @@ async function handleGetVPNs(req, res) {
         res.status(500).json({ success: false, message: "Failed to fetch VPN list" });
     }
 }
-
 async function handleAddVPN(req, res) {
     try {
         const { plans, deviceType, deviceLimit, phoneAccounts, pcAccounts, ...otherData } = req.body;
@@ -1526,67 +1524,113 @@ async function handlePurchaseWithWallet(req, res) {
         let productDetails = { name: "", plan: "" };
         let orderSpecifics = {};
 
-      if (vpnId) {
-    // 1. Fetch the VPN and decrement stock
-    const item = await VPN.findOneAndUpdate(
-        { _id: vpnId, stock: { $gt: 0 } },
-        { $inc: { stock: -1 } },
-        { 
-            returnDocument: 'after', 
-            // We select +password and +pcPassword because they are likely hidden ('select: false') in VPN schema
-            select: '+password +pcPassword +activationCode' 
-        }
-    );
+     if (vpnId) {
+    // 1. First, fetch the VPN data to get the price (DO NOT pop yet)
+    // We select the account arrays to see if they are empty
+    const vpnLookup = await VPN.findById(vpnId).select('+phoneAccounts +pcAccounts');
     
-    if (!item) {
+    if (!vpnLookup || (vpnLookup.stock || 0) <= 0) {
         return res.status(404).json({ success: false, message: "VPN unavailable or out of stock" });
     }
 
-    // 2. Validate plan existence
-    if (!item.plans || !item.plans[planIndex]) {
+    // 2. Validate plan existence & calculate cost
+    if (!vpnLookup.plans || !vpnLookup.plans[planIndex]) {
         return res.status(400).json({ success: false, message: "Invalid plan selected" });
     }
 
     itemType = "VPN";
-    costNGN = Math.round(Number(item.plans[planIndex].price));
-    productDetails.name = item.name;
-    productDetails.plan = item.plans[planIndex].duration;
+    costNGN = Math.round(Number(vpnLookup.plans[planIndex].price));
+    productDetails.name = vpnLookup.name;
+    productDetails.plan = vpnLookup.plans[planIndex].duration;
+
+    // --- STOP: The main function continues to Wallet Calculations here ---
+    // After wallet deduction is confirmed (later in your script), we then do the "Pop"
     
-    // 3. Define EXACTLY what gets saved to the Order collection
-    orderSpecifics = {
-        // Standard VPN Credentials
-        vpnCredentials: {
-            username: item.username || "",
-            password: item.password || ""
-        },
-        // PC / Specific Credentials (CRITICAL: These must exist in your Order Schema)
-        pcUsername: item.pcUsername || "",
-        pcPassword: item.pcPassword || "",
-        pcMethod: item.pcMethod || "",
-        activationCode: item.activationCode || "",
-        
-        // Pass the admin instructions to the order so the user sees them
-        instructions: item.instructions || vpnData?.instructions || "Check your dashboard for login details."
-    };
-}
- if (proxyId) {
-    const item = await Proxy.findOneAndUpdate(
-        { _id: proxyId, stock: { $gt: 0 } },
-        { $inc: { stock: -1 } },
-        // Ensure activationCode and instructions are selected
-        { returnDocument: 'after', select: '+activationCode +instructions' } 
+    // 3. Logic to pick the credential based on device type
+    let assigned = null;
+    let popQuery = {};
+
+    // Check which array has the credentials
+    if (vpnLookup.pcAccounts && vpnLookup.pcAccounts.length > 0) {
+        assigned = vpnLookup.pcAccounts[0]; // Take the first one
+        popQuery = { $pop: { pcAccounts: -1 }, $inc: { stock: -1 } };
+    } else if (vpnLookup.phoneAccounts && vpnLookup.phoneAccounts.length > 0) {
+        assigned = vpnLookup.phoneAccounts[0]; // Take the first one
+        popQuery = { $pop: { phoneAccounts: -1 }, $inc: { stock: -1 } };
+    }
+
+    if (!assigned) {
+        return res.status(404).json({ success: false, message: "No credentials available in the database" });
+    }
+
+    // 4. ATOMIC UPDATE: Actually remove it from the database now
+    const item = await VPN.findOneAndUpdate(
+        { _id: vpnId, stock: { $gt: 0 } },
+        popQuery,
+        { 
+            returnDocument: 'after', 
+            select: '+instructions +deviceLimit' 
+        }
     );
 
-    if (!item || !item.plans[planIndex]) {
+    // 5. Define exactly what goes to the Order collection
+    orderSpecifics = {
+        vpnCredentials: {
+            username: assigned.username || "",
+            password: assigned.password || ""
+        },
+        // For individual fields used by showSuccessDetails()
+        username: assigned.username || "", 
+        password: assigned.password || "",
+        pcUsername: assigned.username || "",
+        pcPassword: assigned.password || "",
+        activationCode: assigned.activationCode || "",
+        instructions: item.instructions || "Check your dashboard for setup steps.",
+        deviceLimit: item.deviceLimit || 1
+    };
+}
+
+ else if (proxyId) {
+    const proxyLookup = await Proxy.findById(proxyId).select('+activationCodes');
+
+    if (!proxyLookup || (proxyLookup.stock || 0) <= 0) {
         return res.status(404).json({ success: false, message: "Proxy unavailable or out of stock" });
     }
-    
+
+    if (!proxyLookup.plans || !proxyLookup.plans[planIndex]) {
+        return res.status(400).json({ success: false, message: "Invalid plan selected" });
+    }
+    const availableCodes = proxyLookup.activationCodes || [];
+    if (availableCodes.length === 0) {
+        return res.status(404).json({ success: false, message: "No activation codes available" });
+    }
+    const assignedCode = availableCodes[0]; // Grab the top code
+
+    const item = await Proxy.findOneAndUpdate(
+        { _id: proxyId, stock: { $gt: 0 } },
+        { 
+            $pop: { activationCodes: -1 }, // Removes index 0 from the array
+            $inc: { stock: -1 } 
+        },
+        { 
+            returnDocument: 'after', 
+            select: '+instructions' 
+        }
+    );
+
     itemType = "Proxy";
     costNGN = Math.round(Number(item.plans[planIndex].price));
     productDetails.name = item.name;
-    productDetails.plan = `${item.plans[planIndex].ip_count} IPs`;        
-    orderSpecifics.activationCode = item.activationCode;
-    orderSpecifics.instructions = item.instructions;
+    productDetails.plan = `${item.plans[planIndex].ip_count || 0} IPs`;
+
+    orderSpecifics = {
+        activationCode: assignedCode, 
+        instructions: item.instructions || "To activate your proxy, copy the code above into your provider's portal.",
+        metadata: {
+            ...metadata,
+            deliveredCode: assignedCode
+        }
+    };
 }
 else if (rdpId) {
     itemType = "RDP";
@@ -2580,67 +2624,80 @@ const sendResetPasswordEmail = async (userEmail, resetLink, isAdmin = false) => 
         html: htmlContent
     });
 };
-
 // 2. GET ALL Proxies (Sorted by Newest)
 async function handleGetProxies(req, res) {
     try {
+        // We exclude activationCodes from the list view for security/performance
+        // But we include activationCode (singular) if you still want to see the "Current" one
         const proxies = await Proxy.find({}).sort({ createdAt: -1 });
-        // Returns the list directly with NGN prices as stored in DB
         return res.json({ success: true, proxies });
     } catch (err) {
         return res.status(500).json({ success: false, message: "Fetch failed" });
     }
 }
 
-// 3. ADD Proxy (Cleaned for NGN)
+// 3. ADD Proxy (Vending Machine Logic)
 async function handleAddProxy(req, res) {
     try {
-        const { name, category, imageUrl, activationCode, instructions, plans, stock } = req.body;
+        const { name, category, imageUrl, activationCode, activationCodes, instructions, plans, stock } = req.body;
 
-        // Clean and parse the plans - Ensuring prices are rounded NGN
+        // Clean and parse the plans
         let formattedPlans = [];
         if (plans && Array.isArray(plans)) {
             formattedPlans = plans.map(p => ({
                 ip_count: parseInt(p.ip_count) || 0,
-                // Math.round ensures we don't store weird floating point decimals
                 price: Math.round(parseFloat(p.price)) || 0 
             }));
         }
+
+        // Logic: Use the array length for stock if codes were uploaded
+        const finalCodes = Array.isArray(activationCodes) ? activationCodes : [];
+        const finalStock = finalCodes.length > 0 ? finalCodes.length : (parseInt(stock) || 0);
 
         const newProxy = new Proxy({
             name,
             category: category || 'Standard', 
             imageUrl,
-            activationCode,
+            // Single code for backward compatibility
+            activationCode: activationCode || (finalCodes.length > 0 ? finalCodes[0] : ""),
+            // The full array for the vending machine
+            activationCodes: finalCodes,
             instructions,
-            stock: parseInt(stock) || 0,
+            stock: finalStock,
             plans: formattedPlans
         });
 
         await newProxy.save();
-        return res.json({ success: true, message: "Proxy Package Deployed Successfully in NGN" });
+        return res.json({ success: true, message: "Proxy Package Deployed with " + finalStock + " codes" });
     } catch (err) {
         console.error("Add Proxy Error:", err);
         return res.status(500).json({ success: false, message: "Deployment failed" });
     }
 }
 
-// 4. UPDATE Proxy (Cleaned for NGN)
+// 4. UPDATE Proxy (With Bulk Code Support)
 async function handleUpdateProxy(req, res) {
     try {
-        const { proxyId, plans, stock, ...restOfData } = req.body;
+        const { proxyId, plans, stock, activationCodes, ...restOfData } = req.body;
 
-        const updatePayload = { 
-            ...restOfData,
-            stock: parseInt(stock) || 0 
-        };
+        // Prepare the update object
+        const updatePayload = { ...restOfData };
 
-        // Handle plans parsing specifically for NGN
+        // Handle plans parsing
         if (plans && Array.isArray(plans)) {
             updatePayload.plans = plans.map(p => ({
                 ip_count: parseInt(p.ip_count) || 0,
                 price: Math.round(parseFloat(p.price)) || 0 
             }));
+        }
+
+        // Handle Activation Codes & Stock
+        if (Array.isArray(activationCodes) && activationCodes.length > 0) {
+            updatePayload.activationCodes = activationCodes;
+            updatePayload.stock = activationCodes.length;
+            updatePayload.activationCode = activationCodes[0];
+        } else {
+            updatePayload.stock = parseInt(stock) || 0;
         }
 
         const updated = await Proxy.findByIdAndUpdate(
@@ -2651,7 +2708,7 @@ async function handleUpdateProxy(req, res) {
         
         if (!updated) return res.status(404).json({ success: false, message: "Proxy not found" });
 
-        return res.json({ success: true, message: "Proxy Package Updated (NGN)" });
+        return res.json({ success: true, message: "Proxy Package Updated successfully" });
     } catch (err) {
         console.error("Update Proxy Error:", err);
         return res.status(500).json({ success: false, message: "Update failed" });

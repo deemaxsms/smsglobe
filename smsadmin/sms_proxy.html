@@ -164,13 +164,27 @@
                     </button>
                 </div>
 
-                <div class="bg-orange-50/50 p-4 rounded-xl border border-orange-100">
-                    <label class="block text-[10px] font-bold text-brand-orange mb-1.5 uppercase tracking-widest">Activation Code</label>
-                    <input type="text" id="activationCode" placeholder="G-XXXX-XXXX-XXXX" class="w-full bg-white border border-brand-border p-3 rounded-xl outline-none focus:border-brand-orange transition-all font-mono mb-4">
-                    
-                    <label class="block text-[10px] font-bold text-brand-orange mb-1.5 uppercase tracking-widest">Setup Instructions</label>
-                    <textarea id="instructions" rows="3" placeholder="Step-by-step instructions for the user..." class="w-full bg-white border border-brand-border p-3 rounded-xl outline-none focus:border-brand-orange transition-all text-sm"></textarea>
-                </div>
+              <div class="bg-orange-50/50 p-4 rounded-xl border border-orange-100">
+    <div class="flex justify-between items-center mb-3">
+        <label class="block text-[10px] font-bold text-brand-orange uppercase tracking-widest">Activation Codes (Vending Inventory)</label>
+        <button type="button" onclick="toggleBulkUpload()" class="text-[10px] font-bold bg-brand-orange/10 text-brand-orange px-2 py-1 rounded hover:bg-brand-orange/20 transition-all">
+            + BULK IMPORT
+        </button>
+    </div>
+
+    <div id="singleCodeView">
+        <input type="text" id="activationCode" placeholder="G-XXXX-XXXX-XXXX (Or use Bulk Import)" class="w-full bg-white border border-brand-border p-3 rounded-xl outline-none focus:border-brand-orange transition-all font-mono text-sm">
+        <p id="codeCountInfo" class="text-[10px] mt-1 text-brand-lightText italic">Stock will auto-calculate if codes are added.</p>
+    </div>
+
+    <div id="bulkCodeView" class="hidden mt-2">
+        <textarea id="bulkCodes" rows="5" placeholder="Paste codes here...&#10;One code per line&#10;Code1&#10;Code2" class="w-full bg-white border border-brand-border p-3 rounded-xl outline-none focus:border-brand-orange transition-all font-mono text-xs"></textarea>
+        <p class="text-[9px] text-brand-orange/70 mt-1 uppercase font-bold">* Every line will be counted as 1 stock item.</p>
+    </div>
+    
+    <label class="block text-[10px] font-bold text-brand-orange mb-1.5 mt-4 uppercase tracking-widest">Setup Instructions</label>
+    <textarea id="instructions" rows="3" placeholder="Step-by-step instructions for the user..." class="w-full bg-white border border-brand-border p-3 rounded-xl outline-none focus:border-brand-orange transition-all text-sm"></textarea>
+</div>
 
                 <div class="pt-2 sticky bottom-0 bg-white">
                     <button type="submit" id="submitBtn" class="w-full bg-brand-blue text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-blue-700 transition-all active:scale-[0.98]">
@@ -309,52 +323,100 @@ async function fetchProxies() {
         } catch (err) { alert('Server error during deletion.'); }
     }
 
-    document.getElementById('proxyForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const form = e.target;
-        const btn = document.getElementById('submitBtn');
-        const token = localStorage.getItem('smsglobe_admin_token');
-        const editId = form.dataset.editId;
-        
-        btn.disabled = true;
-        btn.innerText = 'Processing...';
+    function toggleBulkUpload() {
+    const bulkView = document.getElementById('bulkCodeView');
+    const singleView = document.getElementById('singleCodeView');
+    const bulkBtn = event.currentTarget;
 
-        const payload = {
-            name: document.getElementById('name').value,
-            category: document.getElementById('category').value,
-            stock: parseInt(document.getElementById('stock').value) || 0,
-            imageUrl: document.getElementById('imageUrl').value,
-            activationCode: document.getElementById('activationCode').value,
-            instructions: document.getElementById('instructions').value,
-            plans: Array.from(document.querySelectorAll('.pricing-row')).map(row => ({
-                ip_count: row.querySelector('.plan-ips').value,
-                price: row.querySelector('.plan-price').value
-            }))
-        };
+    if (bulkView.classList.contains('hidden')) {
+        bulkView.classList.remove('hidden');
+        singleView.classList.add('hidden');
+        bulkBtn.innerText = "✕ CANCEL BULK";
+    } else {
+        bulkView.classList.add('hidden');
+        singleView.classList.remove('hidden');
+        bulkBtn.innerText = "+ BULK IMPORT";
+        document.getElementById('bulkCodes').value = ''; // Clear bulk on cancel
+    }
+}
 
-        if (editId) payload.proxyId = editId;
+   document.getElementById('proxyForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const btn = document.getElementById('submitBtn');
+    const token = localStorage.getItem('smsglobe_admin_token');
+    const editId = form.dataset.editId;
+    
+    btn.disabled = true;
+    btn.innerText = 'Processing...';
 
-        try {
-            const res = await fetch('/api/proxies', {
-                method: editId ? 'PATCH' : 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
+    // 1. PROCESS ACTIVATION CODES
+    let codesArray = [];
+    const bulkValue = document.getElementById('bulkCodes')?.value.trim();
+    const singleValue = document.getElementById('activationCode').value.trim();
 
-            const result = await res.json();
-            if(result.success) {
-                closeModal();
-                fetchProxies();
-            } else alert(result.message || 'Action failed');
-        } catch (err) { alert('Error connecting to server.'); }
-        finally {
-            btn.disabled = false;
-            btn.innerText = editId ? 'Update Changes' : 'Deploy Proxy Package';
+    // If bulk textarea is visible and has content, use it. Otherwise use single input.
+    if (bulkValue) {
+        // Split by line breaks, trim whitespace, and remove empty lines
+        codesArray = bulkValue.split('\n')
+            .map(code => code.trim())
+            .filter(code => code.length > 0);
+    } else if (singleValue) {
+        codesArray = [singleValue];
+    }
+
+    // 2. AUTO-CALCULATE STOCK
+    // If codes are provided, the stock MUST match the number of codes.
+    // If no codes are provided (e.g., a package that doesn't use codes), use manual stock.
+    const manualStock = parseInt(document.getElementById('stock').value) || 0;
+    const finalStock = codesArray.length > 0 ? codesArray.length : manualStock;
+
+    const payload = {
+        name: document.getElementById('name').value,
+        category: document.getElementById('category').value,
+        stock: finalStock,
+        imageUrl: document.getElementById('imageUrl').value,
+        instructions: document.getElementById('instructions').value,
+        // Send the full list of codes to the backend array
+        activationCodes: codesArray, 
+        // Keep this for legacy compatibility or single-code logic
+        activationCode: codesArray.length > 0 ? codesArray[0] : "", 
+        plans: Array.from(document.querySelectorAll('.pricing-row')).map(row => ({
+            ip_count: row.querySelector('.plan-ips').value,
+            price: row.querySelector('.plan-price').value
+        }))
+    };
+
+    if (editId) payload.proxyId = editId;
+
+    try {
+        const res = await fetch('/api/proxies', {
+            method: editId ? 'PATCH' : 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await res.json();
+        if(result.success) {
+            // Success: Clear the bulk textarea for next time
+            if(document.getElementById('bulkCodes')) document.getElementById('bulkCodes').value = '';
+            closeModal();
+            fetchProxies();
+        } else {
+            alert(result.message || 'Action failed');
         }
-    });
+    } catch (err) { 
+        console.error(err);
+        alert('Error connecting to server.'); 
+    } finally {
+        btn.disabled = false;
+        btn.innerText = editId ? 'Update Changes' : 'Deploy Proxy Package';
+    }
+});
+
 
     function openAddProxyModal() {
         const form = document.getElementById('proxyForm');

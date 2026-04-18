@@ -147,11 +147,12 @@
                     <input type="text" id="region" name="region" required placeholder="United States" class="w-full bg-brand-background/30 border border-brand-border p-3 rounded-xl outline-none focus:border-brand-blue transition-all">
                 </div>
 
-                <div class="md:col-span-1">
-                    <label class="block text-[10px] font-bold text-brand-midText mb-1.5 uppercase tracking-widest">Available in Stock</label>
-                    <input type="number" id="stock" name="stock" required placeholder="0" class="w-full bg-brand-background/30 border border-brand-border p-3 rounded-xl outline-none focus:border-brand-blue transition-all">
-                </div>
-
+              <div class="md:col-span-1">
+    <label class="block text-[10px] font-bold text-brand-midText mb-1.5 uppercase tracking-widest">Available in Stock</label>
+    <input type="number" id="stock" name="stock" readonly 
+           placeholder="0" 
+           class="w-full bg-gray-100 border border-brand-border p-3 rounded-xl outline-none text-brand-darkText cursor-not-allowed font-bold">
+</div>
                 <div class="md:col-span-1">
                     <label class="block text-[10px] font-bold text-brand-midText mb-1.5 uppercase tracking-widest">Max Concurrent Devices</label>
                     <input type="number" id="deviceLimit" name="deviceLimit" placeholder="e.g. 5" class="w-full bg-brand-background/30 border border-brand-border p-3 rounded-xl outline-none focus:border-brand-blue transition-all">

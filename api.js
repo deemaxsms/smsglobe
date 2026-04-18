@@ -1665,12 +1665,12 @@ async function handlePurchaseWithWallet(req, res) {
 else if (rdpId) {
     itemType = "RDP";
     const rdpPlans = {
-        tier1: { id: "tier1", name: "USA Tier 1", price: 45000, ram: "4GB", cpu: "2 Cores", storage: "60GB SSD", net: "1Gbps" },
-        tier2: { id: "tier2", name: "USA Tier 2", price: 55000, ram: "6GB", cpu: "3 Cores", storage: "100GB SSD", net: "1Gbps" },
-        tier3: { id: "tier3", name: "USA Tier 3", price: 65000, ram: "8GB", cpu: "4 Cores", storage: "140GB SSD", net: "2Gbps" },
-        tier4: { id: "tier4", name: "USA Tier 4", price: 80000, ram: "12GB", cpu: "6 Cores", storage: "180GB SSD", net: "2Gbps" },
-        tier5: { id: "tier5", name: "USA Tier 5", price: 90000, ram: "18GB", cpu: "8 Cores", storage: "240GB SSD", net: "3Gbps" },
-        tier6: { id: "tier6", name: "USA Tier 6", price: 130000, ram: "24GB", cpu: "8 Cores", storage: "280GB SSD", net: "3Gbps" }
+        tier1: { id: "tier1", name: "USA Tier 1", price: 30000, ram: "4GB", cpu: "2 Cores", storage: "60GB SSD", net: "1Gbps" },
+        tier2: { id: "tier2", name: "USA Tier 2", price: 40000, ram: "6GB", cpu: "3 Cores", storage: "100GB SSD", net: "1Gbps" },
+        tier3: { id: "tier3", name: "USA Tier 3", price: 50000, ram: "8GB", cpu: "4 Cores", storage: "140GB SSD", net: "2Gbps" },
+        tier4: { id: "tier4", name: "USA Tier 4", price: 65000, ram: "12GB", cpu: "6 Cores", storage: "180GB SSD", net: "2Gbps" },
+        tier5: { id: "tier5", name: "USA Tier 5", price: 80000, ram: "18GB", cpu: "8 Cores", storage: "240GB SSD", net: "3Gbps" },
+        tier6: { id: "tier6", name: "USA Tier 6", price: 95000, ram: "24GB", cpu: "8 Cores", storage: "280GB SSD", net: "3Gbps" }
     };
     const selectedTier = rdpPlans[rdpId];
     if (!selectedTier) return res.status(404).json({ success: false, message: "RDP Plan not found" });
@@ -3378,7 +3378,7 @@ async function handleGetRdpRequests(req, res) {
     }
 }
 async function handleGetNumbers(req, res) {
-    try { await connectDB(); } catch (e) { return res.status(500).json({ success: false, message: "DB Down" }); }
+    try { await connectDB(); } catch (e) { return res.status(500).json({ success: false, message: "DB Connection Error" }); }
 
     const { country, service } = req.query; 
 
@@ -3387,24 +3387,35 @@ async function handleGetNumbers(req, res) {
         const deviceId = process.env.TEXTBEE_DEVICE_ID;
 
         if (country === 'NG') {
-            const cleanDeviceId = deviceId.trim();
-            
-            // TextBee's current stable endpoint for single device status:
-            const tbUrl = `https://api.textbee.dev/api/v1/gateway/device/${cleanDeviceId}`;
+            const cleanId = deviceId.trim();
+            const cleanKey = textBeeKey.trim();
 
-            const tbResponse = await axios.get(tbUrl, {
-                headers: { 'x-api-key': textBeeKey.trim() },
-                timeout: 8000 
-            });
+            // PATH 1: The most common modern path
+            let tbUrl = `https://api.textbee.dev/api/v1/devices/${cleanId}`;
+            let tbResponse;
 
-            // If the request is successful, TextBee returns the device object
+            try {
+                tbResponse = await axios.get(tbUrl, {
+                    headers: { 'x-api-key': cleanKey },
+                    timeout: 5000 
+                });
+            } catch (err1) {
+                // PATH 2: The legacy/alternate gateway path if PATH 1 fails
+                console.log("Path 1 failed, trying Path 2...");
+                tbUrl = `https://api.textbee.dev/api/v1/gateway/devices/${cleanId}`;
+                tbResponse = await axios.get(tbUrl, {
+                    headers: { 'x-api-key': cleanKey },
+                    timeout: 5000
+                });
+            }
+
             const status = tbResponse.data?.status;
 
             if (status === 'Enabled' || status === 'Online') {
                 return res.json({
                     success: true,
                     numbers: ["+234... (Samsung SIM)"], 
-                    targetId: cleanDeviceId, 
+                    targetId: cleanId, 
                     provider: 'textbee',
                     cost: 850,
                     serviceName: service 
@@ -3413,20 +3424,21 @@ async function handleGetNumbers(req, res) {
             
             return res.status(400).json({ 
                 success: false, 
-                message: `Device is ${status || 'Offline'}. Please wake up the phone.` 
+                message: `Samsung is ${status || 'Offline'}. Check the TextBee app.` 
             });
         }
 
-        return res.status(404).json({ success: false, message: "Not supported." });
+        return res.status(404).json({ success: false, message: "Country not supported." });
 
     } catch (err) {
-        // Log the full response so we can see if the API key itself is the issue
-        console.error("TEXTBEE_DIAGNOSTIC:", err.response?.data || err.message);
+        // This will now catch if BOTH paths fail
+        const finalError = err.response?.data || err.message;
+        console.error("TEXTBEE_FINAL_ERROR:", finalError);
 
         return res.status(500).json({ 
             success: false, 
-            message: "TextBee Path Error (404).",
-            debug: err.response?.data?.message || "Check Device ID and URL Path"
+            message: "TextBee API rejected all connection paths.",
+            debug: finalError
         });
     }
 }

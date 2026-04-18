@@ -275,6 +275,38 @@ const esimActivationSchema = new mongoose.Schema({
 esimActivationSchema.index({ createdAt: -1 });
 const EsimActivation = mongoose.models.EsimActivation || mongoose.model('EsimActivation', esimActivationSchema, 'esim_activations');
 
+const rentedNumberSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    userEmail: { type: String, required: true },
+    
+    // Identity from TextBee
+    deviceId: { type: String, required: true }, // The Samsung Device ID
+    phoneNumber: { type: String, default: "+234... (Private SIM)" },
+    serviceName: { type: String, required: true }, // e.g., 'WhatsApp', 'Telegram'
+    
+    // Order Details
+    amount: { type: Number, required: true },
+    status: { 
+        type: String, 
+        enum: ['pending', 'completed', 'expired', 'failed'], 
+        default: 'pending',
+        index: true 
+    },
+    
+    // The incoming OTP Data
+    smsCode: { type: String }, // The extracted 4-6 digit code
+    fullMessage: { type: String }, // The raw SMS text for backup
+    
+    expiresAt: { 
+        type: Date, 
+        default: () => new Date(+new Date() + 15 * 60 * 1000) // Auto-expire after 15 mins
+    }
+}, { timestamps: true });
+
+// Index for the Webhook lookup
+rentedNumberSchema.index({ deviceId: 1, status: 1, createdAt: -1 });
+
+const RentedNumber = mongoose.models.RentedNumber || mongoose.model('RentedNumber', rentedNumberSchema);
 
 // --- TRANSACTION SCHEMA ---
 const transactionSchema = new mongoose.Schema({
@@ -3354,18 +3386,23 @@ async function handleGetNumbers(req, res) {
         const textBeeKey = process.env.TEXTBEE_API_KEY;
         const deviceId = process.env.TEXTBEE_DEVICE_ID;
 
-        // CRITICAL: Check if variables exist before calling axios
+        // 1. Validation: Prevent crash if Vercel variables are missing
         if (!textBeeKey || !deviceId) {
-            console.error("Missing TextBee Configuration in Environment Variables");
-            return res.status(500).json({ success: false, message: "Server Configuration Error" });
+            console.error("ENVIRONMENT_ERROR: TEXTBEE_API_KEY or DEVICE_ID is undefined");
+            return res.status(500).json({ 
+                success: false, 
+                message: "Server configuration missing. Check Vercel Environment Variables." 
+            });
         }
 
         if (country === 'NG') {
-            const tbResponse = await axios.get(`https://api.textbee.dev/api/v1/devices/${deviceId}`, {
-                headers: { 'x-api-key': textBeeKey.trim() }, // trim() removes accidental spaces
-                timeout: 5000 // Prevents the request from hanging forever
+            // 2. Call TextBee with a timeout to avoid hanging the server
+            const tbResponse = await axios.get(`https://api.textbee.dev/api/v1/devices/${deviceId.trim()}`, {
+                headers: { 'x-api-key': textBeeKey.trim() },
+                timeout: 5000 
             });
 
+            // 3. Match the 'Enabled' status from your dashboard screenshot
             if (tbResponse.data && tbResponse.data.status === 'Enabled') {
                 return res.json({
                     success: true,
@@ -3376,18 +3413,19 @@ async function handleGetNumbers(req, res) {
                     serviceName: service 
                 });
             }
-            return res.json({ success: false, message: "Samsung Device is Offline." });
+            return res.json({ success: false, message: "Samsung Device is currently Offline." });
         }
 
         return res.json({ success: false, message: "International lines coming soon." });
 
     } catch (err) {
-        // Detailed error logging for Vercel Logs
-        console.error("TextBee Status Error:", err.response?.data || err.message);
+        // 4. Capture the exact reason for the 500 error in your Vercel logs
+        console.error("TEXTBEE_GATEWAY_ERROR:", err.response?.data || err.message);
+        
         return res.status(500).json({ 
             success: false, 
-            message: "Internal Server Error",
-            details: err.message // This will help you see the EXACT error in the console
+            message: "Failed to connect to Samsung device.",
+            error_type: err.response?.status === 401 ? "Unauthorized (Bad API Key)" : "Network/Logic Error"
         });
     }
 }

@@ -387,7 +387,7 @@ function renderNumbers(list, targetId) {
     const grid = document.getElementById('numberGrid');
     selectedTargetId = targetId; 
 
-    const displayNum = (list && list.length > 0) ? list[0] : "No Number Detected";
+    const displayNum = (list && list.length > 0) ? list[0] : "Searching for SIM...";
 
     grid.innerHTML = `
         <div onclick="selectNumber('${displayNum}', this)" class="number-card cursor-pointer bg-white border border-brand-border p-4 rounded-xl flex items-center justify-between group transition-all">

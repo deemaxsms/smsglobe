@@ -377,27 +377,6 @@
             document.getElementById('displayPrice').innerText = `₦${finalPrice.toLocaleString()}`;
         }
 
-      async function fetchRealInventory() {
-    const grid = document.getElementById('numberGrid');
-    grid.innerHTML = `<div class="col-span-full flex flex-col items-center py-8 space-y-2">
-                        <div class="w-5 h-5 border-2 border-brand-blue border-t-transparent rounded-full animate-spin"></div>
-                        <p class="text-[10px] font-bold text-brand-lightText uppercase">Checking API...</p>
-                      </div>`;
-    try {
-       const response = await fetch(`/api/get-numbers?country=${selectedCountry.id}&service=${selectedService}`);
-        const data = await response.json();
-
-        if (data.success) {
-            // Textverified usually gives one "Ready" state or the target details
-            renderNumbers(data.numbers, data.targetId); 
-        } else {
-            grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold uppercase">${data.message}</p>`;
-        }
-    } catch (err) { 
-        grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-red-500 font-bold uppercase">Connection Timeout</p>`; 
-    }
-}
-
      function renderNumbers(list, targetId) {
     const grid = document.getElementById('numberGrid');
     selectedTargetId = targetId; 
@@ -476,19 +455,42 @@ function selectNumber(num, element) {
 }
 
 
+// Fix the 404 by changing the URL to 'get-stock'
 async function syncInventory() {
     try {
-        const response = await fetch('/api/get-inventory'); // Your new backend endpoint
+        const response = await fetch('/api/get-stock'); // Changed from get-inventory
         const data = await response.json();
         
-        // Update the 'available' count for Nigeria based on your Samsung's status
-        const ng = countries.find(c => c.id === 'NG');
-        if (ng) {
-            ng.available = data.ng_count; 
-            renderCountryOptions(); // Refresh the dropdown UI
+        if (data.success) {
+            // Update Nigeria stock based on your Samsung status
+            const ng = countries.find(c => c.id === 'NG');
+            if (ng) {
+                ng.available = data.stock.NG; 
+                renderCountryOptions();
+            }
         }
     } catch (err) {
-        console.error("Inventory sync failed", err);
+        console.error("Stock sync failed", err);
+    }
+}
+
+// Fix the 500 by ensuring the query params match the backend
+async function fetchRealInventory() {
+    const grid = document.getElementById('numberGrid');
+    grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-brand-blue animate-pulse font-bold uppercase tracking-widest">Scanning Samsung Modem...</p>`;
+
+    try {
+        // Ensure you are passing the current selected country and service
+        const response = await fetch(`/api/get-numbers?country=${selectedCountry.id}&service=${selectedService}`);
+        const data = await response.json();
+
+        if (data.success) {
+            renderNumbers(data.numbers, data.targetId);
+        } else {
+            grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold uppercase">${data.message}</p>`;
+        }
+    } catch (err) {
+        grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-red-500 font-bold uppercase">Connection Error</p>`;
     }
 }
 

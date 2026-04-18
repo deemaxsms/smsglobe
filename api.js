@@ -3378,67 +3378,6 @@ async function handleGetRdpRequests(req, res) {
 }
 
 async function handleGetNumbers(req, res) {
-    // 1. Database Connection
-    try { 
-        await connectDB(); 
-    } catch (e) { 
-        return res.status(500).json({ success: false, message: "Database Connection Error" }); 
-    }
-
-    const { country, service } = req.query; 
-
-    try {
-        const textBeeKey = process.env.TEXTBEE_API_KEY; // 5d950684...
-        const deviceId = process.env.TEXTBEE_DEVICE_ID; // 69e38277...
-
-        if (country === 'NG') {
-            const cleanId = deviceId.trim();
-            const cleanKey = textBeeKey.trim();
-
-            // FIX: Using the dashboard-specific subdomain 'app.' and the devices path
-            const tbUrl = `https://app.textbee.dev/api/v1/gateway/devices/${cleanId}`;
-
-            console.log("Syncing with Samsung Dashboard at:", tbUrl);
-
-            const tbResponse = await axios.get(tbUrl, {
-                headers: { 'x-api-key': cleanKey },
-                timeout: 10000 
-            });
-
-            // Status 'Enabled' is confirmed by your dashboard screenshot
-            const status = tbResponse.data?.status;
-
-            if (status === 'Enabled' || status === 'Online') {
-                return res.json({
-                    success: true,
-                    numbers: ["+234... (Samsung SM-A075F)"], 
-                    targetId: cleanId, 
-                    provider: 'textbee',
-                    cost: 850,
-                    serviceName: service 
-                });
-            }
-            
-            return res.status(400).json({ 
-                success: false, 
-                message: `Samsung is currently ${status || 'Offline'}. Please wake the phone.` 
-            });
-        }
-
-        return res.status(404).json({ success: false, message: "International lines pending." });
-
-    } catch (err) {
-        // Log detailed error for troubleshooting
-        const apiErr = err.response?.data || err.message;
-        console.error("TEXTBEE_SYNC_FAILED:", apiErr);
-
-        return res.status(500).json({ 
-            success: false, 
-            message: "Failed to sync with Samsung Dashboard.",
-            debug: apiErr.message || apiErr 
-        });
-    }
-}
 
 async function handleGetStock(req, res) {
     try {

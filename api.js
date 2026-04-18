@@ -3352,37 +3352,46 @@ async function handleGetNumbers(req, res) {
 
     try {
         const textBeeKey = process.env.TEXTBEE_API_KEY;
-        const deviceId = process.env.TEXTBEE_DEVICE_ID; // Your Samsung ID
+        const deviceId = process.env.TEXTBEE_DEVICE_ID;
 
-        // We only process 'NG' (Nigeria) for the physical SIM test
+        // CRITICAL: Check if variables exist before calling axios
+        if (!textBeeKey || !deviceId) {
+            console.error("Missing TextBee Configuration in Environment Variables");
+            return res.status(500).json({ success: false, message: "Server Configuration Error" });
+        }
+
         if (country === 'NG') {
             const tbResponse = await axios.get(`https://api.textbee.dev/api/v1/devices/${deviceId}`, {
-                headers: { 'x-api-key': textBeeKey }
+                headers: { 'x-api-key': textBeeKey.trim() }, // trim() removes accidental spaces
+                timeout: 5000 // Prevents the request from hanging forever
             });
 
-            // Check if your Samsung is Online/Enabled
             if (tbResponse.data && tbResponse.data.status === 'Enabled') {
                 return res.json({
                     success: true,
-                    // We label it clearly so the user knows it's a private line
                     numbers: ["+234... (Private SIM)"], 
                     targetId: deviceId, 
                     provider: 'textbee',
                     cost: 850,
-                    serviceName: service // e.g., 'WhatsApp'
+                    serviceName: service 
                 });
             }
             return res.json({ success: false, message: "Samsung Device is Offline." });
         }
 
-        // Placeholder for future international providers
         return res.json({ success: false, message: "International lines coming soon." });
 
     } catch (err) {
-        console.error("TextBee Status Error:", err.message);
-        return res.status(500).json({ success: false, message: "Failed to connect to Samsung device." });
+        // Detailed error logging for Vercel Logs
+        console.error("TextBee Status Error:", err.response?.data || err.message);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Internal Server Error",
+            details: err.message // This will help you see the EXACT error in the console
+        });
     }
 }
+
 async function handleGetStock(req, res) {
     try {
         const textBeeKey = process.env.TEXTBEE_API_KEY;

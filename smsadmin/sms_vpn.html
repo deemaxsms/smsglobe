@@ -397,55 +397,95 @@
         document.getElementById('vpnModal').classList.remove('hidden');
     }
 
-    function editVPN(id) {
-        const v = allVPNs.find(item => item._id === id);
-        if (!v) return;
+   function editVPN(id) {
+    const v = allVPNs.find(item => item._id === id);
+    if (!v) return;
 
-        document.getElementById('vpnId').value = v._id;
-        document.getElementById('name').value = v.name;
-        document.getElementById('image').value = v.image || '';
-        document.getElementById('provider').value = v.provider || '';
-        document.getElementById('region').value = v.region || '';
-        document.getElementById('stock').value = v.stock || 0;
-        document.getElementById('deviceLimit').value = v.deviceLimit || '';
-        
-        document.getElementById('username').value = v.username || '';
-        document.getElementById('password').value = v.password || '';
-        document.getElementById('instructions').value = v.instructions || '';
+    // Reset Form & Set IDs
+    document.getElementById('vpnForm').reset();
+    document.getElementById('vpnId').value = v._id;
+    document.getElementById('name').value = v.name;
+    document.getElementById('image').value = v.image || '';
+    document.getElementById('provider').value = v.provider || '';
+    document.getElementById('region').value = v.region || '';
+    document.getElementById('deviceLimit').value = v.deviceLimit || '';
+    document.getElementById('instructions').value = v.instructions || '';
 
-        if (v.deviceType) {
-            let normalizedType = v.deviceType;
-            if (normalizedType.toLowerCase() === 'phone') normalizedType = 'Phone';
-            if (normalizedType.toLowerCase() === 'pc') normalizedType = 'PC';
+    // 1. CLEAR AND REBUILD BULK ROWS
+    document.getElementById('phoneInputsContainer').innerHTML = '';
+    document.getElementById('pcUserPassInputs').innerHTML = '';
+    document.getElementById('pcCodeInput').innerHTML = '';
 
-            const radio = document.querySelector(`input[name="deviceType"][value="${normalizedType}"]`);
-            if (radio) {
-                radio.checked = true;
-                handleDeviceChange(normalizedType);
-            }
-        }
-
-        if (v.pcMethod) {
-            document.getElementById('pcMethod').value = v.pcMethod;
-            togglePcInputs(v.pcMethod);
-        }
-        document.getElementById('pcUsername').value = v.pcUsername || '';
-        document.getElementById('pcPassword').value = v.pcPassword || '';
-        document.getElementById('activationCode').value = v.activationCode || '';
-
-        const container = document.getElementById('pricingContainer');
-        container.innerHTML = '';
-        if (v.plans && v.plans.length > 0) {
-            v.plans.forEach(p => addPriceRow(p.duration, p.price));
-        } else {
-            addPriceRow();
-        }
-
-        if (v.image) previewImage(v.image);
-        document.getElementById('modalTitle').innerText = 'Update VPN Node';
-        document.getElementById('submitBtn').innerText = 'Save Changes';
-        document.getElementById('vpnModal').classList.remove('hidden');
+    // Populate Phone Accounts
+    if (v.phoneAccounts && v.phoneAccounts.length > 0) {
+        v.phoneAccounts.forEach(acc => {
+            addBulkRowManual('phone', acc.username, acc.password);
+        });
     }
+
+    // Populate PC Accounts
+    if (v.pcAccounts && v.pcAccounts.length > 0) {
+        v.pcAccounts.forEach(acc => {
+            if (v.pcMethod === 'code') {
+                addBulkRowManual('pc', null, null, acc.activationCode);
+            } else {
+                addBulkRowManual('pc', acc.username, acc.password);
+            }
+        });
+    }
+
+    // 2. Handle Device Type Toggle
+    if (v.deviceType) {
+        const normalizedType = v.deviceType === 'PC' ? 'PC' : 'Phone';
+        const radio = document.querySelector(`input[name="deviceType"][value="${normalizedType}"]`);
+        if (radio) {
+            radio.checked = true;
+            handleDeviceChange(normalizedType);
+        }
+    }
+
+    // 3. Handle PC Method Toggle
+    if (v.pcMethod) {
+        document.getElementById('pcMethod').value = v.pcMethod;
+        togglePcInputs(v.pcMethod);
+    }
+
+    // 4. Populate Pricing Plans
+    const container = document.getElementById('pricingContainer');
+    container.innerHTML = '';
+    if (v.plans && v.plans.length > 0) {
+        v.plans.forEach(p => addPriceRow(p.duration, p.price));
+    } else {
+        addPriceRow();
+    }
+
+    if (v.image) previewImage(v.image);
+    document.getElementById('modalTitle').innerText = 'Update VPN Node';
+    document.getElementById('submitBtn').innerText = 'Save Changes';
+    document.getElementById('vpnModal').classList.remove('hidden');
+}
+
+/** * Helper to programmatically add rows during Edit 
+ */
+function addBulkRowManual(type, user = '', pass = '', code = '') {
+    addBulkRow(type); // This creates the row
+    const containerId = type === 'phone' ? 'phoneInputsContainer' : 
+                        (document.getElementById('pcMethod').value === 'userpass' ? 'pcUserPassInputs' : 'pcCodeInput');
+    const container = document.getElementById(containerId);
+    const lastRow = container.lastElementChild;
+
+    if (type === 'phone') {
+        lastRow.querySelector('input[name="phone_user[]"]').value = user || '';
+        lastRow.querySelector('input[name="phone_pass[]"]').value = pass || '';
+    } else if (type === 'pc') {
+        if (code) {
+            lastRow.querySelector('input[name="pc_code[]"]').value = code;
+        } else {
+            lastRow.querySelector('input[name="pc_user[]"]').value = user || '';
+            lastRow.querySelector('input[name="pc_pass[]"]').value = pass || '';
+        }
+    }
+}
 
     async function deleteVPN(id) {
         if (!confirm('Permanently delete this VPN node?')) return;

@@ -860,7 +860,7 @@ async function handleAddVPN(req, res) {
     try {
         const { plans, deviceType, deviceLimit, phoneAccounts, pcAccounts, ...otherData } = req.body;
 
-        // 1. Format Pricing Plans
+        // 1. Format Plans
         let formattedPlans = [];
         if (plans && Array.isArray(plans)) {
             formattedPlans = plans.map(p => ({
@@ -874,52 +874,57 @@ async function handleAddVPN(req, res) {
             plans: formattedPlans,
             phoneAccounts: phoneAccounts || [],
             pcAccounts: pcAccounts || [],
-            deviceType: deviceType || 'Phone',
+            deviceType: normalizeDeviceType(deviceType),
             deviceLimit: parseInt(deviceLimit) || 1,
-            // Automatically set base price from first tier
+            // Price is taken from the first plan tier for display
             price: formattedPlans.length > 0 ? formattedPlans[0].price : 0
         });
 
-        // The pre-save middleware in your schema will automatically calculate 'this.stock'
+        // This triggers the pre('save') middleware in your schema to auto-calculate stock
         await newVPN.save();
 
         res.status(201).json({ 
             success: true, 
-            message: "VPN Created with Bulk Inventory",
+            message: "VPN Node & Stock Synced Successfully",
             productId: newVPN._id 
         });
         
     } catch (err) {
         console.error("Add VPN Error:", err);
-        res.status(500).json({ success: false, message: "Upload failed: " + err.message });
+        res.status(500).json({ 
+            success: false, 
+            message: "Upload failed: " + err.message 
+        });
     }
 }
 
 async function handleUpdateVPN(req, res) {
     try {
-        const { vpnId, id, plans, phoneAccounts, pcAccounts, ...updateData } = req.body;
+        const { vpnId, id, plans, phoneAccounts, pcAccounts, deviceType, ...updateData } = req.body;
         const targetId = vpnId || id;
 
         if (!targetId) {
             return res.status(400).json({ success: false, message: "VPN ID is required" });
         }
 
-        // 1. Explicitly Map Bulk Accounts
+        // 1. Explicitly Map Bulk Accounts & Normalize Type
         if (phoneAccounts) updateData.phoneAccounts = phoneAccounts;
         if (pcAccounts) updateData.pcAccounts = pcAccounts;
+        if (deviceType) updateData.deviceType = normalizeDeviceType(deviceType);
 
-        // 2. Format Plans if updated
+        // 2. Format Plans
         if (plans && Array.isArray(plans)) {
             updateData.plans = plans.map(p => ({
                 duration: p.duration || "1 Month",
                 price: Math.round(parseFloat(p.price)) || 0
             }));
+            
             if (updateData.plans.length > 0) {
                 updateData.price = updateData.plans[0].price;
             }
         }
 
-        // 3. Sync Stock Count
+        // 3. Sync Stock Count (Manual sync since findByIdAndUpdate skips pre-save middleware)
         if (phoneAccounts || pcAccounts) {
             const pCount = phoneAccounts ? phoneAccounts.length : 0;
             const cCount = pcAccounts ? pcAccounts.length : 0;
@@ -944,10 +949,12 @@ async function handleUpdateVPN(req, res) {
 
     } catch (err) {
         console.error("Update VPN Error:", err);
-        res.status(500).json({ success: false, message: "Update failed: " + err.message });
+        res.status(500).json({ 
+            success: false, 
+            message: "Update failed: " + err.message 
+        });
     }
 }
-
 async function handleDeleteVPN(req, res) {
     try {
         const { id } = req.query;

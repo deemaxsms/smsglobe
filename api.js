@@ -1667,10 +1667,10 @@ else if (rdpId) {
     const rdpPlans = {
         tier1: { id: "tier1", name: "USA Tier 1", price: 45000, ram: "4GB", cpu: "2 Cores", storage: "60GB SSD", net: "1Gbps" },
         tier2: { id: "tier2", name: "USA Tier 2", price: 55000, ram: "6GB", cpu: "3 Cores", storage: "100GB SSD", net: "1Gbps" },
-        tier3: { id: "tier3", name: "USA Tier 3", price: 65000, ram: "8GB", cpu: "4 Cores", storage: "140GB SSD", net: "1Gbps" },
+        tier3: { id: "tier3", name: "USA Tier 3", price: 65000, ram: "8GB", cpu: "4 Cores", storage: "140GB SSD", net: "2Gbps" },
         tier4: { id: "tier4", name: "USA Tier 4", price: 80000, ram: "12GB", cpu: "6 Cores", storage: "180GB SSD", net: "2Gbps" },
-        tier5: { id: "tier5", name: "USA Tier 5", price: 90000, ram: "18GB", cpu: "8 Cores", storage: "240GB SSD", net: "2Gbps" },
-        tier6: { id: "tier6", name: "USA Tier 6", price: 130000, ram: "24GB", cpu: "8 Cores", storage: "280GB SSD", net: "2Gbps" }
+        tier5: { id: "tier5", name: "USA Tier 5", price: 90000, ram: "18GB", cpu: "8 Cores", storage: "240GB SSD", net: "3Gbps" },
+        tier6: { id: "tier6", name: "USA Tier 6", price: 130000, ram: "24GB", cpu: "8 Cores", storage: "280GB SSD", net: "3Gbps" }
     };
     const selectedTier = rdpPlans[rdpId];
     if (!selectedTier) return res.status(404).json({ success: false, message: "RDP Plan not found" });
@@ -3378,11 +3378,7 @@ async function handleGetRdpRequests(req, res) {
     }
 }
 async function handleGetNumbers(req, res) {
-    try {
-        await connectDB();
-    } catch (dbErr) {
-        return res.status(500).json({ success: false, message: "Database Connection Failed" });
-    }
+    try { await connectDB(); } catch (e) { return res.status(500).json({ success: false, message: "DB Down" }); }
 
     const { country, service } = req.query; 
 
@@ -3390,25 +3386,18 @@ async function handleGetNumbers(req, res) {
         const textBeeKey = process.env.TEXTBEE_API_KEY;
         const deviceId = process.env.TEXTBEE_DEVICE_ID;
 
-        if (!textBeeKey || !deviceId) {
-            return res.status(500).json({ 
-                success: false, 
-                message: "Server environment variables not found." 
-            });
-        }
-
         if (country === 'NG') {
-            // FIX: Updated endpoint path to include /gateway/
-            // Also used a template literal to ensure no hidden spaces
             const cleanDeviceId = deviceId.trim();
-            const tbUrl = `https://api.textbee.dev/api/v1/gateway/devices/${cleanDeviceId}`;
+            
+            // TextBee's current stable endpoint for single device status:
+            const tbUrl = `https://api.textbee.dev/api/v1/gateway/device/${cleanDeviceId}`;
 
             const tbResponse = await axios.get(tbUrl, {
                 headers: { 'x-api-key': textBeeKey.trim() },
                 timeout: 8000 
             });
 
-            // TextBee returns 'Enabled' when the phone is active and connected
+            // If the request is successful, TextBee returns the device object
             const status = tbResponse.data?.status;
 
             if (status === 'Enabled' || status === 'Online') {
@@ -3424,21 +3413,20 @@ async function handleGetNumbers(req, res) {
             
             return res.status(400).json({ 
                 success: false, 
-                message: `Samsung is ${status || 'Offline'}. Open TextBee app on phone.` 
+                message: `Device is ${status || 'Offline'}. Please wake up the phone.` 
             });
         }
 
-        return res.status(404).json({ success: false, message: "Country not supported." });
+        return res.status(404).json({ success: false, message: "Not supported." });
 
     } catch (err) {
-        // This log will now show the exact response if the URL is still wrong
-        const errorDetail = err.response?.data || err.message;
-        console.error("TEXTBEE_GATEWAY_ERROR:", errorDetail);
+        // Log the full response so we can see if the API key itself is the issue
+        console.error("TEXTBEE_DIAGNOSTIC:", err.response?.data || err.message);
 
         return res.status(500).json({ 
             success: false, 
-            message: "Failed to connect to Samsung device.",
-            debug: typeof errorDetail === 'string' ? errorDetail : JSON.stringify(errorDetail)
+            message: "TextBee Path Error (404).",
+            debug: err.response?.data?.message || "Check Device ID and URL Path"
         });
     }
 }

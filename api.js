@@ -143,11 +143,11 @@ const vpnSchema = new mongoose.Schema({
     instructions: { type: String }
 }, { timestamps: true });
 
-vpnSchema.pre('save', function(next) {
+vpnSchema.pre('save', async function() {
     const phoneCount = this.phoneAccounts ? this.phoneAccounts.length : 0;
-    const pcCount = this.pcAccounts ? this.pcAccounts.length : 0;
+    const pcCount = this.pcAccounts ? this.pcAccounts.length : 0;    
     this.stock = phoneCount + pcCount;
-    next();
+    
 });
 
 const VPN = mongoose.models.VPN || mongoose.model('VPN', vpnSchema);

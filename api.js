@@ -3393,20 +3393,22 @@ async function handleGetNumbers(req, res) {
                 timeout: 10000 
             });
 
-            const devices = tbResponse.data;
+            // FIX: Access the .data property inside the response body
+            const devicesArray = tbResponse.data?.data;
 
-            // 1. LOG EVERYTHING: Check Vercel logs to see the actual IDs returned
-            console.log("TEXTBEE_LIST_DATA:", JSON.stringify(devices));
+            if (!Array.isArray(devicesArray)) {
+                console.error("TEXTBEE_STRUCTURE_ERROR: 'data' is not an array", tbResponse.data);
+                return res.status(500).json({ success: false, message: "API Structure Error" });
+            }
 
-            // 2. SMART SEARCH: Check both possible ID fields
-            const myDevice = Array.isArray(devices) ? devices.find(d => 
-                (d.deviceId && d.deviceId === targetId) || 
-                (d._id && d._id === targetId)
-            ) : null;
+            // Find your Samsung ID in the nested array
+            const myDevice = devicesArray.find(d => 
+                (d.deviceId === targetId) || (d._id === targetId)
+            );
 
             if (myDevice) {
-                const s = myDevice.status?.toLowerCase();
-                if (['enabled', 'online', 'active'].includes(s)) {
+                // FIX: Your device uses "enabled: true" (boolean) based on your logs
+                if (myDevice.enabled === true) {
                     return res.json({
                         success: true,
                         numbers: ["+234... (Samsung SIM)"], 
@@ -3416,14 +3418,17 @@ async function handleGetNumbers(req, res) {
                         serviceName: service 
                     });
                 }
-                return res.status(400).json({ success: false, message: `Samsung is ${myDevice.status}` });
+                
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "Samsung is registered but currently Disabled in the app." 
+                });
             }
             
-            // If we reach here, the ID was not found in the list
             return res.status(400).json({ 
                 success: false, 
-                message: "Samsung ID not found in API list.",
-                debug_hint: `Looked for ${targetId} in ${devices.length} devices`
+                message: "Samsung ID not found in the active list.",
+                debug_hint: `Searching for ${targetId} in ${devicesArray.length} items.`
             });
         }
 

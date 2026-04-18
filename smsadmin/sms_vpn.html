@@ -342,9 +342,9 @@
                     <tr class="hover:bg-brand-background/30 transition-colors">
                         <td class="px-6 py-5">
                             <div class="flex items-center gap-4">
-                               <div class="w-10 h-10 rounded-xl bg-gray-50 border border-brand-border overflow-hidden flex-shrink-0">
+                            <div class="w-10 h-10 rounded-xl bg-gray-50 border border-brand-border overflow-hidden flex-shrink-0">
     <img 
-        src="${v.image || 'https://placehold.co/40'}" 
+        src="${v.imageUrl || 'https://placehold.co/40'}" 
         class="w-full h-full object-cover" 
         onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(v.name)}&background=0F54C6&color=fff';"
     >
@@ -471,24 +471,54 @@
 }
 
 /** * Helper to programmatically add rows during Edit 
+ * Includes safety checks to prevent "Cannot set properties of null"
  */
 function addBulkRowManual(type, user = '', pass = '', code = '') {
-    addBulkRow(type); // This creates the row
-    const containerId = type === 'phone' ? 'phoneInputsContainer' : 
-                        (document.getElementById('pcMethod').value === 'userpass' ? 'pcUserPassInputs' : 'pcCodeInput');
+    // 1. Create the row first
+    addBulkRow(type); 
+
+    // 2. Determine the correct container based on the actual method selected in the UI
+    const pcMethodEl = document.getElementById('pcMethod');
+    const currentMethod = pcMethodEl ? pcMethodEl.value : 'userpass';
+
+    let containerId;
+    if (type === 'phone') {
+        containerId = 'phoneInputsContainer';
+    } else {
+        // For PC, check if we are dealing with a Code or User/Pass based on the data provided
+        containerId = (code || currentMethod === 'activation') ? 'pcCodeInput' : 'pcUserPassInputs';
+    }
+
     const container = document.getElementById(containerId);
+    
+    // 3. Safety Check: If container doesn't exist, stop to prevent crash
+    if (!container || !container.lastElementChild) {
+        console.warn(`Container ${containerId} not found or empty. Skipping row population.`);
+        return;
+    }
+
     const lastRow = container.lastElementChild;
 
-    if (type === 'phone') {
-        lastRow.querySelector('input[name="phone_user[]"]').value = user || '';
-        lastRow.querySelector('input[name="phone_pass[]"]').value = pass || '';
-    } else if (type === 'pc') {
-        if (code) {
-            lastRow.querySelector('input[name="pc_code[]"]').value = code;
-        } else {
-            lastRow.querySelector('input[name="pc_user[]"]').value = user || '';
-            lastRow.querySelector('input[name="pc_pass[]"]').value = pass || '';
+    // 4. Populate with Null-Coalescing and try/catch for selector safety
+    try {
+        if (type === 'phone') {
+            const uInput = lastRow.querySelector('input[name="phone_user[]"]');
+            const pInput = lastRow.querySelector('input[name="phone_pass[]"]');
+            if (uInput) uInput.value = user;
+            if (pInput) pInput.value = pass;
+        } else if (type === 'pc') {
+            if (code) {
+                const cInput = lastRow.querySelector('input[name="pc_code[]"]');
+                if (cInput) cInput.value = code;
+            } else {
+                const uInput = lastRow.querySelector('input[name="pc_user[]"]');
+                const pInput = lastRow.querySelector('input[name="pc_pass[]"]');
+                if (uInput) uInput.value = user;
+                if (pInput) pInput.value = pass;
+            }
         }
+    } catch (err) {
+        console.error("Error populating bulk row: ", err);
     }
 }
 

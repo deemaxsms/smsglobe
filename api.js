@@ -3378,7 +3378,6 @@ async function handleGetRdpRequests(req, res) {
     }
 }
 async function handleGetNumbers(req, res) {
-    // 1. Ensure DB is connected first
     try {
         await connectDB();
     } catch (dbErr) {
@@ -3391,7 +3390,6 @@ async function handleGetNumbers(req, res) {
         const textBeeKey = process.env.TEXTBEE_API_KEY;
         const deviceId = process.env.TEXTBEE_DEVICE_ID;
 
-        // 2. Prevent crash if Vercel variables are missing
         if (!textBeeKey || !deviceId) {
             return res.status(500).json({ 
                 success: false, 
@@ -3400,19 +3398,24 @@ async function handleGetNumbers(req, res) {
         }
 
         if (country === 'NG') {
-            // 3. Request device status from TextBee
-            const tbResponse = await axios.get(`https://api.textbee.dev/api/v1/devices/${deviceId.trim()}`, {
+            // FIX: Updated endpoint path to include /gateway/
+            // Also used a template literal to ensure no hidden spaces
+            const cleanDeviceId = deviceId.trim();
+            const tbUrl = `https://api.textbee.dev/api/v1/gateway/devices/${cleanDeviceId}`;
+
+            const tbResponse = await axios.get(tbUrl, {
                 headers: { 'x-api-key': textBeeKey.trim() },
-                timeout: 8000 // Give the Samsung time to respond
+                timeout: 8000 
             });
 
+            // TextBee returns 'Enabled' when the phone is active and connected
             const status = tbResponse.data?.status;
 
             if (status === 'Enabled' || status === 'Online') {
                 return res.json({
                     success: true,
                     numbers: ["+234... (Samsung SIM)"], 
-                    targetId: deviceId, 
+                    targetId: cleanDeviceId, 
                     provider: 'textbee',
                     cost: 850,
                     serviceName: service 
@@ -3421,21 +3424,21 @@ async function handleGetNumbers(req, res) {
             
             return res.status(400).json({ 
                 success: false, 
-                message: `Device is ${status || 'Offline'}. Check your Samsung phone.` 
+                message: `Samsung is ${status || 'Offline'}. Open TextBee app on phone.` 
             });
         }
 
         return res.status(404).json({ success: false, message: "Country not supported." });
 
     } catch (err) {
-        // This captures if TextBee returns 401, 404, or 500
-        const errorDetail = err.response?.data?.message || err.message;
-        console.error("GATEWAY_ERROR:", errorDetail);
+        // This log will now show the exact response if the URL is still wrong
+        const errorDetail = err.response?.data || err.message;
+        console.error("TEXTBEE_GATEWAY_ERROR:", errorDetail);
 
         return res.status(500).json({ 
             success: false, 
             message: "Failed to connect to Samsung device.",
-            debug: errorDetail
+            debug: typeof errorDetail === 'string' ? errorDetail : JSON.stringify(errorDetail)
         });
     }
 }

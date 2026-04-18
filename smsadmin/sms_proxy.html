@@ -164,27 +164,25 @@
                     </button>
                 </div>
 
-              <div class="bg-orange-50/50 p-4 rounded-xl border border-orange-100">
+            <div class="bg-orange-50/50 p-4 rounded-xl border border-orange-100">
     <div class="flex justify-between items-center mb-3">
         <label class="block text-[10px] font-bold text-brand-orange uppercase tracking-widest">Activation Codes (Vending Inventory)</label>
-        <button type="button" onclick="toggleBulkUpload()" class="text-[10px] font-bold bg-brand-orange/10 text-brand-orange px-2 py-1 rounded hover:bg-brand-orange/20 transition-all">
-            + BULK IMPORT
+        <button type="button" onclick="addCodeRow()" class="text-[10px] font-bold bg-brand-orange/10 text-brand-orange px-2 py-1 rounded hover:bg-brand-orange/20 transition-all">
+            + ADD MORE
         </button>
     </div>
 
-    <div id="singleCodeView">
-        <input type="text" id="activationCode" placeholder="G-XXXX-XXXX-XXXX (Or use Bulk Import)" class="w-full bg-white border border-brand-border p-3 rounded-xl outline-none focus:border-brand-orange transition-all font-mono text-sm">
-        <p id="codeCountInfo" class="text-[10px] mt-1 text-brand-lightText italic">Stock will auto-calculate if codes are added.</p>
-    </div>
-
-    <div id="bulkCodeView" class="hidden mt-2">
-        <textarea id="bulkCodes" rows="5" placeholder="Paste codes here...&#10;One code per line&#10;Code1&#10;Code2" class="w-full bg-white border border-brand-border p-3 rounded-xl outline-none focus:border-brand-orange transition-all font-mono text-xs"></textarea>
-        <p class="text-[9px] text-brand-orange/70 mt-1 uppercase font-bold">* Every line will be counted as 1 stock item.</p>
-    </div>
+    <div id="codesContainer" class="space-y-3 max-h-60 overflow-y-auto custom-scrollbar pr-1">
+        </div>
     
+    <p id="codeCountInfo" class="text-[9px] mt-2 text-brand-orange/70 font-bold uppercase tracking-tight">
+        Current Inventory: <span id="inventoryCountDisplay">0</span> Items
+    </p>
+
     <label class="block text-[10px] font-bold text-brand-orange mb-1.5 mt-4 uppercase tracking-widest">Setup Instructions</label>
     <textarea id="instructions" rows="3" placeholder="Step-by-step instructions for the user..." class="w-full bg-white border border-brand-border p-3 rounded-xl outline-none focus:border-brand-orange transition-all text-sm"></textarea>
 </div>
+
 
                 <div class="pt-2 sticky bottom-0 bg-white">
                     <button type="submit" id="submitBtn" class="w-full bg-brand-blue text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-blue-700 transition-all active:scale-[0.98]">
@@ -203,85 +201,109 @@
         document.getElementById('sidebarOverlay').classList.toggle('hidden');
     }
 
-    // Locate the addPriceRow function in your file and replace it with this version:
-function addPriceRow(ipCount = '', price = '') {
-    const container = document.getElementById('pricingContainer');
-    const row = document.createElement('div');
-    row.className = 'pricing-row flex gap-3 items-center animate-in fade-in duration-300';
-    row.innerHTML = `
-        <div class="flex-1">
-            <input type="number" placeholder="No. of IPs" value="${ipCount}" class="plan-ips w-full bg-white border border-brand-border px-3 py-2.5 rounded-lg text-sm" required>
-        </div>
-        <div class="relative flex-1">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-brand-lightText font-bold">₦</span>
-            <input type="number" step="1" placeholder="Price (NGN)" value="${price}" class="plan-price w-full bg-white border border-brand-border pl-7 pr-3 py-2.5 rounded-lg text-sm" required>
-        </div>
-        <button type="button" onclick="this.parentElement.remove()" class="p-2 text-red-400 hover:text-red-600">✕</button>
-    `;
-    container.appendChild(row);
-}
-
-// Locate the HTML table rendering inside fetchProxies and ensure currency labels are removed or updated
-async function fetchProxies() {
-    const token = localStorage.getItem('smsglobe_admin_token');
-    const list = document.getElementById('proxy-list');
-    try {
-        const res = await fetch('/api/proxies', { 
-            headers: { 'Authorization': `Bearer ${token}` } 
-        });
-        const data = await res.json();
-        allProxies = data.proxies || [];
-        
-        if (allProxies.length === 0) {
-            list.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-brand-lightText">No proxy packages found.</td></tr>';
-            return;
-        }
-
-        list.innerHTML = allProxies.map(p => {
-            const plans = p.plans || [];
-            const stockStatus = p.stock > 0 ? `${p.stock} units` : 'Out of Stock';
-            const stockColor = p.stock > 10 ? 'text-brand-midText' : 'text-red-500 font-bold';
-            
-            // Format price for display in the row (Optional: shows the first plan's price)
-            const startingPrice = plans.length > 0 ? `₦${parseFloat(plans[0].price).toLocaleString()}` : 'N/A';
-
-            return `
-                <tr class="hover:bg-brand-background/30 transition-colors">
-                    <td class="px-6 py-5">
-                        <div class="flex items-center gap-3">
-<img src="${p.imageUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(p.name) + '&background=random'}" 
-     class="w-10 h-10 rounded-lg object-cover bg-gray-100"
-     onerror="this.src='https://placehold.co/40x40?text=Proxy'">
-                                 <div>
-                                <div class="font-bold text-brand-darkText">${p.name}</div>
-                                <div class="text-[10px] text-brand-lightText font-mono">Code: ${p.activationCode || 'N/A'}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-5">
-                        <span class="bg-brand-background text-brand-blue px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border border-blue-100">
-                            ${p.category || 'Standard'}
-                        </span>
-                    </td>
-                    <td class="px-6 py-5">
-                        <div class="text-xs font-bold text-brand-midText">${plans.length} Tiers (Starts ${startingPrice})</div>
-                        <div class="text-[10px] ${stockColor}">${stockStatus}</div>
-                    </td>
-                    <td class="px-6 py-5 text-center">
-                        <span class="px-2.5 py-1 rounded-full font-bold text-[10px] ${p.activationCode ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'} uppercase">
-                            ${p.activationCode ? 'Ready' : 'No Code'}
-                        </span>
-                    </td>
-                    <td class="px-6 py-5 text-right flex justify-end gap-3">
-                        <button onclick="editProxy('${p._id}')" class="text-brand-blue font-bold text-[10px] hover:underline">EDIT</button>
-                        <button onclick="deleteProxy('${p._id}')" class="text-red-500 font-bold text-[10px] hover:underline">DEL</button>
-                    </td>
-                </tr>`;
-        }).join('');
-    } catch (err) { 
-        list.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-red-500">Error connecting to API.</td></tr>'; 
+    function addPriceRow(ipCount = '', price = '') {
+        const container = document.getElementById('pricingContainer');
+        const row = document.createElement('div');
+        row.className = 'pricing-row flex gap-3 items-center animate-in fade-in duration-300';
+        row.innerHTML = `
+            <div class="flex-1">
+                <input type="number" placeholder="No. of IPs" value="${ipCount}" class="plan-ips w-full bg-white border border-brand-border px-3 py-2.5 rounded-lg text-sm" required>
+            </div>
+            <div class="relative flex-1">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-brand-lightText font-bold">₦</span>
+                <input type="number" step="1" placeholder="Price (NGN)" value="${price}" class="plan-price w-full bg-white border border-brand-border pl-7 pr-3 py-2.5 rounded-lg text-sm" required>
+            </div>
+            <button type="button" onclick="this.parentElement.remove()" class="p-2 text-red-400 hover:text-red-600">✕</button>
+        `;
+        container.appendChild(row);
     }
-}
+
+    // --- DYNAMIC CODE ROWS (VPN STYLE) ---
+    function addCodeRow(value = '') {
+        const container = document.getElementById('codesContainer');
+        const row = document.createElement('div');
+        row.className = 'code-row flex items-center gap-2 animate-in slide-in-from-top-1 duration-200';
+        row.innerHTML = `
+            <div class="flex-1">
+                <input type="text" value="${value}" placeholder="Enter Activation Code" 
+                       class="activation-code-input w-full bg-white border border-brand-border p-3 rounded-xl outline-none focus:border-brand-orange transition-all font-mono text-xs shadow-inner">
+            </div>
+            <button type="button" onclick="removeCodeRow(this)" class="p-2 text-red-400 hover:text-red-600 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>
+        `;
+        container.appendChild(row);
+        updateInventoryCount();
+    }
+
+    function removeCodeRow(btn) {
+        btn.parentElement.remove();
+        updateInventoryCount();
+    }
+
+    function updateInventoryCount() {
+        const count = document.querySelectorAll('.activation-code-input').length;
+        const display = document.getElementById('inventoryCountDisplay');
+        if (display) display.innerText = count;
+        
+        const stockInput = document.getElementById('stock');
+        if (stockInput) stockInput.value = count;
+    }
+
+    async function fetchProxies() {
+        const token = localStorage.getItem('smsglobe_admin_token');
+        const list = document.getElementById('proxy-list');
+        try {
+            const res = await fetch('/api/proxies', { 
+                headers: { 'Authorization': `Bearer ${token}` } 
+            });
+            const data = await res.json();
+            allProxies = data.proxies || [];
+            
+            if (allProxies.length === 0) {
+                list.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-brand-lightText">No proxy packages found.</td></tr>';
+                return;
+            }
+
+            list.innerHTML = allProxies.map(p => {
+                const plans = p.plans || [];
+                const stockStatus = p.stock > 0 ? `${p.stock} units` : 'Out of Stock';
+                const stockColor = p.stock > 10 ? 'text-brand-midText' : 'text-red-500 font-bold';
+                const startingPrice = plans.length > 0 ? `₦${parseFloat(plans[0].price).toLocaleString()}` : 'N/A';
+
+                return `
+                    <tr class="hover:bg-brand-background/30 transition-colors">
+                        <td class="px-6 py-5">
+                            <div class="flex items-center gap-3">
+                                <img src="${p.imageUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(p.name)}" 
+                                     class="w-10 h-10 rounded-lg object-cover bg-gray-100"
+                                     onerror="this.src='https://placehold.co/40x40?text=Proxy'">
+                                <div>
+                                    <div class="font-bold text-brand-darkText">${p.name}</div>
+                                    <div class="text-[10px] text-brand-lightText font-mono">ID: ${p._id.slice(-6)}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5 text-xs font-bold text-brand-blue uppercase">${p.category || 'Standard'}</td>
+                        <td class="px-6 py-5">
+                            <div class="text-xs font-bold text-brand-midText">${plans.length} Tiers (Starts ${startingPrice})</div>
+                            <div class="text-[10px] ${stockColor}">${stockStatus}</div>
+                        </td>
+                        <td class="px-6 py-5 text-center">
+                            <span class="px-2.5 py-1 rounded-full font-bold text-[10px] ${p.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'} uppercase">
+                                ${p.stock > 0 ? 'Ready' : 'No Stock'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-5 text-right flex justify-end gap-3">
+                            <button onclick="editProxy('${p._id}')" class="text-brand-blue font-bold text-[10px] hover:underline">EDIT</button>
+                            <button onclick="deleteProxy('${p._id}')" class="text-red-500 font-bold text-[10px] hover:underline">DEL</button>
+                        </td>
+                    </tr>`;
+            }).join('');
+        } catch (err) { 
+            list.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-red-500">Error connecting to API.</td></tr>'; 
+        }
+    }
 
     function editProxy(id) {
         const proxy = allProxies.find(p => p._id === id);
@@ -295,13 +317,23 @@ async function fetchProxies() {
         
         document.getElementById('name').value = proxy.name;
         document.getElementById('category').value = proxy.category || '';
-        document.getElementById('stock').value = proxy.stock || 0;
         document.getElementById('imageUrl').value = proxy.imageUrl || '';
-        document.getElementById('activationCode').value = proxy.activationCode || '';
         document.getElementById('instructions').value = proxy.instructions || '';
         
-        const container = document.getElementById('pricingContainer');
-        container.innerHTML = '';
+        // Populate Dynamic Code Rows
+        const codesContainer = document.getElementById('codesContainer');
+        codesContainer.innerHTML = '';
+        if (proxy.activationCodes && proxy.activationCodes.length > 0) {
+            proxy.activationCodes.forEach(code => addCodeRow(code));
+        } else if (proxy.activationCode) {
+            addCodeRow(proxy.activationCode);
+        } else {
+            addCodeRow();
+        }
+
+        // Populate Pricing Tiers
+        const pricingContainer = document.getElementById('pricingContainer');
+        pricingContainer.innerHTML = '';
         if (proxy.plans && proxy.plans.length > 0) {
             proxy.plans.forEach(plan => addPriceRow(plan.ip_count, plan.price));
         } else {
@@ -310,6 +342,61 @@ async function fetchProxies() {
 
         document.getElementById('proxyModal').classList.remove('hidden');
     }
+
+    document.getElementById('proxyForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('submitBtn');
+        const token = localStorage.getItem('smsglobe_admin_token');
+        const editId = e.target.dataset.editId;
+        
+        btn.disabled = true;
+        btn.innerText = 'Processing...';
+
+        // Scrape all code inputs
+        const codes = Array.from(document.querySelectorAll('.activation-code-input'))
+            .map(input => input.value.trim())
+            .filter(val => val !== '');
+
+        const payload = {
+            name: document.getElementById('name').value,
+            category: document.getElementById('category').value,
+            stock: codes.length, // Stock is strictly based on row count
+            imageUrl: document.getElementById('imageUrl').value,
+            instructions: document.getElementById('instructions').value,
+            activationCodes: codes,
+            activationCode: codes[0] || "", 
+            plans: Array.from(document.querySelectorAll('.pricing-row')).map(row => ({
+                ip_count: row.querySelector('.plan-ips').value,
+                price: row.querySelector('.plan-price').value
+            }))
+        };
+
+        if (editId) payload.proxyId = editId;
+
+        try {
+            const res = await fetch('/api/proxies', {
+                method: editId ? 'PATCH' : 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await res.json();
+            if(result.success) {
+                closeModal();
+                fetchProxies();
+            } else {
+                alert(result.message || 'Action failed');
+            }
+        } catch (err) { 
+            alert('Error connecting to server.'); 
+        } finally {
+            btn.disabled = false;
+            btn.innerText = editId ? 'Update Changes' : 'Deploy Proxy Package';
+        }
+    });
 
     async function deleteProxy(id) {
         if (!confirm('Are you sure you want to delete this proxy package?')) return;
@@ -325,126 +412,23 @@ async function fetchProxies() {
         } catch (err) { alert('Server error during deletion.'); }
     }
 
-   function toggleBulkUpload() {
-    const bulkView = document.getElementById('bulkCodeView');
-    const singleView = document.getElementById('singleCodeView');
-    const bulkBtn = document.querySelector('[onclick="toggleBulkUpload()"]');
-
-    if (bulkView.classList.contains('hidden')) {
-        // Show Bulk, Hide Single
-        bulkView.classList.remove('hidden');
-        singleView.classList.add('hidden');
-        bulkBtn.innerHTML = "✕ USE SINGLE CODE";
-        bulkBtn.classList.replace('bg-brand-orange/10', 'bg-red-50');
-        bulkBtn.classList.replace('text-brand-orange', 'text-red-500');
-    } else {
-        // Show Single, Hide Bulk
-        bulkView.classList.add('hidden');
-        singleView.classList.remove('hidden');
-        bulkBtn.innerHTML = "+ BULK IMPORT";
-        bulkBtn.classList.replace('bg-red-50', 'bg-brand-orange/10');
-        bulkBtn.classList.replace('text-red-500', 'text-brand-orange');
-        document.getElementById('bulkCodes').value = ''; // Clear bulk on return to single
+    function openAddProxyModal() {
+        const form = document.getElementById('proxyForm');
+        delete form.dataset.editId; 
+        form.reset();
+        
+        document.getElementById('modalTitle').innerText = 'Proxy Package Configuration';
+        document.getElementById('submitBtn').innerText = 'Deploy Proxy Package';
+        
+        // Reset dynamic containers
+        document.getElementById('codesContainer').innerHTML = '';
+        addCodeRow(); 
+        
+        document.getElementById('pricingContainer').innerHTML = '';
+        addPriceRow();
+        
+        document.getElementById('proxyModal').classList.remove('hidden');
     }
-}
-
-
-   document.getElementById('proxyForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const btn = document.getElementById('submitBtn');
-    const token = localStorage.getItem('smsglobe_admin_token');
-    const editId = form.dataset.editId;
-    
-    btn.disabled = true;
-    btn.innerText = 'Processing...';
-
-    // 1. PROCESS ACTIVATION CODES
-    let codesArray = [];
-    const bulkValue = document.getElementById('bulkCodes')?.value.trim();
-    const singleValue = document.getElementById('activationCode').value.trim();
-
-    // If bulk textarea is visible and has content, use it. Otherwise use single input.
-    if (bulkValue) {
-        // Split by line breaks, trim whitespace, and remove empty lines
-        codesArray = bulkValue.split('\n')
-            .map(code => code.trim())
-            .filter(code => code.length > 0);
-    } else if (singleValue) {
-        codesArray = [singleValue];
-    }
-
-    // 2. AUTO-CALCULATE STOCK
-    // If codes are provided, the stock MUST match the number of codes.
-    // If no codes are provided (e.g., a package that doesn't use codes), use manual stock.
-    const manualStock = parseInt(document.getElementById('stock').value) || 0;
-    const finalStock = codesArray.length > 0 ? codesArray.length : manualStock;
-
-    const payload = {
-        name: document.getElementById('name').value,
-        category: document.getElementById('category').value,
-        stock: finalStock,
-        imageUrl: document.getElementById('imageUrl').value,
-        instructions: document.getElementById('instructions').value,
-        // Send the full list of codes to the backend array
-        activationCodes: codesArray, 
-        // Keep this for legacy compatibility or single-code logic
-        activationCode: codesArray.length > 0 ? codesArray[0] : "", 
-        plans: Array.from(document.querySelectorAll('.pricing-row')).map(row => ({
-            ip_count: row.querySelector('.plan-ips').value,
-            price: row.querySelector('.plan-price').value
-        }))
-    };
-
-    if (editId) payload.proxyId = editId;
-
-    try {
-        const res = await fetch('/api/proxies', {
-            method: editId ? 'PATCH' : 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(payload)
-        });
-
-        const result = await res.json();
-        if(result.success) {
-            // Success: Clear the bulk textarea for next time
-            if(document.getElementById('bulkCodes')) document.getElementById('bulkCodes').value = '';
-            closeModal();
-            fetchProxies();
-        } else {
-            alert(result.message || 'Action failed');
-        }
-    } catch (err) { 
-        console.error(err);
-        alert('Error connecting to server.'); 
-    } finally {
-        btn.disabled = false;
-        btn.innerText = editId ? 'Update Changes' : 'Deploy Proxy Package';
-    }
-});
-
-
-   function openAddProxyModal() {
-    const form = document.getElementById('proxyForm');
-    delete form.dataset.editId; 
-    form.reset();
-    
-    // Ensure we start in "Single" mode when opening a new modal
-    document.getElementById('bulkCodeView').classList.add('hidden');
-    document.getElementById('singleCodeView').classList.remove('hidden');
-    const bulkBtn = document.querySelector('[onclick="toggleBulkUpload()"]');
-    bulkBtn.innerHTML = "+ BULK IMPORT";
-    bulkBtn.className = "text-[10px] font-bold bg-brand-orange/10 text-brand-orange px-2 py-1 rounded hover:bg-brand-orange/20 transition-all";
-
-    document.getElementById('modalTitle').innerText = 'Proxy Package Configuration';
-    document.getElementById('submitBtn').innerText = 'Deploy Proxy Package';
-    document.getElementById('pricingContainer').innerHTML = '';
-    addPriceRow();
-    document.getElementById('proxyModal').classList.remove('hidden');
-}
 
     function closeModal() { document.getElementById('proxyModal').classList.add('hidden'); }
     function logout() { localStorage.removeItem('smsglobe_admin_token'); window.location.href = 'sms_login.html'; }

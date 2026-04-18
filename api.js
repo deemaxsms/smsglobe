@@ -3384,62 +3384,57 @@ async function handleGetNumbers(req, res) {
 
     try {
         const textBeeKey = process.env.TEXTBEE_API_KEY;
-        // Use .toLowerCase().trim() to prevent tiny hidden space/case errors
-        const cleanId = process.env.TEXTBEE_DEVICE_ID.toLowerCase().trim();
+        const targetId = process.env.TEXTBEE_DEVICE_ID.trim();
 
         if (country === 'NG') {
             const tbUrl = `https://api.textbee.dev/api/v1/gateway/devices`;
-
             const tbResponse = await axios.get(tbUrl, {
                 headers: { 'x-api-key': textBeeKey.trim() },
                 timeout: 10000 
             });
 
             const devices = tbResponse.data;
-            
-            // DEBUG LOG: This is vital. Check your Vercel logs to see what Textverified is actually sending.
-            console.log("TEXTBEE_RAW_DEVICES:", JSON.stringify(devices));
 
-            // Find device using a case-insensitive search
+            // 1. LOG EVERYTHING: Check Vercel logs to see the actual IDs returned
+            console.log("TEXTBEE_LIST_DATA:", JSON.stringify(devices));
+
+            // 2. SMART SEARCH: Check both possible ID fields
             const myDevice = Array.isArray(devices) ? devices.find(d => 
-                d.deviceId?.toLowerCase().trim() === cleanId || 
-                d._id?.toLowerCase().trim() === cleanId
+                (d.deviceId && d.deviceId === targetId) || 
+                (d._id && d._id === targetId)
             ) : null;
 
             if (myDevice) {
-                // If found, check status (Enabled, Online, or Active)
                 const s = myDevice.status?.toLowerCase();
                 if (['enabled', 'online', 'active'].includes(s)) {
                     return res.json({
                         success: true,
-                        numbers: ["+234... (Samsung SM-A075F)"], 
-                        targetId: cleanId, 
+                        numbers: ["+234... (Samsung SIM)"], 
+                        targetId: targetId, 
                         provider: 'textbee',
                         cost: 850,
                         serviceName: service 
                     });
                 }
-                
-                return res.status(400).json({ 
-                    success: false, 
-                    message: `Samsung status is '${myDevice.status}'. Please toggle the switch in the phone app.` 
-                });
+                return res.status(400).json({ success: false, message: `Samsung is ${myDevice.status}` });
             }
             
-            // This is the error you are currently seeing
+            // If we reach here, the ID was not found in the list
             return res.status(400).json({ 
                 success: false, 
-                message: "Samsung ID not found in API list. Verify Device ID in Vercel." 
+                message: "Samsung ID not found in API list.",
+                debug_hint: `Looked for ${targetId} in ${devices.length} devices`
             });
         }
 
         return res.status(404).json({ success: false, message: "Country not supported." });
 
     } catch (err) {
-        console.error("TEXTBEE_LIST_ERROR:", err.response?.data || err.message);
-        return res.status(500).json({ success: false, message: "Sync Error", debug: err.message });
+        console.error("TEXTBEE_API_CRASH:", err.response?.data || err.message);
+        return res.status(500).json({ success: false, message: "Sync Error" });
     }
 }
+
 
 async function handleGetStock(req, res) {
     try {

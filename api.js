@@ -3384,10 +3384,10 @@ async function handleGetNumbers(req, res) {
 
     try {
         const textBeeKey = process.env.TEXTBEE_API_KEY;
-        const deviceId = process.env.TEXTBEE_DEVICE_ID;
+        // Use .toLowerCase().trim() to prevent tiny hidden space/case errors
+        const cleanId = process.env.TEXTBEE_DEVICE_ID.toLowerCase().trim();
 
         if (country === 'NG') {
-            const cleanId = deviceId.trim();
             const tbUrl = `https://api.textbee.dev/api/v1/gateway/devices`;
 
             const tbResponse = await axios.get(tbUrl, {
@@ -3396,30 +3396,40 @@ async function handleGetNumbers(req, res) {
             });
 
             const devices = tbResponse.data;
-            const myDevice = Array.isArray(devices) ? devices.find(d => d.deviceId === cleanId) : null;
+            
+            // DEBUG LOG: This is vital. Check your Vercel logs to see what Textverified is actually sending.
+            console.log("TEXTBEE_RAW_DEVICES:", JSON.stringify(devices));
 
-            // LOG THE STATUS: Check your Vercel logs to see what this says!
-            console.log("Device Found:", myDevice ? myDevice.status : "NOT FOUND IN LIST");
+            // Find device using a case-insensitive search
+            const myDevice = Array.isArray(devices) ? devices.find(d => 
+                d.deviceId?.toLowerCase().trim() === cleanId || 
+                d._id?.toLowerCase().trim() === cleanId
+            ) : null;
 
-            // FIX: Accepting multiple "Online" variations
-            const isOnline = myDevice && 
-                ['Enabled', 'Online', 'Active', 'enabled', 'online'].includes(myDevice.status);
-
-            if (isOnline) {
-                return res.json({
-                    success: true,
-                    numbers: ["+234... (Samsung SM-A075F)"], 
-                    targetId: cleanId, 
-                    provider: 'textbee',
-                    cost: 850,
-                    serviceName: service 
+            if (myDevice) {
+                // If found, check status (Enabled, Online, or Active)
+                const s = myDevice.status?.toLowerCase();
+                if (['enabled', 'online', 'active'].includes(s)) {
+                    return res.json({
+                        success: true,
+                        numbers: ["+234... (Samsung SM-A075F)"], 
+                        targetId: cleanId, 
+                        provider: 'textbee',
+                        cost: 850,
+                        serviceName: service 
+                    });
+                }
+                
+                return res.status(400).json({ 
+                    success: false, 
+                    message: `Samsung status is '${myDevice.status}'. Please toggle the switch in the phone app.` 
                 });
             }
             
-            // If we reach here, the device was found but status wasn't 'Enabled'
+            // This is the error you are currently seeing
             return res.status(400).json({ 
                 success: false, 
-                message: `Samsung is ${myDevice?.status || 'not recognized'}. Please refresh the TextBee app.` 
+                message: "Samsung ID not found in API list. Verify Device ID in Vercel." 
             });
         }
 

@@ -119,7 +119,7 @@ const vpnSchema = new mongoose.Schema({
     name: { type: String, required: true },
     provider: { type: String, required: true },
     region: { type: String, required: true },
-    image: { type: String },    
+   imageUrl: String,   
     deviceType: { type: String, enum: ['Phone', 'PC', 'Both'], default: 'Phone' },
     stock: { type: Number, default: 0 },
     deviceLimit: { type: Number, default: 1 },
@@ -2111,17 +2111,13 @@ const isESIM_Activation = type === "eSIM_Activation";
     
     let dataTableHtml = '';
 if (isProxy) {
-    
-    const displayCode = credentials.activationCode || credentials.code || 'PENDING';
-    const displayInstructions = credentials.instructions || 'Follow the dashboard instructions to activate.';
-    
-    // Ensure amount and names are also pulled correctly
-    const displayService = credentials.nodeName || '';
-    const displayPlan = credentials.planName || '';
-    
-    // Fix: Use the 'amount' field from your DB object
-    const displayAmount = Number(credentials.amount || 0).toLocaleString();
-    const displayRef = credentials.paymentReference || 'N/A';
+    const displayCode = credentials.activationCode || 
+                        (credentials.activationCodes && credentials.activationCodes.length > 0 ? credentials.activationCodes[0] : 'PENDING');
+    const displayInstructions = credentials.instructions || 'Follow the dashboard instructions to activate.';    
+    const displayService = credentials.name || credentials.nodeName || 'Proxy Service';
+    const displayPlan = credentials.category || credentials.planName || 'Standard Plan';
+        const displayAmount = Number(credentials.amount || 0).toLocaleString();
+    const displayRef = credentials.paymentReference || credentials._id || 'N/A';
 
     dataTableHtml = `
         <tr>
@@ -2130,14 +2126,14 @@ if (isProxy) {
                 <strong style="font-size: 13px; color: #0F54C6;">${displayService}</strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Plan</span><br>
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Category</span><br>
                 <strong style="font-size: 13px; color: #101828;">${displayPlan}</strong>
             </td>
         </tr>
         <tr>
             <td class="mobile-full" width="50%" valign="top" style="padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Purchase Date</span><br>
-                <strong style="font-size: 11px; color: #101828;">${purchaseDate}</strong>
+                <strong style="font-size: 11px; color: #101828;">${new Date().toLocaleDateString()}</strong>
             </td>
             <td class="mobile-full" width="50%" valign="top" style="text-align: right; padding-bottom: 15px;">
                 <span style="font-size: 9px; color: #667085; text-transform: uppercase; font-weight: bold;">Amount Paid</span><br>
@@ -2157,19 +2153,20 @@ if (isProxy) {
                         ${displayInstructions}
                     </p>
                     <p style="font-size: 10px; color: #667085; margin-top: 5px;">
-                        Copy this code into your <strong>${displayService}</strong> dashboard to activate.
+                        Use this code to activate your <strong>${displayService}</strong> subscription.
                     </p>
                 </div>
             </td>
         </tr>
         <tr>
             <td colspan="2" style="padding-top: 15px; text-align: center;">
-                <span style="font-size: 9px; color: #667085; text-transform: uppercase;">Transaction Ref:</span><br>
+                <span style="font-size: 9px; color: #667085; text-transform: uppercase;">Transaction ID:</span><br>
                 <code style="font-size: 10px; color: #98A2B3;">${displayRef}</code>
             </td>
         </tr>
     `;
 }
+
 if (isRDP) {
     // 1. Extract Hardware Values (Root Level priority)
     const ramValue = credentials.ram || credentials.metadata?.ram || "4GB";
@@ -2270,22 +2267,20 @@ if (isRDP) {
     `;
 }
 else if (isVPN) {
-    // 1. Data Extraction
-    const vpnCreds = credentials.vpnCredentials || {};    
-    const displayUser = vpnCreds.username || credentials.username || "N/A";
-    const displayPass = vpnCreds.password || credentials.password || "N/A";    
-    const displayPCUser = credentials.pcUsername || "N/A";
-    const displayPCPass = credentials.pcPassword || "N/A";
-    const displayCode = credentials.activationCode || "N/A";
-    
-    // FETCH THE INSTRUCTIONS
+    const vpnCreds = credentials.vpnCredentials || {};        
+    const targetType = credentials.targetDevice || credentials.deviceType || "";     
+    const mUser = vpnCreds.username || credentials.username || "";
+    const mPass = vpnCreds.password || credentials.password || "";    
+    const pcUser = credentials.pcUsername || "";
+    const pcPass = credentials.pcPassword || "";    
+    const aCode = credentials.activationCode || "";    
     const adminInstructions = credentials.instructions || "Follow the setup guide in your dashboard.";
+    const showMobile = (targetType.toLowerCase() === 'phone' || targetType === "") && !!(mUser && mUser !== "N/A");    
+    const isPCDevice = targetType.toLowerCase() === 'pc';
+    const showPC = isPCDevice && !!(pcUser && pcUser !== "N/A");
+    const showCode = isPCDevice && !!(aCode && aCode !== "N/A");
 
-    // 2. Logic Flags
-    const hasMobile = !!(displayUser && displayUser !== "N/A");
-    const hasPC = !!(displayPCUser && displayPCUser !== "N/A");
-    const hasCode = !!(displayCode && displayCode !== "N/A");
-
+    // 3. Build HTML
     dataTableHtml = `
         <tr>
             <td colspan="2" valign="top" style="padding-bottom: 20px;">
@@ -2296,30 +2291,34 @@ else if (isVPN) {
             </td>
         </tr>
         
-        ${hasCode ? `
+        ${showCode ? `
         <tr>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Activation Code:</strong></td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right; font-family: monospace; color: #0F54C6;"><strong>${displayCode}</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #f2f4f7;"><strong>Activation Code:</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #f2f4f7; text-align:right;">
+                <span style="font-family: monospace; color: #0F54C6; background: #f0f5ff; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 14px;">
+                    ${aCode}
+                </span>
+            </td>
         </tr>` : ''}
 
-        ${hasMobile ? `
+        ${showMobile ? `
         <tr>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Mobile User:</strong></td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right;">${displayUser}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Mobile Username:</strong></td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right; color: #101828;">${mUser}</td>
         </tr>
         <tr>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Mobile Pass:</strong></td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right;">${displayPass}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Mobile Password:</strong></td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right; color: #101828;">${mPass}</td>
         </tr>` : ''}
 
-        ${hasPC ? `
+        ${showPC ? `
         <tr>
             <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>PC Username/ID:</strong></td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right;">${displayPCUser}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right; color: #101828;">${pcUser}</td>
         </tr>
         <tr>
             <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>PC Password:</strong></td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right;">${displayPCPass}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right; color: #101828;">${pcPass}</td>
         </tr>` : ''}
 
         <tr>
@@ -2333,8 +2332,8 @@ else if (isVPN) {
             </td>
         </tr>
     `;
-
-    } else if (isESIM_Activation) {
+}
+ else if (isESIM_Activation) {
         const confNo = credentials.confirmationNumber || credentials.activationCode;
         const meta = credentials.metadata || {};
         

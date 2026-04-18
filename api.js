@@ -119,7 +119,7 @@ const vpnSchema = new mongoose.Schema({
     name: { type: String, required: true },
     provider: { type: String, required: true },
     region: { type: String, required: true },
-   imageUrl: String,   
+    image: String,   
     deviceType: { type: String, enum: ['Phone', 'PC', 'Both'], default: 'Phone' },
     stock: { type: Number, default: 0 },
     deviceLimit: { type: Number, default: 1 },

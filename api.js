@@ -3378,6 +3378,67 @@ async function handleGetRdpRequests(req, res) {
     }
 }
 async function handleGetNumbers(req, res) {
+    // 1. Ensure DB is connected first
+    try {
+        await connectDB();
+    } catch (dbErr) {
+        return res.status(500).json({ success: false, message: "Database Connection Failed" });
+    }
+
+    const { country, service } = req.query; 
+
+    try {
+        const textBeeKey = process.env.TEXTBEE_API_KEY;
+        const deviceId = process.env.TEXTBEE_DEVICE_ID;
+
+        // 2. Prevent crash if Vercel variables are missing
+        if (!textBeeKey || !deviceId) {
+            return res.status(500).json({ 
+                success: false, 
+                message: "Server environment variables not found." 
+            });
+        }
+
+        if (country === 'NG') {
+            // 3. Request device status from TextBee
+            const tbResponse = await axios.get(`https://api.textbee.dev/api/v1/devices/${deviceId.trim()}`, {
+                headers: { 'x-api-key': textBeeKey.trim() },
+                timeout: 8000 // Give the Samsung time to respond
+            });
+
+            const status = tbResponse.data?.status;
+
+            if (status === 'Enabled' || status === 'Online') {
+                return res.json({
+                    success: true,
+                    numbers: ["+234... (Samsung SIM)"], 
+                    targetId: deviceId, 
+                    provider: 'textbee',
+                    cost: 850,
+                    serviceName: service 
+                });
+            }
+            
+            return res.status(400).json({ 
+                success: false, 
+                message: `Device is ${status || 'Offline'}. Check your Samsung phone.` 
+            });
+        }
+
+        return res.status(404).json({ success: false, message: "Country not supported." });
+
+    } catch (err) {
+        // This captures if TextBee returns 401, 404, or 500
+        const errorDetail = err.response?.data?.message || err.message;
+        console.error("GATEWAY_ERROR:", errorDetail);
+
+        return res.status(500).json({ 
+            success: false, 
+            message: "Failed to connect to Samsung device.",
+            debug: errorDetail
+        });
+    }
+}
 
 async function handleGetStock(req, res) {
     try {

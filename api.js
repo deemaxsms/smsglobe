@@ -160,11 +160,14 @@ const ProxySchema = new mongoose.Schema({
         ip_count: { type: Number, required: true },
         price: { type: Number, required: true } 
     }],
-    activationCode: String,
+    activationCode: String, // Single code (for UI preview)
+    activationCodes: [String], // <--- ADD THIS: Full inventory array
+    imageUrl: String, // Ensure this exists if you use it
     instructions: { type: String, default: "Check dashboard for details." }
 }, { timestamps: true });
 
 const Proxy = mongoose.models.Proxy || mongoose.model('Proxy', ProxySchema);
+
 
 const rdpSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -2624,6 +2627,7 @@ const sendResetPasswordEmail = async (userEmail, resetLink, isAdmin = false) => 
         html: htmlContent
     });
 };
+
 // 2. GET ALL Proxies (Sorted by Newest)
 async function handleGetProxies(req, res) {
     try {
@@ -2691,15 +2695,14 @@ async function handleUpdateProxy(req, res) {
             }));
         }
 
-        // Handle Activation Codes & Stock
-        if (Array.isArray(activationCodes) && activationCodes.length > 0) {
-            updatePayload.activationCodes = activationCodes;
-            updatePayload.stock = activationCodes.length;
-            updatePayload.activationCode = activationCodes[0];
-        } else {
-            updatePayload.stock = parseInt(stock) || 0;
-        }
-
+if (Array.isArray(activationCodes)) {
+    updatePayload.activationCodes = activationCodes;
+    updatePayload.stock = activationCodes.length;
+    
+    updatePayload.activationCode = activationCodes.length > 0 ? activationCodes[0] : "";
+} else {
+    updatePayload.stock = parseInt(stock) || 0;
+}
         const updated = await Proxy.findByIdAndUpdate(
             proxyId, 
             { $set: updatePayload }, 

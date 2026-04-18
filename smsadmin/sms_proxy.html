@@ -305,98 +305,105 @@
         }
     }
 
-    function editProxy(id) {
-        const proxy = allProxies.find(p => p._id === id);
-        if (!proxy) return;
+   function editProxy(id) {
+    const proxy = allProxies.find(p => p._id === id);
+    if (!proxy) return;
 
-        const form = document.getElementById('proxyForm');
-        form.dataset.editId = id; 
-        
-        document.getElementById('modalTitle').innerText = 'Update Proxy Package';
-        document.getElementById('submitBtn').innerText = 'Update Changes';
-        
-        document.getElementById('name').value = proxy.name;
-        document.getElementById('category').value = proxy.category || '';
-        document.getElementById('imageUrl').value = proxy.imageUrl || '';
-        document.getElementById('instructions').value = proxy.instructions || '';
-        
-        // Populate Dynamic Code Rows
-        const codesContainer = document.getElementById('codesContainer');
-        codesContainer.innerHTML = '';
-        if (proxy.activationCodes && proxy.activationCodes.length > 0) {
-            proxy.activationCodes.forEach(code => addCodeRow(code));
-        } else if (proxy.activationCode) {
-            addCodeRow(proxy.activationCode);
-        } else {
-            addCodeRow();
-        }
-
-        // Populate Pricing Tiers
-        const pricingContainer = document.getElementById('pricingContainer');
-        pricingContainer.innerHTML = '';
-        if (proxy.plans && proxy.plans.length > 0) {
-            proxy.plans.forEach(plan => addPriceRow(plan.ip_count, plan.price));
-        } else {
-            addPriceRow();
-        }
-
-        document.getElementById('proxyModal').classList.remove('hidden');
+    const form = document.getElementById('proxyForm');
+    form.dataset.editId = id; 
+    
+    document.getElementById('modalTitle').innerText = 'Update Proxy Package';
+    document.getElementById('submitBtn').innerText = 'Update Changes';    
+    document.getElementById('name').value = proxy.name || '';
+    document.getElementById('category').value = proxy.category || '';
+    document.getElementById('imageUrl').value = proxy.imageUrl || '';
+    document.getElementById('instructions').value = proxy.instructions || '';
+    const codesContainer = document.getElementById('codesContainer');
+    codesContainer.innerHTML = ''; // Clear previous UI rows
+    
+    if (proxy.activationCodes && Array.isArray(proxy.activationCodes) && proxy.activationCodes.length > 0) {
+        proxy.activationCodes.forEach(code => addCodeRow(code));
+    } else if (proxy.activationCode) {
+        addCodeRow(proxy.activationCode);
+    } else {
+        addCodeRow();
+    }
+    const pricingContainer = document.getElementById('pricingContainer');
+    pricingContainer.innerHTML = '';
+    if (proxy.plans && proxy.plans.length > 0) {
+        proxy.plans.forEach(plan => addPriceRow(plan.ip_count, plan.price));
+    } else {
+        addPriceRow();
     }
 
-    document.getElementById('proxyForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const btn = document.getElementById('submitBtn');
-        const token = localStorage.getItem('smsglobe_admin_token');
-        const editId = e.target.dataset.editId;
+    // Update the visual stock counter
+    updateInventoryCount();
+    
+    document.getElementById('proxyModal').classList.remove('hidden');
+}
+
+   document.getElementById('proxyForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const token = localStorage.getItem('smsglobe_admin_token');
+    const editId = e.target.dataset.editId;
+    
+    btn.disabled = true;
+    btn.innerText = 'Processing...';
+
+    // 1. Scrape all activation code inputs from the UI rows
+    const codeInputs = document.querySelectorAll('.activation-code-input');
+    const codes = Array.from(codeInputs)
+        .map(input => input.value.trim())
+        .filter(val => val !== ''); // Remove empty lines
+
+    // 2. Build Payload
+    const payload = {
+        name: document.getElementById('name').value,
+        category: document.getElementById('category').value,
+        imageUrl: document.getElementById('imageUrl').value,
+        instructions: document.getElementById('instructions').value,
         
-        btn.disabled = true;
-        btn.innerText = 'Processing...';
+        // Data Structure for the Vending Logic
+        activationCodes: codes,          // The full array
+        stock: codes.length,             // Count becomes the stock
+        activationCode: codes[0] || "",  // Set the first code as the primary preview
+        
+        // Pricing Plans
+        plans: Array.from(document.querySelectorAll('.pricing-row')).map(row => ({
+            ip_count: parseInt(row.querySelector('.plan-ips').value) || 0,
+            price: parseFloat(row.querySelector('.plan-price').value) || 0
+        }))
+    };
 
-        // Scrape all code inputs
-        const codes = Array.from(document.querySelectorAll('.activation-code-input'))
-            .map(input => input.value.trim())
-            .filter(val => val !== '');
+    if (editId) payload.proxyId = editId;
 
-        const payload = {
-            name: document.getElementById('name').value,
-            category: document.getElementById('category').value,
-            stock: codes.length, // Stock is strictly based on row count
-            imageUrl: document.getElementById('imageUrl').value,
-            instructions: document.getElementById('instructions').value,
-            activationCodes: codes,
-            activationCode: codes[0] || "", 
-            plans: Array.from(document.querySelectorAll('.pricing-row')).map(row => ({
-                ip_count: row.querySelector('.plan-ips').value,
-                price: row.querySelector('.plan-price').value
-            }))
-        };
+    try {
+        const res = await fetch('/api/proxies', {
+            method: editId ? 'PATCH' : 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+        });
 
-        if (editId) payload.proxyId = editId;
-
-        try {
-            const res = await fetch('/api/proxies', {
-                method: editId ? 'PATCH' : 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(payload)
-            });
-
-            const result = await res.json();
-            if(result.success) {
-                closeModal();
-                fetchProxies();
-            } else {
-                alert(result.message || 'Action failed');
-            }
-        } catch (err) { 
-            alert('Error connecting to server.'); 
-        } finally {
-            btn.disabled = false;
-            btn.innerText = editId ? 'Update Changes' : 'Deploy Proxy Package';
+        const result = await res.json();
+        
+        if (result.success) {
+            closeModal();
+            fetchProxies(); // Refresh the table
+        } else {
+            alert(result.message || 'Action failed');
         }
-    });
+    } catch (err) { 
+        console.error("Submit Error:", err);
+        alert('Error connecting to server. Please check your connection.'); 
+    } finally {
+        btn.disabled = false;
+        btn.innerText = editId ? 'Update Changes' : 'Deploy Proxy Package';
+    }
+});
 
     async function deleteProxy(id) {
         if (!confirm('Are you sure you want to delete this proxy package?')) return;

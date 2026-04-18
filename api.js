@@ -293,7 +293,6 @@ const rentedNumberSchema = new mongoose.Schema({
         index: true 
     },
     
-    // The incoming OTP Data
     smsCode: { type: String }, // The extracted 4-6 digit code
     fullMessage: { type: String }, // The raw SMS text for backup
     
@@ -3378,57 +3377,7 @@ async function handleGetRdpRequests(req, res) {
         return res.status(500).json({ success: false, message: "Failed to fetch" });
     }
 }
-
 async function handleGetNumbers(req, res) {
-    const { country, service } = req.query; 
-
-    try {
-        const textBeeKey = process.env.TEXTBEE_API_KEY;
-        const deviceId = process.env.TEXTBEE_DEVICE_ID;
-
-        // 1. Validation: Prevent crash if Vercel variables are missing
-        if (!textBeeKey || !deviceId) {
-            console.error("ENVIRONMENT_ERROR: TEXTBEE_API_KEY or DEVICE_ID is undefined");
-            return res.status(500).json({ 
-                success: false, 
-                message: "Server configuration missing. Check Vercel Environment Variables." 
-            });
-        }
-
-        if (country === 'NG') {
-            // 2. Call TextBee with a timeout to avoid hanging the server
-            const tbResponse = await axios.get(`https://api.textbee.dev/api/v1/devices/${deviceId.trim()}`, {
-                headers: { 'x-api-key': textBeeKey.trim() },
-                timeout: 5000 
-            });
-
-            // 3. Match the 'Enabled' status from your dashboard screenshot
-            if (tbResponse.data && tbResponse.data.status === 'Enabled') {
-                return res.json({
-                    success: true,
-                    numbers: ["+234... (Private SIM)"], 
-                    targetId: deviceId, 
-                    provider: 'textbee',
-                    cost: 850,
-                    serviceName: service 
-                });
-            }
-            return res.json({ success: false, message: "Samsung Device is currently Offline." });
-        }
-
-        return res.json({ success: false, message: "International lines coming soon." });
-
-    } catch (err) {
-        // 4. Capture the exact reason for the 500 error in your Vercel logs
-        console.error("TEXTBEE_GATEWAY_ERROR:", err.response?.data || err.message);
-        
-        return res.status(500).json({ 
-            success: false, 
-            message: "Failed to connect to Samsung device.",
-            error_type: err.response?.status === 401 ? "Unauthorized (Bad API Key)" : "Network/Logic Error"
-        });
-    }
-}
 
 async function handleGetStock(req, res) {
     try {

@@ -314,14 +314,20 @@
             `).join('');
         }
 
-        function selectService(id, name, element) {
-            document.querySelectorAll('.service-card').forEach(c => c.classList.remove('active'));
-            element.classList.add('active');
-            selectedService = name;
-            document.getElementById('summaryService').innerText = name;
-            document.getElementById('countrySection').classList.replace('step-hidden', 'step-visible');
-            updateButtonState();
-        }
+      // --- UPDATED SELECT SERVICE ---
+function selectService(id, name, element) {
+    document.querySelectorAll('.service-card').forEach(c => c.classList.remove('active'));
+    element.classList.add('active');
+    
+    selectedService = id; 
+    document.getElementById('summaryService').innerText = name;
+    
+    document.getElementById('countrySection').classList.replace('step-hidden', 'step-visible');    
+    if (selectedCountry) {
+        fetchRealInventory();
+    }
+    updateButtonState();
+}
 
         function renderCountryOptions(filter = "") {
             const container = document.getElementById('countryOptions');

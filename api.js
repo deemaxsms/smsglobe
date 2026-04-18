@@ -3376,8 +3376,14 @@ async function handleGetRdpRequests(req, res) {
         return res.status(500).json({ success: false, message: "Failed to fetch" });
     }
 }
+
 async function handleGetNumbers(req, res) {
-    try { await connectDB(); } catch (e) { return res.status(500).json({ success: false, message: "DB Down" }); }
+    // 1. Database Connection
+    try { 
+        await connectDB(); 
+    } catch (e) { 
+        return res.status(500).json({ success: false, message: "Database Connection Error" }); 
+    }
 
     const { country, service } = req.query; 
 
@@ -3389,17 +3395,17 @@ async function handleGetNumbers(req, res) {
             const cleanId = deviceId.trim();
             const cleanKey = textBeeKey.trim();
 
-            // DASHBOARD MATCH: Using app.textbee.dev instead of api.textbee.dev
+            // FIX: Using the dashboard-specific subdomain 'app.' and the devices path
             const tbUrl = `https://app.textbee.dev/api/v1/gateway/devices/${cleanId}`;
 
-            console.log("Hitting Dashboard-Verified Path:", tbUrl);
+            console.log("Syncing with Samsung Dashboard at:", tbUrl);
 
             const tbResponse = await axios.get(tbUrl, {
                 headers: { 'x-api-key': cleanKey },
                 timeout: 10000 
             });
 
-            // Your dashboard shows status "Enabled" (Green badge)
+            // Status 'Enabled' is confirmed by your dashboard screenshot
             const status = tbResponse.data?.status;
 
             if (status === 'Enabled' || status === 'Online') {
@@ -3415,15 +3421,16 @@ async function handleGetNumbers(req, res) {
             
             return res.status(400).json({ 
                 success: false, 
-                message: `Device is currently ${status || 'Offline'}. Check your Samsung phone.` 
+                message: `Samsung is currently ${status || 'Offline'}. Please wake the phone.` 
             });
         }
 
-        return res.status(404).json({ success: false, message: "Country not supported." });
+        return res.status(404).json({ success: false, message: "International lines pending." });
 
     } catch (err) {
+        // Log detailed error for troubleshooting
         const apiErr = err.response?.data || err.message;
-        console.error("TEXTBEE_DASHBOARD_ERROR:", apiErr);
+        console.error("TEXTBEE_SYNC_FAILED:", apiErr);
 
         return res.status(500).json({ 
             success: false, 

@@ -2267,18 +2267,37 @@ if (isRDP) {
     `;
 }
 else if (isVPN) {
+    // 1. Data Extraction
     const vpnCreds = credentials.vpnCredentials || {};        
-    const targetType = credentials.targetDevice || credentials.deviceType || "";     
+    
+    // Normalize the target device (Phone vs PC)
+    const targetType = (credentials.targetDevice || credentials.deviceType || "Phone").toLowerCase(); 
+    
+    // Extract potential credential values
     const mUser = vpnCreds.username || credentials.username || "";
     const mPass = vpnCreds.password || credentials.password || "";    
     const pcUser = credentials.pcUsername || "";
     const pcPass = credentials.pcPassword || "";    
     const aCode = credentials.activationCode || "";    
     const adminInstructions = credentials.instructions || "Follow the setup guide in your dashboard.";
-    const showMobile = (targetType.toLowerCase() === 'phone' || targetType === "") && !!(mUser && mUser !== "N/A");    
-    const isPCDevice = targetType.toLowerCase() === 'pc';
-    const showPC = isPCDevice && !!(pcUser && pcUser !== "N/A");
-    const showCode = isPCDevice && !!(aCode && aCode !== "N/A");
+
+    // 2. Strict Logic Flags
+    const isPC = targetType === 'pc';
+    const isPhone = targetType === 'phone' || targetType === "";
+
+    // Determine what to display based on the device intent
+    const showCode = isPC && !!(aCode && aCode !== "N/A");
+    
+    // PC section: only show if device is PC and data exists
+    const showPC = isPC && !!(pcUser || mUser) && !showCode; 
+    
+    // Mobile section: only show if device is Phone and data exists
+    const showMobile = isPhone && !!(mUser && mUser !== "N/A");
+
+    // Dynamic Labeling
+    const label = isPC ? "PC" : "Mobile";
+    const displayUser = isPC ? (pcUser || mUser) : mUser;
+    const displayPass = isPC ? (pcPass || mPass) : mPass;
 
     // 3. Build HTML
     dataTableHtml = `
@@ -2301,24 +2320,14 @@ else if (isVPN) {
             </td>
         </tr>` : ''}
 
-        ${showMobile ? `
+        ${(showMobile || showPC) ? `
         <tr>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Mobile Username:</strong></td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right; color: #101828;">${mUser}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>${label} Username:</strong></td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right; color: #101828;">${displayUser}</td>
         </tr>
         <tr>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>Mobile Password:</strong></td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right; color: #101828;">${mPass}</td>
-        </tr>` : ''}
-
-        ${showPC ? `
-        <tr>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>PC Username/ID:</strong></td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right; color: #101828;">${pcUser}</td>
-        </tr>
-        <tr>
-            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>PC Password:</strong></td>
-            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right; color: #101828;">${pcPass}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee;"><strong>${label} Password:</strong></td>
+            <td style="padding: 10px; border-bottom: 1px solid #eee; text-align:right; color: #101828;">${displayPass}</td>
         </tr>` : ''}
 
         <tr>
@@ -2333,6 +2342,7 @@ else if (isVPN) {
         </tr>
     `;
 }
+
  else if (isESIM_Activation) {
         const confNo = credentials.confirmationNumber || credentials.activationCode;
         const meta = credentials.metadata || {};

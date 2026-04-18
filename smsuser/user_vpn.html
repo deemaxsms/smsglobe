@@ -698,8 +698,7 @@ async function buyVPN(vpnId) {
             }, 300);
         }
     }
-
-  function showSuccessDetails(order, vpnData) {
+function showSuccessDetails(order, vpnData) {
     // 1. Basic State Toggle
     document.getElementById('confirmState').classList.add('hidden');
     document.getElementById('successState').classList.remove('hidden');
@@ -716,8 +715,10 @@ async function buyVPN(vpnId) {
         return;
     }
 
-    // 2. EXTRACTION LOGIC (VPN & PC PRIORITIZED)
-    // Checks for PC-specific fields first, then standard VPN nested credentials
+    // Identify Device Type from Order or VPN data
+    const deviceType = (order.deviceType || vpnData?.deviceType || "Phone").toUpperCase();
+
+    // 2. EXTRACTION LOGIC
     const finalUser = order.pcUsername || 
                      (order.vpnCredentials && order.vpnCredentials.username) || 
                      order.username;
@@ -728,12 +729,16 @@ async function buyVPN(vpnId) {
 
     const finalCode = order.activationCode;
 
-    // 3. DISPLAY VPN USERNAME / PC ID
+    // 3. DISPLAY USERNAME WITH DYNAMIC PREFIX
     if (finalUser && finalUser !== "N/A" && finalUser !== "---") {
         let displayUser = finalUser;
         
-        // Add indicator if this is a PC-specific VPN login
-        if (order.pcUsername) displayUser = `[PC] ${displayUser}`;
+        // Dynamic Labeling based on Device Type
+        if (deviceType === "PC") {
+            displayUser = `[PC] ${displayUser}`;
+        } else {
+            displayUser = `[MOBILE] ${displayUser}`;
+        }
         
         document.getElementById('resUser').innerText = displayUser;
         userWrap?.classList.remove('hidden');
@@ -745,21 +750,21 @@ async function buyVPN(vpnId) {
         passWrap?.classList.remove('hidden');
     }
     
-    // 5. DISPLAY ACTIVATION CODE (If applicable for the VPN provider)
+    // 5. DISPLAY ACTIVATION CODE
     if (finalCode && finalCode !== "N/A" && finalCode !== "") {
         document.getElementById('resCode').innerText = finalCode;
         codeWrap?.classList.remove('hidden');
     }
 
     // 6. VPN SETUP INSTRUCTIONS
-    const defaultInstr = "Your VPN is ready. Follow the setup instructions below or check your email for a copy of your login details.";
+    const defaultInstr = "Your VPN is ready. Check your dashboard for setup steps.";
     document.getElementById('resInstructions').innerText = order.instructions || vpnData?.instructions || defaultInstr;
 
     // 7. DEVICE LIMITS
     const limitEl = document.getElementById('resLimit');
     if (limitEl) {
         const limit = vpnData?.deviceLimit || order.deviceLimit || 1;
-        limitEl.innerText = `${limit} Device(s)`;
+        limitEl.innerText = `${limit} Device(s) Allowed`;
     }
 }
 

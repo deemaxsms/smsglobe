@@ -323,22 +323,29 @@ async function fetchProxies() {
         } catch (err) { alert('Server error during deletion.'); }
     }
 
-    function toggleBulkUpload() {
+   function toggleBulkUpload() {
     const bulkView = document.getElementById('bulkCodeView');
     const singleView = document.getElementById('singleCodeView');
-    const bulkBtn = event.currentTarget;
+    const bulkBtn = document.querySelector('[onclick="toggleBulkUpload()"]');
 
     if (bulkView.classList.contains('hidden')) {
+        // Show Bulk, Hide Single
         bulkView.classList.remove('hidden');
         singleView.classList.add('hidden');
-        bulkBtn.innerText = "✕ CANCEL BULK";
+        bulkBtn.innerHTML = "✕ USE SINGLE CODE";
+        bulkBtn.classList.replace('bg-brand-orange/10', 'bg-red-50');
+        bulkBtn.classList.replace('text-brand-orange', 'text-red-500');
     } else {
+        // Show Single, Hide Bulk
         bulkView.classList.add('hidden');
         singleView.classList.remove('hidden');
-        bulkBtn.innerText = "+ BULK IMPORT";
-        document.getElementById('bulkCodes').value = ''; // Clear bulk on cancel
+        bulkBtn.innerHTML = "+ BULK IMPORT";
+        bulkBtn.classList.replace('bg-red-50', 'bg-brand-orange/10');
+        bulkBtn.classList.replace('text-red-500', 'text-brand-orange');
+        document.getElementById('bulkCodes').value = ''; // Clear bulk on return to single
     }
 }
+
 
    document.getElementById('proxyForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -418,16 +425,24 @@ async function fetchProxies() {
 });
 
 
-    function openAddProxyModal() {
-        const form = document.getElementById('proxyForm');
-        delete form.dataset.editId; 
-        form.reset();
-        document.getElementById('modalTitle').innerText = 'Proxy Package Configuration';
-        document.getElementById('submitBtn').innerText = 'Deploy Proxy Package';
-        document.getElementById('pricingContainer').innerHTML = '';
-        addPriceRow();
-        document.getElementById('proxyModal').classList.remove('hidden');
-    }
+   function openAddProxyModal() {
+    const form = document.getElementById('proxyForm');
+    delete form.dataset.editId; 
+    form.reset();
+    
+    // Ensure we start in "Single" mode when opening a new modal
+    document.getElementById('bulkCodeView').classList.add('hidden');
+    document.getElementById('singleCodeView').classList.remove('hidden');
+    const bulkBtn = document.querySelector('[onclick="toggleBulkUpload()"]');
+    bulkBtn.innerHTML = "+ BULK IMPORT";
+    bulkBtn.className = "text-[10px] font-bold bg-brand-orange/10 text-brand-orange px-2 py-1 rounded hover:bg-brand-orange/20 transition-all";
+
+    document.getElementById('modalTitle').innerText = 'Proxy Package Configuration';
+    document.getElementById('submitBtn').innerText = 'Deploy Proxy Package';
+    document.getElementById('pricingContainer').innerHTML = '';
+    addPriceRow();
+    document.getElementById('proxyModal').classList.remove('hidden');
+}
 
     function closeModal() { document.getElementById('proxyModal').classList.add('hidden'); }
     function logout() { localStorage.removeItem('smsglobe_admin_token'); window.location.href = 'sms_login.html'; }

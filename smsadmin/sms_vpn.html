@@ -342,9 +342,13 @@
                     <tr class="hover:bg-brand-background/30 transition-colors">
                         <td class="px-6 py-5">
                             <div class="flex items-center gap-4">
-                                <div class="w-10 h-10 rounded-xl bg-gray-50 border border-brand-border overflow-hidden flex-shrink-0">
-                                    <img src="${v.image || 'https://via.placeholder.com/40'}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/40'">
-                                </div>
+                               <div class="w-10 h-10 rounded-xl bg-gray-50 border border-brand-border overflow-hidden flex-shrink-0">
+    <img 
+        src="${v.image || 'https://placehold.co/40'}" 
+        class="w-full h-full object-cover" 
+        onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(v.name)}&background=0F54C6&color=fff';"
+    >
+</div>
                                 <div class="min-w-0">
                                     <div class="font-bold text-brand-darkText truncate max-w-[150px]">${v.name}</div>
                                     <div class="text-[11px] text-brand-lightText">${v.deviceLimit || 0} Device Limit (${v.deviceType || 'Phone'})</div>

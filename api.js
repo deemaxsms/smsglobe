@@ -1661,15 +1661,27 @@ async function handlePurchaseWithWallet(req, res) {
         }
     };
 }
+
 else if (metadata?.serviceType === 'virtual_number') {
     itemType = "Sms_Number"; 
     
-    costNGN = 850; 
+    // Use the planAmount sent from the frontend if available, else fallback
+    costNGN = planAmount ? Math.round(Number(planAmount)) : 850; 
 
     productDetails.name = "Samsung Private SIM (NG)";
     productDetails.plan = metadata.serviceName || "SMS Verification";
+
+    // SAFETY CHECK: Ensure process.env exists before trimming
+    const rawDeviceId = process.env.TEXTBEE_DEVICE_ID || "";
+    const deviceId = rawDeviceId.trim();
+
+    if (!deviceId) {
+        console.error("CRITICAL: TEXTBEE_DEVICE_ID is not defined in .env");
+        return res.status(500).json({ success: false, message: "SMS Gateway configuration missing." });
+    }
+
     orderSpecifics = {
-        deviceId: process.env.TEXTBEE_DEVICE_ID.trim(),
+        deviceId: deviceId,
         targetNumber: mobileNumber, 
         serviceName: metadata.serviceName,
         status: 'pending', 
@@ -1681,14 +1693,15 @@ else if (metadata?.serviceType === 'virtual_number') {
         }
     };
 
+    // Create the SmsNumber record
     await SmsNumber.create({
         userId: user._id,
         userEmail: user.email,
-        deviceId: orderSpecifics.deviceId,
+        deviceId: deviceId,
         phoneNumber: mobileNumber,
         serviceName: metadata.serviceName,
         amount: costNGN,
-        status: 'pending' // The Webhook flips this to 'completed' via handleSmsReceive
+        status: 'pending'
     });
 }
 

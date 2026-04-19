@@ -254,6 +254,8 @@
 </button>
 
     <script>
+        const API_BASE_URL = '/api';
+
         let currentMode = 'activation'; // or 'rent'
         let countries = [
             { id: 'US', name: 'USA', rate: 1500, available: 'Syncing...' },
@@ -284,39 +286,49 @@
         let userBalance = 0;
         let userBonusBalance = 0;
 
-
-        
 async function fetchUserProfile() {
+    const token = localStorage.getItem('userToken');
+    if (!token) return; // Don't even try if not logged in
+
     try {
         const res = await fetch(`${API_BASE_URL}/user-profile`, {
             headers: { 
-                'Authorization': `Bearer ${localStorage.getItem('userToken')}`,
+                'Authorization': `Bearer ${token}`,
                 'Cache-Control': 'no-cache' 
             }
         });
-        if (res.status === 401) {
-            return logout(); 
-        }
+
+        if (res.status === 401) return logout(); 
+
         const data = await res.json();
+
         if (res.status === 403 && data.isUnverified) {
-            console.warn("User is unverified. Redirecting to verification...");
             window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
             return;
         }
+
         if (data.success) {
             const userData = data.user || data;
+            
+            // Update global variables
             userBalance = userData.balance || 0; 
-            userBonusBalance = userData.bonusBalance || 0;             
-            if (document.getElementById('displayBalance')) {
-                document.getElementById('displayBalance').innerText = `₦${userBalance.toLocaleString()}`;
-            }
-            if (document.getElementById('displayBonus')) {
-               document.getElementById('displayBonus').innerText = `₦${userBonusBalance.toLocaleString()}`;
-            }
-            if (document.getElementById('userReferralCount')) {
-                document.getElementById('userReferralCount').innerText = userData.referralCount || 0;
-            }
+            userBonusBalance = userData.bonusBalance || 0; 
+
+            // Update UI Elements
+            const balEl = document.getElementById('displayBalance');
+            const bonusEl = document.getElementById('displayBonus');
+            const refEl = document.getElementById('userReferralCount');
+            const priceEl = document.getElementById('displayPrice');
+
+            if (balEl) balEl.innerText = `₦${userBalance.toLocaleString()}`;
+            if (bonusEl) bonusEl.innerText = `₦${userBonusBalance.toLocaleString()}`;
+            if (refEl) refEl.innerText = userData.referralCount || 0;
+
+            // Update dashboard cache
             localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
+            
+            // Re-calculate price display to check if balance is now sufficient
+            if (typeof calculateFinalPrice === "function") calculateFinalPrice();
         }
     } catch (err) {
         console.error("Failed to fetch profile details:", err);
@@ -628,7 +640,8 @@ function toggleSupportMenu() {
 
         document.getElementById('openSidebar').addEventListener('click', toggleSidebar);
         document.getElementById('closeSidebar').addEventListener('click', toggleSidebar);
-       window.addEventListener('load', () => {
+      
+        window.addEventListener('load', () => {
     fetchUserProfile();
     renderServiceGrid(); 
     renderCountryOptions(); 

@@ -275,7 +275,8 @@ const esimActivationSchema = new mongoose.Schema({
 esimActivationSchema.index({ createdAt: -1 });
 const EsimActivation = mongoose.models.EsimActivation || mongoose.model('EsimActivation', esimActivationSchema, 'esim_activations');
 
-const rentedNumberSchema = new mongoose.Schema({
+
+const smsNumberSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     userEmail: { type: String, required: true },
     
@@ -302,10 +303,9 @@ const rentedNumberSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-// Index for the Webhook lookup
-rentedNumberSchema.index({ deviceId: 1, status: 1, createdAt: -1 });
+smsNumberSchema.index({ deviceId: 1, status: 1, createdAt: -1 });
 
-const RentedNumber = mongoose.models.RentedNumber || mongoose.model('RentedNumber', rentedNumberSchema);
+const SmsNumber = mongoose.models.SmsNumber || mongoose.model('SmsNumber', smsNumberSchema);
 
 // --- TRANSACTION SCHEMA ---
 const transactionSchema = new mongoose.Schema({
@@ -1661,6 +1661,37 @@ async function handlePurchaseWithWallet(req, res) {
         }
     };
 }
+else if (metadata?.serviceType === 'virtual_number') {
+    itemType = "Sms_Number"; 
+    
+    costNGN = 850; 
+
+    productDetails.name = "Samsung Private SIM (NG)";
+    productDetails.plan = metadata.serviceName || "SMS Verification";
+    orderSpecifics = {
+        deviceId: process.env.TEXTBEE_DEVICE_ID.trim(),
+        targetNumber: mobileNumber, 
+        serviceName: metadata.serviceName,
+        status: 'pending', 
+        instructions: "Waiting for SMS... Please send your code now. The code will expire in 15 minutes.",
+        metadata: {
+            ...metadata,
+            provider: 'textbee',
+            deviceModel: "Samsung SM-A075F"
+        }
+    };
+
+    await SmsNumber.create({
+        userId: user._id,
+        userEmail: user.email,
+        deviceId: orderSpecifics.deviceId,
+        phoneNumber: mobileNumber,
+        serviceName: metadata.serviceName,
+        amount: costNGN,
+        status: 'pending' // The Webhook flips this to 'completed' via handleSmsReceive
+    });
+}
+
 else if (rdpId) {
     itemType = "RDP";
     const rdpPlans = {
@@ -3467,7 +3498,6 @@ async function handleSmsReceive(req, res) {
     const { message, deviceId, phoneNumber } = req.body;
     const signingSecret = req.headers['x-signing-secret'];
 
-    // Verify it's actually from your TextBee configuration
     if (signingSecret !== "c5d55ea9-1dc3-4569-81d8-9a49114c2155") {
         return res.status(401).send("Unauthorized");
     }
@@ -3476,19 +3506,30 @@ async function handleSmsReceive(req, res) {
         // Extract 4-6 digit OTP
         const otpCode = message.match(/\d{4,6}/)?.[0];
 
-        if (otpCode) {
-            // Find the last pending order for this device and update it
-            // This allows the 'Purchase with Wallet' flow to see the code
-            await Order.findOneAndUpdate(
-                { deviceId: deviceId, status: 'pending' },
-                { 
-                    smsCode: otpCode, 
-                    fullMessage: message, 
-                    status: 'completed' 
-                },
-                { sort: { createdAt: -1 } }
-            );
+      if (otpCode) {
+    // Update the DB and capture the updated document
+    const updatedRecord = await SmsNumber.findOneAndUpdate(
+        { 
+            deviceId: deviceId, 
+            status: 'pending' 
+        },
+        { 
+            smsCode: otpCode, 
+            fullMessage: message, 
+            status: 'completed' 
+        },
+        { 
+            sort: { createdAt: -1 },
+            new: true // Returns the updated document so you can log it
         }
+    );
+
+    if (updatedRecord) {
+        console.log(`OTP ${otpCode} assigned to user: ${updatedRecord.userEmail}`);
+    } else {
+        console.warn(`SMS received but no pending order found for device: ${deviceId}`);
+    }
+}
 
         return res.status(200).send("OK");
     } catch (err) {

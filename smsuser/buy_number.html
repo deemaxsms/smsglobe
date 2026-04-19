@@ -280,6 +280,46 @@
         let selectedNumber = null;
         let selectedTargetId = null;
         let finalPrice = 0;
+        let userBalance = 0;
+
+
+        
+async function fetchUserProfile() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/user-profile`, {
+            headers: { 
+                'Authorization': `Bearer ${localStorage.getItem('userToken')}`,
+                'Cache-Control': 'no-cache' 
+            }
+        });
+        if (res.status === 401) {
+            return logout(); 
+        }
+        const data = await res.json();
+        if (res.status === 403 && data.isUnverified) {
+            console.warn("User is unverified. Redirecting to verification...");
+            window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
+            return;
+        }
+        if (data.success) {
+            const userData = data.user || data;
+            userBalance = userData.balance || 0; 
+            userBonusBalance = userData.bonusBalance || 0;             
+            if (document.getElementById('displayBalance')) {
+                document.getElementById('displayBalance').innerText = `₦${userBalance.toLocaleString()}`;
+            }
+            if (document.getElementById('displayBonus')) {
+               document.getElementById('displayBonus').innerText = `₦${userBonusBalance.toLocaleString()}`;
+            }
+            if (document.getElementById('userReferralCount')) {
+                document.getElementById('userReferralCount').innerText = userData.referralCount || 0;
+            }
+            localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
+        }
+    } catch (err) {
+        console.error("Failed to fetch profile details:", err);
+    }
+}
 
         function setMode(mode) {
             currentMode = mode;
@@ -429,40 +469,92 @@ function selectNumber(num, element) {
             }
         }
 
-       async function processPurchase() {
+async function processPurchase() {
     const btn = document.getElementById('purchaseBtn');
+    const token = localStorage.getItem('userToken');
+
+    // 1. Pre-flight Checks
+    if (!token) {
+        Swal.fire('Please Login', 'You need to be logged in to purchase a number.', 'warning');
+        return;
+    }
+
+    if (userBalance < finalPrice) {
+        Swal.fire('Insufficient Funds', `You need ₦${finalPrice.toLocaleString()} to complete this purchase.`, 'error');
+        return;
+    }
+
+    // 2. UI Loading State
     btn.disabled = true;
     btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>`;
-    
+
+    // 3. Payload Construction
+    // This matches the destructuring in your handlePurchaseWithWallet
     const payload = {
-        targetId: selectedTargetId, // Sent to Textverified
-        service: selectedService,
-        countryCode: selectedCountry.id,
-        price: finalPrice,
-        type: currentMode, // 'activation' or 'rent'
+        mobileNumber: selectedNumber, // The +234 number shown in the card
+        planAmount: finalPrice,
+        useBonus: false, 
+        metadata: {
+            serviceType: 'virtual_number', // Important: This triggers the specific logic block
+            serviceName: document.getElementById('summaryService').innerText,
+            countryCode: selectedCountry.id,
+            provider: 'textbee'
+        }
     };
 
     try {
-        const response = await fetch('/api/rentals/activate', { // Match your router case
+        const response = await fetch('/api/purchase-with-wallet', { 
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` 
+            },
             body: JSON.stringify(payload)
         });
+        
         const res = await response.json();
         
         if (res.success) {
-            // Redirect to the status page using the NEW rentalId from Textverified
-            window.location.href = `/order-status/${res.rentalId}`;
+            Swal.fire({
+                title: 'Payment Successful',
+                text: "Deducted from wallet. Redirecting to your SMS dashboard...",
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
+            setTimeout(() => {
+                window.location.href = `/order-status/${res.order._id}`;
+            }, 2000);
         } else { 
-            alert(res.message); 
+            Swal.fire('Failed', res.message || "Purchase could not be completed.", 'error');
             updateButtonState(); 
         }
     } catch (err) { 
-        alert("Network error."); 
+        console.error("Purchase Error:", err);
+        Swal.fire('Network Error', "Could not connect to the payment server.", 'error');
         updateButtonState(); 
     }
 }
 
+function calculateFinalPrice() {
+    if (!selectedCountry) return;
+    let multiplier = 1;
+    if (currentMode === 'rent') {
+        const select = document.getElementById('rentalPeriod');
+        multiplier = parseFloat(select.options[select.selectedIndex].getAttribute('data-multi'));
+    }
+    finalPrice = Math.round(selectedCountry.rate * multiplier);
+    
+    const priceDisplay = document.getElementById('displayPrice');
+    priceDisplay.innerText = `₦${finalPrice.toLocaleString()}`;
+
+    // Visual warning if balance is low
+    if (userBalance < finalPrice) {
+        priceDisplay.classList.add('text-red-500');
+    } else {
+        priceDisplay.classList.remove('text-red-500');
+    }
+}
 
 // Fix the 404 by changing the URL to 'get-stock'
 async function syncInventory() {

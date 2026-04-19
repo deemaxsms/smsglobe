@@ -645,14 +645,14 @@ function logout() {
     localStorage.removeItem('userToken');
     localStorage.removeItem('dashboard_cache');
     // Send them back to the login page
-    window.location.href = 'login.html';
+    window.location.href = 'user_login.html';
 }
 
 // Optional but good: Check if the user is logged in before even trying to fetch profile
 function checkAuth() {
     const token = localStorage.getItem('userToken');
     if (!token) {
-        window.location.href = 'login.html';
+        window.location.href = 'user_login.html';
     }
 }
 

@@ -17,6 +17,7 @@
 
     <link rel="icon" type="image/png" href="https://i.imgur.com/syKFaNI.png">
     <link rel="apple-touch-icon" href="https://i.imgur.com/syKFaNI.png">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -281,6 +282,7 @@
         let selectedTargetId = null;
         let finalPrice = 0;
         let userBalance = 0;
+        let userBonusBalance = 0;
 
 
         
@@ -473,32 +475,36 @@ async function processPurchase() {
     const btn = document.getElementById('purchaseBtn');
     const token = localStorage.getItem('userToken');
 
-    // 1. Pre-flight Checks
+    // 1. Check Login
     if (!token) {
-        Swal.fire('Please Login', 'You need to be logged in to purchase a number.', 'warning');
+        Swal.fire({
+            title: 'Login Required',
+            text: 'Please login to purchase a number.',
+            icon: 'warning',
+            confirmButtonColor: '#0F54C6'
+        }).then(() => { window.location.href = 'login.html'; });
         return;
     }
 
+    // 2. Check Balance
     if (userBalance < finalPrice) {
-        Swal.fire('Insufficient Funds', `You need ₦${finalPrice.toLocaleString()} to complete this purchase.`, 'error');
+        Swal.fire('Insufficient Funds', `You need ₦${finalPrice.toLocaleString()} in your wallet.`, 'error');
         return;
     }
 
-    // 2. UI Loading State
     btn.disabled = true;
     btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>`;
 
-    // 3. Payload Construction
-    // This matches the destructuring in your handlePurchaseWithWallet
+    // 3. Prepare Payload for Wallet API
     const payload = {
-        mobileNumber: selectedNumber, // The +234 number shown in the card
+        mobileNumber: selectedNumber,
         planAmount: finalPrice,
-        useBonus: false, 
+        useBonus: false,
         metadata: {
-            serviceType: 'virtual_number', // Important: This triggers the specific logic block
+            serviceType: 'virtual_number', // Matches your backend Samsung logic
             serviceName: document.getElementById('summaryService').innerText,
             countryCode: selectedCountry.id,
-            provider: 'textbee'
+            provider: selectedCountry.id === 'NG' ? 'textbee' : 'textverified'
         }
     };
 
@@ -517,21 +523,23 @@ async function processPurchase() {
         if (res.success) {
             Swal.fire({
                 title: 'Payment Successful',
-                text: "Deducted from wallet. Redirecting to your SMS dashboard...",
+                text: "Order placed! Redirecting to verify your code...",
                 icon: 'success',
                 timer: 2000,
                 showConfirmButton: false
             });
+
             setTimeout(() => {
+                // Redirect to status page with the new Order ID
                 window.location.href = `/order-status/${res.order._id}`;
             }, 2000);
         } else { 
-            Swal.fire('Failed', res.message || "Purchase could not be completed.", 'error');
+            Swal.fire('Error', res.message || "Purchase failed.", 'error');
             updateButtonState(); 
         }
     } catch (err) { 
         console.error("Purchase Error:", err);
-        Swal.fire('Network Error', "Could not connect to the payment server.", 'error');
+        Swal.fire('Connection Error', "Could not reach the server.", 'error');
         updateButtonState(); 
     }
 }
@@ -620,7 +628,12 @@ function toggleSupportMenu() {
 
         document.getElementById('openSidebar').addEventListener('click', toggleSidebar);
         document.getElementById('closeSidebar').addEventListener('click', toggleSidebar);
-        window.onload = () => { renderServiceGrid(); renderCountryOptions(); syncInventory();};
+       window.addEventListener('load', () => {
+    fetchUserProfile();
+    renderServiceGrid(); 
+    renderCountryOptions(); 
+    syncInventory();
+});
     </script>
 </body>
 </html>

@@ -332,7 +332,7 @@ const orderSchema = new mongoose.Schema({
     fullName: { type: String },         
     productType: { 
         type: String, 
-        enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill', 'eSIM_Activation', 'RDP', 'RentedNumber'], 
+        enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill', 'eSIM_Activation', 'RDP', 'RentedNumber', 'SmsNumber'], 
         required: true 
     },
     planName: String, 
@@ -1663,7 +1663,7 @@ async function handlePurchaseWithWallet(req, res) {
 }
 
 else if (metadata?.serviceType === 'virtual_number') {
-    itemType = "Sms_Number"; 
+    itemType = "SmsNumber"; 
     
     // Use the planAmount sent from the frontend if available, else fallback
     costNGN = planAmount ? Math.round(Number(planAmount)) : 850; 

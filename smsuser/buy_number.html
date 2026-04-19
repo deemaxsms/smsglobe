@@ -202,6 +202,34 @@
             </div>
         </div>
     </div>
+
+
+    <div id="activationPanel" class="hidden fixed inset-0 z-[60] bg-white flex flex-col p-6">
+    <div class="flex items-center justify-between mb-8">
+        <h2 class="text-xl font-black text-brand-darkText uppercase tracking-tighter">Live Activation</h2>
+        <span class="bg-green-100 text-green-600 px-3 py-1 rounded-full text-[10px] font-bold animate-pulse">Awaiting SMS...</span>
+    </div>
+
+    <div class="bg-brand-background rounded-3xl p-8 text-center border border-brand-border">
+        <p class="text-xs font-bold text-brand-midText mb-2 uppercase">Your Purchased Number</p>
+        <h3 id="displayPurchasedNumber" class="text-3xl font-black text-brand-blue tracking-widest mb-4">---</h3>
+        <button onclick="copyNumber()" class="text-[10px] bg-brand-blue/10 text-brand-blue font-bold px-4 py-2 rounded-xl">COPY NUMBER</button>
+    </div>
+
+    <div class="mt-8">
+        <label class="block text-[10px] font-bold text-brand-midText mb-4 uppercase text-center">Verification Code</label>
+        <div id="smsCodeContainer" class="flex justify-center gap-3">
+            <div class="w-12 h-16 border-2 border-brand-border rounded-2xl flex items-center justify-center text-2xl font-black text-brand-darkText animate-pulse">?</div>
+            <div class="w-12 h-16 border-2 border-brand-border rounded-2xl flex items-center justify-center text-2xl font-black text-brand-darkText animate-pulse">?</div>
+            <div class="w-12 h-16 border-2 border-brand-border rounded-2xl flex items-center justify-center text-2xl font-black text-brand-darkText animate-pulse">?</div>
+            <div class="w-12 h-16 border-2 border-brand-border rounded-2xl flex items-center justify-center text-2xl font-black text-brand-darkText animate-pulse">?</div>
+        </div>
+        <p id="fullSmsText" class="text-[10px] text-center text-brand-midText mt-6 italic px-4"></p>
+    </div>
+
+    <button onclick="location.reload()" class="mt-auto w-full py-4 bg-brand-background text-brand-darkText font-bold rounded-2xl border border-brand-border">Done / Buy Another</button>
+</div>
+
 <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end space-y-4">
     
     <div id="supportMenu" class="hidden flex flex-col space-y-3 mb-2 transition-all duration-300 transform translate-y-10 opacity-0 scale-95">
@@ -255,6 +283,8 @@
 
     <script>
         const API_BASE_URL = '/api';
+
+        let pollInterval;
 
         let currentMode = 'activation'; // or 'rent'
         let countries = [
@@ -493,33 +523,24 @@ async function processPurchase() {
     const btn = document.getElementById('purchaseBtn');
     const token = localStorage.getItem('userToken');
 
-    // 1. Check Login
     if (!token) {
-        Swal.fire({
-            title: 'Login Required',
-            text: 'Please login to purchase a number.',
-            icon: 'warning',
-            confirmButtonColor: '#0F54C6'
-        }).then(() => { window.location.href = 'login.html'; });
+        Swal.fire({ title: 'Login Required', icon: 'warning' });
         return;
     }
 
-    // 2. Check Balance
     if (userBalance < finalPrice) {
-        Swal.fire('Insufficient Funds', `You need ₦${finalPrice.toLocaleString()} in your wallet.`, 'error');
+        Swal.fire('Insufficient Funds', `You need ₦${finalPrice.toLocaleString()}`, 'error');
         return;
     }
 
     btn.disabled = true;
     btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>`;
 
-    // 3. Prepare Payload for Wallet API
     const payload = {
         mobileNumber: selectedNumber,
         planAmount: finalPrice,
-        useBonus: false,
         metadata: {
-            serviceType: 'virtual_number', // Matches your backend Samsung logic
+            serviceType: 'virtual_number',
             serviceName: document.getElementById('summaryService').innerText,
             countryCode: selectedCountry.id,
             provider: selectedCountry.id === 'NG' ? 'textbee' : 'textverified'
@@ -529,37 +550,33 @@ async function processPurchase() {
     try {
         const response = await fetch('/api/purchase-with-wallet', { 
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}` 
-            },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(payload)
         });
         
         const res = await response.json();
         
         if (res.success) {
-            Swal.fire({
-                title: 'Payment Successful',
-                text: "Order placed! Redirecting to verify your code...",
-                icon: 'success',
-                timer: 2000,
-                showConfirmButton: false
-            });
-
-            setTimeout(() => {
-                // Redirect to status page with the new Order ID
-                window.location.href = `/order-status/${res.order._id}`;
-            }, 2000);
+            document.querySelector('main').classList.add('hidden');
+                        document.getElementById('activationPanel').classList.remove('hidden');            
+            document.getElementById('displayPurchasedNumber').innerText = selectedNumber;
+            startSmsPolling(res.order._id);
+            
         } else { 
             Swal.fire('Error', res.message || "Purchase failed.", 'error');
             updateButtonState(); 
         }
     } catch (err) { 
         console.error("Purchase Error:", err);
-        Swal.fire('Connection Error', "Could not reach the server.", 'error');
         updateButtonState(); 
     }
+}
+
+// Function to copy number to clipboard
+function copyNumber() {
+    const num = document.getElementById('displayPurchasedNumber').innerText;
+    navigator.clipboard.writeText(num);
+    Swal.fire({ title: 'Copied!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000, icon: 'success' });
 }
 
 function calculateFinalPrice() {
@@ -582,7 +599,53 @@ function calculateFinalPrice() {
     }
 }
 
-// Fix the 404 by changing the URL to 'get-stock'
+
+function startSmsPolling(orderId) {
+    // Clear any existing interval to prevent multiple loops
+    if (pollInterval) clearInterval(pollInterval);
+
+    pollInterval = setInterval(async () => {
+        try {
+            // We call your single API file with the specific action and order ID
+            const response = await fetch(`/api?action=order-details&id=${orderId}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
+            });
+            
+            const data = await response.json();
+
+            // Check if the order exists and if the smsCode has been filled by your webhook
+            if (data.success && data.order.smsCode) {
+                clearInterval(pollInterval); // Stop polling
+                
+                // 1. Update the UI Digit Boxes
+                const codeDigits = data.order.smsCode.split('');
+                const container = document.getElementById('smsCodeContainer');
+                
+                container.innerHTML = codeDigits.map(d => `
+                    <div class="w-12 h-16 bg-brand-blue text-white rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg shadow-brand-blue/30 border-none animate-bounce">
+                        ${d}
+                    </div>
+                `).join('');
+                
+                // 2. Show the full message if needed
+                if (document.getElementById('fullSmsText')) {
+                    document.getElementById('fullSmsText').innerText = data.order.fullMessage || "Code received successfully.";
+                }
+                
+                // 3. Success Notification
+                Swal.fire({
+                    title: 'Code Received!',
+                    text: `Verification Code: ${data.order.smsCode}`,
+                    icon: 'success',
+                    confirmButtonColor: '#0F54C6'
+                });
+            }
+        } catch (err) {
+            console.error("Polling error:", err);
+        }
+    }, 4000); // Check every 4 seconds
+}
+
 async function syncInventory() {
     try {
         const response = await fetch('/api/get-stock'); // Changed from get-inventory

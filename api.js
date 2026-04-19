@@ -522,6 +522,8 @@ app.all('/api/:action', async (req, res) => {
         case 'user-profile': return handleGetUserProfile(req, res);
         case 'user-messages': return handleGetUserMessages(req, res);
         case 'user-orders': return handleGetUserOrders(req, res);
+        case 'sms-receive': return handleSmsWebhook(req, res);
+        case 'order-details':  return handleGetOrderDetails(req, res);
         case 'change-password': return handleChangePassword(req, res);
         case 'forgot-password': return handleForgotPasswordRequest(req, res);
         case 'reset-password': return handleResetPassword(req, res);
@@ -3588,6 +3590,58 @@ async function handleGetUserOrders(req, res) {
             success: false, 
             message: "Failed to retrieve order history" 
         });
+    }
+}
+async function handleGetOrderDetails(req, res) {
+    try {
+        const orderId = req.query.id; // Get ID from URL query ?id=...
+        if (!orderId) return res.status(400).json({ success: false, message: "Order ID required" });
+
+        const order = await Order.findById(orderId);
+        if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+
+        res.json({ success: true, order });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+}
+
+// Add this function logic
+async function handleSmsWebhook(req, res) {
+    try {
+        const { message, sender, deviceId } = req.body;
+        console.log(`📩 New SMS from ${sender}: ${message}`);
+
+        const order = await Order.findOne({ 
+            targetNumber: sender, // or the number receiving the text
+            productType: 'SmsNumber',
+            status: 'successful' // The financial status was successful
+        }).sort({ createdAt: -1 });
+
+        if (!order) {
+            console.log("No matching pending order found for this sender.");
+            return res.status(200).json({ success: true }); // Always return 200 to TextBee
+        }
+
+        const codeMatch = message.match(/\b\d{4,6}\b/);
+        const extractedCode = codeMatch ? codeMatch[0] : null;
+
+        if (extractedCode) {
+            order.smsCode = extractedCode;
+            order.fullMessage = message;
+            await order.save();
+            await SmsNumber.findOneAndUpdate(
+                { phoneNumber: order.targetNumber, status: 'pending' },
+                { smsCode: extractedCode, fullMessage: message, status: 'completed' }
+            );
+
+            console.log(`✅ Code ${extractedCode} saved to Order ${order._id}`);
+        }
+
+        return res.status(200).json({ success: true });
+    } catch (err) {
+        console.error("Webhook Error:", err.message);
+        return res.status(200).json({ success: false }); // Still return 200 so TextBee doesn't retry infinitely
     }
 }
 

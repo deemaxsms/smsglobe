@@ -419,24 +419,32 @@ function selectService(id, name, element) {
     updateButtonState();
 }
 
-        function renderCountryOptions(filter = "") {
-            const container = document.getElementById('countryOptions');
-            const filtered = countries.filter(c => c.name.toLowerCase().includes(filter.toLowerCase()));
-            container.innerHTML = filtered.map(c => `
-                <div onclick="selectCountry('${c.id}')" class="flex items-center justify-between px-4 py-3 hover:bg-brand-background cursor-pointer border-b border-gray-50 last:border-0">
-                    <div class="flex items-center gap-3">
-                        <img src="https://flagcdn.com/w40/${c.id.toLowerCase()}.png" class="w-5 h-auto rounded-sm border border-gray-100">
-                        <div class="flex flex-col">
-                             <span class="text-xs font-bold text-brand-darkText">${c.name}</span>
-                             <span class="text-[9px] ${c.available > 0 ? 'text-green-600' : 'text-red-400'} font-bold uppercase">
-                                ${c.available === '...' ? 'Syncing...' : `${c.available} Available`}
-                             </span>
-                        </div>
+      function renderCountryOptions(filter = "") {
+    const container = document.getElementById('countryOptions');
+    const filtered = countries.filter(c => c.name.toLowerCase().includes(filter.toLowerCase()));
+    
+    container.innerHTML = filtered.map(c => {
+        // Determine color and text based on availability
+        const isAvailable = typeof c.available === 'number' && c.available > 0;
+        const statusText = typeof c.available === 'number' ? `${c.available} Available` : 'Syncing...';
+        const statusColor = isAvailable ? 'text-green-600' : 'text-red-400';
+
+        return `
+            <div onclick="selectCountry('${c.id}')" class="flex items-center justify-between px-4 py-3 hover:bg-brand-background cursor-pointer border-b border-gray-50 last:border-0">
+                <div class="flex items-center gap-3">
+                    <img src="https://flagcdn.com/w40/${c.id.toLowerCase()}.png" class="w-5 h-auto rounded-sm border border-gray-100">
+                    <div class="flex flex-col">
+                         <span class="text-xs font-bold text-brand-darkText">${c.name}</span>
+                         <span class="text-[9px] ${statusColor} font-bold uppercase tracking-tighter">
+                            ${statusText}
+                         </span>
                     </div>
-                    <span class="text-[10px] font-extrabold text-brand-blue">₦${Number(c.rate).toLocaleString()}</span>
                 </div>
-            `).join('');
-        }
+                <span class="text-[10px] font-extrabold text-brand-blue">₦${Number(c.rate).toLocaleString()}</span>
+            </div>
+        `;
+    }).join('');
+}
 
         function toggleCountryDropdown() {
             document.getElementById('countryDropdownList').classList.toggle('hidden');
@@ -701,19 +709,26 @@ function startSmsPolling(orderId) {
 
 async function syncInventory() {
     try {
-        const response = await fetch('/api/get-stock'); // Changed from get-inventory
+        const response = await fetch('/api/get-stock'); 
         const data = await response.json();
         
-        if (data.success) {
-            // Update Nigeria stock based on your Samsung status
-            const ng = countries.find(c => c.id === 'NG');
-            if (ng) {
-                ng.available = data.stock.NG; 
-                renderCountryOptions();
-            }
+        if (data.success && data.stock) {
+            // Loop through our local countries array
+            countries = countries.map(c => {
+                if (data.stock[c.id] !== undefined) {
+                    return { ...c, available: data.stock[c.id] };
+                }
+                return { ...c, available: 0 }; 
+            });
+
+            // Re-render the country list so the UI updates from "Syncing..." to the number
+            renderCountryOptions();
         }
     } catch (err) {
         console.error("Stock sync failed", err);
+        // Optional: Set to 0 if sync fails so it doesn't stay on "Syncing..."
+        countries = countries.map(c => ({ ...c, available: 0 }));
+        renderCountryOptions();
     }
 }
 
@@ -767,6 +782,8 @@ function checkAuth() {
     renderCountryOptions(); 
     syncInventory();
 });
+
+setInterval(syncInventory, 30000);
     </script>
 </body>
 </html>

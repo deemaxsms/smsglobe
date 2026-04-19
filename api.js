@@ -3439,49 +3439,49 @@ async function handleGetNumbers(req, res) {
                 timeout: 10000 
             });
 
-            // FIX: Access the .data property inside the response body
             const devicesArray = tbResponse.data?.data;
+            const myDevice = devicesArray.find(d => (d.deviceId === targetId) || (d._id === targetId));
 
-            if (!Array.isArray(devicesArray)) {
-                console.error("TEXTBEE_STRUCTURE_ERROR: 'data' is not an array", tbResponse.data);
-                return res.status(500).json({ success: false, message: "API Structure Error" });
-            }
-
-            // Find your Samsung ID in the nested array
-            const myDevice = devicesArray.find(d => 
-                (d.deviceId === targetId) || (d._id === targetId)
-            );
-
-            if (myDevice) {
-                // FIX: Your device uses "enabled: true" (boolean) based on your logs
-                if (myDevice.enabled === true) {
-                    return res.json({
-                        success: true,
-                        numbers: ["+234... (Samsung SIM)"], 
-                        targetId: targetId, 
-                        provider: 'textbee',
-                        cost: 850,
-                        serviceName: service 
-                    });
-                }
+            if (myDevice && myDevice.enabled === true) {
                 
-                return res.status(400).json({ 
-                    success: false, 
-                    message: "Samsung is registered but currently Disabled in the app." 
+                // AUTOMATIC DETECTION LOGIC:
+                // We check if the device object has 'slots' or 'sims' info from the app
+                let detectedNumbers = [];
+
+                if (myDevice.slots && myDevice.slots.length > 0) {
+                    // Map the actual SIM slots reported by the Samsung Phone
+                    detectedNumbers = myDevice.slots.map((slot, index) => ({
+                        number: slot.phoneNumber || "Unknown Number",
+                        label: `Samsung SIM ${index + 1}`
+                    }));
+                } else {
+                    // Fallback if TextBee doesn't report slots: 
+                    // Use the primary number registered to the device
+                    detectedNumbers = [
+                        { 
+                            number: myDevice.phoneNumber || "Primary SIM", 
+                            label: "Samsung Device" 
+                        }
+                    ];
+                }
+
+                return res.json({
+                    success: true,
+                    numbers: detectedNumbers, // This is now dynamic!
+                    targetId: targetId, 
+                    provider: 'textbee',
+                    cost: 850,
+                    serviceName: service 
                 });
             }
             
-            return res.status(400).json({ 
-                success: false, 
-                message: "Samsung ID not found in the active list.",
-                debug_hint: `Searching for ${targetId} in ${devicesArray.length} items.`
-            });
+            return res.status(400).json({ success: false, message: "Samsung Device is Offline." });
         }
 
         return res.status(404).json({ success: false, message: "Country not supported." });
 
     } catch (err) {
-        console.error("TEXTBEE_API_CRASH:", err.response?.data || err.message);
+        console.error("Fetch Error:", err.message);
         return res.status(500).json({ success: false, message: "Sync Error" });
     }
 }

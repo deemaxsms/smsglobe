@@ -473,32 +473,45 @@ function selectService(id, name, element) {
             document.getElementById('displayPrice').innerText = `₦${finalPrice.toLocaleString()}`;
         }
 
-function renderNumbers(list, targetId) {
+function renderNumbers(numbersArray, targetId) {
     const grid = document.getElementById('numberGrid');
     selectedTargetId = targetId; 
 
-    const displayNum = (list && list.length > 0) ? list[0] : "Searching for SIM...";
-
-    grid.innerHTML = `
-        <div onclick="selectNumber('${displayNum}', this)" class="number-card cursor-pointer bg-white border border-brand-border p-4 rounded-xl flex items-center justify-between group transition-all">
-            <div class="flex flex-col">
-                <span class="text-[8px] text-green-500 uppercase font-bold">Line Available</span>
-                <span class="text-sm font-black text-brand-darkText">${displayNum}</span>
+    // Clear previous numbers and render a card for each SIM detected
+    if (numbersArray && numbersArray.length > 0) {
+        grid.innerHTML = numbersArray.map(sim => `
+            <div onclick="selectNumber('${sim.number}', this)" 
+                 class="number-card cursor-pointer bg-white border border-brand-border p-4 rounded-xl flex items-center justify-between group transition-all hover:border-brand-blue">
+                <div class="flex flex-col">
+                    <span class="text-[8px] text-green-500 uppercase font-bold tracking-tighter">● Line Available</span>
+                    <span class="text-sm font-black text-brand-darkText">${sim.number}</span>
+                    <span class="text-[9px] text-brand-midText font-bold uppercase">${sim.label || 'Samsung SIM'}</span>
+                </div>
+                <div class="radio-indicator w-4 h-4 rounded-full border-2 border-brand-border group-[.active]:border-brand-blue group-[.active]:bg-brand-blue transition-colors"></div>
             </div>
-            <div class="w-4 h-4 rounded-full border-2 border-brand-border group-[.active]:border-brand-blue group-[.active]:bg-brand-blue"></div>
-        </div>
-    `;
-    
-    const card = grid.querySelector('.number-card');
-    if (card) {
-        selectNumber(displayNum, card);
+        `).join('');
+        
+        // Automatically select the first SIM by default
+        const firstCard = grid.querySelector('.number-card');
+        if (firstCard) {
+            selectNumber(numbersArray[0].number, firstCard);
+        }
+    } else {
+        grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold">No active SIMs detected on device.</p>`;
     }
 }
 
+/* --- UPDATED SELECT NUMBER: Visually highlights the card --- */
 function selectNumber(num, element) {
-    document.querySelectorAll('.number-card').forEach(c => c.classList.remove('active'));
-    element.classList.add('active');
-    selectedNumber = num; // Set to "READY" or a placeholder
+    // Remove active state from all cards
+    document.querySelectorAll('.number-card').forEach(c => {
+        c.classList.remove('active', 'border-brand-blue', 'bg-brand-blue/5');
+    });
+    
+    // Add active state to clicked card
+    element.classList.add('active', 'border-brand-blue', 'bg-brand-blue/5');
+    
+    selectedNumber = num;
     updateButtonState();
 }
 
@@ -518,7 +531,33 @@ function selectNumber(num, element) {
                 btn.disabled = false;
             }
         }
+async function fetchRealInventory() {
+    if (!selectedCountry || !selectedService) return;
 
+    const grid = document.getElementById('numberGrid');
+    grid.innerHTML = `
+        <div class="col-span-full flex flex-col items-center justify-center py-10">
+            <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
+            <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Scanning Samsung Modem...</p>
+        </div>
+    `;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/get-numbers?country=${selectedCountry.id}&service=${selectedService}`);
+        const data = await response.json();
+
+        if (data.success) {
+            // data.numbers is now the dynamic array from your backend
+            renderNumbers(data.numbers, data.targetId);
+        } else {
+            grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold uppercase">${data.message}</p>`;
+        }
+    } catch (err) {
+        grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-red-500 font-bold uppercase">Connection Error</p>`;
+    }
+}
+
+/* --- UPDATED PROCESS PURCHASE: Updated to send the specific SIM number --- */
 async function processPurchase() {
     const btn = document.getElementById('purchaseBtn');
     const token = localStorage.getItem('userToken');
@@ -529,7 +568,7 @@ async function processPurchase() {
     }
 
     if (userBalance < finalPrice) {
-        Swal.fire('Insufficient Funds', `You need ₦${finalPrice.toLocaleString()}`, 'error');
+        Swal.fire('Insufficient Funds', `You need ₦${finalPrice.toLocaleString()} to purchase this service.`, 'error');
         return;
     }
 
@@ -537,18 +576,19 @@ async function processPurchase() {
     btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>`;
 
     const payload = {
-        mobileNumber: selectedNumber,
+        mobileNumber: selectedNumber, // This will be the specific SIM number selected
         planAmount: finalPrice,
         metadata: {
             serviceType: 'virtual_number',
             serviceName: document.getElementById('summaryService').innerText,
             countryCode: selectedCountry.id,
+            deviceId: selectedTargetId, // Pass the device ID for the webhook to match
             provider: selectedCountry.id === 'NG' ? 'textbee' : 'textverified'
         }
     };
 
     try {
-        const response = await fetch('/api/purchase-with-wallet', { 
+        const response = await fetch(`${API_BASE_URL}/purchase-with-wallet`, { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(payload)
@@ -557,17 +597,30 @@ async function processPurchase() {
         const res = await response.json();
         
         if (res.success) {
+            // Hide purchase view, show activation panel
             document.querySelector('main').classList.add('hidden');
-                        document.getElementById('activationPanel').classList.remove('hidden');            
+            document.getElementById('activationPanel').classList.remove('hidden'); 
+            
+            // Display the purchased number clearly
             document.getElementById('displayPurchasedNumber').innerText = selectedNumber;
+            
+            // Start the polling interval for the SMS code
             startSmsPolling(res.order._id);
             
+            Swal.fire({
+                title: 'Order Placed!',
+                text: 'Waiting for SMS verification code...',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
         } else { 
-            Swal.fire('Error', res.message || "Purchase failed.", 'error');
+            Swal.fire('Order Failed', res.message || "Could not process purchase.", 'error');
             updateButtonState(); 
         }
     } catch (err) { 
         console.error("Purchase Error:", err);
+        Swal.fire('Error', 'Check your internet connection.', 'error');
         updateButtonState(); 
     }
 }
@@ -664,25 +717,6 @@ async function syncInventory() {
     }
 }
 
-// Fix the 500 by ensuring the query params match the backend
-async function fetchRealInventory() {
-    const grid = document.getElementById('numberGrid');
-    grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-brand-blue animate-pulse font-bold uppercase tracking-widest">Scanning Samsung Modem...</p>`;
-
-    try {
-        // Ensure you are passing the current selected country and service
-        const response = await fetch(`/api/get-numbers?country=${selectedCountry.id}&service=${selectedService}`);
-        const data = await response.json();
-
-        if (data.success) {
-            renderNumbers(data.numbers, data.targetId);
-        } else {
-            grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold uppercase">${data.message}</p>`;
-        }
-    } catch (err) {
-        grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-red-500 font-bold uppercase">Connection Error</p>`;
-    }
-}
 
 function toggleSupportMenu() {
         const menu = document.getElementById('supportMenu');

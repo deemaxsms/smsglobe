@@ -288,7 +288,9 @@
 
 async function fetchUserProfile() {
     const token = localStorage.getItem('userToken');
-    if (!token) return; // Don't even try if not logged in
+    
+    // If no token, don't try to fetch, just stop.
+    if (!token) return; 
 
     try {
         const res = await fetch(`${API_BASE_URL}/user-profile`, {
@@ -298,10 +300,15 @@ async function fetchUserProfile() {
             }
         });
 
-        if (res.status === 401) return logout(); 
+        // 401 means the token is expired or invalid
+        if (res.status === 401) {
+            console.warn("Session expired. Logging out...");
+            return logout(); 
+        }
 
         const data = await res.json();
 
+        // Handle unverified emails
         if (res.status === 403 && data.isUnverified) {
             window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
             return;
@@ -310,31 +317,30 @@ async function fetchUserProfile() {
         if (data.success) {
             const userData = data.user || data;
             
-            // Update global variables
+            // Update global balance variables
             userBalance = userData.balance || 0; 
             userBonusBalance = userData.bonusBalance || 0; 
 
-            // Update UI Elements
-            const balEl = document.getElementById('displayBalance');
-            const bonusEl = document.getElementById('displayBonus');
-            const refEl = document.getElementById('userReferralCount');
-            const priceEl = document.getElementById('displayPrice');
+            // Update UI safely
+            const updateUI = (id, text) => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = text;
+            };
 
-            if (balEl) balEl.innerText = `₦${userBalance.toLocaleString()}`;
-            if (bonusEl) bonusEl.innerText = `₦${userBonusBalance.toLocaleString()}`;
-            if (refEl) refEl.innerText = userData.referralCount || 0;
+            updateUI('displayBalance', `₦${userBalance.toLocaleString()}`);
+            updateUI('displayBonus', `₦${userBonusBalance.toLocaleString()}`);
+            updateUI('userReferralCount', userData.referralCount || 0);
 
-            // Update dashboard cache
+            // Save to cache for faster loading next time
             localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
             
-            // Re-calculate price display to check if balance is now sufficient
+            // Recalculate price if necessary
             if (typeof calculateFinalPrice === "function") calculateFinalPrice();
         }
     } catch (err) {
         console.error("Failed to fetch profile details:", err);
     }
 }
-
         function setMode(mode) {
             currentMode = mode;
             document.querySelectorAll('.mode-btn').forEach(b => {
@@ -632,6 +638,23 @@ function toggleSupportMenu() {
             }, 300);
         }
     }
+
+    // Add these to your script block
+function logout() {
+    // Clear the token and local data
+    localStorage.removeItem('userToken');
+    localStorage.removeItem('dashboard_cache');
+    // Send them back to the login page
+    window.location.href = 'login.html';
+}
+
+// Optional but good: Check if the user is logged in before even trying to fetch profile
+function checkAuth() {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+        window.location.href = 'login.html';
+    }
+}
 
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('-translate-x-full');

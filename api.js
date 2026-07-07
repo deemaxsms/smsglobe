@@ -65,6 +65,7 @@ app.get('/robots.txt', (req, res) => {
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET_KEY;
+const ONLINESIM_API_KEY = process.env.ONLINESIM_API_KEY;
 
 const adminSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
@@ -1518,9 +1519,8 @@ async function handleVerifyTopup(req, res) {
         return res.status(500).json({ success: false, message: err.message || "Internal server error" });
     }
 }
-
 async function handlePurchaseWithWallet(req, res) {
-    // 1. DESTRICTURING (All body variables defined here)
+    // 1. DESTRUCTURING (All body variables defined here)
     const { 
         vpnId, proxyId, rdpId, 
         carrierName, carrierId, productImage, 
@@ -1554,191 +1554,139 @@ async function handlePurchaseWithWallet(req, res) {
         let costNGN = 0;
         let productDetails = { name: "", plan: "" };
         let orderSpecifics = {};
+        let isOnlineSimFlow = false; // Flag to execute downstream vendor calls safely
 
-     if (vpnId) {
-    // 1. First, fetch the VPN data to get the price (DO NOT pop yet)
-    // We select the account arrays to see if they are empty
-    const vpnLookup = await VPN.findById(vpnId).select('+phoneAccounts +pcAccounts');
-    
-    if (!vpnLookup || (vpnLookup.stock || 0) <= 0) {
-        return res.status(404).json({ success: false, message: "VPN unavailable or out of stock" });
-    }
+        if (vpnId) {
+            const vpnLookup = await VPN.findById(vpnId).select('+phoneAccounts +pcAccounts');
+            if (!vpnLookup || (vpnLookup.stock || 0) <= 0) {
+                return res.status(404).json({ success: false, message: "VPN unavailable or out of stock" });
+            }
+            if (!vpnLookup.plans || !vpnLookup.plans[planIndex]) {
+                return res.status(400).json({ success: false, message: "Invalid plan selected" });
+            }
 
-    // 2. Validate plan existence & calculate cost
-    if (!vpnLookup.plans || !vpnLookup.plans[planIndex]) {
-        return res.status(400).json({ success: false, message: "Invalid plan selected" });
-    }
+            itemType = "VPN";
+            costNGN = Math.round(Number(vpnLookup.plans[planIndex].price));
+            productDetails.name = vpnLookup.name;
+            productDetails.plan = vpnLookup.plans[planIndex].duration;
 
-    itemType = "VPN";
-    costNGN = Math.round(Number(vpnLookup.plans[planIndex].price));
-    productDetails.name = vpnLookup.name;
-    productDetails.plan = vpnLookup.plans[planIndex].duration;
+            let assigned = null;
+            let popQuery = {};
 
-    // --- STOP: The main function continues to Wallet Calculations here ---
-    // After wallet deduction is confirmed (later in your script), we then do the "Pop"
-    
-    // 3. Logic to pick the credential based on device type
-    let assigned = null;
-    let popQuery = {};
+            if (vpnLookup.pcAccounts && vpnLookup.pcAccounts.length > 0) {
+                assigned = vpnLookup.pcAccounts[0];
+                popQuery = { $pop: { pcAccounts: -1 }, $inc: { stock: -1 } };
+            } else if (vpnLookup.phoneAccounts && vpnLookup.phoneAccounts.length > 0) {
+                assigned = vpnLookup.phoneAccounts[0];
+                popQuery = { $pop: { phoneAccounts: -1 }, $inc: { stock: -1 } };
+            }
 
-    // Check which array has the credentials
-    if (vpnLookup.pcAccounts && vpnLookup.pcAccounts.length > 0) {
-        assigned = vpnLookup.pcAccounts[0]; // Take the first one
-        popQuery = { $pop: { pcAccounts: -1 }, $inc: { stock: -1 } };
-    } else if (vpnLookup.phoneAccounts && vpnLookup.phoneAccounts.length > 0) {
-        assigned = vpnLookup.phoneAccounts[0]; // Take the first one
-        popQuery = { $pop: { phoneAccounts: -1 }, $inc: { stock: -1 } };
-    }
+            if (!assigned) {
+                return res.status(404).json({ success: false, message: "No credentials available in the database" });
+            }
 
-    if (!assigned) {
-        return res.status(404).json({ success: false, message: "No credentials available in the database" });
-    }
+            const item = await VPN.findOneAndUpdate(
+                { _id: vpnId, stock: { $gt: 0 } },
+                popQuery,
+                { returnDocument: 'after', select: '+instructions +deviceLimit' }
+            );
 
-    // 4. ATOMIC UPDATE: Actually remove it from the database now
-    const item = await VPN.findOneAndUpdate(
-        { _id: vpnId, stock: { $gt: 0 } },
-        popQuery,
-        { 
-            returnDocument: 'after', 
-            select: '+instructions +deviceLimit' 
+            orderSpecifics = {
+                vpnCredentials: { username: assigned.username || "", password: assigned.password || "" },
+                username: assigned.username || "", 
+                password: assigned.password || "",
+                pcUsername: assigned.username || "",
+                pcPassword: assigned.password || "",
+                activationCode: assigned.activationCode || "",
+                instructions: item.instructions || "Check your dashboard for setup steps.",
+                deviceLimit: item.deviceLimit || 1
+            };
         }
-    );
 
-    // 5. Define exactly what goes to the Order collection
-    orderSpecifics = {
-        vpnCredentials: {
-            username: assigned.username || "",
-            password: assigned.password || ""
-        },
-        // For individual fields used by showSuccessDetails()
-        username: assigned.username || "", 
-        password: assigned.password || "",
-        pcUsername: assigned.username || "",
-        pcPassword: assigned.password || "",
-        activationCode: assigned.activationCode || "",
-        instructions: item.instructions || "Check your dashboard for setup steps.",
-        deviceLimit: item.deviceLimit || 1
-    };
-}
+        else if (proxyId) {
+            const proxyLookup = await Proxy.findById(proxyId).select('+activationCodes');
+            if (!proxyLookup || (proxyLookup.stock || 0) <= 0) {
+                return res.status(404).json({ success: false, message: "Proxy unavailable or out of stock" });
+            }
+            if (!proxyLookup.plans || !proxyLookup.plans[planIndex]) {
+                return res.status(400).json({ success: false, message: "Invalid plan selected" });
+            }
+            const availableCodes = proxyLookup.activationCodes || [];
+            if (availableCodes.length === 0) {
+                return res.status(404).json({ success: false, message: "No activation codes available" });
+            }
+            const assignedCode = availableCodes[0];
 
- else if (proxyId) {
-    const proxyLookup = await Proxy.findById(proxyId).select('+activationCodes');
+            const item = await Proxy.findOneAndUpdate(
+                { _id: proxyId, stock: { $gt: 0 } },
+                { $pop: { activationCodes: -1 }, $inc: { stock: -1 } },
+                { returnDocument: 'after', select: '+instructions' }
+            );
 
-    if (!proxyLookup || (proxyLookup.stock || 0) <= 0) {
-        return res.status(404).json({ success: false, message: "Proxy unavailable or out of stock" });
-    }
+            itemType = "Proxy";
+            costNGN = Math.round(Number(item.plans[planIndex].price));
+            productDetails.name = item.name;
+            productDetails.plan = `${item.plans[planIndex].ip_count || 0} IPs`;
 
-    if (!proxyLookup.plans || !proxyLookup.plans[planIndex]) {
-        return res.status(400).json({ success: false, message: "Invalid plan selected" });
-    }
-    const availableCodes = proxyLookup.activationCodes || [];
-    if (availableCodes.length === 0) {
-        return res.status(404).json({ success: false, message: "No activation codes available" });
-    }
-    const assignedCode = availableCodes[0]; // Grab the top code
-
-    const item = await Proxy.findOneAndUpdate(
-        { _id: proxyId, stock: { $gt: 0 } },
-        { 
-            $pop: { activationCodes: -1 }, // Removes index 0 from the array
-            $inc: { stock: -1 } 
-        },
-        { 
-            returnDocument: 'after', 
-            select: '+instructions' 
+            orderSpecifics = {
+                activationCode: assignedCode, 
+                instructions: item.instructions || "To activate your proxy, copy the code above into your provider's portal.",
+                metadata: { ...metadata, deliveredCode: assignedCode }
+            };
         }
-    );
 
-    itemType = "Proxy";
-    costNGN = Math.round(Number(item.plans[planIndex].price));
-    productDetails.name = item.name;
-    productDetails.plan = `${item.plans[planIndex].ip_count || 0} IPs`;
+        else if (metadata?.serviceType === 'virtual_number') {
+            itemType = "SmsNumber"; 
+            costNGN = planAmount ? Math.round(Number(planAmount)) : 850; 
+            productDetails.name = `OnlineSIM Global Provision (${metadata.countryCode || 'NG'})`;
+            productDetails.plan = metadata.serviceName || "SMS Verification";
+            isOnlineSimFlow = true;
 
-    orderSpecifics = {
-        activationCode: assignedCode, 
-        instructions: item.instructions || "To activate your proxy, copy the code above into your provider's portal.",
-        metadata: {
-            ...metadata,
-            deliveredCode: assignedCode
+            // Structural setup block before making the wallet deduction. 
+            // The real phone details will append dynamically upon successful balance collection.
+            orderSpecifics = {
+                serviceName: metadata.serviceName,
+                status: 'pending', 
+                instructions: "Allocating lease from dynamic server fields... Please stand by.",
+                metadata: { 
+                    ...metadata, 
+                    provider: 'onlinesim' 
+                }
+            };
         }
-    };
-}
 
-else if (metadata?.serviceType === 'virtual_number') {
-    itemType = "SmsNumber"; 
-    
-    // Use the planAmount sent from the frontend if available, else fallback
-    costNGN = planAmount ? Math.round(Number(planAmount)) : 850; 
-
-    productDetails.name = "Samsung Private SIM (NG)";
-    productDetails.plan = metadata.serviceName || "SMS Verification";
-
-    // SAFETY CHECK: Ensure process.env exists before trimming
-    const rawDeviceId = process.env.TEXTBEE_DEVICE_ID || "";
-    const deviceId = rawDeviceId.trim();
-
-    if (!deviceId) {
-        console.error("CRITICAL: TEXTBEE_DEVICE_ID is not defined in .env");
-        return res.status(500).json({ success: false, message: "SMS Gateway configuration missing." });
-    }
-
-    orderSpecifics = {
-        deviceId: deviceId,
-        targetNumber: mobileNumber, 
-        serviceName: metadata.serviceName,
-        status: 'pending', 
-        instructions: "Waiting for SMS... Please send your code now. The code will expire in 15 minutes.",
-        metadata: {
-            ...metadata,
-            provider: 'textbee',
-            deviceModel: "Samsung SM-A075F"
+        else if (rdpId) {
+            itemType = "RDP";
+            const rdpPlans = {
+                tier1: { id: "tier1", name: "USA Tier 1", price: 30000, ram: "4GB", cpu: "2 Cores", storage: "60GB SSD", net: "1Gbps" },
+                tier2: { id: "tier2", name: "USA Tier 2", price: 40000, ram: "6GB", cpu: "3 Cores", storage: "100GB SSD", net: "1Gbps" },
+                tier3: { id: "tier3", name: "USA Tier 3", price: 50000, ram: "8GB", cpu: "4 Cores", storage: "140GB SSD", net: "2Gbps" },
+                tier4: { id: "tier4", name: "USA Tier 4", price: 65000, ram: "12GB", cpu: "6 Cores", storage: "180GB SSD", net: "2Gbps" },
+                tier5: { id: "tier5", name: "USA Tier 5", price: 80000, ram: "18GB", cpu: "8 Cores", storage: "240GB SSD", net: "3Gbps" },
+                tier6: { id: "tier6", name: "USA Tier 6", price: 95000, ram: "24GB", cpu: "8 Cores", storage: "280GB SSD", net: "3Gbps" }
+            };
+            const selectedTier = rdpPlans[rdpId];
+            if (!selectedTier) return res.status(404).json({ success: false, message: "RDP Plan not found" });
+            const extraCPUCount = parseInt(metadata?.extraCPU || 0);
+            const extraStorageGB = parseInt(metadata?.extraStorage || 0);
+            costNGN = Math.round(Number(selectedTier.price) + (extraCPUCount * 5000) + (extraStorageGB * 5000));
+            productDetails.name = selectedTier.name;
+            productDetails.plan = `${selectedTier.ram} RAM | ${metadata?.osChoice || 'Windows Server'}`;
+            
+            orderSpecifics = {
+                ram: selectedTier.ram,
+                cpu: selectedTier.cpu,
+                storage: selectedTier.storage,
+                net: selectedTier.net,
+                os: metadata?.osChoice || "Windows Server",
+                extraCPU: extraCPUCount,
+                extraStorage: extraStorageGB,
+                ipAddress: "",
+                rdpUsername: "",
+                rdpPassword: "",
+                port: ""
+            };
         }
-    };
-
-    // Create the SmsNumber record
-    await SmsNumber.create({
-        userId: user._id,
-        userEmail: user.email,
-        deviceId: deviceId,
-        phoneNumber: mobileNumber,
-        serviceName: metadata.serviceName,
-        amount: costNGN,
-        status: 'pending'
-    });
-}
-
-else if (rdpId) {
-    itemType = "RDP";
-    const rdpPlans = {
-        tier1: { id: "tier1", name: "USA Tier 1", price: 30000, ram: "4GB", cpu: "2 Cores", storage: "60GB SSD", net: "1Gbps" },
-        tier2: { id: "tier2", name: "USA Tier 2", price: 40000, ram: "6GB", cpu: "3 Cores", storage: "100GB SSD", net: "1Gbps" },
-        tier3: { id: "tier3", name: "USA Tier 3", price: 50000, ram: "8GB", cpu: "4 Cores", storage: "140GB SSD", net: "2Gbps" },
-        tier4: { id: "tier4", name: "USA Tier 4", price: 65000, ram: "12GB", cpu: "6 Cores", storage: "180GB SSD", net: "2Gbps" },
-        tier5: { id: "tier5", name: "USA Tier 5", price: 80000, ram: "18GB", cpu: "8 Cores", storage: "240GB SSD", net: "3Gbps" },
-        tier6: { id: "tier6", name: "USA Tier 6", price: 95000, ram: "24GB", cpu: "8 Cores", storage: "280GB SSD", net: "3Gbps" }
-    };
-    const selectedTier = rdpPlans[rdpId];
-    if (!selectedTier) return res.status(404).json({ success: false, message: "RDP Plan not found" });
-    const extraCPUCount = parseInt(metadata?.extraCPU || 0);
-    const extraStorageGB = parseInt(metadata?.extraStorage || 0);
-    costNGN = Math.round(Number(selectedTier.price) + (extraCPUCount * 5000) + (extraStorageGB * 5000));
-    productDetails.name = selectedTier.name;
-    productDetails.plan = `${selectedTier.ram} RAM | ${metadata?.osChoice || 'Windows Server'}`;
-    
-    orderSpecifics = {
-        ram: selectedTier.ram,
-        cpu: selectedTier.cpu,     // Fixes the "CPU not displaying" issue
-        storage: selectedTier.storage,
-        net: selectedTier.net,     // Fixes the "Network speed not displaying" issue
-        os: metadata?.osChoice || "Windows Server",
-        extraCPU: extraCPUCount,
-        extraStorage: extraStorageGB,
-        ipAddress: "",
-        rdpUsername: "",
-        rdpPassword: "",
-        port: ""
-    };
-}
         else if (metadata?.activationEmail && metadata?.firstName) {
             itemType = "eSIM_Activation";
             const cleanedPrice = planAmount.toString().split('.')[0].replace(/[^0-9]/g, "");
@@ -1760,31 +1708,24 @@ else if (rdpId) {
                 instructions: "Payment Confirmed. SMSGlobe is verifying your activation details."
             };
         }
-      else if (carrierName && mobileNumber) {
-    itemType = "eSIM_Refill";    
-    const cleanedPrice = planAmount.toString().replace(/[^0-9]/g, "");
-    costNGN = Math.round(Number(cleanedPrice));    
-    productDetails.name = carrierName;
-    productDetails.plan = `₦${costNGN.toLocaleString()}`; 
-    orderSpecifics = {
-        productType: "eSIM_Refill",
-        nodeName: carrierName, // Used for the dashboard table
-        planName: `₦${costNGN.toLocaleString()}`,        
-        carrier: { 
-            id: carrierId || 'manual', 
-            name: carrierName, 
-            image: productImage 
-        },        
-        target: { 
-            number: mobileNumber, 
-            country: coverageCountry || 'Global' 
-        },        
-        targetNumber: mobileNumber,
-        country: coverageCountry || 'Global',         
-        instructions: "Payment Confirmed. Your refill is being processed by the technical team.",
-        status: 'pending'
-    };
-}
+        else if (carrierName && mobileNumber) {
+            itemType = "eSIM_Refill";    
+            const cleanedPrice = planAmount.toString().replace(/[^0-9]/g, "");
+            costNGN = Math.round(Number(cleanedPrice));    
+            productDetails.name = carrierName;
+            productDetails.plan = `₦${costNGN.toLocaleString()}`; 
+            orderSpecifics = {
+                productType: "eSIM_Refill",
+                nodeName: carrierName,
+                planName: `₦${costNGN.toLocaleString()}`,        
+                carrier: { id: carrierId || 'manual', name: carrierName, image: productImage },        
+                target: { number: mobileNumber, country: coverageCountry || 'Global' },        
+                targetNumber: mobileNumber,
+                country: coverageCountry || 'Global',         
+                instructions: "Payment Confirmed. Your refill is being processed by the technical team.",
+                status: 'pending'
+            };
+        }
 
         // --- WALLET CALCULATIONS ---
         const mainBal = Number(user.balance || 0);
@@ -1821,10 +1762,11 @@ else if (rdpId) {
         }
         mainDeduction = remainingToPay;
 
+        // ATOMIC USER DEBIT CONTEXT
         const updatedUser = await User.findOneAndUpdate(
             { _id: user._id, balance: { $gte: mainDeduction } },
             { $inc: { balance: -mainDeduction, bonusBalance: -bonusDeduction } },
-           { returnDocument: 'after' }
+            { returnDocument: 'after' }
         );
 
         if (!updatedUser) {
@@ -1833,8 +1775,64 @@ else if (rdpId) {
             return res.status(400).json({ success: false, message: "Transaction failed." });
         }
 
+        // --- EXCLUSIVE LIVE ONLINESIM API ALLOCATION ---
+        if (isOnlineSimFlow) {
+            try {
+                const api_key = process.env.ONLINESIM_API_KEY;
+                const reqCountry = (metadata.countryCode || 'NG').toLowerCase();
+                const reqService = (metadata.serviceName || 'whatsapp').toLowerCase();
+
+                const osUrl = `https://onlinesim.io/api/getNum.php?apikey=${api_key}&service=${reqService}&country=${reqCountry}`;
+                const osResponse = await axios.get(osUrl, { timeout: 15000 });
+
+                // OnlineSIM gives response: "1" for a valid purchase transaction
+                if (osResponse.data?.response === '1' || osResponse.data?.tzid) {
+                    const allocatedNumber = osResponse.data.number;
+                    const trackingTzid = osResponse.data.tzid;
+
+                    // Re-assign localized variables with live data points
+                    orderSpecifics.deviceId = trackingTzid; // Used as the identifier for polling checks
+                    orderSpecifics.vendorOrderId = trackingTzid;
+                    orderSpecifics.targetNumber = allocatedNumber;
+                    orderSpecifics.instructions = "OnlineSIM allocated line successfully. Waiting for incoming code stream...";
+                    
+                    if (!orderSpecifics.metadata) orderSpecifics.metadata = {};
+                    orderSpecifics.metadata.allocatedNumber = allocatedNumber;
+                    orderSpecifics.metadata.tzid = trackingTzid;
+
+                    // Generate auxiliary entry record for monitoring tools
+                    await SmsNumber.create({
+                        userId: user._id,
+                        userEmail: user.email,
+                        deviceId: trackingTzid,
+                        vendorOrderId: trackingTzid,
+                        phoneNumber: allocatedNumber,
+                        serviceName: metadata.serviceName,
+                        amount: costNGN,
+                        status: 'pending'
+                    });
+                } else {
+                    // Reverse user charges cleanly if external API allocation fails
+                    await User.findByIdAndUpdate(user._id, { 
+                        $inc: { balance: mainDeduction, bonusBalance: bonusDeduction } 
+                    });
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: `Line Reservation Failed: ${osResponse.data?.error || "Vendor out of stock"}` 
+                    });
+                }
+            } catch (apiErr) {
+                console.error("Critical OnlineSIM API connection block:", apiErr.message);
+                await User.findByIdAndUpdate(user._id, { 
+                    $inc: { balance: mainDeduction, bonusBalance: bonusDeduction } 
+                });
+                return res.status(502).json({ success: false, message: "External vendor API processing timeout." });
+            }
+        }
+
         const paymentReference = `WAL-${Date.now()}-${user._id.toString().slice(-4)}`;
 
+        // CREATE SYSTEM ORDER ENTRY
         const newOrder = await Order.create({
             userId: user._id,
             userEmail: user.email,
@@ -1846,18 +1844,19 @@ else if (rdpId) {
             mainBalanceUsed: mainDeduction,
             bonusBalanceUsed: bonusDeduction,
             currency: "NGN",            
-            status: "successful",
+            status: isOnlineSimFlow ? "pending" : "successful", // Explicitly keep Virtual Numbers pending code capture
             paymentReference: paymentReference,
-            targetNumber: mobileNumber || orderSpecifics.target?.number,
-            country: coverageCountry || orderSpecifics.target?.country,
+            targetNumber: orderSpecifics.targetNumber || mobileNumber || orderSpecifics.target?.number,
+            country: coverageCountry || orderSpecifics.target?.country || metadata.countryCode || "NG",
             target: {
-                number: mobileNumber || orderSpecifics.target?.number,
-                country: coverageCountry || orderSpecifics.target?.country
+                number: orderSpecifics.targetNumber || mobileNumber || orderSpecifics.target?.number,
+                country: coverageCountry || orderSpecifics.target?.country || metadata.countryCode || "NG"
             },
             carrier: orderSpecifics.carrier || { name: carrierName, image: productImage },
             ...orderSpecifics,
             metadata: { 
                 ...metadata,
+                ...orderSpecifics.metadata,
                 isManualProcess: (itemType === "eSIM_Refill" || itemType === "eSIM_Activation")
             }
         });
@@ -1878,74 +1877,71 @@ else if (rdpId) {
             metadata: { orderId: newOrder._id, product: productDetails.name }
         });
         
-const manualProducts = ["eSIM_Refill", "eSIM_Activation", "RDP"];
-const isManual = manualProducts.includes(itemType);
+        const manualProducts = ["eSIM_Refill", "eSIM_Activation", "RDP"];
+        const isManual = manualProducts.includes(itemType);
 
-if (!isManual) {
-    // 1. Define the variables so the code doesn't crash
-    const deliveryCode = orderSpecifics.activationCode || newOrder.activationCode || "N/A";
-    const deliveryInstructions = orderSpecifics.instructions || newOrder.instructions || "Check dashboard for details.";
+        // Disabling immediate emails for virtual lines since they are received live on screen
+        if (!isManual && !isOnlineSimFlow) {
+            const deliveryCode = orderSpecifics.activationCode || newOrder.activationCode || "N/A";
+            const deliveryInstructions = orderSpecifics.instructions || newOrder.instructions || "Check dashboard for details.";
 
-    await sendDeliveryEmail(user.email, { 
-        ...orderSpecifics, 
-        productType: itemType, 
-        nodeName: productDetails.name, 
-        planName: productDetails.plan || newOrder.planName,
-        amount: costNGN, 
-        paymentReference: paymentReference,
-        
-        // 2. Pass the credentials object correctly for the template
-        credentials: {
-            ...orderSpecifics, // Spread existing specifics (VPN creds, PC creds, etc.)
-            activationCode: deliveryCode,
-            instructions: deliveryInstructions,
-            nodeName: productDetails.name,
-            planName: productDetails.plan || newOrder.planName,
-            amount: costNGN,
-            paymentReference: paymentReference
-        },
+            await sendDeliveryEmail(user.email, { 
+                ...orderSpecifics, 
+                productType: itemType, 
+                nodeName: productDetails.name, 
+                planName: productDetails.plan || newOrder.planName,
+                amount: costNGN, 
+                paymentReference: paymentReference,
+                credentials: {
+                    ...orderSpecifics,
+                    activationCode: deliveryCode,
+                    instructions: deliveryInstructions,
+                    nodeName: productDetails.name,
+                    planName: productDetails.plan || newOrder.planName,
+                    amount: costNGN,
+                    paymentReference: paymentReference
+                },
+                confirmationNumber: paymentReference,     
+                targetNumber: mobileNumber || newOrder.metadata?.targetNumber || "N/A",
+                country: coverageCountry || newOrder.metadata?.country || "N/A", 
+                activationCode: deliveryCode,     
+                instructions: deliveryInstructions,  
+                mainBalanceUsed: newOrder.mainBalanceUsed || 0,
+                bonusBalanceUsed: newOrder.bonusBalanceUsed || 0,
+                metadata: newOrder.metadata,
+                purchaseDate: newOrder.createdAt || new Date()
+            }).catch(err => console.error("📧 Customer Email Error:", err.message));
+        }
 
-        confirmationNumber: paymentReference,     
-        targetNumber: mobileNumber || newOrder.metadata?.targetNumber || "N/A",
-        country: coverageCountry || newOrder.metadata?.country || "N/A", 
-        activationCode: deliveryCode,     
-        instructions: deliveryInstructions,  
-        mainBalanceUsed: newOrder.mainBalanceUsed || 0,
-        bonusBalanceUsed: newOrder.bonusBalanceUsed || 0,
-        metadata: newOrder.metadata,
-        purchaseDate: newOrder.createdAt || new Date()
-    }).catch(err => console.error("📧 Customer Email Error:", err.message));
-}
+        if (isManual) { 
+            try {
+                await sendAdminNotification({
+                    type: itemType,
+                    email: user.email,
+                    product: productDetails.name,
+                    amount: `₦${costNGN.toLocaleString()}`,
+                    reference: paymentReference,
+                    target: mobileNumber || newOrder.metadata?.targetNumber || newOrder.metadata?.activationEmail || 'N/A',
+                    country: coverageCountry || newOrder.metadata?.country || 'N/A', 
+                    metadata: newOrder.metadata,
+                    orderSpecifics: orderSpecifics,
+                    planName: productDetails.plan || newOrder.planName || 'Standard'
+                });
+                console.log("✅ Admin notification sent successfully");
+            } catch (err) {
+                console.error("📧 Admin Notification Error:", err.message);
+            }
+        }
 
-// 2. Admin Notification (Only for Manual products)
-if (isManual) { // Use the variable here instead of re-checking the array
-    try {
-        await sendAdminNotification({
-            type: itemType,
-            email: user.email,
-            product: productDetails.name,
-            amount: `₦${costNGN.toLocaleString()}`,
-            reference: paymentReference,
-            target: mobileNumber || newOrder.metadata?.targetNumber || newOrder.metadata?.activationEmail || 'N/A',
-            country: coverageCountry || newOrder.metadata?.country || 'N/A', 
-            metadata: newOrder.metadata,
-            orderSpecifics: orderSpecifics,
-            planName: productDetails.plan || newOrder.planName || 'Standard'
+        return res.json({ 
+            success: true, 
+            message: isManual 
+                ? "Request submitted! Our team is processing your order." 
+                : "Purchase successful!",
+            balance: updatedUser.balance,
+            bonusBalance: updatedUser.bonusBalance,
+            order: newOrder 
         });
-        console.log("✅ Admin notification sent successfully");
-    } catch (err) {
-        console.error("📧 Admin Notification Error:", err.message);
-    }
-}
-return res.json({ 
-    success: true, 
-    message: isManual 
-        ? "Request submitted! Our team is processing your order." 
-        : "Purchase successful!",
-    balance: updatedUser.balance,
-    bonusBalance: updatedUser.bonusBalance,
-    order: newOrder 
-});
 
     } catch (err) {
         console.error("Wallet Purchase Error:", err);
@@ -3422,90 +3418,101 @@ async function handleGetRdpRequests(req, res) {
         return res.status(500).json({ success: false, message: "Failed to fetch" });
     }
 }
-
 async function handleGetNumbers(req, res) {
     try { await connectDB(); } catch (e) { return res.status(500).json({ success: false, message: "DB Down" }); }
 
-    const { country, service } = req.query; 
+    const { country, service } = req.query; // e.g. country = 'NG', service = 'whatsapp'
 
     try {
-        const textBeeKey = process.env.TEXTBEE_API_KEY;
-        const targetId = process.env.TEXTBEE_DEVICE_ID.trim();
+        // Map country codes or use lowercase for OnlineSIM API requirements if necessary
+        const targetCountry = country.toLowerCase();
 
-        if (country === 'NG') {
-            const tbUrl = `https://api.textbee.dev/api/v1/gateway/devices`;
-            const tbResponse = await axios.get(tbUrl, {
-                headers: { 'x-api-key': textBeeKey.trim() },
-                timeout: 10000 
+        // Get pricing and stock availability metrics
+        const osUrl = `https://onlinesim.io/api/getServiceList.php?apikey=${ONLINESIM_API_KEY}&country=${targetCountry}`;
+        const osResponse = await axios.get(osUrl, { timeout: 10000 });
+        
+        const services = osResponse.data?.services;
+        const requestedService = services?.[service];
+
+        if (!requestedService || requestedService.count === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "No virtual numbers available for this service right now." 
             });
-
-            const devicesArray = tbResponse.data?.data;
-            const myDevice = devicesArray.find(d => (d.deviceId === targetId) || (d._id === targetId));
-
-            if (myDevice && myDevice.enabled === true) {
-                
-                // AUTOMATIC DETECTION LOGIC:
-                // We check if the device object has 'slots' or 'sims' info from the app
-                let detectedNumbers = [];
-
-                if (myDevice.slots && myDevice.slots.length > 0) {
-                    // Map the actual SIM slots reported by the Samsung Phone
-                    detectedNumbers = myDevice.slots.map((slot, index) => ({
-                        number: slot.phoneNumber || "Unknown Number",
-                        label: `Samsung SIM ${index + 1}`
-                    }));
-                } else {
-                    // Fallback if TextBee doesn't report slots: 
-                    // Use the primary number registered to the device
-                    detectedNumbers = [
-                        { 
-                            number: myDevice.phoneNumber || "Primary SIM", 
-                            label: "Samsung Device" 
-                        }
-                    ];
-                }
-
-                return res.json({
-                    success: true,
-                    numbers: detectedNumbers, // This is now dynamic!
-                    targetId: targetId, 
-                    provider: 'textbee',
-                    cost: 850,
-                    serviceName: service 
-                });
-            }
-            
-            return res.status(400).json({ success: false, message: "Samsung Device is Offline." });
         }
 
-        return res.status(404).json({ success: false, message: "Country not supported." });
+        // Return a structural placeholder indicating availability
+        return res.json({
+            success: true,
+            numbers: [
+                {
+                    number: "On-Demand Dynamic Allocation",
+                    label: `Available Stock: ${requestedService.count} lines`
+                }
+            ],
+            provider: 'onlinesim',
+            onlineSimPrice: requestedService.price, // Price in Rubles/Credits from OnlineSIM
+            cost: 850, // Your flat pricing markup logic in NGN
+            serviceName: service
+        });
 
     } catch (err) {
-        console.error("Fetch Error:", err.message);
-        return res.status(500).json({ success: false, message: "Sync Error" });
+        console.error("OnlineSIM Fetch Error:", err.message);
+        return res.status(500).json({ success: false, message: "Vendor Sync Error" });
     }
 }
 
-
+// 2. CHECK VENDOR STATUS 
 async function handleGetStock(req, res) {
     try {
-        const textBeeKey = process.env.TEXTBEE_API_KEY;
-        const deviceId = process.env.TEXTBEE_DEVICE_ID;
-
-        const response = await axios.get(`https://api.textbee.dev/api/v1/devices/${deviceId}`, {
-            headers: { 'x-api-key': textBeeKey }
-        });
-
-        const isOnline = response.data && response.data.status === 'Enabled';
+        // Quick verification check against OnlineSIM balance to ensure API connection is operational
+        const response = await axios.get(`https://onlinesim.io/api/getBalance.php?apikey=${ONLINESIM_API_KEY}`);
+        
+        const isOnline = response.data && response.data.response === '1';
 
         return res.json({ 
             success: true, 
             stock: { 
-                "NG": isOnline ? 1 : 0 
+                "NG": isOnline ? 100 : 0 // Set high structural stock pool if operational
             } 
         });
     } catch (err) {
         return res.json({ success: false, stock: { "NG": 0 } });
+    }
+}
+
+// 3. ORDER STATE FALLBACK LOOKUP (Replaces Webhook Polling)
+async function handleOrderDetails(req, res) {
+    const { id } = req.query; // This is your local DB Order ID
+
+    try {
+        const order = await SmsNumber.findById(id);
+        if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+
+        // If it's already marked completed or we have code, return immediately
+        if (order.status === 'completed' || order.smsCode) {
+            return res.json({ success: true, order });
+        }
+
+        // If it's an active OnlineSIM rent/activation, poll the vendor's active state
+        if (order.vendorOrderId) {
+            const stateUrl = `https://onlinesim.io/api/getState.php?apikey=${ONLINESIM_API_KEY}&tzid=${order.vendorOrderId}`;
+            const stateResponse = await axios.get(stateUrl);
+            const stateData = stateResponse.data?.[0] || stateResponse.data;
+
+            // If an SMS message is located in the vendor state array object
+            if (stateData && stateData.msg) {
+                order.smsCode = stateData.msg.match(/\d{4,6}/)?.[0] || stateData.msg;
+                order.fullMessage = stateData.msg;
+                order.status = 'completed';
+                await order.save();
+            }
+        }
+
+        return res.json({ success: true, order });
+    } catch (err) {
+        console.error("Polling check failed:", err);
+        return res.status(500).json({ success: false, message: "Failed to read order update" });
     }
 }
 

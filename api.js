@@ -3479,44 +3479,49 @@ async function handleGetCountries(req, res) {
         const data = osResponse.data;
         const countriesMap = {};
 
-        // OnlineSIM returns an array or object of services/tariffs
-        const items = Array.isArray(data) ? data : (data.services || data.countries || data);
+        // OnlineSIM returns countries and services blocks based on the docs layout
+        const rawCountries = data?.countries || data?.service || data || {};
 
-        // Parse items dynamically 
-        for (const key of Object.keys(items)) {
-            const item = items[key];
-            const countryCode = (item.country || item.code || 'ng').toLowerCase();
-            const countryName = item.country_text || item.name || countryCode.toUpperCase();
+        for (const [countryKey, countryData] of Object.entries(rawCountries)) {
+            if (!countryData || typeof countryData !== 'object') continue;
 
-            if (!countriesMap[countryCode]) {
-                countriesMap[countryCode] = {
-                    id: countryCode,
-                    name: countryName,
-                    available: 0,
-                    services: []
-                };
+            const countryCode = (countryData.code || countryKey).toLowerCase();
+            const countryName = countryData.country_text || countryData.name || `Country ${countryKey}`;
+            
+            const servicesList = [];
+            let totalAvailable = 0;
+
+            const servicesObj = countryData.services || {};
+            for (const [servKey, servData] of Object.entries(servicesObj)) {
+                const availableCount = Number(servData.count || 0);
+                const vendorPrice = Number(servData.price || 0);
+
+                // Apply custom platform markup rule
+                const customRate = vendorPrice > 0 ? vendorPrice * 1.5 : 850;
+
+                servicesList.push({
+                    id: servData.slug || servData.service || servKey,
+                    name: servData.service_name || servData.name || servKey,
+                    available: availableCount,
+                    rate: Math.round(customRate)
+                });
+
+                totalAvailable += availableCount;
             }
 
-            const count = Number(item.count || item.qty || 0);
-            const price = Number(item.price || 500);
-
-            countriesMap[countryCode].services.push({
-                id: item.service || item.slug || key,
-                name: item.service_name || item.name || key,
-                available: count,
-                rate: price * 1.5 // Custom pricing markup
-            });
-
-            countriesMap[countryCode].available += count;
+            countriesMap[countryCode] = {
+                id: countryCode,
+                name: countryName,
+                available: totalAvailable,
+                services: servicesList
+            };
         }
 
         const countries = Object.values(countriesMap);
 
         return res.json({
             success: true,
-            countries: countries.length > 0 ? countries : [
-                { id: 'ng', name: 'Nigeria', available: 50, services: [{ id: 'whatsapp', name: 'WhatsApp', available: 50, rate: 850 }] }
-            ]
+            countries: countries
         });
 
     } catch (err) {

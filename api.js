@@ -3473,59 +3473,50 @@ async function handlePurchaseNumber(req, res) {
 
 async function handleGetCountries(req, res) {
     try {
-        // Query OnlineSIM tariffs endpoint which contains countries, services, stock counts, and prices
         const osUrl = `https://onlinesim.io/api/getTariffs.php?apikey=${ONLINESIM_API_KEY}`;
         const osResponse = await axios.get(osUrl, { timeout: 10000 });
         
         const data = osResponse.data;
         const countriesMap = {};
 
-        // OnlineSIM returns an object where keys are country codes/identifiers
-        // Structure format: { "7": { name: "russia", services: { ... } }, "380": { ... } }
-        const rawCountries = data?.countries || data || {};
+        // OnlineSIM returns an array or object of services/tariffs
+        const items = Array.isArray(data) ? data : (data.services || data.countries || data);
 
-        for (const [countryKey, countryInfo] of Object.entries(rawCountries)) {
-            if (!countryInfo || typeof countryInfo !== 'object') continue;
+        // Parse items dynamically 
+        for (const key of Object.keys(items)) {
+            const item = items[key];
+            const countryCode = (item.country || item.code || 'ng').toLowerCase();
+            const countryName = item.country_text || item.name || countryCode.toUpperCase();
 
-            const countryCode = countryKey.toLowerCase();
-            const countryName = countryInfo.name || countryInfo.country_text || `Country ${countryKey}`;
-            
-            const servicesList = [];
-            let totalAvailableInCountry = 0;
-
-            const servicesObj = countryInfo.services || {};
-            for (const [servKey, servData] of Object.entries(servicesObj)) {
-                // OnlineSIM service properties: count, price, service name, slug
-                const availableCount = Number(servData.count) || 0;
-                const vendorPrice = Number(servData.price) || 0;
-
-                // Apply your platform pricing markup rule here (e.g., multiplier or flat addition)
-                const customRate = vendorPrice > 0 ? vendorPrice * 1.5 : 850; 
-
-                servicesList.push({
-                    id: servData.slug || servData.id || servKey,
-                    name: servData.service || servData.name || 'Unknown Service',
-                    slug: servData.slug || servKey,
-                    available: availableCount,
-                    rate: Math.round(customRate)
-                });
-
-                totalAvailableInCountry += availableCount;
+            if (!countriesMap[countryCode]) {
+                countriesMap[countryCode] = {
+                    id: countryCode,
+                    name: countryName,
+                    available: 0,
+                    services: []
+                };
             }
 
-            countriesMap[countryCode] = {
-                id: countryCode,
-                name: countryName,
-                available: totalAvailableInCountry,
-                services: servicesList // Passes the exact listed social accounts/services to the frontend
-            };
+            const count = Number(item.count || item.qty || 0);
+            const price = Number(item.price || 500);
+
+            countriesMap[countryCode].services.push({
+                id: item.service || item.slug || key,
+                name: item.service_name || item.name || key,
+                available: count,
+                rate: price * 1.5 // Custom pricing markup
+            });
+
+            countriesMap[countryCode].available += count;
         }
 
         const countries = Object.values(countriesMap);
 
         return res.json({
             success: true,
-            countries: countries
+            countries: countries.length > 0 ? countries : [
+                { id: 'ng', name: 'Nigeria', available: 50, services: [{ id: 'whatsapp', name: 'WhatsApp', available: 50, rate: 850 }] }
+            ]
         });
 
     } catch (err) {

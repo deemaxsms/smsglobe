@@ -3423,18 +3423,49 @@ async function handleGetRdpRequests(req, res) {
 async function handleGetNumbers(req, res) {
     try { await connectDB(); } catch (e) { return res.status(500).json({ success: false, message: "DB Down" }); }
 
-    const { country, service } = req.query; // e.g. country = 'NG', service = 'whatsapp'
+    const { country, service } = req.query; // e.g. country = 'NG', service = 'whatsapp' (optional)
+
+    if (!country) {
+        return res.status(400).json({ success: false, message: "Country parameter is required" });
+    }
 
     try {
-        // Map country codes or use lowercase for OnlineSIM API requirements if necessary
         const targetCountry = country.toLowerCase();
-
-        // Get pricing and stock availability metrics
         const osUrl = `https://onlinesim.io/api/getServiceList.php?apikey=${ONLINESIM_API_KEY}&country=${targetCountry}`;
         const osResponse = await axios.get(osUrl, { timeout: 10000 });
         
-        const services = osResponse.data?.services;
-        const requestedService = services?.[service];
+        const servicesObj = osResponse.data?.services;
+
+        if (!servicesObj) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "No services available for this country right now." 
+            });
+        }
+
+        // SCENARIO 1: If no specific service is passed, return the full list of available services
+        if (!service) {
+            const availableServices = [];
+            for (const [serviceKey, serviceData] of Object.entries(servicesObj)) {
+                if (serviceData.count > 0) {
+                    availableServices.push({
+                        id: serviceKey,
+                        name: serviceData.name || serviceKey,
+                        count: serviceData.count,
+                        price: serviceData.price
+                    });
+                }
+            }
+
+            return res.json({
+                success: true,
+                services: availableServices,
+                provider: 'onlinesim'
+            });
+        }
+
+        // SCENARIO 2: If a specific service IS passed, check its individual stock/pricing
+        const requestedService = servicesObj[service];
 
         if (!requestedService || requestedService.count === 0) {
             return res.status(400).json({ 
@@ -3443,7 +3474,7 @@ async function handleGetNumbers(req, res) {
             });
         }
 
-        // Return a structural placeholder indicating availability
+        // Return the dynamic allocation placeholder and pricing details
         return res.json({
             success: true,
             numbers: [
@@ -3453,8 +3484,8 @@ async function handleGetNumbers(req, res) {
                 }
             ],
             provider: 'onlinesim',
-            onlineSimPrice: requestedService.price, // Price in Rubles/Credits from OnlineSIM
-            cost: 850, // Your flat pricing markup logic in NGN
+            onlineSimPrice: requestedService.price,
+            cost: 850,
             serviceName: service
         });
 
@@ -3463,6 +3494,7 @@ async function handleGetNumbers(req, res) {
         return res.status(500).json({ success: false, message: "Vendor Sync Error" });
     }
 }
+
 
 // 2. CHECK VENDOR STATUS 
 async function handleGetStock(req, res) {

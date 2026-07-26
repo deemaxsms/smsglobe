@@ -281,32 +281,15 @@
     <span class="text-[7px] font-black uppercase leading-none text-brand-blue tracking-tighter">Support</span>
 </button>
 
-    <script>
+   <script>
         const API_BASE_URL = '/api';
 
         let pollInterval;
-
         let currentMode = 'activation'; // or 'rent'
-        let countries = [
-            { id: 'US', name: 'USA', rate: 1500, available: 'Syncing...' },
-            { id: 'GB', name: 'UK', rate: 1200, available: 'Syncing...' },
-            { id: 'NG', name: 'Nigeria', rate: 850, available: 'Syncing...' },
-            { id: 'RU', name: 'Russia', rate: 700, available: 'Syncing...' },
-            { id: 'UA', name: 'Ukraine', rate: 750, available: 'Syncing...' },
-            { id: 'DE', name: 'Germany', rate: 2100, available: 'Syncing...' },
-            { id: 'FR', name: 'France', rate: 1900, available: 'Syncing...' }
-        ];
-
-        const services = [
-            { id: 'wa', name: 'WhatsApp', icon: 'https://cdn-icons-png.flaticon.com/512/733/733585.png' },
-            { id: 'tg', name: 'Telegram', icon: 'https://cdn-icons-png.flaticon.com/512/2111/2111646.png' },
-            { id: 'go', name: 'Google', icon: 'https://cdn-icons-png.flaticon.com/512/300/300221.png' },
-            { id: 'fb', name: 'Facebook', icon: 'https://cdn-icons-png.flaticon.com/512/733/733547.png' },
-            { id: 'ig', name: 'Instagram', icon: 'https://cdn-icons-png.flaticon.com/512/174/174855.png' },
-            { id: 'tk', name: 'TikTok', icon: 'https://cdn-icons-png.flaticon.com/512/3046/3046121.png' },
-            { id: 'tw', name: 'Twitter', icon: 'https://cdn-icons-png.flaticon.com/512/5968/5968958.png' },
-            { id: 'dc', name: 'Discord', icon: 'https://cdn-icons-png.flaticon.com/512/5968/5968756.png' }
-        ];
+        
+        // Dynamic arrays populated from backend
+        let countries = [];
+        let services = [];
 
         let selectedCountry = null;
         let selectedService = null;
@@ -316,61 +299,53 @@
         let userBalance = 0;
         let userBonusBalance = 0;
 
-async function fetchUserProfile() {
-    const token = localStorage.getItem('userToken');
-    
-    // If no token, don't try to fetch, just stop.
-    if (!token) return; 
+        async function fetchUserProfile() {
+            const token = localStorage.getItem('userToken');
+            if (!token) return; 
 
-    try {
-        const res = await fetch(`${API_BASE_URL}/user-profile`, {
-            headers: { 
-                'Authorization': `Bearer ${token}`,
-                'Cache-Control': 'no-cache' 
+            try {
+                const res = await fetch(`${API_BASE_URL}/user-profile`, {
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Cache-Control': 'no-cache' 
+                    }
+                });
+
+                if (res.status === 401) {
+                    console.warn("Session expired. Logging out...");
+                    return logout(); 
+                }
+
+                const data = await res.json();
+
+                if (res.status === 403 && data.isUnverified) {
+                    window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
+                    return;
+                }
+
+                if (data.success) {
+                    const userData = data.user || data;
+                    userBalance = userData.balance || 0; 
+                    userBonusBalance = userData.bonusBalance || 0; 
+
+                    const updateUI = (id, text) => {
+                        const el = document.getElementById(id);
+                        if (el) el.innerText = text;
+                    };
+
+                    updateUI('displayBalance', `₦${userBalance.toLocaleString()}`);
+                    updateUI('displayBonus', `₦${userBonusBalance.toLocaleString()}`);
+                    updateUI('userReferralCount', userData.referralCount || 0);
+
+                    localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
+                    
+                    if (typeof calculateFinalPrice === "function") calculateFinalPrice();
+                }
+            } catch (err) {
+                console.error("Failed to fetch profile details:", err);
             }
-        });
-
-        // 401 means the token is expired or invalid
-        if (res.status === 401) {
-            console.warn("Session expired. Logging out...");
-            return logout(); 
         }
 
-        const data = await res.json();
-
-        // Handle unverified emails
-        if (res.status === 403 && data.isUnverified) {
-            window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
-            return;
-        }
-
-        if (data.success) {
-            const userData = data.user || data;
-            
-            // Update global balance variables
-            userBalance = userData.balance || 0; 
-            userBonusBalance = userData.bonusBalance || 0; 
-
-            // Update UI safely
-            const updateUI = (id, text) => {
-                const el = document.getElementById(id);
-                if (el) el.innerText = text;
-            };
-
-            updateUI('displayBalance', `₦${userBalance.toLocaleString()}`);
-            updateUI('displayBonus', `₦${userBonusBalance.toLocaleString()}`);
-            updateUI('userReferralCount', userData.referralCount || 0);
-
-            // Save to cache for faster loading next time
-            localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
-            
-            // Recalculate price if necessary
-            if (typeof calculateFinalPrice === "function") calculateFinalPrice();
-        }
-    } catch (err) {
-        console.error("Failed to fetch profile details:", err);
-    }
-}
         function setMode(mode) {
             currentMode = mode;
             document.querySelectorAll('.mode-btn').forEach(b => {
@@ -393,58 +368,57 @@ async function fetchUserProfile() {
             updateButtonState();
         }
 
-    
-        function renderServiceGrid() {
-            const grid = document.getElementById('serviceGrid');
-            grid.innerHTML = services.map(s => `
-                <div onclick="selectService('${s.id}', '${s.name}', this)" class="service-card cursor-pointer bg-white border border-brand-border p-3 rounded-xl flex flex-col items-center justify-center transition-all hover:shadow-md">
-                    <img src="${s.icon}" class="w-6 h-6 mb-2 object-contain">
-                    <span class="text-[9px] font-bold text-brand-darkText text-center leading-tight">${s.name}</span>
-                </div>
-            `).join('');
+        // --- DYNAMICALLY FETCH COUNTRIES & STOCK ---
+        async function syncInventory() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/get-countries`); // Or your stock endpoint that provides country list + stock
+                const data = await response.json();
+                
+                if (data.success && data.countries) {
+                    countries = data.countries; // [{ id: 'NG', name: 'Nigeria', rate: 850, available: 45 }]
+                    renderCountryOptions();
+                }
+            } catch (err) {
+                console.error("Country & stock sync failed", err);
+                const container = document.getElementById('countryOptions');
+                if(container) {
+                    container.innerHTML = `<p class="text-xs text-center text-red-500 py-3">Failed to load countries</p>`;
+                }
+            }
         }
 
-      // --- UPDATED SELECT SERVICE ---
-function selectService(id, name, element) {
-    document.querySelectorAll('.service-card').forEach(c => c.classList.remove('active'));
-    element.classList.add('active');
-    
-    selectedService = id; 
-    document.getElementById('summaryService').innerText = name;
-    
-    document.getElementById('countrySection').classList.replace('step-hidden', 'step-visible');    
-    if (selectedCountry) {
-        fetchRealInventory();
-    }
-    updateButtonState();
-}
+        function renderCountryOptions(filter = "") {
+            const container = document.getElementById('countryOptions');
+            if(!container) return;
+            
+            const filtered = countries.filter(c => c.name.toLowerCase().includes(filter.toLowerCase()));
+            
+            if (filtered.length === 0) {
+                container.innerHTML = `<p class="text-xs text-center text-gray-400 py-3">No countries found</p>`;
+                return;
+            }
 
-      function renderCountryOptions(filter = "") {
-    const container = document.getElementById('countryOptions');
-    const filtered = countries.filter(c => c.name.toLowerCase().includes(filter.toLowerCase()));
-    
-    container.innerHTML = filtered.map(c => {
-        // Determine color and text based on availability
-        const isAvailable = typeof c.available === 'number' && c.available > 0;
-        const statusText = typeof c.available === 'number' ? `${c.available} Available` : 'Syncing...';
-        const statusColor = isAvailable ? 'text-green-600' : 'text-red-400';
+            container.innerHTML = filtered.map(c => {
+                const isAvailable = typeof c.available === 'number' && c.available > 0;
+                const statusText = typeof c.available === 'number' ? `${c.available} Available` : 'Syncing...';
+                const statusColor = isAvailable ? 'text-green-600' : 'text-red-400';
 
-        return `
-            <div onclick="selectCountry('${c.id}')" class="flex items-center justify-between px-4 py-3 hover:bg-brand-background cursor-pointer border-b border-gray-50 last:border-0">
-                <div class="flex items-center gap-3">
-                    <img src="https://flagcdn.com/w40/${c.id.toLowerCase()}.png" class="w-5 h-auto rounded-sm border border-gray-100">
-                    <div class="flex flex-col">
-                         <span class="text-xs font-bold text-brand-darkText">${c.name}</span>
-                         <span class="text-[9px] ${statusColor} font-bold uppercase tracking-tighter">
-                            ${statusText}
-                         </span>
+                return `
+                    <div onclick="selectCountry('${c.id}')" class="flex items-center justify-between px-4 py-3 hover:bg-brand-background cursor-pointer border-b border-gray-50 last:border-0">
+                        <div class="flex items-center gap-3">
+                            <img src="https://flagcdn.com/w40/${c.id.toLowerCase()}.png" class="w-5 h-auto rounded-sm border border-gray-150" onerror="this.style.display='none'">
+                            <div class="flex flex-col">
+                                 <span class="text-xs font-bold text-brand-darkText">${c.name}</span>
+                                 <span class="text-[9px] ${statusColor} font-bold uppercase tracking-tighter">
+                                    ${statusText}
+                                 </span>
+                            </div>
+                        </div>
+                        <span class="text-[10px] font-extrabold text-brand-blue">₦${Number(c.rate || 850).toLocaleString()}</span>
                     </div>
-                </div>
-                <span class="text-[10px] font-extrabold text-brand-blue">₦${Number(c.rate).toLocaleString()}</span>
-            </div>
-        `;
-    }).join('');
-}
+                `;
+            }).join('');
+        }
 
         function toggleCountryDropdown() {
             document.getElementById('countryDropdownList').classList.toggle('hidden');
@@ -457,6 +431,8 @@ function selectService(id, name, element) {
 
         async function selectCountry(id) {
             const country = countries.find(c => c.id === id);
+            if (!country) return;
+            
             selectedCountry = country;
             document.getElementById('selectedCountryDisplay').innerHTML = `
                 <img src="https://flagcdn.com/w40/${country.id.toLowerCase()}.png" class="w-4 h-auto rounded-sm">
@@ -464,9 +440,69 @@ function selectService(id, name, element) {
             `;
             document.getElementById('summaryCountry').innerText = country.name;
             toggleCountryDropdown();
-            document.getElementById('numbersSection').classList.replace('step-hidden', 'step-visible');
+            
+            // Reset service selection when country changes
+            selectedService = null;
+            document.getElementById('summaryService').innerText = 'Select Service';
+            
             calculateFinalPrice();
-            fetchRealInventory(); 
+            updateButtonState();
+
+            // Fetch dynamic services available for this specific country
+            await fetchServicesForCountry(country.id);
+        }
+
+        // --- DYNAMICALLY FETCH SERVICES FOR SELECTED COUNTRY ---
+        async function fetchServicesForCountry(countryId) {
+            const grid = document.getElementById('serviceGrid');
+            grid.innerHTML = `
+                <div class="col-span-full flex flex-col items-center justify-center py-10">
+                    <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
+                    <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Loading Available Services...</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/get-numbers?country=${countryId}`);
+                const data = await response.json();
+
+                if (data.success && data.services) {
+                    services = data.services; // Array of dynamic services from OnlineSIM
+                    renderServiceGrid();
+                } else {
+                    grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold uppercase">${data.message || 'No services available'}</p>`;
+                }
+            } catch (err) {
+                grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-red-500 font-bold uppercase">Connection Error</p>`;
+            }
+        }
+
+        function renderServiceGrid() {
+            const grid = document.getElementById('serviceGrid');
+            if (!services || services.length === 0) {
+                grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-gray-400 font-bold">Please select a country first.</p>`;
+                return;
+            }
+
+            grid.innerHTML = services.map(s => `
+                <div onclick="selectService('${s.id}', '${s.name}', this)" class="service-card cursor-pointer bg-white border border-brand-border p-3 rounded-xl flex flex-col items-center justify-center transition-all hover:shadow-md">
+                    <span class="text-[10px] font-bold text-brand-darkText text-center leading-tight mb-1">${s.name}</span>
+                    <span class="text-[8px] text-green-600 font-bold">${s.count} lines</span>
+                </div>
+            `).join('');
+        }
+
+        function selectService(id, name, element) {
+            document.querySelectorAll('.service-card').forEach(c => c.classList.remove('active', 'border-brand-blue', 'bg-brand-blue/5'));
+            element.classList.add('active', 'border-brand-blue', 'bg-brand-blue/5');
+            
+            selectedService = id; 
+            document.getElementById('summaryService').innerText = name;
+            
+            document.getElementById('numbersSection').classList.replace('step-hidden', 'step-visible');    
+            if (selectedCountry) {
+                fetchRealInventory();
+            }
             updateButtonState();
         }
 
@@ -477,59 +513,61 @@ function selectService(id, name, element) {
                 const select = document.getElementById('rentalPeriod');
                 multiplier = parseFloat(select.options[select.selectedIndex].getAttribute('data-multi'));
             }
-            finalPrice = Math.round(selectedCountry.rate * multiplier);
-            document.getElementById('displayPrice').innerText = `₦${finalPrice.toLocaleString()}`;
+            finalPrice = Math.round((selectedCountry.rate || 850) * multiplier);
+            
+            const priceDisplay = document.getElementById('displayPrice');
+            priceDisplay.innerText = `₦${finalPrice.toLocaleString()}`;
+
+            if (userBalance < finalPrice) {
+                priceDisplay.classList.add('text-red-500');
+            } else {
+                priceDisplay.classList.remove('text-red-500');
+            }
         }
 
-function renderNumbers(numbersArray, targetId) {
-    const grid = document.getElementById('numberGrid');
-    selectedTargetId = targetId; 
+        function renderNumbers(numbersArray, targetId) {
+            const grid = document.getElementById('numberGrid');
+            selectedTargetId = targetId; 
 
-    // Clear previous numbers and render a card for each SIM detected
-    if (numbersArray && numbersArray.length > 0) {
-        grid.innerHTML = numbersArray.map(sim => `
-            <div onclick="selectNumber('${sim.number}', this)" 
-                 class="number-card cursor-pointer bg-white border border-brand-border p-4 rounded-xl flex items-center justify-between group transition-all hover:border-brand-blue">
-                <div class="flex flex-col">
-                    <span class="text-[8px] text-green-500 uppercase font-bold tracking-tighter">● Line Available</span>
-                    <span class="text-sm font-black text-brand-darkText">${sim.number}</span>
-                    <span class="text-[9px] text-brand-midText font-bold uppercase">${sim.label || 'Samsung SIM'}</span>
-                </div>
-                <div class="radio-indicator w-4 h-4 rounded-full border-2 border-brand-border group-[.active]:border-brand-blue group-[.active]:bg-brand-blue transition-colors"></div>
-            </div>
-        `).join('');
-        
-        // Automatically select the first SIM by default
-        const firstCard = grid.querySelector('.number-card');
-        if (firstCard) {
-            selectNumber(numbersArray[0].number, firstCard);
+            if (numbersArray && numbersArray.length > 0) {
+                grid.innerHTML = numbersArray.map(sim => `
+                    <div onclick="selectNumber('${sim.number}', this)" 
+                         class="number-card cursor-pointer bg-white border border-brand-border p-4 rounded-xl flex items-center justify-between group transition-all hover:border-brand-blue">
+                        <div class="flex flex-col">
+                            <span class="text-[8px] text-green-500 uppercase font-bold tracking-tighter">● Line Available</span>
+                            <span class="text-sm font-black text-brand-darkText">${sim.number}</span>
+                            <span class="text-[9px] text-brand-midText font-bold uppercase">${sim.label || 'OnlineSIM Line'}</span>
+                        </div>
+                        <div class="radio-indicator w-4 h-4 rounded-full border-2 border-brand-border group-[.active]:border-brand-blue group-[.active]:bg-brand-blue transition-colors"></div>
+                    </div>
+                `).join('');
+                
+                const firstCard = grid.querySelector('.number-card');
+                if (firstCard) {
+                    selectNumber(numbersArray[0].number, firstCard);
+                }
+            } else {
+                grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold">No active lines available for this service.</p>`;
+            }
         }
-    } else {
-        grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold">No active SIMs detected on device.</p>`;
-    }
-}
 
-/* --- UPDATED SELECT NUMBER: Visually highlights the card --- */
-function selectNumber(num, element) {
-    // Remove active state from all cards
-    document.querySelectorAll('.number-card').forEach(c => {
-        c.classList.remove('active', 'border-brand-blue', 'bg-brand-blue/5');
-    });
-    
-    // Add active state to clicked card
-    element.classList.add('active', 'border-brand-blue', 'bg-brand-blue/5');
-    
-    selectedNumber = num;
-    updateButtonState();
-}
+        function selectNumber(num, element) {
+            document.querySelectorAll('.number-card').forEach(c => {
+                c.classList.remove('active', 'border-brand-blue', 'bg-brand-blue/5');
+            });
+            
+            element.classList.add('active', 'border-brand-blue', 'bg-brand-blue/5');
+            selectedNumber = num;
+            updateButtonState();
+        }
 
         function updateButtonState() {
             const btn = document.getElementById('purchaseBtn');
-            if (!selectedService) {
-                btn.innerText = "Select Service";
-                btn.disabled = true;
-            } else if (!selectedCountry) {
+            if (!selectedCountry) {
                 btn.innerText = "Select Country";
+                btn.disabled = true;
+            } else if (!selectedService) {
+                btn.innerText = "Select Service";
                 btn.disabled = true;
             } else if (!selectedNumber) {
                 btn.innerText = "Select a Number";
@@ -539,251 +577,186 @@ function selectNumber(num, element) {
                 btn.disabled = false;
             }
         }
-async function fetchRealInventory() {
-    if (!selectedCountry || !selectedService) return;
 
-    const grid = document.getElementById('numberGrid');
-    grid.innerHTML = `
-        <div class="col-span-full flex flex-col items-center justify-center py-10">
-            <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
-            <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Scanning Samsung Modem...</p>
-        </div>
-    `;
+        async function fetchRealInventory() {
+            if (!selectedCountry || !selectedService) return;
 
-    try {
-        const response = await fetch(`${API_BASE_URL}/get-numbers?country=${selectedCountry.id}&service=${selectedService}`);
-        const data = await response.json();
+            const grid = document.getElementById('numberGrid');
+            grid.innerHTML = `
+                <div class="col-span-full flex flex-col items-center justify-center py-10">
+                    <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
+                    <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Allocating Line from OnlineSIM...</p>
+                </div>
+            `;
 
-        if (data.success) {
-            // data.numbers is now the dynamic array from your backend
-            renderNumbers(data.numbers, data.targetId);
-        } else {
-            grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold uppercase">${data.message}</p>`;
-        }
-    } catch (err) {
-        grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-red-500 font-bold uppercase">Connection Error</p>`;
-    }
-}
+            try {
+                const response = await fetch(`${API_BASE_URL}/get-numbers?country=${selectedCountry.id}&service=${selectedService}`);
+                const data = await response.json();
 
-/* --- UPDATED PROCESS PURCHASE: Updated to send the specific SIM number --- */
-async function processPurchase() {
-    const btn = document.getElementById('purchaseBtn');
-    const token = localStorage.getItem('userToken');
-
-    if (!token) {
-        Swal.fire({ title: 'Login Required', icon: 'warning' });
-        return;
-    }
-
-    if (userBalance < finalPrice) {
-        Swal.fire('Insufficient Funds', `You need ₦${finalPrice.toLocaleString()} to purchase this service.`, 'error');
-        return;
-    }
-
-    btn.disabled = true;
-    btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>`;
-
-    const payload = {
-        mobileNumber: selectedNumber, // This will be the specific SIM number selected
-        planAmount: finalPrice,
-        metadata: {
-            serviceType: 'virtual_number',
-            serviceName: document.getElementById('summaryService').innerText,
-            countryCode: selectedCountry.id,
-            deviceId: selectedTargetId, // Pass the device ID for the webhook to match
-            provider: selectedCountry.id === 'NG' ? 'textbee' : 'textverified'
-        }
-    };
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/purchase-with-wallet`, { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify(payload)
-        });
-        
-        const res = await response.json();
-        
-        if (res.success) {
-            // Hide purchase view, show activation panel
-            document.querySelector('main').classList.add('hidden');
-            document.getElementById('activationPanel').classList.remove('hidden'); 
-            
-            // Display the purchased number clearly
-            document.getElementById('displayPurchasedNumber').innerText = selectedNumber;
-            
-            // Start the polling interval for the SMS code
-            startSmsPolling(res.order._id);
-            
-            Swal.fire({
-                title: 'Order Placed!',
-                text: 'Waiting for SMS verification code...',
-                icon: 'success',
-                timer: 2000,
-                showConfirmButton: false
-            });
-        } else { 
-            Swal.fire('Order Failed', res.message || "Could not process purchase.", 'error');
-            updateButtonState(); 
-        }
-    } catch (err) { 
-        console.error("Purchase Error:", err);
-        Swal.fire('Error', 'Check your internet connection.', 'error');
-        updateButtonState(); 
-    }
-}
-
-// Function to copy number to clipboard
-function copyNumber() {
-    const num = document.getElementById('displayPurchasedNumber').innerText;
-    navigator.clipboard.writeText(num);
-    Swal.fire({ title: 'Copied!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000, icon: 'success' });
-}
-
-function calculateFinalPrice() {
-    if (!selectedCountry) return;
-    let multiplier = 1;
-    if (currentMode === 'rent') {
-        const select = document.getElementById('rentalPeriod');
-        multiplier = parseFloat(select.options[select.selectedIndex].getAttribute('data-multi'));
-    }
-    finalPrice = Math.round(selectedCountry.rate * multiplier);
-    
-    const priceDisplay = document.getElementById('displayPrice');
-    priceDisplay.innerText = `₦${finalPrice.toLocaleString()}`;
-
-    // Visual warning if balance is low
-    if (userBalance < finalPrice) {
-        priceDisplay.classList.add('text-red-500');
-    } else {
-        priceDisplay.classList.remove('text-red-500');
-    }
-}
-
-
-function startSmsPolling(orderId) {
-    // Clear any existing interval to prevent multiple loops
-    if (pollInterval) clearInterval(pollInterval);
-
-    pollInterval = setInterval(async () => {
-        try {
-            // We call your single API file with the specific action and order ID
-            const response = await fetch(`/api?action=order-details&id=${orderId}`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
-            });
-            
-            const data = await response.json();
-
-            // Check if the order exists and if the smsCode has been filled by your webhook
-            if (data.success && data.order.smsCode) {
-                clearInterval(pollInterval); // Stop polling
-                
-                // 1. Update the UI Digit Boxes
-                const codeDigits = data.order.smsCode.split('');
-                const container = document.getElementById('smsCodeContainer');
-                
-                container.innerHTML = codeDigits.map(d => `
-                    <div class="w-12 h-16 bg-brand-blue text-white rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg shadow-brand-blue/30 border-none animate-bounce">
-                        ${d}
-                    </div>
-                `).join('');
-                
-                // 2. Show the full message if needed
-                if (document.getElementById('fullSmsText')) {
-                    document.getElementById('fullSmsText').innerText = data.order.fullMessage || "Code received successfully.";
+                if (data.success) {
+                    renderNumbers(data.numbers, data.targetId);
+                } else {
+                    grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold uppercase">${data.message}</p>`;
                 }
-                
-                // 3. Success Notification
-                Swal.fire({
-                    title: 'Code Received!',
-                    text: `Verification Code: ${data.order.smsCode}`,
-                    icon: 'success',
-                    confirmButtonColor: '#0F54C6'
-                });
+            } catch (err) {
+                grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-red-500 font-bold uppercase">Connection Error</p>`;
             }
-        } catch (err) {
-            console.error("Polling error:", err);
         }
-    }, 4000); // Check every 4 seconds
-}
 
-async function syncInventory() {
-    try {
-        const response = await fetch('/api/get-stock'); 
-        const data = await response.json();
-        
-        if (data.success && data.stock) {
-            // Loop through our local countries array
-            countries = countries.map(c => {
-                if (data.stock[c.id] !== undefined) {
-                    return { ...c, available: data.stock[c.id] };
+        async function processPurchase() {
+            const btn = document.getElementById('purchaseBtn');
+            const token = localStorage.getItem('userToken');
+
+            if (!token) {
+                Swal.fire({ title: 'Login Required', icon: 'warning' });
+                return;
+            }
+
+            if (userBalance < finalPrice) {
+                Swal.fire('Insufficient Funds', `You need ₦${finalPrice.toLocaleString()} to purchase this service.`, 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>`;
+
+            const payload = {
+                mobileNumber: selectedNumber,
+                planAmount: finalPrice,
+                metadata: {
+                    serviceType: 'virtual_number',
+                    serviceName: document.getElementById('summaryService').innerText,
+                    countryCode: selectedCountry.id,
+                    deviceId: selectedTargetId,
+                    provider: 'onlinesim'
                 }
-                return { ...c, available: 0 }; 
-            });
+            };
 
-            // Re-render the country list so the UI updates from "Syncing..." to the number
-            renderCountryOptions();
+            try {
+                const response = await fetch(`${API_BASE_URL}/purchase-with-wallet`, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                });
+                
+                const res = await response.json();
+                
+                if (res.success) {
+                    document.querySelector('main').classList.add('hidden');
+                    document.getElementById('activationPanel').classList.remove('hidden'); 
+                    document.getElementById('displayPurchasedNumber').innerText = selectedNumber;
+                    
+                    startSmsPolling(res.order._id);
+                    
+                    Swal.fire({
+                        title: 'Order Placed!',
+                        text: 'Waiting for SMS verification code...',
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                } else { 
+                    Swal.fire('Order Failed', res.message || "Could not process purchase.", 'error');
+                    updateButtonState(); 
+                }
+            } catch (err) { 
+                console.error("Purchase Error:", err);
+                Swal.fire('Error', 'Check your internet connection.', 'error');
+                updateButtonState(); 
+            }
         }
-    } catch (err) {
-        console.error("Stock sync failed", err);
-        // Optional: Set to 0 if sync fails so it doesn't stay on "Syncing..."
-        countries = countries.map(c => ({ ...c, available: 0 }));
-        renderCountryOptions();
-    }
-}
 
-
-function toggleSupportMenu() {
-        const menu = document.getElementById('supportMenu');
-        const isHidden = menu.classList.contains('hidden');
-        
-        if (isHidden) {
-            menu.classList.remove('hidden');
-            // Small timeout to allow transition to trigger
-            setTimeout(() => {
-                menu.classList.remove('translate-y-10', 'opacity-0', 'scale-95');
-            }, 10);
-        } else {
-            menu.classList.add('translate-y-10', 'opacity-0', 'scale-95');
-            setTimeout(() => {
-                menu.classList.add('hidden');
-            }, 300);
+        function copyNumber() {
+            const num = document.getElementById('displayPurchasedNumber').innerText;
+            navigator.clipboard.writeText(num);
+            Swal.fire({ title: 'Copied!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000, icon: 'success' });
         }
-    }
 
-    // Add these to your script block
-function logout() {
-    // Clear the token and local data
-    localStorage.removeItem('userToken');
-    localStorage.removeItem('dashboard_cache');
-    // Send them back to the login page
-    window.location.href = 'user_login.html';
-}
+        function startSmsPolling(orderId) {
+            if (pollInterval) clearInterval(pollInterval);
 
-// Optional but good: Check if the user is logged in before even trying to fetch profile
-function checkAuth() {
-    const token = localStorage.getItem('userToken');
-    if (!token) {
-        window.location.href = 'user_login.html';
-    }
-}
+            pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api?action=order-details&id=${orderId}`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
+                    });
+                    
+                    const data = await response.json();
+
+                    if (data.success && data.order.smsCode) {
+                        clearInterval(pollInterval);
+                        
+                        const codeDigits = data.order.smsCode.split('');
+                        const container = document.getElementById('smsCodeContainer');
+                        
+                        container.innerHTML = codeDigits.map(d => `
+                            <div class="w-12 h-16 bg-brand-blue text-white rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg shadow-brand-blue/35 border-none animate-bounce">
+                                ${d}
+                            </div>
+                        `).join('');
+                        
+                        if (document.getElementById('fullSmsText')) {
+                            document.getElementById('fullSmsText').innerText = data.order.fullMessage || "Code received successfully.";
+                        }
+                        
+                        Swal.fire({
+                            title: 'Code Received!',
+                            text: `Verification Code: ${data.order.smsCode}`,
+                            icon: 'success',
+                            confirmButtonColor: '#0F54C6'
+                        });
+                    }
+                } catch (err) {
+                    console.error("Polling error:", err);
+                }
+            }, 4000);
+        }
+
+        function toggleSupportMenu() {
+            const menu = document.getElementById('supportMenu');
+            const isHidden = menu.classList.contains('hidden');
+            
+            if (isHidden) {
+                menu.classList.remove('hidden');
+                setTimeout(() => {
+                    menu.classList.remove('translate-y-10', 'opacity-0', 'scale-95');
+                }, 10);
+            } else {
+                menu.classList.add('translate-y-10', 'opacity-0', 'scale-95');
+                setTimeout(() => {
+                    menu.classList.add('hidden');
+                }, 300);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('userToken');
+            localStorage.removeItem('dashboard_cache');
+            window.location.href = 'user_login.html';
+        }
+
+        function checkAuth() {
+            const token = localStorage.getItem('userToken');
+            if (!token) {
+                window.location.href = 'user_login.html';
+            }
+        }
 
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('-translate-x-full');
             document.getElementById('sidebarOverlay').classList.toggle('hidden');
         }
 
-        document.getElementById('openSidebar').addEventListener('click', toggleSidebar);
-        document.getElementById('closeSidebar').addEventListener('click', toggleSidebar);
+        document.getElementById('openSidebar')?.addEventListener('click', toggleSidebar);
+        document.getElementById('closeSidebar')?.addEventListener('click', toggleSidebar);
       
         window.addEventListener('load', () => {
-    fetchUserProfile();
-    renderServiceGrid(); 
-    renderCountryOptions(); 
-    syncInventory();
-});
+            fetchUserProfile();
+            syncInventory(); 
+        });
 
-setInterval(syncInventory, 30000);
+        setInterval(syncInventory, 30000);
     </script>
+    
 </body>
 </html>

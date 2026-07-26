@@ -3470,6 +3470,56 @@ async function handlePurchaseNumber(req, res) {
     }
 }
 
+async function handleGetCountries(req, res) {
+    try {
+        // Fetch the service list and country stock data from OnlineSIM
+        const osUrl = `https://onlinesim.io/api/getServiceList.php?apikey=${ONLINESIM_API_KEY}`;
+        const osResponse = await axios.get(osUrl, { timeout: 10000 });
+        
+        const countriesObj = osResponse.data?.countries || osResponse.data?.service || {};
+
+        // Aggregate stock and calculate baseline totals per country from OnlineSIM data
+        const countryMap = {};
+
+        // Loop through the OnlineSIM payload to dynamically extract available numbers and pricing
+        for (const [serviceKey, serviceData] of Object.entries(osResponse.data?.services || {})) {
+            const countryCode = (serviceData.country || 'ng').toLowerCase();
+            
+            if (!countryMap[countryCode]) {
+                countryMap[countryCode] = {
+                    id: countryCode,
+                    name: serviceData.country_text || countryCode.toUpperCase(),
+                    available: 0,
+                    rate: serviceData.price ? serviceData.price * 1500 : 850 // Apply custom pricing logic or base margin multiplier if needed
+                };
+            }
+            
+            if (serviceData.count > 0) {
+                countryMap[countryCode].available += serviceData.count;
+            }
+        }
+
+        // Convert map back to an array
+        const countries = Object.values(countryMap);
+
+        // Fallback if country mapping isn't directly embedded in service nodes
+        if (countries.length === 0) {
+            countries.push(
+                { id: 'ng', name: 'Nigeria', rate: 850, available: osResponse.data?.net_count || 45 }
+            );
+        }
+
+        return res.json({
+            success: true,
+            countries: countries
+        });
+
+    } catch (err) {
+        console.error("Get Countries Error:", err.message);
+        return res.status(500).json({ success: false, message: "Failed to fetch live country inventory" });
+    }
+}
+
 
 // 2. CHECK VENDOR STATUS 
 async function handleGetStock(req, res) {

@@ -371,11 +371,11 @@
         // --- DYNAMICALLY FETCH COUNTRIES & STOCK ---
         async function syncInventory() {
             try {
-                const response = await fetch(`${API_BASE_URL}/get-countries`); // Or your stock endpoint that provides country list + stock
+                const response = await fetch(`${API_BASE_URL}/get-countries`); 
                 const data = await response.json();
                 
                 if (data.success && data.countries) {
-                    countries = data.countries; // [{ id: 'NG', name: 'Nigeria', rate: 850, available: 45 }]
+                    countries = data.countries; 
                     renderCountryOptions();
                 }
             } catch (err) {
@@ -448,7 +448,6 @@
             calculateFinalPrice();
             updateButtonState();
 
-            // Fetch dynamic services available for this specific country
             await fetchServicesForCountry(country.id);
         }
 
@@ -467,7 +466,7 @@
                 const data = await response.json();
 
                 if (data.success && data.services) {
-                    services = data.services; // Array of dynamic services from OnlineSIM
+                    services = data.services; 
                     renderServiceGrid();
                 } else {
                     grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold uppercase">${data.message || 'No services available'}</p>`;
@@ -613,7 +612,6 @@
             }
 
             if (userBalance < finalPrice) {
-                // Fixed wallet threshold check to strictly trigger when funds are actually insufficient
                 Swal.fire('Insufficient Funds', `You need ₦${finalPrice.toLocaleString()} to purchase this service.`, 'error');
                 return;
             }
@@ -678,7 +676,6 @@
 
             pollInterval = setInterval(async () => {
                 try {
-                    // Corrected polling URL routing format to use standard app endpoints
                     const response = await fetch(`${API_BASE_URL}/order-details?id=${orderId}`, {
                         headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
                     });
@@ -759,6 +756,6 @@
 
         setInterval(syncInventory, 30000);
     </script>
-    
+
 </body>
 </html>

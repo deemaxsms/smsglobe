@@ -3470,7 +3470,6 @@ async function handlePurchaseNumber(req, res) {
         return res.status(500).json({ success: false, message: "Server error processing purchase." });
     }
 }
-
 async function handleGetCountries(req, res) {
     try {
         const osUrl = `https://onlinesim.io/api/getTariffs.php?apikey=${ONLINESIM_API_KEY}`;
@@ -3479,13 +3478,14 @@ async function handleGetCountries(req, res) {
         const data = osResponse.data;
         const countriesMap = {};
 
-        // OnlineSIM returns countries and services blocks based on the docs layout
         const rawCountries = data?.countries || data?.service || data || {};
 
         for (const [countryKey, countryData] of Object.entries(rawCountries)) {
             if (!countryData || typeof countryData !== 'object') continue;
 
-            const countryCode = (countryData.code || countryKey).toLowerCase();
+            // Ensure keys/codes are safely converted to strings before calling string methods
+            const codeSource = countryData.code || countryKey;
+            const countryCode = String(codeSource).toLowerCase();
             const countryName = countryData.country_text || countryData.name || `Country ${countryKey}`;
             
             const servicesList = [];
@@ -3496,11 +3496,10 @@ async function handleGetCountries(req, res) {
                 const availableCount = Number(servData.count || 0);
                 const vendorPrice = Number(servData.price || 0);
 
-                // Apply custom platform markup rule
                 const customRate = vendorPrice > 0 ? vendorPrice * 1.5 : 850;
 
                 servicesList.push({
-                    id: servData.slug || servData.service || servKey,
+                    id: String(servData.slug || servData.service || servKey),
                     name: servData.service_name || servData.name || servKey,
                     available: availableCount,
                     rate: Math.round(customRate)
@@ -3529,7 +3528,6 @@ async function handleGetCountries(req, res) {
         return res.status(500).json({ success: false, message: "Failed to fetch live vendor inventory" });
     }
 }
-
 
 // 2. CHECK VENDOR STATUS 
 async function handleGetStock(req, res) {

@@ -1519,6 +1519,7 @@ async function handleVerifyTopup(req, res) {
         return res.status(500).json({ success: false, message: err.message || "Internal server error" });
     }
 }
+
 async function handlePurchaseWithWallet(req, res) {
     // 1. DESTRUCTURING (All body variables defined here)
     const { 
@@ -3418,6 +3419,7 @@ async function handleGetRdpRequests(req, res) {
         return res.status(500).json({ success: false, message: "Failed to fetch" });
     }
 }
+
 async function handleGetNumbers(req, res) {
     try { await connectDB(); } catch (e) { return res.status(500).json({ success: false, message: "DB Down" }); }
 

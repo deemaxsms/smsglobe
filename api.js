@@ -3420,78 +3420,53 @@ async function handleGetRdpRequests(req, res) {
     }
 }
 
-async function handleGetNumbers(req, res) {
-    try { await connectDB(); } catch (e) { return res.status(500).json({ success: false, message: "DB Down" }); }
 
-    const { country, service } = req.query; // e.g. country = 'NG', service = 'whatsapp' (optional)
-
-    if (!country) {
-        return res.status(400).json({ success: false, message: "Country parameter is required" });
-    }
-
+async function handlePurchaseNumber(req, res) {
     try {
-        const targetCountry = country.toLowerCase();
-        const osUrl = `https://onlinesim.io/api/getServiceList.php?apikey=${ONLINESIM_API_KEY}&country=${targetCountry}`;
-        const osResponse = await axios.get(osUrl, { timeout: 10000 });
-        
-        const servicesObj = osResponse.data?.services;
+        await connectDB();
+        const { mobileNumber, planAmount, metadata } = req.body;
+        const userId = req.user._id; // Extracted from your auth middleware
 
-        if (!servicesObj) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "No services available for this country right now." 
-            });
+        // 1. Verify user wallet balance
+        const user = await User.findById(userId);
+        if (user.balance < planAmount) {
+            return res.status(400).json({ success: false, message: "Insufficient wallet balance" });
         }
 
-        // SCENARIO 1: If no specific service is passed, return the full list of available services
-        if (!service) {
-            const availableServices = [];
-            for (const [serviceKey, serviceData] of Object.entries(servicesObj)) {
-                if (serviceData.count > 0) {
-                    availableServices.push({
-                        id: serviceKey,
-                        name: serviceData.name || serviceKey,
-                        count: serviceData.count,
-                        price: serviceData.price
-                    });
-                }
-            }
+        // 2. Call OnlineSIM to get the actual number & tzid (Vendor Order ID)
+        const osUrl = `https://onlinesim.io/api/getNum.php?apikey=${ONLINESIM_API_KEY}&service=${metadata.serviceName}&country=${metadata.countryCode}`;
+        const osResponse = await axios.get(osUrl);
+        const osData = osResponse.data;
 
-            return res.json({
-                success: true,
-                services: availableServices,
-                provider: 'onlinesim'
-            });
+        if (osData.response !== 1) {
+            return res.status(400).json({ success: false, message: osData.error || "Failed to allocate number from vendor." });
         }
 
-        // SCENARIO 2: If a specific service IS passed, check its individual stock/pricing
-        const requestedService = servicesObj[service];
+        const vendorOrderId = osData.tzid;
+        const allocatedNumber = osData.number;
 
-        if (!requestedService || requestedService.count === 0) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "No virtual numbers available for this service right now." 
-            });
-        }
+        // 3. Deduct user balance and create local order record
+        user.balance -= planAmount;
+        await user.save();
 
-        // Return the dynamic allocation placeholder and pricing details
+        const newOrder = await SmsNumber.create({
+            user: userId,
+            userEmail: user.email,
+            mobileNumber: allocatedNumber,
+            vendorOrderId: vendorOrderId,
+            deviceId: metadata.deviceId || vendorOrderId,
+            status: 'pending',
+            price: planAmount
+        });
+
         return res.json({
             success: true,
-            numbers: [
-                {
-                    number: "On-Demand Dynamic Allocation",
-                    label: `Available Stock: ${requestedService.count} lines`
-                }
-            ],
-            provider: 'onlinesim',
-            onlineSimPrice: requestedService.price,
-            cost: 850,
-            serviceName: service
+            order: newOrder
         });
 
     } catch (err) {
-        console.error("OnlineSIM Fetch Error:", err.message);
-        return res.status(500).json({ success: false, message: "Vendor Sync Error" });
+        console.error("Purchase Handler Error:", err);
+        return res.status(500).json({ success: false, message: "Server error processing purchase." });
     }
 }
 
@@ -3605,7 +3580,7 @@ async function handleGetUserOrders(req, res) {
         const token = authHeader.split(' ')[1];
         
         const jwt = require('jsonwebtoken');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_secret_key');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const userEmail = decoded.email;
 
         if (!userEmail) {

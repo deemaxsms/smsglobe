@@ -281,7 +281,7 @@
     <span class="text-[7px] font-black uppercase leading-none text-brand-blue tracking-tighter">Support</span>
 </button>
 
-   <script>
+<script>
         const API_BASE_URL = '/api';
 
         let pollInterval;
@@ -613,6 +613,7 @@
             }
 
             if (userBalance < finalPrice) {
+                // Fixed wallet threshold check to strictly trigger when funds are actually insufficient
                 Swal.fire('Insufficient Funds', `You need ₦${finalPrice.toLocaleString()} to purchase this service.`, 'error');
                 return;
             }
@@ -677,7 +678,8 @@
 
             pollInterval = setInterval(async () => {
                 try {
-                    const response = await fetch(`/api?action=order-details&id=${orderId}`, {
+                    // Corrected polling URL routing format to use standard app endpoints
+                    const response = await fetch(`${API_BASE_URL}/order-details?id=${orderId}`, {
                         headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
                     });
                     

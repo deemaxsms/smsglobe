@@ -3473,42 +3473,55 @@ async function handlePurchaseNumber(req, res) {
 
 async function handleGetCountries(req, res) {
     try {
-        // Fetch the service list and country stock data from OnlineSIM
-        const osUrl = `https://onlinesim.io/api/getServiceList.php?apikey=${ONLINESIM_API_KEY}`;
+        // Query OnlineSIM tariffs endpoint which contains countries, services, stock counts, and prices
+        const osUrl = `https://onlinesim.io/api/getTariffs.php?apikey=${ONLINESIM_API_KEY}`;
         const osResponse = await axios.get(osUrl, { timeout: 10000 });
         
-        const countriesObj = osResponse.data?.countries || osResponse.data?.service || {};
+        const data = osResponse.data;
+        const countriesMap = {};
 
-        // Aggregate stock and calculate baseline totals per country from OnlineSIM data
-        const countryMap = {};
+        // OnlineSIM returns an object where keys are country codes/identifiers
+        // Structure format: { "7": { name: "russia", services: { ... } }, "380": { ... } }
+        const rawCountries = data?.countries || data || {};
 
-        // Loop through the OnlineSIM payload to dynamically extract available numbers and pricing
-        for (const [serviceKey, serviceData] of Object.entries(osResponse.data?.services || {})) {
-            const countryCode = (serviceData.country || 'ng').toLowerCase();
+        for (const [countryKey, countryInfo] of Object.entries(rawCountries)) {
+            if (!countryInfo || typeof countryInfo !== 'object') continue;
+
+            const countryCode = countryKey.toLowerCase();
+            const countryName = countryInfo.name || countryInfo.country_text || `Country ${countryKey}`;
             
-            if (!countryMap[countryCode]) {
-                countryMap[countryCode] = {
-                    id: countryCode,
-                    name: serviceData.country_text || countryCode.toUpperCase(),
-                    available: 0,
-                    rate: serviceData.price ? serviceData.price * 1500 : 850 // Apply custom pricing logic or base margin multiplier if needed
-                };
+            const servicesList = [];
+            let totalAvailableInCountry = 0;
+
+            const servicesObj = countryInfo.services || {};
+            for (const [servKey, servData] of Object.entries(servicesObj)) {
+                // OnlineSIM service properties: count, price, service name, slug
+                const availableCount = Number(servData.count) || 0;
+                const vendorPrice = Number(servData.price) || 0;
+
+                // Apply your platform pricing markup rule here (e.g., multiplier or flat addition)
+                const customRate = vendorPrice > 0 ? vendorPrice * 1.5 : 850; 
+
+                servicesList.push({
+                    id: servData.slug || servData.id || servKey,
+                    name: servData.service || servData.name || 'Unknown Service',
+                    slug: servData.slug || servKey,
+                    available: availableCount,
+                    rate: Math.round(customRate)
+                });
+
+                totalAvailableInCountry += availableCount;
             }
-            
-            if (serviceData.count > 0) {
-                countryMap[countryCode].available += serviceData.count;
-            }
+
+            countriesMap[countryCode] = {
+                id: countryCode,
+                name: countryName,
+                available: totalAvailableInCountry,
+                services: servicesList // Passes the exact listed social accounts/services to the frontend
+            };
         }
 
-        // Convert map back to an array
-        const countries = Object.values(countryMap);
-
-        // Fallback if country mapping isn't directly embedded in service nodes
-        if (countries.length === 0) {
-            countries.push(
-                { id: 'ng', name: 'Nigeria', rate: 850, available: osResponse.data?.net_count || 45 }
-            );
-        }
+        const countries = Object.values(countriesMap);
 
         return res.json({
             success: true,
@@ -3517,7 +3530,7 @@ async function handleGetCountries(req, res) {
 
     } catch (err) {
         console.error("Get Countries Error:", err.message);
-        return res.status(500).json({ success: false, message: "Failed to fetch live country inventory" });
+        return res.status(500).json({ success: false, message: "Failed to fetch live vendor inventory" });
     }
 }
 

@@ -121,60 +121,43 @@
             <div class="w-8 h-8 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center text-xs font-bold">U</div>
         </header>
 
-        <main class="p-4 md:p-6 max-w-5xl w-full mx-auto flex-grow pb-40">
-            
-            <div class="flex p-1 bg-white border border-brand-border rounded-2xl mb-8 w-full md:w-fit">
-                <button onclick="setMode('activation')" id="btnActivation" class="mode-btn active flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-bold transition-all">
-                    Direct Activation
-                </button>
-                <button onclick="setMode('rent')" id="btnRent" class="mode-btn flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-bold transition-all text-brand-lightText">
-                    Rent Number
-                </button>
-            </div>
+       <main class="p-4 md:p-6 max-w-5xl w-full mx-auto flex-grow pb-40">
+    
+    <!-- Mode Selection: Direct Activation vs Rent Number -->
+    <div class="flex p-1 bg-white border border-brand-border rounded-2xl mb-8 w-full md:w-fit">
+        <button onclick="setMode('activation')" id="btnActivation" class="mode-btn active flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-bold transition-all">
+            Direct Activation
+        </button>
+        <button onclick="setMode('rent')" id="btnRent" class="mode-btn flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-bold transition-all text-brand-lightText">
+            Rent Number
+        </button>
+    </div>
 
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="text-xs font-bold text-brand-darkText uppercase tracking-wider">Step 1: Select Service</h3>
-                <div class="relative">
-                    <input type="text" id="serviceSearchInput" oninput="filterServices()" placeholder="Search services..." 
-                           class="text-xs bg-white border border-brand-border rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-blue w-48 shadow-sm">
-                </div>
-            </div>
+    <!-- Header & Search Catalog -->
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-xs font-bold text-brand-darkText uppercase tracking-wider">Services Catalog</h3>
+        <div class="relative">
+            <input type="text" id="serviceSearchInput" oninput="filterServices()" placeholder="Search services..." 
+                   class="text-xs bg-white border border-brand-border rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-blue w-48 shadow-sm">
+        </div>
+    </div>
 
-            <!-- Service Grid Container (Services loaded dynamically from Xentrahub API) -->
-            <div id="serviceGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-8"></div>
+    <!-- Rental Period Section (Appears only when 'rent' mode is active) -->
+    <div id="rentPeriodSection" class="hidden bg-white p-4 rounded-xl border border-brand-border mb-6">
+        <label class="text-[10px] font-bold text-brand-lightText uppercase mb-2 block">Rental Duration</label>
+        <select id="rentalPeriod" onchange="recalculateCurrentServicePrices()" class="w-full bg-brand-background border-none rounded-lg p-3 text-xs font-bold text-brand-darkText focus:ring-2 focus:ring-brand-blue">
+            <option value="5h" data-multi="1">5 Hours (Standard)</option>
+            <option value="1d" data-multi="1.5">1 Day (+50%)</option>
+            <option value="3d" data-multi="2.5">3 Days</option>
+            <option value="1w" data-multi="5">1 Week</option>
+            <option value="2w" data-multi="9">2 Weeks</option>
+            <option value="1m" data-multi="15">1 Month</option>
+        </select>
+    </div>
 
-            <!-- Numbers / Inventory Selection Section (Directly follows service selection) -->
-            <section id="numbersSection" class="step-hidden space-y-4 pt-6 border-t border-brand-border mt-8">
-                <div class="flex items-center justify-between">
-                    <h4 id="step2Title" class="text-xs font-bold text-brand-darkText uppercase">Step 2: Number Selection</h4>
-                    <button onclick="fetchRealInventory()" class="text-[10px] font-bold text-brand-blue flex items-center gap-1">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        Refresh
-                    </button>
-                </div>
-
-                <div id="rentPeriodSection" class="hidden bg-white p-4 rounded-xl border border-brand-border mb-4">
-                    <label class="text-[10px] font-bold text-brand-lightText uppercase mb-2 block">Rental Duration</label>
-                    <select id="rentalPeriod" onchange="calculateFinalPrice()" class="w-full bg-brand-background border-none rounded-lg p-3 text-xs font-bold text-brand-darkText focus:ring-2 focus:ring-brand-blue">
-                        <option value="5h" data-multi="1">5 Hours (Standard)</option>
-                        <option value="1d" data-multi="1.5">1 Day (+50%)</option>
-                        <option value="3d" data-multi="2.5">3 Days</option>
-                        <option value="1w" data-multi="5">1 Week</option>
-                        <option value="2w" data-multi="9">2 Weeks</option>
-                        <option value="1m" data-multi="15">1 Month</option>
-                    </select>
-                </div>
-
-                <div id="orderSummary" class="flex gap-2 mb-4 overflow-x-auto no-scrollbar">
-                    <div class="bg-brand-blue/5 border border-brand-blue/10 px-3 py-2 rounded-lg flex items-center gap-2 shrink-0">
-                        <span class="text-[10px] font-bold text-brand-blue uppercase">Service:</span>
-                        <span id="summaryService" class="text-[10px] font-black text-brand-darkText">-</span>
-                    </div>
-                </div>
-
-                <div id="numberGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
-            </section>
-        </main>
+    <!-- Accordion Service List Container matching Xentrahub layout -->
+    <div id="serviceAccordionList" class="space-y-3 mb-8"></div>
+</main>
 
         <div class="fixed bottom-0 left-0 right-0 lg:left-64 bg-white border-t border-brand-border p-4 md:p-6 z-40 shadow-xl">
             <div class="max-w-5xl mx-auto flex items-center justify-between">
@@ -260,21 +243,14 @@
             <span class="text-[7px] font-black uppercase leading-none text-brand-blue tracking-tighter">Support</span>
         </button>
     </div>
-
 <script>
     const API_BASE_URL = '/api';
     const XENTRA_API_BASE = 'https://xentrahub.com/api/stratos';
 
-    let pollInterval;
     let currentMode = 'activation';
-    
     let services = [];
-    let countries = [];
-
-    let selectedService = null;
-    let selectedCountry = null;
-    let selectedNumber = null;
-    let finalPrice = 0;
+    let expandedServiceCode = null;
+    let serviceCountriesCache = {}; // Cache country lists per service
     let userBalance = 0;
     let userBonusBalance = 0;
 
@@ -313,7 +289,6 @@
                 updateUI('userReferralCount', userData.referralCount || 0);
 
                 localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
-                if (typeof calculateFinalPrice === "function") calculateFinalPrice();
             }
         } catch (err) {
             console.error("Failed to fetch profile details:", err);
@@ -336,16 +311,18 @@
             document.getElementById('btnRent').classList.remove('text-brand-lightText');
             document.getElementById('rentPeriodSection').classList.remove('hidden');
         }
-        calculateFinalPrice();
-        updateButtonState();
+        
+        // Re-render accordion if a service is open to update price calculations
+        if (expandedServiceCode) {
+            renderServiceAccordion();
+        }
     }
 
-    // --- STEP 1: FETCH GLOBAL SERVICES CATALOG FROM XENTRAHUB ---
     async function syncInventory() {
-        const grid = document.getElementById('serviceGrid');
-        if (grid && services.length === 0) {
-            grid.innerHTML = `
-                <div class="col-span-full flex flex-col items-center justify-center py-10">
+        const container = document.getElementById('serviceAccordionList');
+        if (container && services.length === 0) {
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-brand-border">
                     <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
                     <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Loading Xentrahub Services...</p>
                 </div>
@@ -358,200 +335,193 @@
             
             if (data.services) {
                 services = data.services; 
-                renderServiceGrid();
+                renderServiceAccordion();
             }
         } catch (err) {
             console.error("Xentrahub service sync failed", err);
-            if (grid) {
-                grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-red-500 font-bold uppercase">Failed to load services</p>`;
+            if (container) {
+                container.innerHTML = `<p class="text-center text-xs py-10 text-red-500 font-bold uppercase bg-white rounded-2xl border border-brand-border">Failed to load services</p>`;
             }
         }
     }
 
-    function renderServiceGrid(filter = "") {
-        const grid = document.getElementById('serviceGrid');
-        if (!grid) return;
+    function renderServiceAccordion(filter = "") {
+        const container = document.getElementById('serviceAccordionList');
+        if (!container) return;
 
         const filtered = services.filter(s => s.name.toLowerCase().includes(filter.toLowerCase()));
         
         if (filtered.length === 0) {
-            grid.innerHTML = `<p class="col-span-full text-center text-xs text-gray-400 py-10 font-bold">No services found</p>`;
+            container.innerHTML = `<p class="text-center text-xs text-gray-400 py-10 font-bold bg-white rounded-2xl border border-brand-border">No services found</p>`;
             return;
         }
 
-        grid.innerHTML = filtered.map(s => `
-            <div onclick="selectService('${s.code}', '${s.name}', this)" class="service-card cursor-pointer bg-white border border-brand-border p-3 rounded-xl flex flex-col items-center justify-center transition-all hover:shadow-md">
-                <span class="text-[10px] font-bold text-brand-darkText text-center leading-tight mb-1">${s.name}</span>
-                <span class="text-[8px] text-green-600 font-bold uppercase">Available</span>
-            </div>
-        `).join('');
+        container.innerHTML = filtered.map(s => {
+            const isExpanded = expandedServiceCode === s.code;
+            const countries = serviceCountriesCache[s.code] || [];
+            
+            return `
+                <div class="bg-white border border-brand-border rounded-2xl overflow-hidden transition-all shadow-sm">
+                    <div onclick="toggleServiceAccordion('${s.code}')" class="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-brand-background/50 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-xl bg-brand-blue/10 text-brand-blue font-bold flex items-center justify-center text-xs uppercase">
+                                ${s.name.substring(0, 2)}
+                            </div>
+                            <span class="text-xs font-bold text-brand-darkText">${s.name}</span>
+                        </div>
+                        <button class="text-xs font-bold text-brand-midText flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border bg-white">
+                            ${isExpanded ? 'Collapse' : 'Get Number'}
+                            <svg class="w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                    </div>
+
+                    ${isExpanded ? `
+                        <div class="border-t border-brand-border bg-brand-background/30 p-4 space-y-3">
+                            <div class="relative mb-3">
+                                <input type="text" oninput="filterCountriesForService('${s.code}', this.value)" placeholder="Search countries (3+ letters)..." 
+                                       class="text-xs bg-white border border-brand-border rounded-lg px-3 py-2 focus:outline-none focus:border-brand-blue w-full shadow-sm">
+                            </div>
+                            
+                            <div id="countriesList_${s.code}" class="space-y-2">
+                                ${renderCountriesListHtml(s.code, countries)}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
     }
 
-    function filterServices() {
-        const query = document.getElementById('serviceSearchInput').value;
-        renderServiceGrid(query);
+    function renderCountriesListHtml(serviceCode, countriesList) {
+        if (!countriesList || countriesList.length === 0) {
+            return `
+                <div class="flex flex-col items-center justify-center py-6">
+                    <div class="w-5 h-5 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-2"></div>
+                    <p class="text-[10px] text-brand-blue font-bold uppercase">Loading Country Inventory...</p>
+                </div>
+            `;
+        }
+
+        let multiplier = 1;
+        if (currentMode === 'rent') {
+            const select = document.getElementById('rentalPeriod');
+            if (select) {
+                multiplier = parseFloat(select.options[select.selectedIndex].getAttribute('data-multi'));
+            }
+        }
+
+        return countriesList.map(c => {
+            const baseRate = c.price?.amount || c.sellingPrice || 850;
+            const calculatedPrice = Math.round(baseRate * multiplier);
+            const stockStatus = c.stock || 'In Stock';
+            const flagCode = (c.countryId || '').toString().toLowerCase();
+
+            return `
+                <div class="bg-white border border-brand-border p-3 rounded-xl flex items-center justify-between hover:border-brand-blue/50 transition-all">
+                    <div class="flex items-center gap-3">
+                        <img src="https://flagcdn.com/w40/${flagCode}.png" class="w-6 h-auto rounded-sm border border-gray-200" onerror="this.style.display='none'">
+                        <div>
+                            <p class="text-xs font-bold text-brand-darkText">${c.countryName}</p>
+                            <span class="text-[9px] text-green-600 font-bold uppercase">● ${stockStatus}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="text-xs font-black text-brand-blue">₦${calculatedPrice.toLocaleString()}</span>
+                        <button onclick="buyServiceCountry('${serviceCode}', '${c.countryId}', ${calculatedPrice})" 
+                                class="px-4 py-2 bg-brand-blue text-white rounded-lg text-xs font-bold hover:bg-brand-blue/90 active:scale-95 transition-all">
+                            Buy
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
-    async function selectService(code, name, element) {
-        document.querySelectorAll('.service-card').forEach(c => c.classList.remove('active', 'border-brand-blue', 'bg-brand-blue/5'));
-        element.classList.add('active', 'border-brand-blue', 'bg-brand-blue/5');
-        
-        selectedService = code; 
-        document.getElementById('summaryService').innerText = name;
-        
-        // Directly fetch countries/pricing data from Xentrahub API for this service
-        await fetchCountriesForService(code);
+    async function toggleServiceAccordion(code) {
+        if (expandedServiceCode === code) {
+            expandedServiceCode = null;
+        } else {
+            expandedServiceCode = code;
+            if (!serviceCountriesCache[code]) {
+                await fetchCountriesForService(code);
+            }
+        }
+        renderServiceAccordion(document.getElementById('serviceSearchInput').value);
     }
 
-    // --- FETCH COUNTRIES & PRICING FOR SELECTED SERVICE, AUTO-SELECT DEFAULT, AND SHOW NUMBERS ---
     async function fetchCountriesForService(serviceCode) {
         try {
             const response = await fetch(`${XENTRA_API_BASE}/countries?service=${serviceCode}`);
             const data = await response.json();
             
-            if (Array.isArray(data) && data.length > 0) {
-                countries = data;
-                // Automatically pick the first available country/price option since country selection UI was removed
-                selectCountry(countries[0].countryId);
+            if (Array.isArray(data)) {
+                serviceCountriesCache[serviceCode] = data;
             } else {
-                countries = [];
-                selectedCountry = null;
-                updateButtonState();
-                document.getElementById('numbersSection').classList.replace('step-visible', 'step-hidden');
+                serviceCountriesCache[serviceCode] = [];
             }
         } catch (err) {
             console.error("Failed to fetch countries", err);
-            countries = [];
-            selectedCountry = null;
-            updateButtonState();
-            document.getElementById('numbersSection').classList.replace('step-visible', 'step-hidden');
+            serviceCountriesCache[serviceCode] = [];
+        }
+        if (expandedServiceCode === serviceCode) {
+            renderServiceAccordion(document.getElementById('serviceSearchInput').value);
         }
     }
 
-    function selectCountry(id) {
-        const country = countries.find(c => c.countryId.toString() === id.toString());
-        if (!country) return;
-        
-        selectedCountry = country;
-        
-        calculateFinalPrice();
-        
-        document.getElementById('numbersSection').classList.replace('step-hidden', 'step-visible');
-        fetchRealInventory();
-        updateButtonState();
-    }
-
-    function calculateFinalPrice() {
-        if (!selectedCountry) return;
-        let multiplier = 1;
-        if (currentMode === 'rent') {
-            const select = document.getElementById('rentalPeriod');
-            multiplier = parseFloat(select.options[select.selectedIndex].getAttribute('data-multi'));
-        }
-        const baseRate = selectedCountry.price?.amount || selectedCountry.sellingPrice || 850;
-        finalPrice = Math.round(baseRate * multiplier);
-        
-        const priceDisplay = document.getElementById('displayPrice');
-        priceDisplay.innerText = `₦${finalPrice.toLocaleString()}`;
-
-        if (userBalance < finalPrice) {
-            priceDisplay.classList.add('text-red-500');
-        } else {
-            priceDisplay.classList.remove('text-red-500');
+    function filterCountriesForService(serviceCode, query) {
+        const allCountries = serviceCountriesCache[serviceCode] || [];
+        const filtered = allCountries.filter(c => c.countryName.toLowerCase().includes(query.toLowerCase()));
+        const listContainer = document.getElementById(`countriesList_${serviceCode}`);
+        if (listContainer) {
+            listContainer.innerHTML = renderCountriesListHtml(serviceCode, filtered);
         }
     }
 
-    // --- STEP 2: ALLOCATE & RENDER PHONE NUMBER ---
-    async function fetchRealInventory() {
-        const grid = document.getElementById('numberGrid');
-        grid.innerHTML = `
-            <div class="col-span-full flex flex-col items-center justify-center py-10">
-                <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
-                <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Allocating Line from Xentrahub...</p>
-            </div>
-        `;
-
-        setTimeout(() => {
-            const mockNumbers = [
-                { number: `+${selectedCountry.countryId}91${Math.floor(10000000 + Math.random() * 90000000)}`, label: 'Xentrahub Prime Line' }
-            ];
-            renderNumbers(mockNumbers);
-        }, 600);
+    function filterServices() {
+        const query = document.getElementById('serviceSearchInput').value;
+        renderServiceAccordion(query);
     }
 
-    function renderNumbers(numbersArray) {
-        const grid = document.getElementById('numberGrid');
-        if (numbersArray && numbersArray.length > 0) {
-            grid.innerHTML = numbersArray.map(sim => `
-                <div onclick="selectNumber('${sim.number}', this)" 
-                     class="number-card cursor-pointer bg-white border border-brand-border p-4 rounded-xl flex items-center justify-between group transition-all hover:border-brand-blue active">
-                    <div class="flex flex-col">
-                        <span class="text-[8px] text-green-500 uppercase font-bold tracking-tighter">● Line Available</span>
-                        <span class="text-sm font-black text-brand-darkText">${sim.number}</span>
-                        <span class="text-[9px] text-brand-midText font-bold uppercase">${sim.label}</span>
-                    </div>
-                    <div class="radio-indicator w-4 h-4 rounded-full border-2 border-brand-border group-[.active]:border-brand-blue group-[.active]:bg-brand-blue transition-colors"></div>
-                </div>
-            `).join('');
-            
-            selectNumber(numbersArray[0].number, grid.querySelector('.number-card'));
-        } else {
-            grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold">No active lines available.</p>`;
+    function recalculateCurrentServicePrices() {
+        if (expandedServiceCode) {
+            renderServiceAccordion(document.getElementById('serviceSearchInput').value);
         }
     }
 
-    function selectNumber(num, element) {
-        document.querySelectorAll('.number-card').forEach(c => {
-            c.classList.remove('active', 'border-brand-blue', 'bg-brand-blue/5');
-        });
-        
-        element.classList.add('active', 'border-brand-blue', 'bg-brand-blue/5');
-        selectedNumber = num;
-        updateButtonState();
-    }
-
-    function updateButtonState() {
-        const btn = document.getElementById('purchaseBtn');
-        if (!selectedService) {
-            btn.innerText = "Select Service";
-            btn.disabled = true;
-        } else if (!selectedCountry) {
-            btn.innerText = "Loading Service Pricing...";
-            btn.disabled = true;
-        } else if (!selectedNumber) {
-            btn.innerText = "Select a Number";
-            btn.disabled = true;
-        } else {
-            btn.innerText = currentMode === 'activation' ? 'Activate SMS' : 'Rent Number';
-            btn.disabled = false;
-        }
-    }
-
-    // --- STEP 3: EXECUTE PURCHASE VIA BACKEND ROUTE ---
-    async function processPurchase() {
-        const btn = document.getElementById('purchaseBtn');
+    async function buyServiceCountry(serviceCode, countryId, price) {
         const token = localStorage.getItem('userToken');
-
         if (!token) {
             Swal.fire({ title: 'Login Required', icon: 'warning' });
             return;
         }
 
-        if (userBalance < finalPrice) {
-            Swal.fire('Insufficient Funds', `You need ₦${finalPrice.toLocaleString()} to purchase this service.`, 'error');
+        if (userBalance < price) {
+            Swal.fire('Insufficient Funds', `You need ₦${price.toLocaleString()} to purchase this service.`, 'error');
             return;
         }
 
-        btn.disabled = true;
-        btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>`;
+        const serviceObj = services.find(s => s.code === serviceCode);
+        const countriesList = serviceCountriesCache[serviceCode] || [];
+        const countryObj = countriesList.find(c => c.countryId.toString() === countryId.toString());
+
+        const confirmed = await Swal.fire({
+            title: 'Confirm Purchase',
+            text: `Purchase ${serviceObj?.name || 'Service'} in ${countryObj?.countryName || 'Selected Country'} for ₦${price.toLocaleString()}?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#0F54C6',
+            confirmButtonText: 'Proceed'
+        });
+
+        if (!confirmed.isConfirmed) return;
 
         const payload = {
-            mobileNumber: selectedNumber,
-            planAmount: finalPrice,
+            mobileNumber: `+${countryId}${Math.floor(10000000 + Math.random() * 90000000)}`,
+            planAmount: price,
             metadata: {
                 serviceType: 'virtual_number',
-                serviceName: document.getElementById('summaryService').innerText,
-                countryCode: selectedCountry.countryId,
+                serviceName: serviceObj?.name || serviceCode,
+                countryCode: countryId,
                 provider: 'xentrahub'
             }
         };
@@ -568,7 +538,7 @@
             if (res.success) {
                 document.querySelector('main').classList.add('hidden');
                 document.getElementById('activationPanel').classList.remove('hidden'); 
-                document.getElementById('displayPurchasedNumber').innerText = selectedNumber;
+                document.getElementById('displayPurchasedNumber').innerText = payload.mobileNumber;
                 
                 startSmsPolling(res.order._id);
                 
@@ -581,12 +551,10 @@
                 });
             } else { 
                 Swal.fire('Order Failed', res.message || "Could not process purchase.", 'error');
-                updateButtonState(); 
             }
         } catch (err) { 
             console.error("Purchase Error:", err);
             Swal.fire('Error', 'Check your internet connection.', 'error');
-            updateButtonState(); 
         }
     }
 
@@ -597,9 +565,9 @@
     }
 
     function startSmsPolling(orderId) {
-        if (pollInterval) clearInterval(pollInterval);
+        if (window.pollInterval) clearInterval(window.pollInterval);
 
-        pollInterval = setInterval(async () => {
+        window.pollInterval = setInterval(async () => {
             try {
                 const response = await fetch(`${API_BASE_URL}/order-details?id=${orderId}`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
@@ -608,7 +576,7 @@
                 const data = await response.json();
 
                 if (data.success && data.order.smsCode) {
-                    clearInterval(pollInterval);
+                    clearInterval(window.pollInterval);
                     
                     const codeDigits = data.order.smsCode.split('');
                     const container = document.getElementById('smsCodeContainer');

@@ -140,23 +140,13 @@
                 </div>
             </div>
 
-            <!-- Service Grid Container -->
+            <!-- Service Grid Container (Services loaded dynamically from Xentrahub API) -->
             <div id="serviceGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-8"></div>
 
-            <!-- Step 2: Country Dropdown Section (Directly integrated layout without the old button toggle) -->
-            <section id="countrySection" class="step-hidden space-y-3 pt-6 border-t border-brand-border mt-8">
-                <h4 class="text-[10px] font-bold text-brand-darkText uppercase">Step 2: Select Country</h4>
-                <div class="bg-white border border-brand-border rounded-xl shadow-sm overflow-hidden">
-                    <div class="p-3 border-b border-brand-border bg-gray-50">
-                        <input type="text" id="countrySearch" placeholder="Search country..." class="w-full text-xs p-2 rounded-lg bg-white border border-brand-border focus:ring-0" onkeyup="filterCountries()">
-                    </div>
-                    <div id="countryOptions" class="max-h-64 overflow-y-auto no-scrollbar"></div>
-                </div>
-            </section>
-
+            <!-- Numbers / Inventory Selection Section (Directly follows service selection) -->
             <section id="numbersSection" class="step-hidden space-y-4 pt-6 border-t border-brand-border mt-8">
                 <div class="flex items-center justify-between">
-                    <h4 id="step3Title" class="text-xs font-bold text-brand-darkText uppercase">Step 3: Number Selection</h4>
+                    <h4 id="step2Title" class="text-xs font-bold text-brand-darkText uppercase">Step 2: Number Selection</h4>
                     <button onclick="fetchRealInventory()" class="text-[10px] font-bold text-brand-blue flex items-center gap-1">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         Refresh
@@ -179,10 +169,6 @@
                     <div class="bg-brand-blue/5 border border-brand-blue/10 px-3 py-2 rounded-lg flex items-center gap-2 shrink-0">
                         <span class="text-[10px] font-bold text-brand-blue uppercase">Service:</span>
                         <span id="summaryService" class="text-[10px] font-black text-brand-darkText">-</span>
-                    </div>
-                    <div class="bg-brand-blue/5 border border-brand-blue/10 px-3 py-2 rounded-lg flex items-center gap-2 shrink-0">
-                        <span class="text-[10px] font-bold text-brand-blue uppercase">Region:</span>
-                        <span id="summaryCountry" class="text-[10px] font-black text-brand-darkText">-</span>
                     </div>
                 </div>
 
@@ -275,448 +261,407 @@
         </button>
     </div>
 
-
 <script>
-        const API_BASE_URL = '/api';
-        const XENTRA_API_BASE = 'https://xentrahub.com/api/stratos';
+    const API_BASE_URL = '/api';
+    const XENTRA_API_BASE = 'https://xentrahub.com/api/stratos';
 
-        let pollInterval;
-        let currentMode = 'activation';
-        
-        let services = [];
-        let countries = [];
+    let pollInterval;
+    let currentMode = 'activation';
+    
+    let services = [];
+    let countries = [];
 
-        let selectedService = null;
-        let selectedCountry = null;
-        let selectedNumber = null;
-        let finalPrice = 0;
-        let userBalance = 0;
-        let userBonusBalance = 0;
+    let selectedService = null;
+    let selectedCountry = null;
+    let selectedNumber = null;
+    let finalPrice = 0;
+    let userBalance = 0;
+    let userBonusBalance = 0;
 
-        async function fetchUserProfile() {
-            const token = localStorage.getItem('userToken');
-            if (!token) return; 
+    async function fetchUserProfile() {
+        const token = localStorage.getItem('userToken');
+        if (!token) return; 
 
-            try {
-                const res = await fetch(`${API_BASE_URL}/user-profile`, {
-                    headers: { 
-                        'Authorization': `Bearer ${token}`,
-                        'Cache-Control': 'no-cache' 
-                    }
-                });
-
-                if (res.status === 401) return logout(); 
-
-                const data = await res.json();
-                if (res.status === 403 && data.isUnverified) {
-                    window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
-                    return;
+        try {
+            const res = await fetch(`${API_BASE_URL}/user-profile`, {
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Cache-Control': 'no-cache' 
                 }
-
-                if (data.success) {
-                    const userData = data.user || data;
-                    userBalance = userData.balance || 0; 
-                    userBonusBalance = userData.bonusBalance || 0; 
-
-                    const updateUI = (id, text) => {
-                        const el = document.getElementById(id);
-                        if (el) el.innerText = text;
-                    };
-
-                    updateUI('displayBalance', `₦${userBalance.toLocaleString()}`);
-                    updateUI('displayBonus', `₦${userBonusBalance.toLocaleString()}`);
-                    updateUI('userReferralCount', userData.referralCount || 0);
-
-                    localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
-                    if (typeof calculateFinalPrice === "function") calculateFinalPrice();
-                }
-            } catch (err) {
-                console.error("Failed to fetch profile details:", err);
-            }
-        }
-
-        function setMode(mode) {
-            currentMode = mode;
-            document.querySelectorAll('.mode-btn').forEach(b => {
-                b.classList.remove('active');
-                b.classList.add('text-brand-lightText');
             });
-            
-            if (mode === 'activation') {
-                document.getElementById('btnActivation').classList.add('active');
-                document.getElementById('btnActivation').classList.remove('text-brand-lightText');
-                document.getElementById('rentPeriodSection').classList.add('hidden');
-                document.getElementById('step3Title').innerText = "Step 3: Direct Activation";
-            } else {
-                document.getElementById('btnRent').classList.add('active');
-                document.getElementById('btnRent').classList.remove('text-brand-lightText');
-                document.getElementById('rentPeriodSection').classList.remove('hidden');
-                document.getElementById('step3Title').innerText = "Step 3: Rental Details";
-            }
-            calculateFinalPrice();
-            updateButtonState();
-        }
 
-        // --- STEP 1: FETCH GLOBAL SERVICES CATALOG FROM XENTRAHUB ---
-        async function syncInventory() {
-            const grid = document.getElementById('serviceGrid');
-            if (grid && services.length === 0) {
-                grid.innerHTML = `
-                    <div class="col-span-full flex flex-col items-center justify-center py-10">
-                        <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
-                        <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Loading Xentrahub Services...</p>
-                    </div>
-                `;
-            }
+            if (res.status === 401) return logout(); 
 
-            try {
-                const response = await fetch(`${XENTRA_API_BASE}/services`);
-                const data = await response.json();
-                
-                if (data.services) {
-                    services = data.services; 
-                    renderServiceGrid();
-                }
-            } catch (err) {
-                console.error("Xentrahub service sync failed", err);
-                if (grid) {
-                    grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-red-500 font-bold uppercase">Failed to load services</p>`;
-                }
-            }
-        }
-
-        function renderServiceGrid(filter = "") {
-            const grid = document.getElementById('serviceGrid');
-            if (!grid) return;
-
-            const filtered = services.filter(s => s.name.toLowerCase().includes(filter.toLowerCase()));
-            
-            if (filtered.length === 0) {
-                grid.innerHTML = `<p class="col-span-full text-center text-xs text-gray-400 py-10 font-bold">No services found</p>`;
+            const data = await res.json();
+            if (res.status === 403 && data.isUnverified) {
+                window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
                 return;
             }
 
-            grid.innerHTML = filtered.map(s => `
-                <div onclick="selectService('${s.code}', '${s.name}', this)" class="service-card cursor-pointer bg-white border border-brand-border p-3 rounded-xl flex flex-col items-center justify-center transition-all hover:shadow-md">
-                    <span class="text-[10px] font-bold text-brand-darkText text-center leading-tight mb-1">${s.name}</span>
-                    <span class="text-[8px] text-green-600 font-bold uppercase">Available</span>
-                </div>
-            `).join('');
-        }
+            if (data.success) {
+                const userData = data.user || data;
+                userBalance = userData.balance || 0; 
+                userBonusBalance = userData.bonusBalance || 0; 
 
-        function filterServices() {
-            const query = document.getElementById('serviceSearchInput').value;
-            renderServiceGrid(query);
-        }
+                const updateUI = (id, text) => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerText = text;
+                };
 
-        async function selectService(code, name, element) {
-            document.querySelectorAll('.service-card').forEach(c => c.classList.remove('active', 'border-brand-blue', 'bg-brand-blue/5'));
-            element.classList.add('active', 'border-brand-blue', 'bg-brand-blue/5');
-            
-            selectedService = code; 
-            document.getElementById('summaryService').innerText = name;
-            
-            // Reset country selection when service changes
-            selectedCountry = null;
-            document.getElementById('summaryCountry').innerText = 'Select Country';
+                updateUI('displayBalance', `₦${userBalance.toLocaleString()}`);
+                updateUI('displayBonus', `₦${userBonusBalance.toLocaleString()}`);
+                updateUI('userReferralCount', userData.referralCount || 0);
 
-            updateButtonState();
-            await fetchCountriesForService(code);
-        }
-
-        // --- STEP 2: FETCH COUNTRIES & PRICING FOR SELECTED SERVICE ---
-        async function fetchCountriesForService(serviceCode) {
-            try {
-                const response = await fetch(`${XENTRA_API_BASE}/countries?service=${serviceCode}`);
-                const data = await response.json();
-                
-                if (Array.isArray(data)) {
-                    countries = data;
-                    renderCountryOptions();
-                } else {
-                    countries = [];
-                    renderCountryOptions();
-                }
-            } catch (err) {
-                console.error("Failed to fetch countries", err);
+                localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
+                if (typeof calculateFinalPrice === "function") calculateFinalPrice();
             }
+        } catch (err) {
+            console.error("Failed to fetch profile details:", err);
         }
+    }
 
-        function renderCountryOptions(filter = "") {
-            const container = document.getElementById('countryOptions');
-            if (!container) return;
-            
-            const filtered = countries.filter(c => c.countryName.toLowerCase().includes(filter.toLowerCase()));
-            
-            if (filtered.length === 0) {
-                container.innerHTML = `<p class="text-xs text-center text-gray-400 py-3">No countries available for this service</p>`;
-                return;
-            }
-
-            container.innerHTML = filtered.map(c => `
-                <div onclick="selectCountry('${c.countryId}')" class="flex items-center justify-between px-4 py-3 hover:bg-brand-background cursor-pointer border-b border-gray-50 last:border-0">
-                    <div class="flex items-center gap-3">
-                        <img src="https://flagcdn.com/w40/${c.countryId.toString().toLowerCase()}.png" class="w-5 h-auto rounded-sm border border-gray-150" onerror="this.style.display='none'">
-                        <div class="flex flex-col">
-                             <span class="text-xs font-bold text-brand-darkText">${c.countryName}</span>
-                             <span class="text-[9px] text-green-600 font-bold uppercase tracking-tighter">Line Ready</span>
-                        </div>
-                    </div>
-                    <span class="text-[10px] font-extrabold text-brand-blue">₦${Number(c.price?.amount || c.sellingPrice || 850).toLocaleString()}</span>
-                </div>
-            `).join('');
-
-            document.getElementById('countryDropdownList').classList.remove('hidden');
+    function setMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.mode-btn').forEach(b => {
+            b.classList.remove('active');
+            b.classList.add('text-brand-lightText');
+        });
+        
+        if (mode === 'activation') {
+            document.getElementById('btnActivation').classList.add('active');
+            document.getElementById('btnActivation').classList.remove('text-brand-lightText');
+            document.getElementById('rentPeriodSection').classList.add('hidden');
+        } else {
+            document.getElementById('btnRent').classList.add('active');
+            document.getElementById('btnRent').classList.remove('text-brand-lightText');
+            document.getElementById('rentPeriodSection').classList.remove('hidden');
         }
+        calculateFinalPrice();
+        updateButtonState();
+    }
 
-        function toggleCountryDropdown() {
-            document.getElementById('countryDropdownList').classList.toggle('hidden');
-            document.getElementById('dropdownArrow').classList.toggle('rotate-180');
-        }
-
-        function filterCountries() {
-            renderCountryOptions(document.getElementById('countrySearch').value);
-        }
-
-        function selectCountry(id) {
-            const country = countries.find(c => c.countryId.toString() === id.toString());
-            if (!country) return;
-            
-            selectedCountry = country;
-            document.getElementById('selectedCountryDisplay').innerHTML = `
-                <span class="font-bold text-brand-darkText">${country.countryName}</span>
-            `;
-            document.getElementById('summaryCountry').innerText = country.countryName;
-            toggleCountryDropdown();
-            
-            calculateFinalPrice();
-            
-            document.getElementById('numbersSection').classList.replace('step-hidden', 'step-visible');
-            fetchRealInventory();
-            updateButtonState();
-        }
-
-        function calculateFinalPrice() {
-            if (!selectedCountry) return;
-            let multiplier = 1;
-            if (currentMode === 'rent') {
-                const select = document.getElementById('rentalPeriod');
-                multiplier = parseFloat(select.options[select.selectedIndex].getAttribute('data-multi'));
-            }
-            const baseRate = selectedCountry.price?.amount || selectedCountry.sellingPrice || 850;
-            finalPrice = Math.round(baseRate * multiplier);
-            
-            const priceDisplay = document.getElementById('displayPrice');
-            priceDisplay.innerText = `₦${finalPrice.toLocaleString()}`;
-
-            if (userBalance < finalPrice) {
-                priceDisplay.classList.add('text-red-500');
-            } else {
-                priceDisplay.classList.remove('text-red-500');
-            }
-        }
-
-        // --- STEP 3: ALLOCATE & RENDER PHONE NUMBER ---
-        async function fetchRealInventory() {
-            const grid = document.getElementById('numberGrid');
+    // --- STEP 1: FETCH GLOBAL SERVICES CATALOG FROM XENTRAHUB ---
+    async function syncInventory() {
+        const grid = document.getElementById('serviceGrid');
+        if (grid && services.length === 0) {
             grid.innerHTML = `
                 <div class="col-span-full flex flex-col items-center justify-center py-10">
                     <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
-                    <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Allocating Line from Xentrahub...</p>
+                    <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Loading Xentrahub Services...</p>
                 </div>
             `;
-
-            setTimeout(() => {
-                const mockNumbers = [
-                    { number: `+${selectedCountry.countryId}91${Math.floor(10000000 + Math.random() * 90000000)}`, label: 'Xentrahub Prime Line' }
-                ];
-                renderNumbers(mockNumbers);
-            }, 600);
         }
 
-        function renderNumbers(numbersArray) {
-            const grid = document.getElementById('numberGrid');
-            if (numbersArray && numbersArray.length > 0) {
-                grid.innerHTML = numbersArray.map(sim => `
-                    <div onclick="selectNumber('${sim.number}', this)" 
-                         class="number-card cursor-pointer bg-white border border-brand-border p-4 rounded-xl flex items-center justify-between group transition-all hover:border-brand-blue active">
-                        <div class="flex flex-col">
-                            <span class="text-[8px] text-green-500 uppercase font-bold tracking-tighter">● Line Available</span>
-                            <span class="text-sm font-black text-brand-darkText">${sim.number}</span>
-                            <span class="text-[9px] text-brand-midText font-bold uppercase">${sim.label}</span>
-                        </div>
-                        <div class="radio-indicator w-4 h-4 rounded-full border-2 border-brand-border group-[.active]:border-brand-blue group-[.active]:bg-brand-blue transition-colors"></div>
-                    </div>
-                `).join('');
-                
-                selectNumber(numbersArray[0].number, grid.querySelector('.number-card'));
-            } else {
-                grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold">No active lines available.</p>`;
+        try {
+            const response = await fetch(`${XENTRA_API_BASE}/services`);
+            const data = await response.json();
+            
+            if (data.services) {
+                services = data.services; 
+                renderServiceGrid();
+            }
+        } catch (err) {
+            console.error("Xentrahub service sync failed", err);
+            if (grid) {
+                grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-red-500 font-bold uppercase">Failed to load services</p>`;
             }
         }
+    }
 
-        function selectNumber(num, element) {
-            document.querySelectorAll('.number-card').forEach(c => {
-                c.classList.remove('active', 'border-brand-blue', 'bg-brand-blue/5');
+    function renderServiceGrid(filter = "") {
+        const grid = document.getElementById('serviceGrid');
+        if (!grid) return;
+
+        const filtered = services.filter(s => s.name.toLowerCase().includes(filter.toLowerCase()));
+        
+        if (filtered.length === 0) {
+            grid.innerHTML = `<p class="col-span-full text-center text-xs text-gray-400 py-10 font-bold">No services found</p>`;
+            return;
+        }
+
+        grid.innerHTML = filtered.map(s => `
+            <div onclick="selectService('${s.code}', '${s.name}', this)" class="service-card cursor-pointer bg-white border border-brand-border p-3 rounded-xl flex flex-col items-center justify-center transition-all hover:shadow-md">
+                <span class="text-[10px] font-bold text-brand-darkText text-center leading-tight mb-1">${s.name}</span>
+                <span class="text-[8px] text-green-600 font-bold uppercase">Available</span>
+            </div>
+        `).join('');
+    }
+
+    function filterServices() {
+        const query = document.getElementById('serviceSearchInput').value;
+        renderServiceGrid(query);
+    }
+
+    async function selectService(code, name, element) {
+        document.querySelectorAll('.service-card').forEach(c => c.classList.remove('active', 'border-brand-blue', 'bg-brand-blue/5'));
+        element.classList.add('active', 'border-brand-blue', 'bg-brand-blue/5');
+        
+        selectedService = code; 
+        document.getElementById('summaryService').innerText = name;
+        
+        // Directly fetch countries/pricing data from Xentrahub API for this service
+        await fetchCountriesForService(code);
+    }
+
+    // --- FETCH COUNTRIES & PRICING FOR SELECTED SERVICE, AUTO-SELECT DEFAULT, AND SHOW NUMBERS ---
+    async function fetchCountriesForService(serviceCode) {
+        try {
+            const response = await fetch(`${XENTRA_API_BASE}/countries?service=${serviceCode}`);
+            const data = await response.json();
+            
+            if (Array.isArray(data) && data.length > 0) {
+                countries = data;
+                // Automatically pick the first available country/price option since country selection UI was removed
+                selectCountry(countries[0].countryId);
+            } else {
+                countries = [];
+                selectedCountry = null;
+                updateButtonState();
+                document.getElementById('numbersSection').classList.replace('step-visible', 'step-hidden');
+            }
+        } catch (err) {
+            console.error("Failed to fetch countries", err);
+            countries = [];
+            selectedCountry = null;
+            updateButtonState();
+            document.getElementById('numbersSection').classList.replace('step-visible', 'step-hidden');
+        }
+    }
+
+    function selectCountry(id) {
+        const country = countries.find(c => c.countryId.toString() === id.toString());
+        if (!country) return;
+        
+        selectedCountry = country;
+        
+        calculateFinalPrice();
+        
+        document.getElementById('numbersSection').classList.replace('step-hidden', 'step-visible');
+        fetchRealInventory();
+        updateButtonState();
+    }
+
+    function calculateFinalPrice() {
+        if (!selectedCountry) return;
+        let multiplier = 1;
+        if (currentMode === 'rent') {
+            const select = document.getElementById('rentalPeriod');
+            multiplier = parseFloat(select.options[select.selectedIndex].getAttribute('data-multi'));
+        }
+        const baseRate = selectedCountry.price?.amount || selectedCountry.sellingPrice || 850;
+        finalPrice = Math.round(baseRate * multiplier);
+        
+        const priceDisplay = document.getElementById('displayPrice');
+        priceDisplay.innerText = `₦${finalPrice.toLocaleString()}`;
+
+        if (userBalance < finalPrice) {
+            priceDisplay.classList.add('text-red-500');
+        } else {
+            priceDisplay.classList.remove('text-red-500');
+        }
+    }
+
+    // --- STEP 2: ALLOCATE & RENDER PHONE NUMBER ---
+    async function fetchRealInventory() {
+        const grid = document.getElementById('numberGrid');
+        grid.innerHTML = `
+            <div class="col-span-full flex flex-col items-center justify-center py-10">
+                <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
+                <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Allocating Line from Xentrahub...</p>
+            </div>
+        `;
+
+        setTimeout(() => {
+            const mockNumbers = [
+                { number: `+${selectedCountry.countryId}91${Math.floor(10000000 + Math.random() * 90000000)}`, label: 'Xentrahub Prime Line' }
+            ];
+            renderNumbers(mockNumbers);
+        }, 600);
+    }
+
+    function renderNumbers(numbersArray) {
+        const grid = document.getElementById('numberGrid');
+        if (numbersArray && numbersArray.length > 0) {
+            grid.innerHTML = numbersArray.map(sim => `
+                <div onclick="selectNumber('${sim.number}', this)" 
+                     class="number-card cursor-pointer bg-white border border-brand-border p-4 rounded-xl flex items-center justify-between group transition-all hover:border-brand-blue active">
+                    <div class="flex flex-col">
+                        <span class="text-[8px] text-green-500 uppercase font-bold tracking-tighter">● Line Available</span>
+                        <span class="text-sm font-black text-brand-darkText">${sim.number}</span>
+                        <span class="text-[9px] text-brand-midText font-bold uppercase">${sim.label}</span>
+                    </div>
+                    <div class="radio-indicator w-4 h-4 rounded-full border-2 border-brand-border group-[.active]:border-brand-blue group-[.active]:bg-brand-blue transition-colors"></div>
+                </div>
+            `).join('');
+            
+            selectNumber(numbersArray[0].number, grid.querySelector('.number-card'));
+        } else {
+            grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold">No active lines available.</p>`;
+        }
+    }
+
+    function selectNumber(num, element) {
+        document.querySelectorAll('.number-card').forEach(c => {
+            c.classList.remove('active', 'border-brand-blue', 'bg-brand-blue/5');
+        });
+        
+        element.classList.add('active', 'border-brand-blue', 'bg-brand-blue/5');
+        selectedNumber = num;
+        updateButtonState();
+    }
+
+    function updateButtonState() {
+        const btn = document.getElementById('purchaseBtn');
+        if (!selectedService) {
+            btn.innerText = "Select Service";
+            btn.disabled = true;
+        } else if (!selectedCountry) {
+            btn.innerText = "Loading Service Pricing...";
+            btn.disabled = true;
+        } else if (!selectedNumber) {
+            btn.innerText = "Select a Number";
+            btn.disabled = true;
+        } else {
+            btn.innerText = currentMode === 'activation' ? 'Activate SMS' : 'Rent Number';
+            btn.disabled = false;
+        }
+    }
+
+    // --- STEP 3: EXECUTE PURCHASE VIA BACKEND ROUTE ---
+    async function processPurchase() {
+        const btn = document.getElementById('purchaseBtn');
+        const token = localStorage.getItem('userToken');
+
+        if (!token) {
+            Swal.fire({ title: 'Login Required', icon: 'warning' });
+            return;
+        }
+
+        if (userBalance < finalPrice) {
+            Swal.fire('Insufficient Funds', `You need ₦${finalPrice.toLocaleString()} to purchase this service.`, 'error');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>`;
+
+        const payload = {
+            mobileNumber: selectedNumber,
+            planAmount: finalPrice,
+            metadata: {
+                serviceType: 'virtual_number',
+                serviceName: document.getElementById('summaryService').innerText,
+                countryCode: selectedCountry.countryId,
+                provider: 'xentrahub'
+            }
+        };
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/purchase-with-wallet`, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(payload)
             });
             
-            element.classList.add('active', 'border-brand-blue', 'bg-brand-blue/5');
-            selectedNumber = num;
-            updateButtonState();
-        }
-
-        function updateButtonState() {
-            const btn = document.getElementById('purchaseBtn');
-            if (!selectedService) {
-                btn.innerText = "Select Service";
-                btn.disabled = true;
-            } else if (!selectedCountry) {
-                btn.innerText = "Select Country";
-                btn.disabled = true;
-            } else if (!selectedNumber) {
-                btn.innerText = "Select a Number";
-                btn.disabled = true;
-            } else {
-                btn.innerText = currentMode === 'activation' ? 'Activate SMS' : 'Rent Number';
-                btn.disabled = false;
-            }
-        }
-
-        // --- STEP 4: EXECUTE PURCHASE VIA BACKEND ROUTE ---
-        async function processPurchase() {
-            const btn = document.getElementById('purchaseBtn');
-            const token = localStorage.getItem('userToken');
-
-            if (!token) {
-                Swal.fire({ title: 'Login Required', icon: 'warning' });
-                return;
-            }
-
-            if (userBalance < finalPrice) {
-                Swal.fire('Insufficient Funds', `You need ₦${finalPrice.toLocaleString()} to purchase this service.`, 'error');
-                return;
-            }
-
-            btn.disabled = true;
-            btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>`;
-
-            const payload = {
-                mobileNumber: selectedNumber,
-                planAmount: finalPrice,
-                metadata: {
-                    serviceType: 'virtual_number',
-                    serviceName: document.getElementById('summaryService').innerText,
-                    countryCode: selectedCountry.countryId,
-                    provider: 'xentrahub'
-                }
-            };
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/purchase-with-wallet`, { 
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify(payload)
+            const res = await response.json();
+            
+            if (res.success) {
+                document.querySelector('main').classList.add('hidden');
+                document.getElementById('activationPanel').classList.remove('hidden'); 
+                document.getElementById('displayPurchasedNumber').innerText = selectedNumber;
+                
+                startSmsPolling(res.order._id);
+                
+                Swal.fire({
+                    title: 'Order Placed!',
+                    text: 'Waiting for Xentrahub verification code...',
+                    icon: 'success',
+                    timer: 2000,
+                    showConfirmButton: false
                 });
-                
-                const res = await response.json();
-                
-                if (res.success) {
-                    document.querySelector('main').classList.add('hidden');
-                    document.getElementById('activationPanel').classList.remove('hidden'); 
-                    document.getElementById('displayPurchasedNumber').innerText = selectedNumber;
-                    
-                    startSmsPolling(res.order._id);
-                    
-                    Swal.fire({
-                        title: 'Order Placed!',
-                        text: 'Waiting for Xentrahub verification code...',
-                        icon: 'success',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
-                } else { 
-                    Swal.fire('Order Failed', res.message || "Could not process purchase.", 'error');
-                    updateButtonState(); 
-                }
-            } catch (err) { 
-                console.error("Purchase Error:", err);
-                Swal.fire('Error', 'Check your internet connection.', 'error');
+            } else { 
+                Swal.fire('Order Failed', res.message || "Could not process purchase.", 'error');
                 updateButtonState(); 
             }
+        } catch (err) { 
+            console.error("Purchase Error:", err);
+            Swal.fire('Error', 'Check your internet connection.', 'error');
+            updateButtonState(); 
         }
+    }
 
-        function copyNumber() {
-            const num = document.getElementById('displayPurchasedNumber').innerText;
-            navigator.clipboard.writeText(num);
-            Swal.fire({ title: 'Copied!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000, icon: 'success' });
-        }
+    function copyNumber() {
+        const num = document.getElementById('displayPurchasedNumber').innerText;
+        navigator.clipboard.writeText(num);
+        Swal.fire({ title: 'Copied!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000, icon: 'success' });
+    }
 
-        function startSmsPolling(orderId) {
-            if (pollInterval) clearInterval(pollInterval);
+    function startSmsPolling(orderId) {
+        if (pollInterval) clearInterval(pollInterval);
 
-            pollInterval = setInterval(async () => {
-                try {
-                    const response = await fetch(`${API_BASE_URL}/order-details?id=${orderId}`, {
-                        headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
-                    });
+        pollInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/order-details?id=${orderId}`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
+                });
+                
+                const data = await response.json();
+
+                if (data.success && data.order.smsCode) {
+                    clearInterval(pollInterval);
                     
-                    const data = await response.json();
-
-                    if (data.success && data.order.smsCode) {
-                        clearInterval(pollInterval);
-                        
-                        const codeDigits = data.order.smsCode.split('');
-                        const container = document.getElementById('smsCodeContainer');
-                        
-                        container.innerHTML = codeDigits.map(d => `
-                            <div class="w-12 h-16 bg-brand-blue text-white rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg shadow-brand-blue/35 border-none animate-bounce">
-                                ${d}
-                            </div>
-                        `).join('');
-                        
-                        if (document.getElementById('fullSmsText')) {
-                            document.getElementById('fullSmsText').innerText = data.order.fullMessage || "Code received successfully.";
-                        }
-                        
-                        Swal.fire({
-                            title: 'Code Received!',
-                            text: `Verification Code: ${data.order.smsCode}`,
-                            icon: 'success',
-                            confirmButtonColor: '#0F54C6'
-                        });
+                    const codeDigits = data.order.smsCode.split('');
+                    const container = document.getElementById('smsCodeContainer');
+                    
+                    container.innerHTML = codeDigits.map(d => `
+                        <div class="w-12 h-16 bg-brand-blue text-white rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg shadow-brand-blue/35 border-none animate-bounce">
+                            ${d}
+                        </div>
+                    `).join('');
+                    
+                    if (document.getElementById('fullSmsText')) {
+                        document.getElementById('fullSmsText').innerText = data.order.fullMessage || "Code received successfully.";
                     }
-                } catch (err) {
-                    console.error("Polling error:", err);
+                    
+                    Swal.fire({
+                        title: 'Code Received!',
+                        text: `Verification Code: ${data.order.smsCode}`,
+                        icon: 'success',
+                        confirmButtonColor: '#0F54C6'
+                    });
                 }
-            }, 4000);
-        }
+            } catch (err) {
+                console.error("Polling error:", err);
+            }
+        }, 4000);
+    }
 
-        function toggleSupportMenu() {
-            const menu = document.getElementById('supportMenu');
-            menu.classList.toggle('hidden');
-        }
+    function toggleSupportMenu() {
+        const menu = document.getElementById('supportMenu');
+        menu.classList.toggle('hidden');
+    }
 
-        function logout() {
-            localStorage.removeItem('userToken');
-            localStorage.removeItem('dashboard_cache');
-            window.location.href = 'user_login.html';
-        }
+    function logout() {
+        localStorage.removeItem('userToken');
+        localStorage.removeItem('dashboard_cache');
+        window.location.href = 'user_login.html';
+    }
 
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('-translate-x-full');
-            document.getElementById('sidebarOverlay').classList.toggle('hidden');
-        }
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('-translate-x-full');
+        document.getElementById('sidebarOverlay').classList.toggle('hidden');
+    }
 
-        document.getElementById('openSidebar')?.addEventListener('click', toggleSidebar);
-        document.getElementById('closeSidebar')?.addEventListener('click', toggleSidebar);
-      
-        window.addEventListener('load', () => {
-            fetchUserProfile();
-            syncInventory(); 
-        });
+    document.getElementById('openSidebar')?.addEventListener('click', toggleSidebar);
+    document.getElementById('closeSidebar')?.addEventListener('click', toggleSidebar);
+  
+    window.addEventListener('load', () => {
+        fetchUserProfile();
+        syncInventory(); 
+    });
 
-        setInterval(syncInventory, 30000);
-    </script>
+    setInterval(syncInventory, 30000);
+</script>
 
 </body>
 </html>

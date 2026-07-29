@@ -54,11 +54,10 @@
             box-shadow: 0 4px 12px rgba(15, 84, 198, 0.2);
         }
     }
-    /* Add this inside your @layer utilities or <style> tag */
-.coming-soon-overlay {
-    backdrop-filter: blur(8px);
-    background-color: rgba(255, 255, 255, 0.8);
-}
+    .coming-soon-overlay {
+        backdrop-filter: blur(8px);
+        background-color: rgba(255, 255, 255, 0.8);
+    }
     </style>
 </head>
 <body class="bg-brand-background min-h-screen flex font-sans text-brand-midText">
@@ -113,8 +112,6 @@
         </nav>
     </aside>
 
-
-
     <div class="flex-grow lg:ml-64 flex flex-col min-h-screen">
         <header class="bg-white border-b border-brand-border sticky top-0 z-30 px-4 md:px-8 py-3 flex items-center justify-between">
             <button id="openSidebar" class="lg:hidden p-1.5 text-brand-midText border border-brand-border rounded-md">
@@ -135,24 +132,25 @@
                 </button>
             </div>
 
-            <section class="space-y-4">
-                <h4 class="text-xs font-bold text-brand-darkText uppercase tracking-wider">Step 1: Select Service</h4>
-                <div id="serviceGrid" class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2"></div>
-            </section>
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xs font-bold text-brand-darkText uppercase tracking-wider">Step 1: Select Service</h3>
+                <div class="relative">
+                    <input type="text" id="serviceSearchInput" oninput="filterServices()" placeholder="Search services..." 
+                           class="text-xs bg-white border border-brand-border rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-blue w-48 shadow-sm">
+                </div>
+            </div>
 
+            <!-- Service Grid Container -->
+            <div id="serviceGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-8"></div>
+
+            <!-- Step 2: Country Dropdown Section (Directly integrated layout without the old button toggle) -->
             <section id="countrySection" class="step-hidden space-y-3 pt-6 border-t border-brand-border mt-8">
                 <h4 class="text-[10px] font-bold text-brand-darkText uppercase">Step 2: Select Country</h4>
-                <div class="relative w-full md:w-96">
-                    <button onclick="toggleCountryDropdown()" class="w-full bg-white border border-brand-border rounded-xl px-4 py-3 flex items-center justify-between shadow-sm">
-                        <div id="selectedCountryDisplay" class="flex items-center gap-3 text-xs text-gray-400">Select a country...</div>
-                        <svg class="w-4 h-4 text-brand-lightText transition-transform" id="dropdownArrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    </button>
-                    <div id="countryDropdownList" class="absolute left-0 right-0 mt-2 bg-white border border-brand-border rounded-xl shadow-2xl z-50 hidden">
-                        <div class="p-2 border-b border-brand-border">
-                            <input type="text" id="countrySearch" placeholder="Search country..." class="w-full text-xs p-2 rounded-lg bg-gray-50 border-none focus:ring-0" onkeyup="filterCountries()">
-                        </div>
-                        <div id="countryOptions" class="max-h-64 overflow-y-auto no-scrollbar"></div>
+                <div class="bg-white border border-brand-border rounded-xl shadow-sm overflow-hidden">
+                    <div class="p-3 border-b border-brand-border bg-gray-50">
+                        <input type="text" id="countrySearch" placeholder="Search country..." class="w-full text-xs p-2 rounded-lg bg-white border border-brand-border focus:ring-0" onkeyup="filterCountries()">
                     </div>
+                    <div id="countryOptions" class="max-h-64 overflow-y-auto no-scrollbar"></div>
                 </div>
             </section>
 
@@ -203,83 +201,80 @@
         </div>
     </div>
 
-
     <div id="activationPanel" class="hidden fixed inset-0 z-[60] bg-white flex flex-col p-6">
-    <div class="flex items-center justify-between mb-8">
-        <h2 class="text-xl font-black text-brand-darkText uppercase tracking-tighter">Live Activation</h2>
-        <span class="bg-green-100 text-green-600 px-3 py-1 rounded-full text-[10px] font-bold animate-pulse">Awaiting SMS...</span>
-    </div>
-
-    <div class="bg-brand-background rounded-3xl p-8 text-center border border-brand-border">
-        <p class="text-xs font-bold text-brand-midText mb-2 uppercase">Your Purchased Number</p>
-        <h3 id="displayPurchasedNumber" class="text-3xl font-black text-brand-blue tracking-widest mb-4">---</h3>
-        <button onclick="copyNumber()" class="text-[10px] bg-brand-blue/10 text-brand-blue font-bold px-4 py-2 rounded-xl">COPY NUMBER</button>
-    </div>
-
-    <div class="mt-8">
-        <label class="block text-[10px] font-bold text-brand-midText mb-4 uppercase text-center">Verification Code</label>
-        <div id="smsCodeContainer" class="flex justify-center gap-3">
-            <div class="w-12 h-16 border-2 border-brand-border rounded-2xl flex items-center justify-center text-2xl font-black text-brand-darkText animate-pulse">?</div>
-            <div class="w-12 h-16 border-2 border-brand-border rounded-2xl flex items-center justify-center text-2xl font-black text-brand-darkText animate-pulse">?</div>
-            <div class="w-12 h-16 border-2 border-brand-border rounded-2xl flex items-center justify-center text-2xl font-black text-brand-darkText animate-pulse">?</div>
-            <div class="w-12 h-16 border-2 border-brand-border rounded-2xl flex items-center justify-center text-2xl font-black text-brand-darkText animate-pulse">?</div>
+        <div class="flex items-center justify-between mb-8">
+            <h2 class="text-xl font-black text-brand-darkText uppercase tracking-tighter">Live Activation</h2>
+            <span class="bg-green-100 text-green-600 px-3 py-1 rounded-full text-[10px] font-bold animate-pulse">Awaiting SMS...</span>
         </div>
-        <p id="fullSmsText" class="text-[10px] text-center text-brand-midText mt-6 italic px-4"></p>
+
+        <div class="bg-brand-background rounded-3xl p-8 text-center border border-brand-border">
+            <p class="text-xs font-bold text-brand-midText mb-2 uppercase">Your Purchased Number</p>
+            <h3 id="displayPurchasedNumber" class="text-3xl font-black text-brand-blue tracking-widest mb-4">---</h3>
+            <button onclick="copyNumber()" class="text-[10px] bg-brand-blue/10 text-brand-blue font-bold px-4 py-2 rounded-xl">COPY NUMBER</button>
+        </div>
+
+        <div class="mt-8">
+            <label class="block text-[10px] font-bold text-brand-midText mb-4 uppercase text-center">Verification Code</label>
+            <div id="smsCodeContainer" class="flex justify-center gap-3">
+                <div class="w-12 h-16 border-2 border-brand-border rounded-2xl flex items-center justify-center text-2xl font-black text-brand-darkText animate-pulse">?</div>
+                <div class="w-12 h-16 border-2 border-brand-border rounded-2xl flex items-center justify-center text-2xl font-black text-brand-darkText animate-pulse">?</div>
+                <div class="w-12 h-16 border-2 border-brand-border rounded-2xl flex items-center justify-center text-2xl font-black text-brand-darkText animate-pulse">?</div>
+                <div class="w-12 h-16 border-2 border-brand-border rounded-2xl flex items-center justify-center text-2xl font-black text-brand-darkText animate-pulse">?</div>
+            </div>
+            <p id="fullSmsText" class="text-[10px] text-center text-brand-midText mt-6 italic px-4"></p>
+        </div>
+
+        <button onclick="location.reload()" class="mt-auto w-full py-4 bg-brand-background text-brand-darkText font-bold rounded-2xl border border-brand-border">Done / Buy Another</button>
     </div>
 
-    <button onclick="location.reload()" class="mt-auto w-full py-4 bg-brand-background text-brand-darkText font-bold rounded-2xl border border-brand-border">Done / Buy Another</button>
-</div>
+    <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end space-y-4">
+        <div id="supportMenu" class="hidden flex flex-col space-y-3 mb-2 transition-all duration-300 transform translate-y-10 opacity-0 scale-95">
+            <button onclick="window.open('https://wa.me/2347059450227', '_blank')" 
+                    class="flex items-center space-x-3 bg-white border border-brand-border px-4 py-2.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all active:scale-95 group">
+                <div class="w-8 h-8 bg-[#25D366] rounded-full flex items-center justify-center">
+                    <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" class="w-4 h-4 invert">
+                </div>
+                <div class="text-left">
+                    <p class="text-[10px] font-bold text-brand-darkText leading-none">WhatsApp</p>
+                    <p class="text-[8px] text-brand-lightText">Instant Chat</p>
+                </div>
+            </button>
 
-<div class="fixed bottom-6 right-6 z-50 flex flex-col items-end space-y-4">
-    
-    <div id="supportMenu" class="hidden flex flex-col space-y-3 mb-2 transition-all duration-300 transform translate-y-10 opacity-0 scale-95">
-        
-        <button onclick="window.open('https://wa.me/2347059450227', '_blank')" 
-                class="flex items-center space-x-3 bg-white border border-brand-border px-4 py-2.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all active:scale-95 group">
-            <div class="w-8 h-8 bg-[#25D366] rounded-full flex items-center justify-center">
-                <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" class="w-4 h-4 invert">
-            </div>
-            <div class="text-left">
-                <p class="text-[10px] font-bold text-brand-darkText leading-none">WhatsApp</p>
-                <p class="text-[8px] text-brand-lightText">Instant Chat</p>
-            </div>
-        </button>
+            <button onclick="window.open('https://t.me/@Deemax_Trades', '_blank')" 
+                    class="flex items-center space-x-3 bg-white border border-brand-border px-4 py-2.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all active:scale-95 group">
+                <div class="w-8 h-8 bg-[#0088cc] rounded-full flex items-center justify-center">
+                    <img src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png" class="w-4 h-4 invert">
+                </div>
+                <div class="text-left">
+                    <p class="text-[10px] font-bold text-brand-darkText leading-none">Telegram</p>
+                    <p class="text-[8px] text-brand-lightText">Secure Channel</p>
+                </div>
+            </button>
 
-        <button onclick="window.open('https://t.me/@Deemax_Trades', '_blank')" 
-                class="flex items-center space-x-3 bg-white border border-brand-border px-4 py-2.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all active:scale-95 group">
-            <div class="w-8 h-8 bg-[#0088cc] rounded-full flex items-center justify-center">
-                <img src="https://cdn-icons-png.flaticon.com/512/2111/2111646.png" class="w-4 h-4 invert">
-            </div>
-            <div class="text-left">
-                <p class="text-[10px] font-bold text-brand-darkText leading-none">Telegram</p>
-                <p class="text-[8px] text-brand-lightText">Secure Channel</p>
-            </div>
-        </button>
+            <button onclick="window.location.href='mailto:support@smsglobe.com'" 
+                    class="flex items-center space-x-3 bg-white border border-brand-border px-4 py-2.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all active:scale-95 group">
+                <div class="w-8 h-8 bg-brand-blue rounded-full flex items-center justify-center">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                    </svg>
+                </div>
+                <div class="text-left">
+                    <p class="text-[10px] font-bold text-brand-darkText leading-none">Email Help</p>
+                    <p class="text-[8px] text-brand-lightText">24h Response</p>
+                </div>
+            </button>
+        </div>
 
-        <button onclick="window.location.href='mailto:support@smsglobe.com'" 
-                class="flex items-center space-x-3 bg-white border border-brand-border px-4 py-2.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all active:scale-95 group">
-            <div class="w-8 h-8 bg-brand-blue rounded-full flex items-center justify-center">
-                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                </svg>
-            </div>
-            <div class="text-left">
-                <p class="text-[10px] font-bold text-brand-darkText leading-none">Email Help</p>
-                <p class="text-[8px] text-brand-lightText">24h Response</p>
-            </div>
+        <button onclick="toggleSupportMenu()" 
+                id="supportTrigger"
+                class="w-14 h-14 bg-white rounded-full shadow-2xl flex flex-col items-center justify-center border-2 border-brand-blue transition-all hover:scale-105 active:scale-90 overflow-hidden">
+            <img src="https://i.imgur.com/syKFaNI.png" 
+                 alt="SMSG Logo" 
+                 class="w-7 h-7 object-contain mb-0.5">
+            <span class="text-[7px] font-black uppercase leading-none text-brand-blue tracking-tighter">Support</span>
         </button>
     </div>
 
-  <button onclick="toggleSupportMenu()" 
-        id="supportTrigger"
-        class="w-14 h-14 bg-white rounded-full shadow-2xl flex flex-col items-center justify-center border-2 border-brand-blue transition-all hover:scale-105 active:scale-90 overflow-hidden">
-    
-    <img src="https://i.imgur.com/syKFaNI.png" 
-         alt="SMSG Logo" 
-         class="w-7 h-7 object-contain mb-0.5">
-    
-    <span class="text-[7px] font-black uppercase leading-none text-brand-blue tracking-tighter">Support</span>
-</button>
 
 <script>
         const API_BASE_URL = '/api';
@@ -407,6 +402,11 @@
                     <span class="text-[8px] text-green-600 font-bold uppercase">Available</span>
                 </div>
             `).join('');
+        }
+
+        function filterServices() {
+            const query = document.getElementById('serviceSearchInput').value;
+            renderServiceGrid(query);
         }
 
         async function selectService(code, name, element) {

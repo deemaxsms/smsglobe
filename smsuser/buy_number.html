@@ -254,6 +254,9 @@
     let userBalance = 0;
     let userBonusBalance = 0;
 
+    // Priority service keywords to sort to the top
+    const PRIORITY_SERVICES = ['whatsapp', 'facebook', 'instagram', 'telegram', 'twitter', 'google', 'tiktok', 'snapchat', 'discord', 'netflix'];
+
     async function fetchUserProfile() {
         const token = localStorage.getItem('userToken');
         if (!token) return; 
@@ -334,7 +337,21 @@
             const data = await response.json();
             
             if (data.services) {
-                services = data.services; 
+                // Sort services to put priority social/meta apps first
+                services = data.services.sort((a, b) => {
+                    const nameA = a.name.toLowerCase();
+                    const nameB = b.name.toLowerCase();
+                    
+                    const indexA = PRIORITY_SERVICES.findIndex(p => nameA.includes(p));
+                    const indexB = PRIORITY_SERVICES.findIndex(p => nameB.includes(p));
+                    
+                    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                    if (indexA !== -1) return -1;
+                    if (indexB !== -1) return 1;
+                    
+                    return nameA.localeCompare(nameB);
+                });
+
                 renderServiceAccordion();
             }
         } catch (err) {

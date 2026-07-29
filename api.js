@@ -65,7 +65,8 @@ app.get('/robots.txt', (req, res) => {
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET_KEY;
-const ONLINESIM_API_KEY = process.env.ONLINESIM_API_KEY;
+const XENTRA_API_BASE = 'https://xentrahub.com/api/stratos';
+const XENTRA_API_KEY = process.env.XENTRA_API_KEY;
 
 const adminSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
@@ -3421,32 +3422,49 @@ async function handleGetRdpRequests(req, res) {
     }
 }
 
-
+/**
+ * 1. PURCHASE / ALLOCATE NUMBER FROM XENTRAHUB
+ */
 async function handlePurchaseNumber(req, res) {
     try {
         await connectDB();
-        const { mobileNumber, planAmount, metadata } = req.body;
-        const userId = req.user._id; // Extracted from your auth middleware
+        const { planAmount, metadata } = req.body;
+        const userId = req.user._id;
+
+        // Extract parameters passed from frontend metadata
+        const serviceCode = metadata?.serviceCode || metadata?.serviceName || 'google';
+        const countryId = metadata?.countryCode || metadata?.countryId;
+
+        if (!countryId) {
+            return res.status(400).json({ success: false, message: "Country ID is required." });
+        }
 
         // 1. Verify user wallet balance
         const user = await User.findById(userId);
-        if (user.balance < planAmount) {
-            return res.status(400).json({ success: false, message: "Insufficient wallet balance" });
+        if (!user || user.balance < planAmount) {
+            return res.status(400).json({ success: false, message: "Insufficient wallet balance." });
         }
 
-        // 2. Call OnlineSIM to get the actual number & tzid (Vendor Order ID)
-        const osUrl = `https://onlinesim.io/api/getNum.php?apikey=${ONLINESIM_API_KEY}&service=${metadata.serviceName}&country=${metadata.countryCode}`;
-        const osResponse = await axios.get(osUrl);
-        const osData = osResponse.data;
+        // 2. Call Xentrahub Stratos Purchase API
+        const xentraRes = await xentraClient.post('/purchase', {
+            service: String(serviceCode).toLowerCase(),
+            countryId: Number(countryId) || countryId
+        });
 
-        if (osData.response !== 1) {
-            return res.status(400).json({ success: false, message: osData.error || "Failed to allocate number from vendor." });
+        const xentraData = xentraRes.data;
+
+        // Validate vendor response
+        const vendorOrderId = xentraData?.activationId || xentraData?.id;
+        const allocatedNumber = xentraData?.phoneNumber || xentraData?.phone || xentraData?.number;
+
+        if (!vendorOrderId || !allocatedNumber) {
+            return res.status(400).json({
+                success: false,
+                message: xentraData?.message || xentraData?.error || "Failed to allocate number from Xentrahub."
+            });
         }
 
-        const vendorOrderId = osData.tzid;
-        const allocatedNumber = osData.number;
-
-        // 3. Deduct user balance and create local order record
+        // 3. Deduct user balance & save local order record
         user.balance -= planAmount;
         await user.save();
 
@@ -3454,10 +3472,11 @@ async function handlePurchaseNumber(req, res) {
             user: userId,
             userEmail: user.email,
             mobileNumber: allocatedNumber,
-            vendorOrderId: vendorOrderId,
-            deviceId: metadata.deviceId || vendorOrderId,
+            vendorOrderId: String(vendorOrderId),
+            deviceId: metadata?.deviceId || String(vendorOrderId),
             status: 'pending',
-            price: planAmount
+            price: planAmount,
+            provider: 'xentrahub'
         });
 
         return res.json({
@@ -3466,111 +3485,60 @@ async function handlePurchaseNumber(req, res) {
         });
 
     } catch (err) {
-        console.error("Purchase Handler Error:", err);
-        return res.status(500).json({ success: false, message: "Server error processing purchase." });
-    }
-}
-async function handleGetCountries(req, res) {
-    try {
-        const osUrl = `https://onlinesim.io/api/getTariffs.php?apikey=${ONLINESIM_API_KEY}`;
-        const osResponse = await axios.get(osUrl, { timeout: 10000 });
-        
-        const data = osResponse.data;
-        const countriesMap = {};
-
-        const rawCountries = data?.countries || data?.service || data || {};
-
-        for (const [countryKey, countryData] of Object.entries(rawCountries)) {
-            if (!countryData || typeof countryData !== 'object') continue;
-
-            // Ensure keys/codes are safely converted to strings before calling string methods
-            const codeSource = countryData.code || countryKey;
-            const countryCode = String(codeSource).toLowerCase();
-            const countryName = countryData.country_text || countryData.name || `Country ${countryKey}`;
-            
-            const servicesList = [];
-            let totalAvailable = 0;
-
-            const servicesObj = countryData.services || {};
-            for (const [servKey, servData] of Object.entries(servicesObj)) {
-                const availableCount = Number(servData.count || 0);
-                const vendorPrice = Number(servData.price || 0);
-
-                const customRate = vendorPrice > 0 ? vendorPrice * 1.5 : 850;
-
-                servicesList.push({
-                    id: String(servData.slug || servData.service || servKey),
-                    name: servData.service_name || servData.name || servKey,
-                    available: availableCount,
-                    rate: Math.round(customRate)
-                });
-
-                totalAvailable += availableCount;
-            }
-
-            countriesMap[countryCode] = {
-                id: countryCode,
-                name: countryName,
-                available: totalAvailable,
-                services: servicesList
-            };
-        }
-
-        const countries = Object.values(countriesMap);
-
-        return res.json({
-            success: true,
-            countries: countries
-        });
-
-    } catch (err) {
-        console.error("Get Countries Error:", err.message);
-        return res.status(500).json({ success: false, message: "Failed to fetch live vendor inventory" });
+        console.error("Xentrahub Purchase Error:", err.response?.data || err.message);
+        const errMsg = err.response?.data?.message || err.response?.data?.error || "Server error processing purchase.";
+        return res.status(500).json({ success: false, message: errMsg });
     }
 }
 
-// 2. CHECK VENDOR STATUS 
+
+/**
+ * 3. CHECK VENDOR STATUS / HEALTH
+ */
 async function handleGetStock(req, res) {
     try {
-        // Quick verification check against OnlineSIM balance to ensure API connection is operational
-        const response = await axios.get(`https://onlinesim.io/api/getBalance.php?apikey=${ONLINESIM_API_KEY}`);
-        
-        const isOnline = response.data && response.data.response === '1';
+        // Query services endpoint as a quick health check
+        const response = await xentraClient.get('/services');
+        const isOnline = response.data && (response.data.services || Array.isArray(response.data));
 
         return res.json({ 
             success: true, 
             stock: { 
-                "NG": isOnline ? 100 : 0 // Set high structural stock pool if operational
+                "GLOBAL": isOnline ? 100 : 0 
             } 
         });
     } catch (err) {
-        return res.json({ success: false, stock: { "NG": 0 } });
+        return res.json({ success: false, stock: { "GLOBAL": 0 } });
     }
 }
 
-// 3. ORDER STATE FALLBACK LOOKUP (Replaces Webhook Polling)
 async function handleOrderDetails(req, res) {
-    const { id } = req.query; // This is your local DB Order ID
+    const { id } = req.query; // Local DB Order ID
 
     try {
+        await connectDB();
         const order = await SmsNumber.findById(id);
-        if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+        if (!order) return res.status(404).json({ success: false, message: "Order not found." });
 
-        // If it's already marked completed or we have code, return immediately
+        // Return immediately if already completed
         if (order.status === 'completed' || order.smsCode) {
             return res.json({ success: true, order });
         }
 
-        // If it's an active OnlineSIM rent/activation, poll the vendor's active state
+        // Poll Xentrahub verification state if order has vendorOrderId
         if (order.vendorOrderId) {
-            const stateUrl = `https://onlinesim.io/api/getState.php?apikey=${ONLINESIM_API_KEY}&tzid=${order.vendorOrderId}`;
-            const stateResponse = await axios.get(stateUrl);
-            const stateData = stateResponse.data?.[0] || stateResponse.data;
+            const checkUrl = `/verification/${order.vendorOrderId}`;
+            const stateRes = await xentraClient.get(checkUrl);
+            const stateData = stateRes.data || {};
 
-            // If an SMS message is located in the vendor state array object
-            if (stateData && stateData.msg) {
-                order.smsCode = stateData.msg.match(/\d{4,6}/)?.[0] || stateData.msg;
-                order.fullMessage = stateData.msg;
+            // Extract SMS text / OTP from response
+            const smsMessage = stateData.sms || stateData.fullMessage || stateData.message || stateData.code;
+
+            if (smsMessage) {
+                const extractedCode = stateData.code || String(smsMessage).match(/\d{4,6}/)?.[0] || String(smsMessage);
+
+                order.smsCode = extractedCode;
+                order.fullMessage = typeof smsMessage === 'string' ? smsMessage : `Verification Code: ${extractedCode}`;
                 order.status = 'completed';
                 await order.save();
             }
@@ -3578,13 +3546,16 @@ async function handleOrderDetails(req, res) {
 
         return res.json({ success: true, order });
     } catch (err) {
-        console.error("Polling check failed:", err);
-        return res.status(500).json({ success: false, message: "Failed to read order update" });
+        console.error("Polling check failed:", err.response?.data || err.message);
+        return res.status(500).json({ success: false, message: "Failed to read order update." });
     }
 }
 
+/**
+ * 5. WEBHOOK HANDLER (Kept for external Android Gateway fallback)
+ */
 async function handleSmsReceive(req, res) {
-    const { message, deviceId, phoneNumber } = req.body;
+    const { message, deviceId } = req.body;
     const signingSecret = req.headers['x-signing-secret'];
 
     if (signingSecret !== "c5d55ea9-1dc3-4569-81d8-9a49114c2155") {
@@ -3592,33 +3563,26 @@ async function handleSmsReceive(req, res) {
     }
 
     try {
-        // Extract 4-6 digit OTP
+        await connectDB();
         const otpCode = message.match(/\d{4,6}/)?.[0];
 
-      if (otpCode) {
-    // Update the DB and capture the updated document
-    const updatedRecord = await SmsNumber.findOneAndUpdate(
-        { 
-            deviceId: deviceId, 
-            status: 'pending' 
-        },
-        { 
-            smsCode: otpCode, 
-            fullMessage: message, 
-            status: 'completed' 
-        },
-        { 
-            sort: { createdAt: -1 },
-            new: true // Returns the updated document so you can log it
-        }
-    );
+        if (otpCode) {
+            const updatedRecord = await SmsNumber.findOneAndUpdate(
+                { deviceId: deviceId, status: 'pending' },
+                { 
+                    smsCode: otpCode, 
+                    fullMessage: message, 
+                    status: 'completed' 
+                },
+                { sort: { createdAt: -1 }, new: true }
+            );
 
-    if (updatedRecord) {
-        console.log(`OTP ${otpCode} assigned to user: ${updatedRecord.userEmail}`);
-    } else {
-        console.warn(`SMS received but no pending order found for device: ${deviceId}`);
-    }
-}
+            if (updatedRecord) {
+                console.log(`OTP ${otpCode} assigned to user: ${updatedRecord.userEmail}`);
+            } else {
+                console.warn(`SMS received but no pending order found for device: ${deviceId}`);
+            }
+        }
 
         return res.status(200).send("OK");
     } catch (err) {
@@ -3626,6 +3590,8 @@ async function handleSmsReceive(req, res) {
         return res.status(500).send("Error");
     }
 }
+
+
 
 async function handleGetUserOrders(req, res) {
     try {

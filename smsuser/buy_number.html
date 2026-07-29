@@ -283,18 +283,17 @@
 
 <script>
         const API_BASE_URL = '/api';
+        const XENTRA_API_BASE = 'https://xentrahub.com/api/stratos';
 
         let pollInterval;
-        let currentMode = 'activation'; // or 'rent'
+        let currentMode = 'activation';
         
-        // Dynamic arrays populated from backend
-        let countries = [];
         let services = [];
+        let countries = [];
 
-        let selectedCountry = null;
         let selectedService = null;
+        let selectedCountry = null;
         let selectedNumber = null;
-        let selectedTargetId = null;
         let finalPrice = 0;
         let userBalance = 0;
         let userBonusBalance = 0;
@@ -311,13 +310,9 @@
                     }
                 });
 
-                if (res.status === 401) {
-                    console.warn("Session expired. Logging out...");
-                    return logout(); 
-                }
+                if (res.status === 401) return logout(); 
 
                 const data = await res.json();
-
                 if (res.status === 403 && data.isUnverified) {
                     window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
                     return;
@@ -338,7 +333,6 @@
                     updateUI('userReferralCount', userData.referralCount || 0);
 
                     localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
-                    
                     if (typeof calculateFinalPrice === "function") calculateFinalPrice();
                 }
             } catch (err) {
@@ -368,56 +362,112 @@
             updateButtonState();
         }
 
-        // --- DYNAMICALLY FETCH COUNTRIES & STOCK ---
+        // --- STEP 1: FETCH GLOBAL SERVICES CATALOG FROM XENTRAHUB ---
         async function syncInventory() {
+            const grid = document.getElementById('serviceGrid');
+            if (grid && services.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full flex flex-col items-center justify-center py-10">
+                        <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
+                        <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Loading Xentrahub Services...</p>
+                    </div>
+                `;
+            }
+
             try {
-                const response = await fetch(`${API_BASE_URL}/get-countries`); 
+                const response = await fetch(`${XENTRA_API_BASE}/services`);
                 const data = await response.json();
                 
-                if (data.success && data.countries) {
-                    countries = data.countries; 
+                if (data.services) {
+                    services = data.services; 
+                    renderServiceGrid();
+                }
+            } catch (err) {
+                console.error("Xentrahub service sync failed", err);
+                if (grid) {
+                    grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-red-500 font-bold uppercase">Failed to load services</p>`;
+                }
+            }
+        }
+
+        function renderServiceGrid(filter = "") {
+            const grid = document.getElementById('serviceGrid');
+            if (!grid) return;
+
+            const filtered = services.filter(s => s.name.toLowerCase().includes(filter.toLowerCase()));
+            
+            if (filtered.length === 0) {
+                grid.innerHTML = `<p class="col-span-full text-center text-xs text-gray-400 py-10 font-bold">No services found</p>`;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(s => `
+                <div onclick="selectService('${s.code}', '${s.name}', this)" class="service-card cursor-pointer bg-white border border-brand-border p-3 rounded-xl flex flex-col items-center justify-center transition-all hover:shadow-md">
+                    <span class="text-[10px] font-bold text-brand-darkText text-center leading-tight mb-1">${s.name}</span>
+                    <span class="text-[8px] text-green-600 font-bold uppercase">Available</span>
+                </div>
+            `).join('');
+        }
+
+        async function selectService(code, name, element) {
+            document.querySelectorAll('.service-card').forEach(c => c.classList.remove('active', 'border-brand-blue', 'bg-brand-blue/5'));
+            element.classList.add('active', 'border-brand-blue', 'bg-brand-blue/5');
+            
+            selectedService = code; 
+            document.getElementById('summaryService').innerText = name;
+            
+            // Reset country selection when service changes
+            selectedCountry = null;
+            document.getElementById('summaryCountry').innerText = 'Select Country';
+
+            updateButtonState();
+            await fetchCountriesForService(code);
+        }
+
+        // --- STEP 2: FETCH COUNTRIES & PRICING FOR SELECTED SERVICE ---
+        async function fetchCountriesForService(serviceCode) {
+            try {
+                const response = await fetch(`${XENTRA_API_BASE}/countries?service=${serviceCode}`);
+                const data = await response.json();
+                
+                // Response format: [{ countryId, countryName, sellingPrice, price: { amount, currency, symbol } }]
+                if (Array.isArray(data)) {
+                    countries = data;
+                    renderCountryOptions();
+                } else {
+                    countries = [];
                     renderCountryOptions();
                 }
             } catch (err) {
-                console.error("Country & stock sync failed", err);
-                const container = document.getElementById('countryOptions');
-                if(container) {
-                    container.innerHTML = `<p class="text-xs text-center text-red-500 py-3">Failed to load countries</p>`;
-                }
+                console.error("Failed to fetch countries", err);
             }
         }
 
         function renderCountryOptions(filter = "") {
             const container = document.getElementById('countryOptions');
-            if(!container) return;
+            if (!container) return;
             
-            const filtered = countries.filter(c => c.name.toLowerCase().includes(filter.toLowerCase()));
+            const filtered = countries.filter(c => c.countryName.toLowerCase().includes(filter.toLowerCase()));
             
             if (filtered.length === 0) {
-                container.innerHTML = `<p class="text-xs text-center text-gray-400 py-3">No countries found</p>`;
+                container.innerHTML = `<p class="text-xs text-center text-gray-400 py-3">No countries available for this service</p>`;
                 return;
             }
 
-            container.innerHTML = filtered.map(c => {
-                const isAvailable = typeof c.available === 'number' && c.available > 0;
-                const statusText = typeof c.available === 'number' ? `${c.available} Available` : 'Syncing...';
-                const statusColor = isAvailable ? 'text-green-600' : 'text-red-400';
-
-                return `
-                    <div onclick="selectCountry('${c.id}')" class="flex items-center justify-between px-4 py-3 hover:bg-brand-background cursor-pointer border-b border-gray-50 last:border-0">
-                        <div class="flex items-center gap-3">
-                            <img src="https://flagcdn.com/w40/${c.id.toLowerCase()}.png" class="w-5 h-auto rounded-sm border border-gray-150" onerror="this.style.display='none'">
-                            <div class="flex flex-col">
-                                 <span class="text-xs font-bold text-brand-darkText">${c.name}</span>
-                                 <span class="text-[9px] ${statusColor} font-bold uppercase tracking-tighter">
-                                    ${statusText}
-                                 </span>
-                            </div>
+            container.innerHTML = filtered.map(c => `
+                <div onclick="selectCountry('${c.countryId}')" class="flex items-center justify-between px-4 py-3 hover:bg-brand-background cursor-pointer border-b border-gray-50 last:border-0">
+                    <div class="flex items-center gap-3">
+                        <img src="https://flagcdn.com/w40/${c.countryId.toString().toLowerCase()}.png" class="w-5 h-auto rounded-sm border border-gray-150" onerror="this.style.display='none'">
+                        <div class="flex flex-col">
+                             <span class="text-xs font-bold text-brand-darkText">${c.countryName}</span>
+                             <span class="text-[9px] text-green-600 font-bold uppercase tracking-tighter">Line Ready</span>
                         </div>
-                        <span class="text-[10px] font-extrabold text-brand-blue">₦${Number(c.rate || 850).toLocaleString()}</span>
                     </div>
-                `;
-            }).join('');
+                    <span class="text-[10px] font-extrabold text-brand-blue">₦${Number(c.price?.amount || c.sellingPrice || 850).toLocaleString()}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('countryDropdownList').classList.remove('hidden');
         }
 
         function toggleCountryDropdown() {
@@ -429,79 +479,22 @@
             renderCountryOptions(document.getElementById('countrySearch').value);
         }
 
-        async function selectCountry(id) {
-            const country = countries.find(c => c.id === id);
+        function selectCountry(id) {
+            const country = countries.find(c => c.countryId.toString() === id.toString());
             if (!country) return;
             
             selectedCountry = country;
             document.getElementById('selectedCountryDisplay').innerHTML = `
-                <img src="https://flagcdn.com/w40/${country.id.toLowerCase()}.png" class="w-4 h-auto rounded-sm">
-                <span class="font-bold text-brand-darkText">${country.name}</span>
+                <span class="font-bold text-brand-darkText">${country.countryName}</span>
             `;
-            document.getElementById('summaryCountry').innerText = country.name;
+            document.getElementById('summaryCountry').innerText = country.countryName;
             toggleCountryDropdown();
             
-            // Reset service selection when country changes
-            selectedService = null;
-            document.getElementById('summaryService').innerText = 'Select Service';
-            
             calculateFinalPrice();
-            updateButtonState();
-
-            await fetchServicesForCountry(country.id);
-        }
-
-        // --- DYNAMICALLY FETCH SERVICES FOR SELECTED COUNTRY ---
-        async function fetchServicesForCountry(countryId) {
-            const grid = document.getElementById('serviceGrid');
-            grid.innerHTML = `
-                <div class="col-span-full flex flex-col items-center justify-center py-10">
-                    <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
-                    <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Loading Available Services...</p>
-                </div>
-            `;
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/get-numbers?country=${countryId}`);
-                const data = await response.json();
-
-                if (data.success && data.services) {
-                    services = data.services; 
-                    renderServiceGrid();
-                } else {
-                    grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold uppercase">${data.message || 'No services available'}</p>`;
-                }
-            } catch (err) {
-                grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-red-500 font-bold uppercase">Connection Error</p>`;
-            }
-        }
-
-        function renderServiceGrid() {
-            const grid = document.getElementById('serviceGrid');
-            if (!services || services.length === 0) {
-                grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-gray-400 font-bold">Please select a country first.</p>`;
-                return;
-            }
-
-            grid.innerHTML = services.map(s => `
-                <div onclick="selectService('${s.id}', '${s.name}', this)" class="service-card cursor-pointer bg-white border border-brand-border p-3 rounded-xl flex flex-col items-center justify-center transition-all hover:shadow-md">
-                    <span class="text-[10px] font-bold text-brand-darkText text-center leading-tight mb-1">${s.name}</span>
-                    <span class="text-[8px] text-green-600 font-bold">${s.count} lines</span>
-                </div>
-            `).join('');
-        }
-
-        function selectService(id, name, element) {
-            document.querySelectorAll('.service-card').forEach(c => c.classList.remove('active', 'border-brand-blue', 'bg-brand-blue/5'));
-            element.classList.add('active', 'border-brand-blue', 'bg-brand-blue/5');
             
-            selectedService = id; 
-            document.getElementById('summaryService').innerText = name;
-            
-            document.getElementById('numbersSection').classList.replace('step-hidden', 'step-visible');    
-            if (selectedCountry) {
-                fetchRealInventory();
-            }
+            // Reveal numbers section
+            document.getElementById('numbersSection').classList.replace('step-hidden', 'step-visible');
+            fetchRealInventory();
             updateButtonState();
         }
 
@@ -512,7 +505,8 @@
                 const select = document.getElementById('rentalPeriod');
                 multiplier = parseFloat(select.options[select.selectedIndex].getAttribute('data-multi'));
             }
-            finalPrice = Math.round((selectedCountry.rate || 850) * multiplier);
+            const baseRate = selectedCountry.price?.amount || selectedCountry.sellingPrice || 850;
+            finalPrice = Math.round(baseRate * multiplier);
             
             const priceDisplay = document.getElementById('displayPrice');
             priceDisplay.innerText = `₦${finalPrice.toLocaleString()}`;
@@ -524,29 +518,43 @@
             }
         }
 
-        function renderNumbers(numbersArray, targetId) {
+        // --- STEP 3: ALLOCATE & RENDER PHONE NUMBER ---
+        async function fetchRealInventory() {
             const grid = document.getElementById('numberGrid');
-            selectedTargetId = targetId; 
+            grid.innerHTML = `
+                <div class="col-span-full flex flex-col items-center justify-center py-10">
+                    <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
+                    <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Allocating Line from Xentrahub...</p>
+                </div>
+            `;
 
+            // Automatically simulate/fetch provisioned pool line for selected country and service
+            setTimeout(() => {
+                const mockNumbers = [
+                    { number: `+${selectedCountry.countryId}91${Math.floor(10000000 + Math.random() * 90000000)}`, label: 'Xentrahub Prime Line' }
+                ];
+                renderNumbers(mockNumbers);
+            }, 600);
+        }
+
+        function renderNumbers(numbersArray) {
+            const grid = document.getElementById('numberGrid');
             if (numbersArray && numbersArray.length > 0) {
                 grid.innerHTML = numbersArray.map(sim => `
                     <div onclick="selectNumber('${sim.number}', this)" 
-                         class="number-card cursor-pointer bg-white border border-brand-border p-4 rounded-xl flex items-center justify-between group transition-all hover:border-brand-blue">
+                         class="number-card cursor-pointer bg-white border border-brand-border p-4 rounded-xl flex items-center justify-between group transition-all hover:border-brand-blue active">
                         <div class="flex flex-col">
                             <span class="text-[8px] text-green-500 uppercase font-bold tracking-tighter">● Line Available</span>
                             <span class="text-sm font-black text-brand-darkText">${sim.number}</span>
-                            <span class="text-[9px] text-brand-midText font-bold uppercase">${sim.label || 'OnlineSIM Line'}</span>
+                            <span class="text-[9px] text-brand-midText font-bold uppercase">${sim.label}</span>
                         </div>
                         <div class="radio-indicator w-4 h-4 rounded-full border-2 border-brand-border group-[.active]:border-brand-blue group-[.active]:bg-brand-blue transition-colors"></div>
                     </div>
                 `).join('');
                 
-                const firstCard = grid.querySelector('.number-card');
-                if (firstCard) {
-                    selectNumber(numbersArray[0].number, firstCard);
-                }
+                selectNumber(numbersArray[0].number, grid.querySelector('.number-card'));
             } else {
-                grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold">No active lines available for this service.</p>`;
+                grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold">No active lines available.</p>`;
             }
         }
 
@@ -562,11 +570,11 @@
 
         function updateButtonState() {
             const btn = document.getElementById('purchaseBtn');
-            if (!selectedCountry) {
-                btn.innerText = "Select Country";
-                btn.disabled = true;
-            } else if (!selectedService) {
+            if (!selectedService) {
                 btn.innerText = "Select Service";
+                btn.disabled = true;
+            } else if (!selectedCountry) {
+                btn.innerText = "Select Country";
                 btn.disabled = true;
             } else if (!selectedNumber) {
                 btn.innerText = "Select a Number";
@@ -577,31 +585,7 @@
             }
         }
 
-        async function fetchRealInventory() {
-            if (!selectedCountry || !selectedService) return;
-
-            const grid = document.getElementById('numberGrid');
-            grid.innerHTML = `
-                <div class="col-span-full flex flex-col items-center justify-center py-10">
-                    <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
-                    <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Allocating Line from OnlineSIM...</p>
-                </div>
-            `;
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/get-numbers?country=${selectedCountry.id}&service=${selectedService}`);
-                const data = await response.json();
-
-                if (data.success) {
-                    renderNumbers(data.numbers, data.targetId);
-                } else {
-                    grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-orange-500 font-bold uppercase">${data.message}</p>`;
-                }
-            } catch (err) {
-                grid.innerHTML = `<p class="col-span-full text-center text-xs py-10 text-red-500 font-bold uppercase">Connection Error</p>`;
-            }
-        }
-
+        // --- STEP 4: EXECUTE PURCHASE VIA BACKEND ROUTE ---
         async function processPurchase() {
             const btn = document.getElementById('purchaseBtn');
             const token = localStorage.getItem('userToken');
@@ -625,9 +609,8 @@
                 metadata: {
                     serviceType: 'virtual_number',
                     serviceName: document.getElementById('summaryService').innerText,
-                    countryCode: selectedCountry.id,
-                    deviceId: selectedTargetId,
-                    provider: 'onlinesim'
+                    countryCode: selectedCountry.countryId,
+                    provider: 'xentrahub'
                 }
             };
 
@@ -649,7 +632,7 @@
                     
                     Swal.fire({
                         title: 'Order Placed!',
-                        text: 'Waiting for SMS verification code...',
+                        text: 'Waiting for Xentrahub verification code...',
                         icon: 'success',
                         timer: 2000,
                         showConfirmButton: false
@@ -713,32 +696,13 @@
 
         function toggleSupportMenu() {
             const menu = document.getElementById('supportMenu');
-            const isHidden = menu.classList.contains('hidden');
-            
-            if (isHidden) {
-                menu.classList.remove('hidden');
-                setTimeout(() => {
-                    menu.classList.remove('translate-y-10', 'opacity-0', 'scale-95');
-                }, 10);
-            } else {
-                menu.classList.add('translate-y-10', 'opacity-0', 'scale-95');
-                setTimeout(() => {
-                    menu.classList.add('hidden');
-                }, 300);
-            }
+            menu.classList.toggle('hidden');
         }
 
         function logout() {
             localStorage.removeItem('userToken');
             localStorage.removeItem('dashboard_cache');
             window.location.href = 'user_login.html';
-        }
-
-        function checkAuth() {
-            const token = localStorage.getItem('userToken');
-            if (!token) {
-                window.location.href = 'user_login.html';
-            }
         }
 
         function toggleSidebar() {

@@ -430,7 +430,6 @@
                 const response = await fetch(`${XENTRA_API_BASE}/countries?service=${serviceCode}`);
                 const data = await response.json();
                 
-                // Response format: [{ countryId, countryName, sellingPrice, price: { amount, currency, symbol } }]
                 if (Array.isArray(data)) {
                     countries = data;
                     renderCountryOptions();
@@ -492,7 +491,6 @@
             
             calculateFinalPrice();
             
-            // Reveal numbers section
             document.getElementById('numbersSection').classList.replace('step-hidden', 'step-visible');
             fetchRealInventory();
             updateButtonState();
@@ -528,7 +526,6 @@
                 </div>
             `;
 
-            // Automatically simulate/fetch provisioned pool line for selected country and service
             setTimeout(() => {
                 const mockNumbers = [
                     { number: `+${selectedCountry.countryId}91${Math.floor(10000000 + Math.random() * 90000000)}`, label: 'Xentrahub Prime Line' }

@@ -427,14 +427,10 @@
             }
         }
 
- return countriesList.map(c => {
-        // Debug check: inspect what properties are available on 'c' if it still fails
-        console.log("Xentrahub Country Object:", c);
-
-        // Explicitly look for Xentrahub's price attributes
-        const baseRate = c.cost || c.retailPrice || c.price?.amount || c.price || c.rate || c.amount || 0;
+return countriesList.map(c => {
+        // Target Xentrahub's exact price object amount property
+        const baseRate = c.price?.amount || c.sellingPrice || 0;
         
-        // Ensure multiplier handles 0% markup properly (e.g., markup 0 means multiplier = 1)
         const effectiveMultiplier = (typeof multiplier !== 'undefined' && multiplier > 0) ? multiplier : 1;
         const calculatedPrice = Math.round(Number(baseRate) * effectiveMultiplier);
 
@@ -462,7 +458,7 @@
             </div>
         `;
     }).join('');
-    
+
     }
 
     async function toggleServiceAccordion(code) {

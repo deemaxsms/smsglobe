@@ -427,7 +427,7 @@
             }
         }
 
-     return countriesList.map(c => {
+      return countriesList.map(c => {
         const baseRate = c.price?.amount || c.price || c.sellingPrice || c.amount || c.cost || 0;
         const calculatedPrice = Math.round(baseRate * multiplier);
         const stockStatus = c.stock || c.count || 'In Stock';
@@ -454,7 +454,7 @@
             </div>
         `;
     }).join('');
-    
+    }
 
     async function toggleServiceAccordion(code) {
         if (expandedServiceCode === code) {

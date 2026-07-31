@@ -1639,24 +1639,51 @@ async function handlePurchaseWithWallet(req, res) {
             };
         }
 
+        
 else if (metadata?.serviceType === 'virtual_number') {
             itemType = "SmsNumber"; 
             
-            // Fetch system settings to apply percentage markup exclusively to SMS numbers
+            // 1. Fetch system settings for SMS markup percentage
             const settings = await SystemSettings.findOne();
-            const smsMarkup = settings?.smsMarkupPercentage || 0; // e.g., 15 for 15%
+            const smsMarkup = settings?.smsMarkupPercentage || 0; 
 
-            const rawBasePrice = planAmount ? Number(planAmount) : 850;
-            
-            // Calculate final cost with the SMS markup percentage applied
-            costNGN = Math.round(rawBasePrice * (1 + smsMarkup / 100));
+            const baseAmount = Number(planAmount);
+            if (!baseAmount || isNaN(baseAmount)) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "Invalid plan amount received for virtual number purchase." 
+                });
+            }
+
+            costNGN = Math.round(baseAmount * (1 + smsMarkup / 100));
 
             productDetails.name = `OnlineSIM Global Provision (${metadata.countryCode || 'NG'})`;
             productDetails.plan = metadata.serviceName || "SMS Verification";
             isOnlineSimFlow = true;
 
-            // Structural setup block before making the wallet deduction. 
-            // The real phone details will append dynamically upon successful balance collection.
+            // 2. Check Xentrahub balance before pulling from user wallet
+            try {
+                const xentraBalanceRes = await axios.get(`${XENTRA_API_BASE}/balance`, {
+                    headers: { 'Authorization': `Bearer ${XENTRA_API_KEY}` }
+                });
+
+                const xentraBalance = xentraBalanceRes.data?.balance || 0;
+
+                // Ensure Xentrahub has enough provider funds based on the dynamic base amount required
+                if (xentraBalance < baseAmount) {
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: "System provider balance is currently low. Please contact support or try again shortly." 
+                    });
+                }
+            } catch (err) {
+                console.error("Xentrahub Balance Verification Error:", err.response?.data || err.message);
+                return res.status(500).json({ 
+                    success: false, 
+                    message: "Failed to communicate with SMS provider gateway." 
+                });
+            }
+
             orderSpecifics = {
                 serviceName: metadata.serviceName,
                 status: 'pending', 

@@ -428,7 +428,7 @@
         }
 
         return countriesList.map(c => {
-            const baseRate = c.price?.amount || c.sellingPrice || 850;
+            const baseRate = c.price?.amount || c.sellingPrice || 0;
             const calculatedPrice = Math.round(baseRate * multiplier);
             const stockStatus = c.stock || 'In Stock';
             const flagCode = (c.countryId || '').toString().toLowerCase();

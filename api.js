@@ -283,13 +283,14 @@ const smsNumberSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     userEmail: { type: String, required: true },
     
-    // Identity from TextBee
-    deviceId: { type: String, required: true }, // The Samsung Device ID
-    phoneNumber: { type: String, default: "+234... (Private SIM)" },
+    // Vendor Identity (Xentrahub)
+    vendorOrderId: { type: String, index: true }, // Order ID returned by Xentrahub
+    countryId: { type: String }, // Country code/ID selected
+    phoneNumber: { type: String }, // The virtual number assigned
     serviceName: { type: String, required: true }, // e.g., 'WhatsApp', 'Telegram'
     
     // Order Details
-    amount: { type: Number, required: true },
+    amount: { type: Number, required: true }, // Final markup-adjusted price charged
     status: { 
         type: String, 
         enum: ['pending', 'completed', 'expired', 'failed'], 
@@ -306,7 +307,7 @@ const smsNumberSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-smsNumberSchema.index({ deviceId: 1, status: 1, createdAt: -1 });
+smsNumberSchema.index({ vendorOrderId: 1, status: 1, createdAt: -1 });
 
 const SmsNumber = mongoose.models.SmsNumber || mongoose.model('SmsNumber', smsNumberSchema);
 
@@ -1639,7 +1640,7 @@ async function handlePurchaseWithWallet(req, res) {
             };
         }
 
-        
+
 else if (metadata?.serviceType === 'virtual_number') {
             itemType = "SmsNumber"; 
             

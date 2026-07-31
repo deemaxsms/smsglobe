@@ -427,8 +427,11 @@
             }
         }
 
-      return countriesList.map(c => {
-        const baseRate = c.price?.amount || c.price || c.sellingPrice || c.amount || c.cost || 0;
+   return countriesList.map(c => {
+        // Correctly extract the raw price from Xentrahub's payload structure
+        const rawPrice = (typeof c.price === 'object' && c.price !== null) ? (c.price.amount || c.price.rate || 0) : (c.price || c.rate || c.amount || 0);
+        const baseRate = parseFloat(rawPrice) || 0;
+        
         const calculatedPrice = Math.round(baseRate * multiplier);
         const stockStatus = c.stock || c.count || 'In Stock';
         const countryId = c.countryId || c.id || c.code || '';

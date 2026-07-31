@@ -3631,6 +3631,44 @@ async function handleSmsReceive(req, res) {
 }
 
 
+/**
+ * 2. FETCH COUNTRIES & PRICING FROM XENTRAHUB WITH MARKUP
+ */
+async function handleGetCountries(req, res) {
+    try {
+        const serviceCode = req.query.service || req.params.service;
+        if (!serviceCode) {
+            return res.status(400).json({ success: false, message: "Service code is required." });
+        }
+        const response = await xentraClient.get('/stratos/countries', {
+            params: { service: String(serviceCode).toLowerCase() }
+        });
+
+        const countriesList = response.data || [];
+        const markupPercent = 0; // Set to 0 as requested to test exact Xentrahub pricing
+        const multiplier = 1 + (markupPercent / 100);
+        const formattedCountries = countriesList.map(c => {
+            const rawPrice = c.price?.amount || c.sellingPrice || 0;
+            const finalPrice = Math.round(Number(rawPrice) * multiplier);
+
+            return {
+                countryId: c.countryId || c.id || c.code,
+                countryName: c.countryName || c.name,
+                stock: c.stock || c.count || 'In Stock',
+                price: {
+                    amount: finalPrice,
+                    currency: c.price?.currency || 'NGN',
+                    symbol: c.price?.symbol || '₦'
+                }
+            };
+        });
+
+        return res.json({ success: true, countries: formattedCountries });
+    } catch (err) {
+        console.error("Failed to fetch Xentrahub countries:", err.response?.data || err.message);
+        return res.status(500).json({ success: false, message: "Failed to fetch country catalog." });
+    }
+}
 
 async function handleGetUserOrders(req, res) {
     try {

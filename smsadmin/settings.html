@@ -200,12 +200,12 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-            <label class="block text-xs font-bold text-brand-midText uppercase mb-1.5">Exchange Rate (NGN per 1 USD)</label>
-            <input type="number" id="exchangeRateInput" class="input-field" placeholder="1650">
-        </div>
-        <div>
             <label class="block text-xs font-bold text-brand-midText uppercase mb-1.5">Global Markup (%)</label>
             <input type="number" id="markupInput" class="input-field" placeholder="10">
+        </div>
+        <div>
+            <label class="block text-xs font-bold text-brand-midText uppercase mb-1.5">SMS Markup Percentage (%)</label>
+            <input type="number" id="smsMarkupInput" class="input-field" placeholder="15">
         </div>
     </div>
     
@@ -350,7 +350,6 @@ document.getElementById('signupToggle').addEventListener('change', (e) => {
             document.getElementById('sidebar').classList.toggle('-translate-x-full');
         }
 
-        // 1. Fetch current settings when page loads
 async function loadCurrentSettings() {
     try {
         const response = await fetch('/api/get-system-settings', {
@@ -364,23 +363,22 @@ async function loadCurrentSettings() {
             document.getElementById('signupToggle').checked = result.settings.allowSignups;
             
             // Set Financials
-            document.getElementById('exchangeRateInput').value = result.settings.exchangeRate || 1650;
             document.getElementById('markupInput').value = result.settings.globalMarkup || 0;
+            document.getElementById('smsMarkupInput').value = result.settings.smsMarkupPercentage || 15;
         }
     } catch (err) {
         console.error("Failed to load settings:", err);
     }
 }
 
-// 2. Save Rate and Markup specifically
+// 2. Save Markups specifically
 async function saveFinancials() {
-    const exchangeRate = document.getElementById('exchangeRateInput').value;
     const globalMarkup = document.getElementById('markupInput').value;
+    const smsMarkupPercentage = document.getElementById('smsMarkupInput').value;
 
-    // Reuse your existing updateGlobalSetting logic but for multiple fields
     const msgBox = document.getElementById('msgBox');
     msgBox.classList.remove('hidden');
-    msgBox.innerText = "Saving rates...";
+    msgBox.innerText = "Saving financials...";
 
     try {
         const response = await fetch('/api/update-system-settings', {
@@ -390,8 +388,8 @@ async function saveFinancials() {
                 'Authorization': `Bearer ${localStorage.getItem('smsglobe_admin_token')}`
             },
             body: JSON.stringify({ 
-                exchangeRate: Number(exchangeRate), 
-                globalMarkup: Number(globalMarkup) 
+                globalMarkup: Number(globalMarkup), 
+                smsMarkupPercentage: Number(smsMarkupPercentage) 
             })
         });
 

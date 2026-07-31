@@ -111,6 +111,7 @@ const systemSettingsSchema = new mongoose.Schema({
     maintenanceMode: { type: Boolean, default: false },
     allowSignups: { type: Boolean, default: true },    
     globalMarkup: { type: Number, default: 0 }, 
+    smsMarkupPercentage: { type: Number, default: 15 }, // <--- ADD THIS FIELD FOR SMS ONLY
     noticeBarText: { type: String, default: "Welcome to SMSGlobe!" },
     supportWhatsapp: { type: String, default: "" }
 }, { timestamps: true });
@@ -1638,9 +1639,18 @@ async function handlePurchaseWithWallet(req, res) {
             };
         }
 
-        else if (metadata?.serviceType === 'virtual_number') {
+else if (metadata?.serviceType === 'virtual_number') {
             itemType = "SmsNumber"; 
-            costNGN = planAmount ? Math.round(Number(planAmount)) : 850; 
+            
+            // Fetch system settings to apply percentage markup exclusively to SMS numbers
+            const settings = await SystemSettings.findOne();
+            const smsMarkup = settings?.smsMarkupPercentage || 0; // e.g., 15 for 15%
+
+            const rawBasePrice = planAmount ? Number(planAmount) : 850;
+            
+            // Calculate final cost with the SMS markup percentage applied
+            costNGN = Math.round(rawBasePrice * (1 + smsMarkup / 100));
+
             productDetails.name = `OnlineSIM Global Provision (${metadata.countryCode || 'NG'})`;
             productDetails.plan = metadata.serviceName || "SMS Verification";
             isOnlineSimFlow = true;
@@ -1653,7 +1663,8 @@ async function handlePurchaseWithWallet(req, res) {
                 instructions: "Allocating lease from dynamic server fields... Please stand by.",
                 metadata: { 
                     ...metadata, 
-                    provider: 'onlinesim' 
+                    provider: 'onlinesim',
+                    markupApplied: smsMarkup
                 }
             };
         }

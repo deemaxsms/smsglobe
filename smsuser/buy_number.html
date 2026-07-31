@@ -427,12 +427,17 @@
             }
         }
 
-   return countriesList.map(c => {
-        // Correctly extract the raw price from Xentrahub's payload structure
-        const rawPrice = (typeof c.price === 'object' && c.price !== null) ? (c.price.amount || c.price.rate || 0) : (c.price || c.rate || c.amount || 0);
-        const baseRate = parseFloat(rawPrice) || 0;
+ return countriesList.map(c => {
+        // Debug check: inspect what properties are available on 'c' if it still fails
+        console.log("Xentrahub Country Object:", c);
+
+        // Explicitly look for Xentrahub's price attributes
+        const baseRate = c.cost || c.retailPrice || c.price?.amount || c.price || c.rate || c.amount || 0;
         
-        const calculatedPrice = Math.round(baseRate * multiplier);
+        // Ensure multiplier handles 0% markup properly (e.g., markup 0 means multiplier = 1)
+        const effectiveMultiplier = (typeof multiplier !== 'undefined' && multiplier > 0) ? multiplier : 1;
+        const calculatedPrice = Math.round(Number(baseRate) * effectiveMultiplier);
+
         const stockStatus = c.stock || c.count || 'In Stock';
         const countryId = c.countryId || c.id || c.code || '';
         const flagCode = countryId.toString().toLowerCase();
@@ -457,6 +462,7 @@
             </div>
         `;
     }).join('');
+    
     }
 
     async function toggleServiceAccordion(code) {

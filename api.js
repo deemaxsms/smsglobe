@@ -3580,13 +3580,28 @@ async function handleGetCountries(req, res) {
 
         const countriesList = Array.isArray(response.data) ? response.data : (response.data.countries || []);
         
-        const markupPercent = 0; // Adjust for your profit margin if needed
+        const markupPercent = 0; // Adjust for your profit margin if needed (e.g. 5 for 5%)
         const multiplier = 1 + (markupPercent / 100);
+        const exactExchangeRate = 1421.87; // Matches XentraHub's exact NGN tier conversion rate
 
         const formattedCountries = countriesList.map(c => {
-            // Strictly pull the pre-calculated NGN amount object from XentraHub
-            const exactNgnAmount = c.price?.amount || c.amount || 0;
-            const finalPrice = Number((exactNgnAmount * multiplier).toFixed(2));
+            let finalNgnAmount = 0;
+
+            // 1. Check if pre-calculated NGN amount exists directly
+            if (c.price && typeof c.price === 'object' && c.price.amount) {
+                finalNgnAmount = c.price.amount;
+            } 
+            // 2. Check if there's a direct price number
+            else if (typeof c.price === 'number') {
+                finalNgnAmount = c.price > 100 ? c.price : c.price * exactExchangeRate;
+            } 
+            // 3. Fallback to sellingPrice or price.usd (USD values like 0.80)
+            else {
+                const rawUsd = c.sellingPrice || (c.price && c.price.usd) || 0;
+                finalNgnAmount = rawUsd * exactExchangeRate;
+            }
+
+            const finalPrice = Number((finalNgnAmount * multiplier).toFixed(2));
 
             return {
                 countryId: c.countryId || c.id || c.code,

@@ -320,7 +320,8 @@
             renderServiceAccordion();
         }
     }
-async function syncInventory() {
+
+    async function syncInventory() {
         const container = document.getElementById('serviceAccordionList');
         if (container && services.length === 0) {
             container.innerHTML = `
@@ -332,16 +333,12 @@ async function syncInventory() {
         }
 
         try {
-            // Updated to fetch from your backend proxy route instead of directly from Xentrahub
-            const response = await fetch(`${API_BASE_URL}/services`);
+            const response = await fetch(`${XENTRA_API_BASE}/services`);
             const data = await response.json();
             
-            // Handle both direct array and wrapped service object responses gracefully
-            const servicesList = Array.isArray(data) ? data : (data.services || []);
-            
-            if (servicesList.length > 0) {
+            if (data.services) {
                 // Sort services to put priority social/meta apps first
-                services = servicesList.sort((a, b) => {
+                services = data.services.sort((a, b) => {
                     const nameA = a.name.toLowerCase();
                     const nameB = b.name.toLowerCase();
                     
@@ -364,7 +361,7 @@ async function syncInventory() {
             }
         }
     }
-    
+
     function renderServiceAccordion(filter = "") {
         const container = document.getElementById('serviceAccordionList');
         if (!container) return;

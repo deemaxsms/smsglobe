@@ -3552,6 +3552,21 @@ async function handleGetStock(req, res) {
         return res.json({ success: false, stock: { "GLOBAL": 0 } });
     }
 }
+
+async function handleGetServices(req, res) {
+    try {
+        const response = await xentraClient.get('/stratos/services');
+        // Xentrahub returns { services: [...] } or an array directly
+        return res.json(response.data);
+    } catch (err) {
+        console.error("Failed to fetch Xentrahub services:", err.response?.data || err.message);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Failed to fetch services catalog from vendor." 
+        });
+    }
+}
+
 async function handleGetCountries(req, res) {
     try {
         const serviceCode = req.query.service || req.params.service;

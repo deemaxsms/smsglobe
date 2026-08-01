@@ -426,15 +426,15 @@
                 multiplier = parseFloat(select.options[select.selectedIndex].getAttribute('data-multi'));
             }
         }
-
 return countriesList.map(c => {
-    // Robust check for Xentrahub nested price object
+    // Check if price is an object containing amount, or fallback to properties
     let baseRate = 0;
-    if (c.price && typeof c.price === 'object' && c.price.amount) {
-        baseRate = c.price.amount;
-    } else if (c.sellingPrice) {
-        // Fallback or conversion check if sellingPrice returns USD
-        baseRate = c.sellingPrice > 10 ? c.sellingPrice : c.sellingPrice * 1380; // Fallback conversion rate if needed
+    if (c.price !== null && typeof c.price === 'object') {
+        baseRate = c.price.amount || 0;
+    } else if (typeof c.price === 'number') {
+        baseRate = c.price;
+    } else {
+        baseRate = c.sellingPrice || 0;
     }
     
     const effectiveMultiplier = (typeof multiplier !== 'undefined' && multiplier > 0) ? multiplier : 1;

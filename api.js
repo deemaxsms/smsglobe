@@ -65,8 +65,16 @@ app.get('/robots.txt', (req, res) => {
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET_KEY;
-const XENTRA_API_BASE = 'https://xentrahub.com/api/stratos';
+const XENTRA_API_BASE = process.env.XENTRAHUB_API_KEY;
 const XENTRA_API_KEY = process.env.XENTRA_API_KEY;
+
+const xentraClient = axios.create({
+    baseURL: 'https://xentrahub.com/api',
+    headers: {
+        'Authorization': `Bearer ${process.env.XENTRAHUB_API_KEY}`,
+        'Accept': 'application/json'
+    }
+});
 
 const adminSchema = new mongoose.Schema({
     fullName: { type: String, required: true },

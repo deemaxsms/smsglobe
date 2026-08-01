@@ -3551,6 +3551,48 @@ async function handleGetStock(req, res) {
     }
 }
 
+async function handleGetCountries(req, res) {
+    try {
+        const serviceCode = req.query.service || req.params.service;
+        if (!serviceCode) {
+            return res.status(400).json({ success: false, message: "Service code is required." });
+        }
+
+        const response = await xentraClient.get('/countries', {
+            params: { service: String(serviceCode).toLowerCase() }
+        });
+
+        const countriesList = response.data?.countries || response.data || [];
+        
+        // Define your profit markup percentage here (e.g., 10 for 10% markup, or 0 for exact price)
+        const markupPercent = 0; 
+        const multiplier = 1 + (markupPercent / 100);
+
+        const formattedCountries = countriesList.map(c => {
+            // Check all potential price keys returned by external APIs
+            const rawPrice = c.price?.amount || c.price || c.sellingPrice || c.cost || c.rate || 0;
+            const finalPrice = Math.round(Number(rawPrice) * multiplier);
+
+            return {
+                countryId: c.countryId || c.id || c.code || c.countryCode,
+                countryName: c.countryName || c.name || c.country,
+                stock: c.stock || c.count || c.quantity || 'In Stock',
+                price: {
+                    amount: finalPrice,
+                    currency: c.price?.currency || 'NGN',
+                    symbol: c.price?.symbol || '₦'
+                }
+            };
+        });
+
+        // Send back an array directly (since your frontend expects Array.isArray(data))
+        return res.json(formattedCountries);
+    } catch (err) {
+        console.error("Failed to fetch Xentrahub countries:", err.response?.data || err.message);
+        return res.status(500).json({ success: false, message: "Failed to fetch country catalog." });
+    }
+}
+
 async function handleOrderDetails(req, res) {
     const { id } = req.query; // Local DB Order ID
 

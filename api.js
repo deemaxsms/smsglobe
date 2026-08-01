@@ -111,7 +111,7 @@ const systemSettingsSchema = new mongoose.Schema({
     maintenanceMode: { type: Boolean, default: false },
     allowSignups: { type: Boolean, default: true },    
     globalMarkup: { type: Number, default: 0 }, 
-    smsMarkupPercentage: { type: Number, default: 15 }, // <--- ADD THIS FIELD FOR SMS ONLY
+    smsMarkupPercentage: { type: Number, default: 0 }, // <--- ADD THIS FIELD FOR SMS ONLY
     noticeBarText: { type: String, default: "Welcome to SMSGlobe!" },
     supportWhatsapp: { type: String, default: "" }
 }, { timestamps: true });
@@ -3531,13 +3531,9 @@ async function handlePurchaseNumber(req, res) {
 }
 
 
-/**
- * 3. CHECK VENDOR STATUS / HEALTH
- */
 async function handleGetStock(req, res) {
     try {
-        // Query services endpoint as a quick health check
-        const response = await xentraClient.get('/services');
+        const response = await xentraClient.get('/stratos/services');
         const isOnline = response.data && (response.data.services || Array.isArray(response.data));
 
         return res.json({ 
@@ -3550,7 +3546,6 @@ async function handleGetStock(req, res) {
         return res.json({ success: false, stock: { "GLOBAL": 0 } });
     }
 }
-
 async function handleGetCountries(req, res) {
     try {
         const serviceCode = req.query.service || req.params.service;
@@ -3558,25 +3553,25 @@ async function handleGetCountries(req, res) {
             return res.status(400).json({ success: false, message: "Service code is required." });
         }
 
-        const response = await xentraClient.get('/countries', {
+        const response = await xentraClient.get('/stratos/countries', {
             params: { service: String(serviceCode).toLowerCase() }
         });
 
-        const countriesList = response.data?.countries || response.data || [];
+        // Xentrahub returns an array of countries directly
+        const countriesList = Array.isArray(response.data) ? response.data : (response.data.countries || []);
         
-        // Define your profit markup percentage here (e.g., 10 for 10% markup, or 0 for exact price)
-        const markupPercent = 0; 
+        const markupPercent = 0; // Adjust if you want a profit markup percentage
         const multiplier = 1 + (markupPercent / 100);
 
         const formattedCountries = countriesList.map(c => {
-            // Check all potential price keys returned by external APIs
-            const rawPrice = c.price?.amount || c.price || c.sellingPrice || c.cost || c.rate || 0;
+            // Target Xentrahub's explicit amount property: c.price.amount
+            const rawPrice = c.price?.amount || c.sellingPrice || 0;
             const finalPrice = Math.round(Number(rawPrice) * multiplier);
 
             return {
-                countryId: c.countryId || c.id || c.code || c.countryCode,
-                countryName: c.countryName || c.name || c.country,
-                stock: c.stock || c.count || c.quantity || 'In Stock',
+                countryId: c.countryId || c.id || c.code,
+                countryName: c.countryName || c.name,
+                stock: c.stock || c.count || 'In Stock',
                 price: {
                     amount: finalPrice,
                     currency: c.price?.currency || 'NGN',
@@ -3585,13 +3580,13 @@ async function handleGetCountries(req, res) {
             };
         });
 
-        // Send back an array directly (since your frontend expects Array.isArray(data))
         return res.json(formattedCountries);
     } catch (err) {
         console.error("Failed to fetch Xentrahub countries:", err.response?.data || err.message);
         return res.status(500).json({ success: false, message: "Failed to fetch country catalog." });
     }
 }
+
 
 async function handleOrderDetails(req, res) {
     const { id } = req.query; // Local DB Order ID

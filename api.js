@@ -65,16 +65,8 @@ app.get('/robots.txt', (req, res) => {
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET_KEY;
-const XENTRA_API_BASE = process.env.XENTRAHUB_API_KEY;
+const XENTRA_API_BASE = 'https://xentrahub.com/api/stratos';
 const XENTRA_API_KEY = process.env.XENTRA_API_KEY;
-
-const xentraClient = axios.create({
-    baseURL: 'https://xentrahub.com/api',
-    headers: {
-        'Authorization': `Bearer ${process.env.XENTRAHUB_API_KEY}`,
-        'Accept': 'application/json'
-    }
-});
 
 const adminSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
@@ -585,12 +577,6 @@ app.all('/api/:action', async (req, res) => {
     case 'get-countries': return handleGetCountries(req, res);
      case 'get-stock':  return handleGetStock(req, res);
      case 'sms-receive':  return handleSmsReceive(req, res);
-     case 'services': 
-            if (req.method === 'GET') return handleGetServices(req, res);
-            break;
-        case 'countries': 
-            if (req.method === 'GET') return handleGetCountries(req, res);
-            break;
 case 'change-passwords': 
     if (req.method === 'POST') return handleAdminChangePassword(req, res);
     break;
@@ -3644,53 +3630,7 @@ async function handleSmsReceive(req, res) {
     }
 }
 
-async function handleGetServices(req, res) {
-    try {
-        const response = await xentraClient.get('/stratos/services');
-        return res.json(response.data);
-    } catch (err) {
-        console.error("Failed to fetch Xentrahub services:", err.response?.data || err.message);
-        return res.status(500).json({ success: false, message: "Failed to load services." });
-    }
-}
 
-async function handleGetCountries(req, res) {
-    try {
-        const serviceCode = req.query.service || req.params.service;
-        if (!serviceCode) {
-            return res.status(400).json({ success: false, message: "Service code is required." });
-        }
-
-        const response = await xentraClient.get('/stratos/countries', {
-            params: { service: String(serviceCode).toLowerCase() }
-        });
-
-        const countriesList = response.data || [];
-        const markupPercent = 0; // Adjust or fetch from settings if needed
-        const multiplier = 1 + (markupPercent / 100);
-
-        const formattedCountries = countriesList.map(c => {
-            const rawPrice = c.price?.amount || c.sellingPrice || 0;
-            const finalPrice = Math.round(Number(rawPrice) * multiplier);
-
-            return {
-                countryId: c.countryId || c.id || c.code,
-                countryName: c.countryName || c.name,
-                stock: c.stock || c.count || 'In Stock',
-                price: {
-                    amount: finalPrice,
-                    currency: c.price?.currency || 'NGN',
-                    symbol: c.price?.symbol || '₦'
-                }
-            };
-        });
-
-        return res.json({ success: true, countries: formattedCountries });
-    } catch (err) {
-        console.error("Failed to fetch Xentrahub countries:", err.response?.data || err.message);
-        return res.status(500).json({ success: false, message: "Failed to fetch country catalog." });
-    }
-}
 
 async function handleGetUserOrders(req, res) {
     try {

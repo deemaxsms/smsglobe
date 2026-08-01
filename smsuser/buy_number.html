@@ -426,8 +426,8 @@
                 multiplier = parseFloat(select.options[select.selectedIndex].getAttribute('data-multi'));
             }
         }
+
 return countriesList.map(c => {
-    // Check if price is an object containing amount, or fallback to properties
     let baseRate = 0;
     if (c.price !== null && typeof c.price === 'object') {
         baseRate = c.price.amount || 0;
@@ -435,6 +435,12 @@ return countriesList.map(c => {
         baseRate = c.price;
     } else {
         baseRate = c.sellingPrice || 0;
+    }
+    
+    // SAFETY CHECK: If baseRate is less than 50, it's definitely a raw USD price (like 0.80). 
+    // Automatically convert it to Naira so it matches XentraHub accurately on the UI.
+    if (baseRate > 0 && baseRate < 50) {
+        baseRate = baseRate * 1380; 
     }
     
     const effectiveMultiplier = (typeof multiplier !== 'undefined' && multiplier > 0) ? multiplier : 1;

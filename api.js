@@ -3584,10 +3584,20 @@ async function handleGetCountries(req, res) {
         const markupPercent = 0; // Adjust if you want a profit markup percentage
         const multiplier = 1 + (markupPercent / 100);
 
-        const formattedCountries = countriesList.map(c => {
-            // Target Xentrahub's explicit amount property: c.price.amount
-            const rawPrice = c.price?.amount || c.sellingPrice || 0;
-            const finalPrice = Math.round(Number(rawPrice) * multiplier);
+       const formattedCountries = countriesList.map(c => {
+            // Handle if c.price is an object with .amount, or if c.price IS the raw price number, or fallback to sellingPrice
+            let rawPrice = 0;
+            if (typeof c.price === 'object' && c.price !== null) {
+                rawPrice = c.price.amount || 0;
+            } else if (typeof c.price === 'number') {
+                rawPrice = c.price;
+            } else {
+                rawPrice = c.sellingPrice || 0;
+            }
+
+            // If rawPrice is in USD (e.g. 0.80), multiply it to convert to NGN or use directly if already NGN
+            const baseAmount = rawPrice < 100 ? rawPrice * 1380 : rawPrice; 
+            const finalPrice = Math.round(Number(baseAmount) * multiplier);
 
             return {
                 countryId: c.countryId || c.id || c.code,
@@ -3595,8 +3605,8 @@ async function handleGetCountries(req, res) {
                 stock: c.stock || c.count || 'In Stock',
                 price: {
                     amount: finalPrice,
-                    currency: c.price?.currency || 'NGN',
-                    symbol: c.price?.symbol || '₦'
+                    currency: 'NGN',
+                    symbol: '₦'
                 }
             };
         });

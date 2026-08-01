@@ -3597,7 +3597,7 @@ async function handleGetCountries(req, res) {
                 finalNgnAmount = preCalculatedNgn;
             } else {
                 // Fallback estimation if USD reference is missing
-                finalNgnAmount = rawUsd * 1365; 
+                finalNgnAmount = rawUsd * 1650; 
             }
 
             const finalPrice = Number((finalNgnAmount * multiplier).toFixed(2));

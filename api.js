@@ -3578,14 +3578,14 @@ async function handleGetCountries(req, res) {
             params: { service: String(serviceCode).toLowerCase() }
         });
 
-        // Xentrahub returns an array of countries directly
         const countriesList = Array.isArray(response.data) ? response.data : (response.data.countries || []);
         
         const markupPercent = 0; // Adjust if you want a profit markup percentage
         const multiplier = 1 + (markupPercent / 100);
+        const usdToNgnRate = 1380; // Your platform exchange rate for USD to NGN
 
-       const formattedCountries = countriesList.map(c => {
-            // Handle if c.price is an object with .amount, or if c.price IS the raw price number, or fallback to sellingPrice
+        const formattedCountries = countriesList.map(c => {
+            // Extract raw price (handling object, number, or fallback)
             let rawPrice = 0;
             if (typeof c.price === 'object' && c.price !== null) {
                 rawPrice = c.price.amount || 0;
@@ -3595,9 +3595,9 @@ async function handleGetCountries(req, res) {
                 rawPrice = c.sellingPrice || 0;
             }
 
-            // If rawPrice is in USD (e.g. 0.80), multiply it to convert to NGN or use directly if already NGN
-            const baseAmount = rawPrice < 100 ? rawPrice * 1380 : rawPrice; 
-            const finalPrice = Math.round(Number(baseAmount) * multiplier);
+            // If the price is in USD (e.g., < 100), convert to NGN. Otherwise, use it directly.
+            const priceInNgn = rawPrice < 100 ? rawPrice * usdToNgnRate : rawPrice;
+            const finalPrice = Number((priceInNgn * multiplier).toFixed(2));
 
             return {
                 countryId: c.countryId || c.id || c.code,
@@ -3617,7 +3617,6 @@ async function handleGetCountries(req, res) {
         return res.status(500).json({ success: false, message: "Failed to fetch country catalog." });
     }
 }
-
 
 async function handleOrderDetails(req, res) {
     const { id } = req.query; // Local DB Order ID

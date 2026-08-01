@@ -409,7 +409,7 @@
         }).join('');
     }
 
-function renderCountriesListHtml(serviceCode, countriesList) {
+   function renderCountriesListHtml(serviceCode, countriesList) {
     if (!countriesList || countriesList.length === 0) {
         return `
             <div class="flex flex-col items-center justify-center py-6">
@@ -426,16 +426,28 @@ function renderCountriesListHtml(serviceCode, countriesList) {
             multiplier = parseFloat(select.options[select.selectedIndex].getAttribute('data-multi'));
         }
     }
+    
+    const usdToNgnRate = 1650; // Hardcoded safety conversion rate matching XentraHub's NGN tier
 
     return countriesList.map(c => {
-        // Directly grab the precise NGN amount calculated by the backend/XentraHub
         let baseRate = 0;
-        if (c.price && typeof c.price === 'object') {
-            baseRate = c.price.amount || 0;
-        } else if (typeof c.price === 'number') {
-            baseRate = c.price;
+        
+        // Check if XentraHub's nested price.amount exists and is fully calculated
+        if (c.price && typeof c.price === 'object' && c.price.amount > 50) {
+            baseRate = c.price.amount;
         } else {
-            baseRate = c.sellingPrice || 0;
+            // Otherwise, grab raw price/sellingPrice (which is in USD like 0.80) and convert it to NGN
+            let rawUsd = 0;
+            if (c.price && typeof c.price === 'object') {
+                rawUsd = c.price.amount || c.price.usd || 0;
+            } else if (typeof c.price === 'number') {
+                rawUsd = c.price;
+            } else {
+                rawUsd = c.sellingPrice || 0;
+            }
+            
+            // If it's small (USD), multiply by exchange rate. If already NGN, keep as is.
+            baseRate = rawUsd < 100 ? rawUsd * usdToNgnRate : rawUsd;
         }
         
         const effectiveMultiplier = (typeof multiplier !== 'undefined' && multiplier > 0) ? multiplier : 1;
@@ -471,6 +483,8 @@ function renderCountriesListHtml(serviceCode, countriesList) {
         `;
     }).join('');
 }
+
+
     async function toggleServiceAccordion(code) {
         if (expandedServiceCode === code) {
             expandedServiceCode = null;

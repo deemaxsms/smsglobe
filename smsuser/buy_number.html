@@ -428,7 +428,7 @@
         }
 
 return countriesList.map(c => {
-    // Directly pull the final calculated amount straight from the backend response object
+    // Directly extract the pre-calculated amount object sent from your backend
     let calculatedPrice = 0;
     if (c.price !== null && typeof c.price === 'object') {
         calculatedPrice = c.price.amount || 0;

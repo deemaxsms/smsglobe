@@ -333,7 +333,7 @@
         }
 
         try {
-            const response = await fetch(`${XENTRA_API_BASE}/services`);
+            const response = await fetch(`${API_BASE_URL}/services`);
             const data = await response.json();
             
             if (data.services) {

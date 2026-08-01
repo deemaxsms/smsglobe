@@ -428,36 +428,42 @@
         }
 
 return countriesList.map(c => {
-        // Target Xentrahub's exact price object amount property
-        const baseRate = c.price?.amount || c.sellingPrice || 0;
-        
-        const effectiveMultiplier = (typeof multiplier !== 'undefined' && multiplier > 0) ? multiplier : 1;
-        const calculatedPrice = Math.round(Number(baseRate) * effectiveMultiplier);
+    // Robust check for Xentrahub nested price object
+    let baseRate = 0;
+    if (c.price && typeof c.price === 'object' && c.price.amount) {
+        baseRate = c.price.amount;
+    } else if (c.sellingPrice) {
+        // Fallback or conversion check if sellingPrice returns USD
+        baseRate = c.sellingPrice > 10 ? c.sellingPrice : c.sellingPrice * 1380; // Fallback conversion rate if needed
+    }
+    
+    const effectiveMultiplier = (typeof multiplier !== 'undefined' && multiplier > 0) ? multiplier : 1;
+    const calculatedPrice = Math.round(Number(baseRate) * effectiveMultiplier);
 
-        const stockStatus = c.stock || c.count || 'In Stock';
-        const countryId = c.countryId || c.id || c.code || '';
-        const flagCode = countryId.toString().toLowerCase();
-        const countryName = c.countryName || c.name || 'Unknown Country';
+    const stockStatus = c.stock || c.count || 'In Stock';
+    const countryId = c.countryId || c.id || c.code || '';
+    const flagCode = countryId.toString().toLowerCase();
+    const countryName = c.countryName || c.name || 'Unknown Country';
 
-        return `
-            <div class="bg-white border border-brand-border p-3 rounded-xl flex items-center justify-between hover:border-brand-blue/50 transition-all">
-                <div class="flex items-center gap-3">
-                    <img src="https://flagcdn.com/w40/${flagCode}.png" class="w-6 h-auto rounded-sm border border-gray-200" onerror="this.style.display='none'">
-                    <div>
-                        <p class="text-xs font-bold text-brand-darkText">${countryName}</p>
-                        <span class="text-[9px] text-green-600 font-bold uppercase">● ${stockStatus}</span>
-                    </div>
-                </div>
-                <div class="flex items-center gap-4">
-                    <span class="text-xs font-black text-brand-blue">₦${calculatedPrice.toLocaleString()}</span>
-                    <button onclick="buyServiceCountry('${serviceCode}', '${countryId}', ${calculatedPrice})" 
-                            class="px-4 py-2 bg-brand-blue text-white rounded-lg text-xs font-bold hover:bg-brand-blue/90 active:scale-95 transition-all">
-                        Buy
-                    </button>
+    return `
+        <div class="bg-white border border-brand-border p-3 rounded-xl flex items-center justify-between hover:border-brand-blue/50 transition-all">
+            <div class="flex items-center gap-3">
+                <img src="https://flagcdn.com/w40/${flagCode}.png" class="w-6 h-auto rounded-sm border border-gray-200" onerror="this.style.display='none'">
+                <div>
+                    <p class="text-xs font-bold text-brand-darkText">${countryName}</p>
+                    <span class="text-[9px] text-green-600 font-bold uppercase">● ${stockStatus}</span>
                 </div>
             </div>
-        `;
-    }).join('');
+            <div class="flex items-center gap-4">
+                <span class="text-xs font-black text-brand-blue">₦${calculatedPrice.toLocaleString()}</span>
+                <button onclick="buyServiceCountry('${serviceCode}', '${countryId}', ${calculatedPrice})" 
+                        class="px-4 py-2 bg-brand-blue text-white rounded-lg text-xs font-bold hover:bg-brand-blue/90 active:scale-95 transition-all">
+                    Buy
+                </button>
+            </div>
+        </div>
+    `;
+}).join('');
 
     }
 

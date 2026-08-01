@@ -573,6 +573,12 @@ app.all('/api/:action', async (req, res) => {
      case 'rdp-request-complete': // This matches the fetch URL in your HTML file
     if (req.method === 'POST') return handleCompleteRDPOrder(req, res);
     break; 
+    case 'services':
+        if (req.method === 'GET') return handleGetServices(req, res);
+        break;
+    case 'countries':
+        if (req.method === 'GET') return handleGetCountries(req, res);
+        break;
     case 'get-numbers': return handleGetNumbers(req, res);
     case 'get-countries': return handleGetCountries(req, res);
      case 'get-stock':  return handleGetStock(req, res);

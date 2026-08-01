@@ -321,7 +321,7 @@
         }
     }
 
-    async function syncInventory() {
+   async function syncInventory() {
         const container = document.getElementById('serviceAccordionList');
         if (container && services.length === 0) {
             container.innerHTML = `
@@ -333,12 +333,15 @@
         }
 
         try {
-            const response = await fetch(`${XENTRA_API_BASE}/services`);
+            const response = await fetch(`${API_BASE_URL}/services`);
             const data = await response.json();
             
-            if (data.services) {
+            // Handle both direct array and object formats from the backend proxy
+            const servicesList = Array.isArray(data) ? data : (data.services || []);
+            
+            if (servicesList.length > 0) {
                 // Sort services to put priority social/meta apps first
-                services = data.services.sort((a, b) => {
+                services = servicesList.sort((a, b) => {
                     const nameA = a.name.toLowerCase();
                     const nameB = b.name.toLowerCase();
                     
@@ -361,7 +364,7 @@
             }
         }
     }
-
+    
     function renderServiceAccordion(filter = "") {
         const container = document.getElementById('serviceAccordionList');
         if (!container) return;

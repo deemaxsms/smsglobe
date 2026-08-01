@@ -409,71 +409,81 @@
         }).join('');
     }
 
-    function renderCountriesListHtml(serviceCode, countriesList) {
-        if (!countriesList || countriesList.length === 0) {
-            return `
-                <div class="flex flex-col items-center justify-center py-6">
-                    <div class="w-5 h-5 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-2"></div>
-                    <p class="text-[10px] text-brand-blue font-bold uppercase">Loading Country Inventory...</p>
-                </div>
-            `;
-        }
+   function renderCountriesListHtml(serviceCode, countriesList) {
+    if (!countriesList || countriesList.length === 0) {
+        return `
+            <div class="flex flex-col items-center justify-center py-6">
+                <div class="w-5 h-5 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-2"></div>
+                <p class="text-[10px] text-brand-blue font-bold uppercase">Loading Country Inventory...</p>
+            </div>
+        `;
+    }
 
-        let multiplier = 1;
-        if (currentMode === 'rent') {
-            const select = document.getElementById('rentalPeriod');
-            if (select) {
-                multiplier = parseFloat(select.options[select.selectedIndex].getAttribute('data-multi'));
+    let multiplier = 1;
+    if (currentMode === 'rent') {
+        const select = document.getElementById('rentalPeriod');
+        if (select) {
+            multiplier = parseFloat(select.options[select.selectedIndex].getAttribute('data-multi'));
+        }
+    }
+    
+    const usdToNgnRate = 1380; // Hardcoded safety conversion rate matching XentraHub's NGN tier
+
+    return countriesList.map(c => {
+        let baseRate = 0;
+        
+        // Check if XentraHub's nested price.amount exists and is fully calculated
+        if (c.price && typeof c.price === 'object' && c.price.amount > 50) {
+            baseRate = c.price.amount;
+        } else {
+            // Otherwise, grab raw price/sellingPrice (which is in USD like 0.80) and convert it to NGN
+            let rawUsd = 0;
+            if (c.price && typeof c.price === 'object') {
+                rawUsd = c.price.amount || c.price.usd || 0;
+            } else if (typeof c.price === 'number') {
+                rawUsd = c.price;
+            } else {
+                rawUsd = c.sellingPrice || 0;
             }
+            
+            // If it's small (USD), multiply by exchange rate. If already NGN, keep as is.
+            baseRate = rawUsd < 100 ? rawUsd * usdToNgnRate : rawUsd;
         }
+        
+        const effectiveMultiplier = (typeof multiplier !== 'undefined' && multiplier > 0) ? multiplier : 1;
+        const finalDisplayPrice = Number(baseRate) * effectiveMultiplier;
 
-return countriesList.map(c => {
-    // Directly extract the pre-calculated amount object sent from your backend
-    let calculatedPrice = 0;
-    if (c.price !== null && typeof c.price === 'object') {
-        calculatedPrice = c.price.amount || 0;
-    } else if (typeof c.price === 'number') {
-        calculatedPrice = c.price;
-    } else {
-        calculatedPrice = c.sellingPrice || 0;
-    }
+        const formattedPriceString = finalDisplayPrice.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
 
-    // Apply rental multiplier if in rental mode
-    const effectiveMultiplier = (typeof multiplier !== 'undefined' && multiplier > 0) ? multiplier : 1;
-    const finalDisplayPrice = Number(calculatedPrice) * effectiveMultiplier;
+        const stockStatus = c.stock || c.count || 'In Stock';
+        const countryId = c.countryId || c.id || c.code || '';
+        const flagCode = countryId.toString().toLowerCase();
+        const countryName = c.countryName || c.name || 'Unknown Country';
 
-    // Format to 2 decimal places to show kobo accurately like XentraHub
-    const formattedPriceString = finalDisplayPrice.toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
-
-    const stockStatus = c.stock || c.count || 'In Stock';
-    const countryId = c.countryId || c.id || c.code || '';
-    const flagCode = countryId.toString().toLowerCase();
-    const countryName = c.countryName || c.name || 'Unknown Country';
-
-    return `
-        <div class="bg-white border border-brand-border p-3 rounded-xl flex items-center justify-between hover:border-brand-blue/50 transition-all">
-            <div class="flex items-center gap-3">
-                <img src="https://flagcdn.com/w40/${flagCode}.png" class="w-6 h-auto rounded-sm border border-gray-200" onerror="this.style.display='none'">
-                <div>
-                    <p class="text-xs font-bold text-brand-darkText">${countryName}</p>
-                    <span class="text-[9px] text-green-600 font-bold uppercase">● ${stockStatus}</span>
+        return `
+            <div class="bg-white border border-brand-border p-3 rounded-xl flex items-center justify-between hover:border-brand-blue/50 transition-all">
+                <div class="flex items-center gap-3">
+                    <img src="https://flagcdn.com/w40/${flagCode}.png" class="w-6 h-auto rounded-sm border border-gray-200" onerror="this.style.display='none'">
+                    <div>
+                        <p class="text-xs font-bold text-brand-darkText">${countryName}</p>
+                        <span class="text-[9px] text-green-600 font-bold uppercase">● ${stockStatus}</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="text-xs font-black text-brand-blue">₦${formattedPriceString}</span>
+                    <button onclick="buyServiceCountry('${serviceCode}', '${countryId}', ${finalDisplayPrice})" 
+                            class="px-4 py-2 bg-brand-blue text-white rounded-lg text-xs font-bold hover:bg-brand-blue/90 active:scale-95 transition-all">
+                        Buy
+                    </button>
                 </div>
             </div>
-            <div class="flex items-center gap-4">
-                <span class="text-xs font-black text-brand-blue">₦${formattedPriceString}</span>
-                <button onclick="buyServiceCountry('${serviceCode}', '${countryId}', ${finalDisplayPrice})" 
-                        class="px-4 py-2 bg-brand-blue text-white rounded-lg text-xs font-bold hover:bg-brand-blue/90 active:scale-95 transition-all">
-                    Buy
-                </button>
-            </div>
-        </div>
-    `;
-}).join('');
+        `;
+    }).join('');
+}
 
-    }
 
     async function toggleServiceAccordion(code) {
         if (expandedServiceCode === code) {

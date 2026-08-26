@@ -65,8 +65,8 @@ app.get('/robots.txt', (req, res) => {
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET_KEY;
-const XENTRA_API_BASE = 'https://xentrahub.com/api/stratos';
-const XENTRA_API_KEY = process.env.XENTRA_API_KEY;
+const SMSBOWER_BASE_URL = 'https://smsbower.page/stubs/handler_api.php';
+const SMSBOWER_API_KEY = process.env.SMSBOWER_API_KEY;
 
 const adminSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
@@ -574,7 +574,7 @@ app.all('/api/:action', async (req, res) => {
     if (req.method === 'POST') return handleCompleteRDPOrder(req, res);
     break; 
     case 'services':
-        if (req.method === 'GET') return handleGetServices(req, res);
+        if (req.method === 'GET') return handleGetServicesAndPrices(req, res);
         break;
     case 'countries':
         if (req.method === 'GET') return handleGetCountries(req, res);
@@ -3468,7 +3468,7 @@ async function handleGetRdpRequests(req, res) {
 }
 
 /**
- * 1. PURCHASE / ALLOCATE NUMBER FROM XENTRAHUB
+ * 1. PURCHASE / ALLOCATE NUMBER FROM SMSBOWER
  */
 async function handlePurchaseNumber(req, res) {
     try {
@@ -3476,13 +3476,8 @@ async function handlePurchaseNumber(req, res) {
         const { planAmount, metadata } = req.body;
         const userId = req.user._id;
 
-        // Extract parameters passed from frontend metadata
-        const serviceCode = metadata?.serviceCode || metadata?.serviceName || 'google';
-        const countryId = metadata?.countryCode || metadata?.countryId;
-
-        if (!countryId) {
-            return res.status(400).json({ success: false, message: "Country ID is required." });
-        }
+        const serviceCode = metadata?.serviceCode || metadata?.serviceName || 'ot';
+        const countryId = metadata?.countryCode || metadata?.countryId || 0;
 
         // 1. Verify user wallet balance
         const user = await User.findById(userId);
@@ -3490,49 +3485,52 @@ async function handlePurchaseNumber(req, res) {
             return res.status(400).json({ success: false, message: "Insufficient wallet balance." });
         }
 
-        // 2. Call Xentrahub Stratos Purchase API
-        const xentraRes = await xentraClient.post('/purchase', {
-            service: String(serviceCode).toLowerCase(),
-            countryId: Number(countryId) || countryId
+        // 2. Call SMSBower Number Allocation API (SMS-Activate format: action=getNumber)
+        const response = await smsBowerClient.get('', {
+            params: {
+                action: 'getNumber',
+                service: serviceCode,
+                country: countryId
+            }
         });
 
-        const xentraData = xentraRes.data;
+        const respText = response.data; // e.g., "ACCESS_NUMBER:1:2347012345678:123456" or "NO_NUMBERS"
+        
+        if (typeof respText === 'string' && respText.startsWith('ACCESS_NUMBER')) {
+            const parts = respText.split(':');
+            const vendorOrderId = parts[1];
+            const allocatedNumber = parts[2];
 
-        // Validate vendor response
-        const vendorOrderId = xentraData?.activationId || xentraData?.id;
-        const allocatedNumber = xentraData?.phoneNumber || xentraData?.phone || xentraData?.number;
+            // 3. Deduct user balance & save local order record
+            user.balance -= planAmount;
+            await user.save();
 
-        if (!vendorOrderId || !allocatedNumber) {
+            const newOrder = await SmsNumber.create({
+                userId: userId,
+                userEmail: user.email,
+                phoneNumber: allocatedNumber,
+                vendorOrderId: String(vendorOrderId),
+                countryId: String(countryId),
+                serviceName: serviceCode,
+                status: 'pending',
+                amount: planAmount,
+                expiresAt: new Date(Date.now() + 15 * 60 * 1000)
+            });
+
+            return res.json({
+                success: true,
+                order: newOrder
+            });
+        } else {
             return res.status(400).json({
                 success: false,
-                message: xentraData?.message || xentraData?.error || "Failed to allocate number from Xentrahub."
+                message: respText || "No numbers available from SMSBower right now."
             });
         }
 
-        // 3. Deduct user balance & save local order record
-        user.balance -= planAmount;
-        await user.save();
-
-        const newOrder = await SmsNumber.create({
-            user: userId,
-            userEmail: user.email,
-            mobileNumber: allocatedNumber,
-            vendorOrderId: String(vendorOrderId),
-            deviceId: metadata?.deviceId || String(vendorOrderId),
-            status: 'pending',
-            price: planAmount,
-            provider: 'xentrahub'
-        });
-
-        return res.json({
-            success: true,
-            order: newOrder
-        });
-
     } catch (err) {
-        console.error("Xentrahub Purchase Error:", err.response?.data || err.message);
-        const errMsg = err.response?.data?.message || err.response?.data?.error || "Server error processing purchase.";
-        return res.status(500).json({ success: false, message: errMsg });
+        console.error("SMSBower Purchase Error:", err.message);
+        return res.status(500).json({ success: false, message: "Server error processing purchase." });
     }
 }
 
@@ -3553,17 +3551,20 @@ async function handleGetStock(req, res) {
     }
 }
 
-async function handleGetServices(req, res) {
+/**
+ * 2. FETCH SERVICES & PRICES
+ */
+async function handleGetServicesAndPrices(req, res) {
     try {
-        const response = await xentraClient.get('/stratos/services');
-        // Xentrahub returns { services: [...] } or an array directly
-        return res.json(response.data);
-    } catch (err) {
-        console.error("Failed to fetch Xentrahub services:", err.response?.data || err.message);
-        return res.status(500).json({ 
-            success: false, 
-            message: "Failed to fetch services catalog from vendor." 
+        // SMS-Activate format uses action=getPrices or getServices
+        const response = await smsBowerClient.get('', {
+            params: { action: 'getPrices' }
         });
+
+        return res.json({ success: true, data: response.data });
+    } catch (err) {
+        console.error("Failed to fetch SMSBower services:", err.message);
+        return res.status(500).json({ success: false, message: "Failed to fetch services catalog from vendor." });
     }
 }
 
@@ -3621,6 +3622,9 @@ async function handleGetCountries(req, res) {
     }
 }
 
+/**
+ * 3. CHECK ORDER STATUS / SMS CODE POLLING
+ */
 async function handleOrderDetails(req, res) {
     const { id } = req.query; // Local DB Order ID
 
@@ -3629,25 +3633,25 @@ async function handleOrderDetails(req, res) {
         const order = await SmsNumber.findById(id);
         if (!order) return res.status(404).json({ success: false, message: "Order not found." });
 
-        // Return immediately if already completed
         if (order.status === 'completed' || order.smsCode) {
             return res.json({ success: true, order });
         }
 
-        // Poll Xentrahub verification state if order has vendorOrderId
+        // Poll SMSBower for status (SMS-Activate format: action=getStatus&id=vendorOrderId)
         if (order.vendorOrderId) {
-            const checkUrl = `/verification/${order.vendorOrderId}`;
-            const stateRes = await xentraClient.get(checkUrl);
-            const stateData = stateRes.data || {};
+            const response = await smsBowerClient.get('', {
+                params: {
+                    action: 'getStatus',
+                    id: order.vendorOrderId
+                }
+            });
 
-            // Extract SMS text / OTP from response
-            const smsMessage = stateData.sms || stateData.fullMessage || stateData.message || stateData.code;
+            const respText = response.data; // e.g., "STATUS_OK:1234" or "STATUS_WAIT_CODE"
 
-            if (smsMessage) {
-                const extractedCode = stateData.code || String(smsMessage).match(/\d{4,6}/)?.[0] || String(smsMessage);
-
-                order.smsCode = extractedCode;
-                order.fullMessage = typeof smsMessage === 'string' ? smsMessage : `Verification Code: ${extractedCode}`;
+            if (typeof respText === 'string' && respText.startsWith('STATUS_OK')) {
+                const code = respText.split(':')[1];
+                order.smsCode = code;
+                order.fullMessage = `Verification Code: ${code}`;
                 order.status = 'completed';
                 await order.save();
             }
@@ -3655,7 +3659,7 @@ async function handleOrderDetails(req, res) {
 
         return res.json({ success: true, order });
     } catch (err) {
-        console.error("Polling check failed:", err.response?.data || err.message);
+        console.error("SMSBower Polling Error:", err.message);
         return res.status(500).json({ success: false, message: "Failed to read order update." });
     }
 }

@@ -565,74 +565,79 @@
             renderServiceAccordion(query);
         }
 
-        async function buyServiceCountry(serviceCode, countryId, price, rank) {
-            const token = localStorage.getItem('userToken');
-            if (!token) {
-                Swal.fire({ title: 'Login Required', icon: 'warning', text: 'Please log in to purchase numbers.' });
-                return;
-            }
+      async function buyServiceCountry(serviceCode, countryId, price, rank) {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+        Swal.fire({ title: 'Login Required', icon: 'warning', text: 'Please log in to purchase numbers.' });
+        return;
+    }
 
-            if (userBalance < price) {
-                Swal.fire('Insufficient Funds', `You need ₦${price.toLocaleString()} to purchase this option. Please fund your wallet.`, 'error');
-                return;
-            }
+    if (userBalance < price) {
+        Swal.fire('Insufficient Funds', `You need ₦${price.toLocaleString()} to purchase this option. Please fund your wallet.`, 'error');
+        return;
+    }
 
-            const serviceObj = services.find(s => s.code === serviceCode);
-            const countriesList = serviceCountriesCache[serviceCode] || [];
-            const countryObj = countriesList.find(c => (c.countryId || c.id || c.code || '').toString() === countryId.toString());
+    const serviceObj = services.find(s => s.code === serviceCode);
+    const countriesList = serviceCountriesCache[serviceCode] || [];
+    const countryObj = countriesList.find(c => (c.countryId || c.id || c.code || '').toString() === countryId.toString());
 
-            const confirmed = await Swal.fire({
-                title: 'Confirm Live Purchase',
-                text: `Get ${serviceObj?.name || serviceCode} (${rank} Tier) in ${countryObj?.countryName || countryObj?.name || 'Selected Country'} for ₦${price.toLocaleString()}?`,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#0F54C6',
-                confirmButtonText: 'Proceed Order'
-            });
+    const confirmed = await Swal.fire({
+        title: 'Confirm Live Purchase',
+        text: `Get ${serviceObj?.name || serviceCode} (${rank} Tier) in ${countryObj?.countryName || countryObj?.name || 'Selected Country'} for ₦${price.toLocaleString()}?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#0F54C6',
+        confirmButtonText: 'Proceed Order'
+    });
 
-            if (!confirmed.isConfirmed) return;
+    if (!confirmed.isConfirmed) return;
 
-            const payload = {
-                mobileNumber: `+${countryId}${Math.floor(10000000 + Math.random() * 90000000)}`,
-                planAmount: price,
-                metadata: {
-                    serviceType: 'virtual_number',
-                    serviceName: serviceObj?.name || serviceCode,
-                    countryCode: countryId,
-                    rank: (rank || 'silver').toLowerCase(),
-                    provider: 'smsbower'
-                }
-            };
-
-            try {
-                const { data: res } = await safeFetch(`${API_BASE_URL}/purchase-with-wallet`, { 
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify(payload)
-                });
-                
-                if (res.success) {
-                    document.querySelector('main')?.classList.add('hidden');
-                    document.getElementById('activationPanel')?.classList.remove('hidden'); 
-                    document.getElementById('displayPurchasedNumber').innerText = payload.mobileNumber;
-                    
-                    startSmsPolling(res.order._id || res.orderId);
-                    
-                    Swal.fire({
-                        title: 'Order Dispatched!',
-                        text: 'Waiting for live SMS verification code...',
-                        icon: 'success',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
-                } else { 
-                    Swal.fire('Order Failed', res.message || "Could not process purchase from provider.", 'error');
-                }
-            } catch (err) { 
-                console.error("Purchase Error:", err);
-                Swal.fire('Network Error', 'Check your connection and try again.', 'error');
-            }
+    // Send the core parameters to the backend; let the server provision the real number via SMSBower
+    const payload = {
+        serviceCode: serviceCode,
+        countryId: countryId,
+        planAmount: price,
+        rank: (rank || 'silver').toLowerCase(),
+        metadata: {
+            serviceType: 'virtual_number',
+            serviceName: serviceObj?.name || serviceCode,
+            countryCode: countryId,
+            provider: 'smsbower'
         }
+    };
+
+    try {
+        const { data: res } = await safeFetch(`${API_BASE_URL}/purchase-with-wallet`, { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(payload)
+        });
+        
+        if (res.success) {
+            // Extract the real provisioned mobile number returned by the server/upstream provider
+            const realMobileNumber = res.order?.mobileNumber || res.mobileNumber;
+
+            document.querySelector('main')?.classList.add('hidden');
+            document.getElementById('activationPanel')?.classList.remove('hidden'); 
+            document.getElementById('displayPurchasedNumber').innerText = realMobileNumber;
+            
+            startSmsPolling(res.order?._id || res.orderId);
+            
+            Swal.fire({
+                title: 'Order Dispatched!',
+                text: 'Waiting for live SMS verification code...',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        } else { 
+            Swal.fire('Order Failed', res.message || "Could not process purchase from provider.", 'error');
+        }
+    } catch (err) { 
+        console.error("Purchase Error:", err);
+        Swal.fire('Network Error', 'Check your connection and try again.', 'error');
+    }
+}
 
         function copyNumber() {
             const num = document.getElementById('displayPurchasedNumber')?.innerText || '';

@@ -3542,7 +3542,7 @@ async function handlePurchaseNumber(req, res) {
 }
 
 /**
- * 2. FETCH SERVICES & PRICES (Updated to include service image)
+ * 2. FETCH SERVICES & PRICES (Updated with correct SMSBower image URL)
  */
 async function handleGetServicesAndPrices(req, res) {
     try {
@@ -3570,16 +3570,15 @@ async function handleGetServicesAndPrices(req, res) {
                 if (countryServices && typeof countryServices === 'object') {
                     Object.keys(countryServices).forEach(serviceCode => {
                         if (!servicesMap[serviceCode]) {
-                            // If SMSBower provides an image/icon field in another property, or you can map a standard URL format:
-                            // Example: using a standard logo URL convention or fallback placeholder
+                            // Updated fallback to match smsbower.app domain and .svg format
                             const serviceImage = countryServices[serviceCode].image || 
                                                  countryServices[serviceCode].icon || 
-                                                 `https://smsbower.com/assets/images/services/${serviceCode}.png`; // Adjust base URL as per SMSBower docs if applicable
+                                                 `https://smsbower.app/img/services/${serviceCode}.svg`;
 
                             servicesMap[serviceCode] = {
                                 code: serviceCode,
                                 name: serviceCode.charAt(0).toUpperCase() + serviceCode.slice(1),
-                                image: serviceImage, // <-- Added image property
+                                image: serviceImage,
                                 countries: {}
                             };
                         }

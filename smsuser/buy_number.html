@@ -244,8 +244,8 @@
         </button>
     </div>
 <script>
-    const API_BASE_URL = '/api';
-    const SMSBOWER_API_BASE = 'https://smsbower.page/stubs/handler_api.php';
+    const API_BASE_URL='/api';
+    const SMSBOWER_API_BASE='https://smsbower.page/stubs/handler_api.php';
 
     let currentMode = 'activation';
     let services = [];
@@ -333,7 +333,7 @@
         }
 
         try {
-            const response = await fetch(`${XENTRA_API_BASE}/services`);
+            const response = await fetch(`${SMSBOWER_API_BASE}/services`);
             const data = await response.json();
             
             if (data.services) {
@@ -499,7 +499,7 @@
 
     async function fetchCountriesForService(serviceCode) {
         try {
-            const response = await fetch(`${XENTRA_API_BASE}/countries?service=${serviceCode}`);
+            const response = await fetch(`${SMSBOWER_API_BASE}/countries?service=${serviceCode}`);
             const data = await response.json();
             
             if (Array.isArray(data)) {

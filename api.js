@@ -3557,6 +3557,7 @@ async function handleGetStock(req, res) {
         return res.json({ success: false, stock: { "GLOBAL": 0 } });
     }
 }
+
 /**
  * 2. FETCH SERVICES & PRICES (Corrected & Hardened for SMSBower)
  */

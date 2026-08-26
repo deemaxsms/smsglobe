@@ -245,17 +245,16 @@
     </div>
 <script>
     const API_BASE_URL = '/api';
-    const SMSBOWER_API_BASE = 'https://smsbower.page/stubs/handler_api.php';
 
     let currentMode = 'activation';
     let services = [];
     let expandedServiceCode = null;
-    let serviceCountriesCache = {}; // Cache country lists per service
+    let serviceCountriesCache = {}; 
     let userBalance = 0;
     let userBonusBalance = 0;
 
-    // Priority service keywords to sort to the top
-const PRIORITY_SERVICES = [
+    // Priority service badges/icons mapping for real service codes
+    const PRIORITY_SERVICES = [
         { code: 'wa', name: 'WhatsApp', icon: '💬' },
         { code: 'tg', name: 'Telegram', icon: '✈️' },
         { code: 'gg', name: 'Google / Gmail', icon: '🌐' },
@@ -288,16 +287,6 @@ const PRIORITY_SERVICES = [
                 const userData = data.user || data;
                 userBalance = userData.balance || 0; 
                 userBonusBalance = userData.bonusBalance || 0; 
-
-                const updateUI = (id, text) => {
-                    const el = document.getElementById(id);
-                    if (el) el.innerText = text;
-                };
-
-                updateUI('displayBalance', `₦${userBalance.toLocaleString()}`);
-                updateUI('displayBonus', `₦${userBonusBalance.toLocaleString()}`);
-                updateUI('userReferralCount', userData.referralCount || 0);
-
                 localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
             }
         } catch (err) {
@@ -327,13 +316,14 @@ const PRIORITY_SERVICES = [
         }
     }
 
+    // Real Inventory Sync from Backend Services Endpoint
     async function syncInventory() {
         const container = document.getElementById('serviceAccordionList');
         if (container && services.length === 0) {
             container.innerHTML = `
                 <div class="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-brand-border">
                     <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
-                    <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Loading SMSGlobe Services...</p>
+                    <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Loading Live SMSGlobe Services...</p>
                 </div>
             `;
         }
@@ -345,12 +335,11 @@ const PRIORITY_SERVICES = [
             const serviceList = data.services || data.data || data;
 
             if (Array.isArray(serviceList)) {
-                // Sort services: Priority items first, then alphabetical
                 services = serviceList.sort((a, b) => {
                     const codeA = (a.code || '').toLowerCase();
                     const codeB = (b.code || '').toLowerCase();
-                    const indexA = PRIORITY_SERVICES.indexOf(codeA);
-                    const indexB = PRIORITY_SERVICES.indexOf(codeB);
+                    const indexA = PRIORITY_SERVICES.findIndex(p => p.code === codeA);
+                    const indexB = PRIORITY_SERVICES.findIndex(p => p.code === codeB);
 
                     if (indexA !== -1 && indexB !== -1) return indexA - indexB;
                     if (indexA !== -1) return -1;
@@ -359,55 +348,24 @@ const PRIORITY_SERVICES = [
                     return (a.name || '').localeCompare(b.name || '');
                 });
 
-                renderPriorityGrid();
                 renderServiceAccordion();
             }
         } catch (err) {
             console.error("Service sync failed", err);
             if (container) {
-                container.innerHTML = `<p class="text-center text-xs py-10 text-red-500 font-bold uppercase bg-white rounded-2xl border border-brand-border">Failed to load services</p>`;
+                container.innerHTML = `<p class="text-center text-xs py-10 text-red-500 font-bold uppercase bg-white rounded-2xl border border-brand-border">Failed to load live services from backend</p>`;
             }
         }
-    }
-
-   function renderPriorityGrid() {
-        const gridContainer = document.getElementById('priorityServicesGrid');
-        if (!gridContainer) return;
-
-        gridContainer.innerHTML = PRIORITY_SERVICES.map(p => {
-            // Find if this service exists in the fetched backend services list to get dynamic info if available
-            const found = services.find(s => s.code.toLowerCase() === p.code.toLowerCase());
-            const displayName = found ? found.name : p.name;
-            const isSelected = expandedServiceCode === p.code;
-
-            return `
-                <button onclick="selectPriorityService('${p.code}')" 
-                        class="flex flex-col items-center justify-center p-3 bg-white border ${isSelected ? 'border-brand-blue bg-brand-background shadow-sm' : 'border-brand-border'} rounded-2xl hover:border-brand-blue/60 transition-all active:scale-95 group">
-                    <span class="text-base mb-1">${p.icon}</span>
-                    <span class="text-[10px] font-bold text-brand-darkText truncate w-full text-center">${displayName}</span>
-                </button>
-            `;
-        }).join('');
-    }
-
-    async function selectPriorityService(code) {
-        expandedServiceCode = code;
-        if (!serviceCountriesCache[code]) {
-            await fetchCountriesForService(code);
-        }
-        renderPriorityGrid();
-        renderServiceAccordion();
-        document.getElementById('serviceAccordionList')?.scrollIntoView({ behavior: 'smooth' });
     }
 
     function renderServiceAccordion(filter = "") {
         const container = document.getElementById('serviceAccordionList');
         if (!container) return;
 
-        const filtered = services.filter(s => s.name.toLowerCase().includes(filter.toLowerCase()));
+        const filtered = services.filter(s => (s.name || '').toLowerCase().includes(filter.toLowerCase()) || (s.code || '').toLowerCase().includes(filter.toLowerCase()));
         
         if (filtered.length === 0) {
-            container.innerHTML = `<p class="text-center text-xs text-gray-400 py-10 font-bold bg-white rounded-2xl border border-brand-border">No services found</p>`;
+            container.innerHTML = `<p class="text-center text-xs text-gray-400 py-10 font-bold bg-white rounded-2xl border border-brand-border">No services match your search</p>`;
             return;
         }
 
@@ -420,12 +378,15 @@ const PRIORITY_SERVICES = [
                     <div onclick="toggleServiceAccordion('${s.code}')" class="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-brand-background/50 transition-colors">
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 rounded-xl bg-brand-blue/10 text-brand-blue font-bold flex items-center justify-center text-xs uppercase">
-                                ${s.name.substring(0, 2)}
+                                ${(s.name || s.code).substring(0, 2)}
                             </div>
-                            <span class="text-xs font-bold text-brand-darkText">${s.name}</span>
+                            <div>
+                                <span class="text-xs font-bold text-brand-darkText block">${s.name || s.code}</span>
+                                <span class="text-[9px] text-brand-lightText uppercase">Code: ${s.code}</span>
+                            </div>
                         </div>
                         <button class="text-xs font-bold text-brand-midText flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border bg-white">
-                            ${isExpanded ? 'Collapse' : 'Get Number'}
+                            ${isExpanded ? 'Collapse' : 'Select Country'}
                             <svg class="w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                         </button>
                     </div>
@@ -433,7 +394,7 @@ const PRIORITY_SERVICES = [
                     ${isExpanded ? `
                         <div class="border-t border-brand-border bg-brand-background/30 p-4 space-y-3">
                             <div class="relative mb-3">
-                                <input type="text" oninput="filterCountriesForService('${s.code}', this.value)" placeholder="Search countries..." 
+                                <input type="text" oninput="filterCountriesForService('${s.code}', this.value)" placeholder="Search country inventory..." 
                                        class="text-xs bg-white border border-brand-border rounded-lg px-3 py-2 focus:outline-none focus:border-brand-blue w-full shadow-sm">
                             </div>
                             
@@ -450,9 +411,9 @@ const PRIORITY_SERVICES = [
     function renderCountriesListHtml(serviceCode, countriesList) {
         if (!countriesList || countriesList.length === 0) {
             return `
-                <div class="flex flex-col items-center justify-center py-6">
+                <div class="flex flex-col items-center justify-center py-6 bg-white rounded-xl border border-brand-border">
                     <div class="w-5 h-5 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-2"></div>
-                    <p class="text-[10px] text-brand-blue font-bold uppercase">Loading Country Inventory...</p>
+                    <p class="text-[10px] text-brand-blue font-bold uppercase">Fetching Live Country Tiers (Silver & Bronze)...</p>
                 </div>
             `;
         }
@@ -461,7 +422,7 @@ const PRIORITY_SERVICES = [
         if (currentMode === 'rent') {
             const select = document.getElementById('rentalPeriod');
             if (select) {
-                multiplier = parseFloat(select.options[select.selectedIndex].getAttribute('data-multi'));
+                multiplier = parseFloat(select.options[select.selectedIndex].getAttribute('data-multi')) || 1;
             }
         }
         
@@ -484,9 +445,7 @@ const PRIORITY_SERVICES = [
                 baseRate = rawUsd < 100 ? rawUsd * usdToNgnRate : rawUsd;
             }
             
-            const effectiveMultiplier = (typeof multiplier !== 'undefined' && multiplier > 0) ? multiplier : 1;
-            const finalDisplayPrice = Number(baseRate) * effectiveMultiplier;
-
+            const finalDisplayPrice = Number(baseRate) * multiplier;
             const formattedPriceString = finalDisplayPrice.toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
@@ -495,9 +454,9 @@ const PRIORITY_SERVICES = [
             const stockStatus = c.stock || c.count || 'In Stock';
             const countryId = c.countryId || c.id || c.code || '';
             const flagCode = countryId.toString().toLowerCase();
-            const countryName = c.countryName || c.name || 'Unknown Country';
+            const countryName = c.countryName || c.name || 'Global Country';
             
-            // Rank styling (Silver vs Bronze badges)
+            // Silver vs Bronze tier rendering logic
             const rankValue = (c.rank || 'silver').toLowerCase();
             const isSilver = rankValue.includes('silver');
             const rankBadgeClass = isSilver 
@@ -514,14 +473,14 @@ const PRIORITY_SERVICES = [
                                 <p class="text-xs font-bold text-brand-darkText">${countryName}</p>
                                 <span class="text-[8px] font-semibold px-1.5 py-0.5 rounded border ${rankBadgeClass} uppercase">${rankLabel}</span>
                             </div>
-                            <span class="text-[9px] text-green-600 font-bold uppercase">● ${stockStatus}</span>
+                            <span class="text-[9px] text-green-600 font-bold uppercase">● Stock: ${stockStatus}</span>
                         </div>
                     </div>
                     <div class="flex items-center gap-4">
                         <span class="text-xs font-black text-brand-blue">₦${formattedPriceString}</span>
                         <button onclick="buyServiceCountry('${serviceCode}', '${countryId}', ${finalDisplayPrice}, '${rankLabel}')" 
                                 class="px-4 py-2 bg-brand-blue text-white rounded-lg text-xs font-bold hover:bg-brand-blue/90 active:scale-95 transition-all">
-                            Buy
+                            Buy Number
                         </button>
                     </div>
                 </div>
@@ -538,59 +497,54 @@ const PRIORITY_SERVICES = [
                 await fetchCountriesForService(code);
             }
         }
-        renderPriorityGrid();
         renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
     }
 
-async function fetchCountriesForService(serviceCode) {
-    // Safety check: ensure serviceCode actually exists before calling API
-    if (!serviceCode || serviceCode === 'undefined' || serviceCode === 'null') {
-        console.error("Skipped fetch: Invalid service code provided.");
-        return;
-    }
-
-    try {
-        const response = await fetch(`${API_BASE_URL}/smsbower/countries?service=${encodeURIComponent(serviceCode)}`);
-        
-        // Ensure response is actually JSON before parsing
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-            throw new Error("Server did not return a JSON response (Endpoint configuration error).");
+    async function fetchCountriesForService(serviceCode) {
+        if (!serviceCode || serviceCode === 'undefined' || serviceCode === 'null') {
+            console.error("Skipped fetch: Invalid service code.");
+            return;
         }
 
-        const result = await response.json();
-        
-        let list = [];
-        const data = result.countries || result.data || result;
+        try {
+            const response = await fetch(`${API_BASE_URL}/smsbower/countries?service=${encodeURIComponent(serviceCode)}`);
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                throw new Error("Invalid response format from server.");
+            }
 
-        if (Array.isArray(data)) {
-            list = data;
-        } else if (typeof data === 'object' && data !== null) {
-            list = Object.entries(data).map(([countryId, details]) => ({
-                countryId: countryId,
-                countryName: details.countryName || details.name || `Country ${countryId}`,
-                stock: details.stock || details.count || 'In Stock',
-                rank: details.rank || 'Silver',
-                price: details.price || { amount: 1650, currency: 'NGN', symbol: '₦' }
-            }));
+            const result = await response.json();
+            let list = [];
+            const data = result.countries || result.data || result;
+
+            if (Array.isArray(data)) {
+                list = data;
+            } else if (typeof data === 'object' && data !== null) {
+                list = Object.entries(data).map(([countryId, details]) => ({
+                    countryId: countryId,
+                    countryName: details.countryName || details.name || `Country ${countryId}`,
+                    stock: details.stock || details.count || 'In Stock',
+                    rank: details.rank || 'Silver',
+                    price: details.price || { amount: 1650, currency: 'NGN', symbol: '₦' }
+                }));
+            }
+
+            // Filter strictly for Silver and Bronze items from SMSBower
+            const filteredList = list.filter(c => {
+                const r = String(c.rank || 'silver').toLowerCase();
+                return r.includes('silver') || r.includes('bronze');
+            });
+
+            serviceCountriesCache[serviceCode] = filteredList.length > 0 ? filteredList : list;
+        } catch (err) {
+            console.error("Failed to fetch countries for service:", err);
+            serviceCountriesCache[serviceCode] = [];
         }
 
-        // Filter safely for Silver & Bronze
-        const filteredList = list.filter(c => {
-            const r = String(c.rank || 'silver').toLowerCase();
-            return r.includes('silver') || r.includes('bronze');
-        });
-
-        serviceCountriesCache[serviceCode] = filteredList.length > 0 ? filteredList : list;
-    } catch (err) {
-        console.error("Failed to fetch countries:", err);
-        serviceCountriesCache[serviceCode] = [];
+        if (expandedServiceCode === serviceCode) {
+            renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
+        }
     }
-
-    if (expandedServiceCode === serviceCode) {
-        renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
-    }
-}
 
     function filterCountriesForService(serviceCode, query) {
         const allCountries = serviceCountriesCache[serviceCode] || [];
@@ -606,21 +560,15 @@ async function fetchCountriesForService(serviceCode) {
         renderServiceAccordion(query);
     }
 
-    function recalculateCurrentServicePrices() {
-        if (expandedServiceCode) {
-            renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
-        }
-    }
-
     async function buyServiceCountry(serviceCode, countryId, price, rank) {
         const token = localStorage.getItem('userToken');
         if (!token) {
-            Swal.fire({ title: 'Login Required', icon: 'warning' });
+            Swal.fire({ title: 'Login Required', icon: 'warning', text: 'Please log in to purchase numbers.' });
             return;
         }
 
         if (userBalance < price) {
-            Swal.fire('Insufficient Funds', `You need ₦${price.toLocaleString()} to purchase this service.`, 'error');
+            Swal.fire('Insufficient Funds', `You need ₦${price.toLocaleString()} to purchase this option. Please fund your wallet.`, 'error');
             return;
         }
 
@@ -629,12 +577,12 @@ async function fetchCountriesForService(serviceCode) {
         const countryObj = countriesList.find(c => (c.countryId || c.id || c.code || '').toString() === countryId.toString());
 
         const confirmed = await Swal.fire({
-            title: 'Confirm Purchase',
-            text: `Purchase ${serviceObj?.name || 'Service'} (${rank} Tier) in ${countryObj?.countryName || countryObj?.name || 'Selected Country'} for ₦${price.toLocaleString()}?`,
+            title: 'Confirm Live Purchase',
+            text: `Get ${serviceObj?.name || serviceCode} (${rank} Tier) in ${countryObj?.countryName || countryObj?.name || 'Selected Country'} for ₦${price.toLocaleString()}?`,
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#0F54C6',
-            confirmButtonText: 'Proceed'
+            confirmButtonText: 'Proceed Order'
         });
 
         if (!confirmed.isConfirmed) return;
@@ -665,21 +613,21 @@ async function fetchCountriesForService(serviceCode) {
                 document.getElementById('activationPanel').classList.remove('hidden'); 
                 document.getElementById('displayPurchasedNumber').innerText = payload.mobileNumber;
                 
-                startSmsPolling(res.order._id);
+                startSmsPolling(res.order._id || res.orderId);
                 
                 Swal.fire({
-                    title: 'Order Placed!',
-                    text: 'Waiting for SMS verification code...',
+                    title: 'Order Dispatched!',
+                    text: 'Waiting for live SMS verification code...',
                     icon: 'success',
                     timer: 2000,
                     showConfirmButton: false
                 });
             } else { 
-                Swal.fire('Order Failed', res.message || "Could not process purchase.", 'error');
+                Swal.fire('Order Failed', res.message || "Could not process purchase from provider.", 'error');
             }
         } catch (err) { 
             console.error("Purchase Error:", err);
-            Swal.fire('Error', 'Check your internet connection.', 'error');
+            Swal.fire('Network Error', 'Check your connection and try again.', 'error');
         }
     }
 
@@ -700,7 +648,7 @@ async function fetchCountriesForService(serviceCode) {
                 
                 const data = await response.json();
 
-                if (data.success && data.order.smsCode) {
+                if (data.success && data.order && data.order.smsCode) {
                     clearInterval(window.pollInterval);
                     
                     const codeDigits = data.order.smsCode.split('');
@@ -717,7 +665,7 @@ async function fetchCountriesForService(serviceCode) {
                     }
                     
                     Swal.fire({
-                        title: 'Code Received!',
+                        title: 'SMS Code Received!',
                         text: `Verification Code: ${data.order.smsCode}`,
                         icon: 'success',
                         confirmButtonColor: '#0F54C6'
@@ -730,8 +678,7 @@ async function fetchCountriesForService(serviceCode) {
     }
 
     function toggleSupportMenu() {
-        const menu = document.getElementById('supportMenu');
-        menu.classList.toggle('hidden');
+        document.getElementById('supportMenu')?.classList.toggle('hidden');
     }
 
     function logout() {
@@ -741,8 +688,8 @@ async function fetchCountriesForService(serviceCode) {
     }
 
     function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('-translate-x-full');
-        document.getElementById('sidebarOverlay').classList.toggle('hidden');
+        document.getElementById('sidebar')?.classList.toggle('-translate-x-full');
+        document.getElementById('sidebarOverlay')?.classList.toggle('hidden');
     }
 
     document.getElementById('openSidebar')?.addEventListener('click', toggleSidebar);
@@ -753,7 +700,7 @@ async function fetchCountriesForService(serviceCode) {
         syncInventory(); 
     });
 
-    setInterval(syncInventory, 30000);
+    setInterval(syncInventory, 60000);
 </script>
 
 </body>

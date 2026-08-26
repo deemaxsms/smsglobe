@@ -34,6 +34,13 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage: storage });
 
+const smsBowerClient = axios.create({
+    baseURL: 'https://smsbower.page/stubs/handler_api.php',
+    params: {
+        api_key: process.env.SMSBOWER_API_KEY
+    }
+});
+
 app.use(cors());
 app.use(express.json());
 

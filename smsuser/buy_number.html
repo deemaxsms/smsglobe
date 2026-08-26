@@ -334,7 +334,7 @@
 
     try {
         // Calls your backend, which safely talks to SMSBower
-        const response = await fetch(`${SMSBOWER_API_BASE}/services`);
+        const response = await fetch(`${API_BASE_URL}/services`);
         const data = await response.json();
         
         // Adjust depending on how your backend formats the response payload

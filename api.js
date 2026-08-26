@@ -3541,6 +3541,9 @@ async function handlePurchaseNumber(req, res) {
     }
 }
 
+/**
+ * 2. FETCH SERVICES & PRICES (Updated with correct SMSBower image URL)
+ */
 async function handleGetServicesAndPrices(req, res) {
     try {
         if (!process.env.SMSBOWER_API_KEY) {
@@ -3548,12 +3551,8 @@ async function handleGetServicesAndPrices(req, res) {
             return res.status(500).json({ success: false, message: "Vendor configuration error." });
         }
 
-        // Call the correct endpoint path shown in your API docs
-        const response = await smsBowerClient.get('/stubs/handler_api.php', {
-            params: { 
-                api_key: process.env.SMSBOWER_API_KEY,
-                action: 'getServicesList' 
-            }
+        const response = await smsBowerClient.get('', {
+            params: { action: 'getPrices' }
         });
 
         const rawData = response.data;
@@ -3563,20 +3562,33 @@ async function handleGetServicesAndPrices(req, res) {
             return res.status(400).json({ success: false, message: `Vendor error: ${rawData}` });
         }
 
-        // SMSBower getServicesList returns an array under response.data.services or directly as an array
-        const servicesArray = rawData.services || rawData;
+        let servicesMap = {};
 
-        if (!Array.isArray(servicesArray)) {
-            return res.status(500).json({ success: false, message: "Invalid format received from SMS provider." });
+        if (rawData && typeof rawData === 'object') {
+            Object.keys(rawData).forEach(countryId => {
+                const countryServices = rawData[countryId];
+                if (countryServices && typeof countryServices === 'object') {
+                    Object.keys(countryServices).forEach(serviceCode => {
+                        if (!servicesMap[serviceCode]) {
+                            // Updated fallback to match smsbower.app domain and .svg format
+                            const serviceImage = countryServices[serviceCode].image || 
+                                                 countryServices[serviceCode].icon || 
+                                                 `https://smsbower.app/img/services/${serviceCode}.svg`;
+
+                            servicesMap[serviceCode] = {
+                                code: serviceCode,
+                                name: serviceCode.charAt(0).toUpperCase() + serviceCode.slice(1),
+                                image: serviceImage,
+                                countries: {}
+                            };
+                        }
+                        servicesMap[serviceCode].countries[countryId] = countryServices[serviceCode];
+                    });
+                }
+            });
         }
 
-        // Format services cleanly for your frontend catalog
-        const servicesList = servicesArray.map(service => ({
-            code: service.code,
-            name: service.name || service.code.charAt(0).toUpperCase() + service.code.slice(1),
-            image: `https://smsbower.app/img/services/${service.code}.svg`,
-            countries: {} // Populate or fetch country specific prices separately if needed
-        }));
+        const servicesList = Object.values(servicesMap);
 
         return res.json({ 
             success: true, 
@@ -3592,7 +3604,6 @@ async function handleGetServicesAndPrices(req, res) {
         });
     }
 }
-
 async function handleGetCountries(req, res) {
     try {
         const serviceCode = req.query.service || req.params.service;

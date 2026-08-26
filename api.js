@@ -3541,24 +3541,8 @@ async function handlePurchaseNumber(req, res) {
     }
 }
 
-
-async function handleGetStock(req, res) {
-    try {
-        const response = await xentraClient.get('/stratos/services');
-        const isOnline = response.data && (response.data.services || Array.isArray(response.data));
-
-        return res.json({ 
-            success: true, 
-            stock: { 
-                "GLOBAL": isOnline ? 100 : 0 
-            } 
-        });
-    } catch (err) {
-        return res.json({ success: false, stock: { "GLOBAL": 0 } });
-    }
-}
 /**
- * 2. FETCH SERVICES & PRICES (Corrected for SMS-Activate / SMSBower Structure)
+ * 2. FETCH SERVICES & PRICES (Updated to include service image)
  */
 async function handleGetServicesAndPrices(req, res) {
     try {
@@ -3581,15 +3565,21 @@ async function handleGetServicesAndPrices(req, res) {
         let servicesMap = {};
 
         if (rawData && typeof rawData === 'object') {
-            // SMS-Activate getPrices returns: { countryId: { serviceCode: { cost, count } } }
             Object.keys(rawData).forEach(countryId => {
                 const countryServices = rawData[countryId];
                 if (countryServices && typeof countryServices === 'object') {
                     Object.keys(countryServices).forEach(serviceCode => {
                         if (!servicesMap[serviceCode]) {
+                            // If SMSBower provides an image/icon field in another property, or you can map a standard URL format:
+                            // Example: using a standard logo URL convention or fallback placeholder
+                            const serviceImage = countryServices[serviceCode].image || 
+                                                 countryServices[serviceCode].icon || 
+                                                 `https://smsbower.com/assets/images/services/${serviceCode}.png`; // Adjust base URL as per SMSBower docs if applicable
+
                             servicesMap[serviceCode] = {
                                 code: serviceCode,
                                 name: serviceCode.charAt(0).toUpperCase() + serviceCode.slice(1),
+                                image: serviceImage, // <-- Added image property
                                 countries: {}
                             };
                         }

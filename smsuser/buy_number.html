@@ -382,8 +382,8 @@
                 const isExpanded = expandedServiceCode === s.code;
                 const countries = serviceCountriesCache[s.code] || [];
                 
-                // Check multiple possible image/icon properties from the API payload
-                const serviceImgUrl = s.icon || s.image || s.logo || s.img || '';
+                // Pull the image/icon property sent from the backend
+                const serviceImgUrl = s.image || s.icon || s.logo || s.img || '';
                 const fallbackInitials = (s.name || s.code).substring(0, 2);
 
                 return `
@@ -728,7 +728,8 @@
             logout,
             toggleSidebar
         };
-    })();
+    })
+    ();
 </script>
 </body>
 </html>

@@ -255,7 +255,14 @@
     let userBonusBalance = 0;
 
     // Priority service keywords to sort to the top
-    const PRIORITY_SERVICES = ['whatsapp', 'facebook', 'instagram', 'telegram', 'twitter', 'google', 'tiktok', 'snapchat', 'discord', 'netflix'];
+const PRIORITY_SERVICES = [
+        { code: 'wa', name: 'WhatsApp', icon: '💬' },
+        { code: 'tg', name: 'Telegram', icon: '✈️' },
+        { code: 'gg', name: 'Google / Gmail', icon: '🌐' },
+        { code: 'fb', name: 'Facebook', icon: '📘' },
+        { code: 'ig', name: 'Instagram', icon: '📸' },
+        { code: 'tw', name: 'Twitter / X', icon: '🐦' }
+    ];
 
     async function fetchUserProfile() {
         const token = localStorage.getItem('userToken');
@@ -363,23 +370,21 @@
         }
     }
 
-    function renderPriorityGrid() {
+   function renderPriorityGrid() {
         const gridContainer = document.getElementById('priorityServicesGrid');
         if (!gridContainer) return;
 
-        // Map priority list icons/labels cleanly
-        const priorityItems = PRIORITY_SERVICES.map(code => {
-            const found = services.find(s => s.code.toLowerCase() === code);
-            return found || { code, name: code.charAt(0).toUpperCase() + code.slice(1) };
-        });
-
-        gridContainer.innerHTML = priorityItems.map(p => {
+        gridContainer.innerHTML = PRIORITY_SERVICES.map(p => {
+            // Find if this service exists in the fetched backend services list to get dynamic info if available
+            const found = services.find(s => s.code.toLowerCase() === p.code.toLowerCase());
+            const displayName = found ? found.name : p.name;
             const isSelected = expandedServiceCode === p.code;
+
             return `
                 <button onclick="selectPriorityService('${p.code}')" 
                         class="flex flex-col items-center justify-center p-3 bg-white border ${isSelected ? 'border-brand-blue bg-brand-background shadow-sm' : 'border-brand-border'} rounded-2xl hover:border-brand-blue/60 transition-all active:scale-95 group">
-                    <span class="text-xs font-black text-brand-blue mb-1 uppercase">${p.name.substring(0, 2)}</span>
-                    <span class="text-[10px] font-bold text-brand-darkText truncate w-full text-center">${p.name}</span>
+                    <span class="text-base mb-1">${p.icon}</span>
+                    <span class="text-[10px] font-bold text-brand-darkText truncate w-full text-center">${displayName}</span>
                 </button>
             `;
         }).join('');
@@ -537,30 +542,40 @@
         renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
     }
 
-    async function fetchCountriesForService(serviceCode) {
+async function fetchCountriesForService(serviceCode) {
+    // Safety check: ensure serviceCode actually exists before calling API
+    if (!serviceCode || serviceCode === 'undefined' || serviceCode === 'null') {
+        console.error("Skipped fetch: Invalid service code provided.");
+        return;
+    }
+
     try {
-        // Call your backend proxy route instead of calling smsbower.page directly
-        const response = await fetch(`${API_BASE_URL}/smsbower/countries?service=${serviceCode}`);
+        const response = await fetch(`${API_BASE_URL}/smsbower/countries?service=${encodeURIComponent(serviceCode)}`);
+        
+        // Ensure response is actually JSON before parsing
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("Server did not return a JSON response (Endpoint configuration error).");
+        }
+
         const result = await response.json();
         
         let list = [];
-        const data = result.data || result;
+        const data = result.countries || result.data || result;
 
-        // Parse SMSBower format or standard array response
         if (Array.isArray(data)) {
             list = data;
         } else if (typeof data === 'object' && data !== null) {
-            // SMSBower sometimes returns nested objects mapped by country IDs or service codes
             list = Object.entries(data).map(([countryId, details]) => ({
                 countryId: countryId,
-                countryName: details.name || `Country ${countryId}`,
-                price: details.price || details.cost || 0,
-                stock: details.count || details.stock || 'In Stock',
-                rank: details.rank || 'silver'
+                countryName: details.countryName || details.name || `Country ${countryId}`,
+                stock: details.stock || details.count || 'In Stock',
+                rank: details.rank || 'Silver',
+                price: details.price || { amount: 1650, currency: 'NGN', symbol: '₦' }
             }));
         }
 
-        // Filter to guarantee only Silver and Bronze tiers are shown
+        // Filter safely for Silver & Bronze
         const filteredList = list.filter(c => {
             const r = String(c.rank || 'silver').toLowerCase();
             return r.includes('silver') || r.includes('bronze');
@@ -568,7 +583,7 @@
 
         serviceCountriesCache[serviceCode] = filteredList.length > 0 ? filteredList : list;
     } catch (err) {
-        console.error("Failed to fetch countries", err);
+        console.error("Failed to fetch countries:", err);
         serviceCountriesCache[serviceCode] = [];
     }
 

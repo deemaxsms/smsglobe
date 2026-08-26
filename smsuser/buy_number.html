@@ -244,8 +244,8 @@
         </button>
     </div>
 <script>
-    const API_BASE_URL='/api';
-    const SMSBOWER_API_BASE='https://smsbower.page/stubs/handler_api.php';
+    const API_BASE_URL = '/api';
+    const SMSBOWER_API_BASE = 'https://smsbower.page/stubs/handler_api.php';
 
     let currentMode = 'activation';
     let services = [];
@@ -321,46 +321,41 @@
         }
     }
 
-    async function syncInventory() {
-        const container = document.getElementById('serviceAccordionList');
-        if (container && services.length === 0) {
-            container.innerHTML = `
-                <div class="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-brand-border">
-                    <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
-                    <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Loading Xentrahub Services...</p>
-                </div>
-            `;
+   async function syncInventory() {
+    const container = document.getElementById('serviceAccordionList');
+    if (container && services.length === 0) {
+        container.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-brand-border">
+                <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
+                <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Loading SMSGlobe Services...</p>
+            </div>
+        `;
+    }
+
+    try {
+        // Calls your backend, which safely talks to SMSBower
+        const response = await fetch(`${API_BASE_URL}/services`);
+        const data = await response.json();
+        
+        // Adjust depending on how your backend formats the response payload
+        const serviceList = data.services || data.data || data;
+
+        if (Array.isArray(serviceList)) {
+            services = serviceList.sort((a, b) => {
+                const nameA = (a.name || '').toLowerCase();
+                const nameB = (b.name || '').toLowerCase();
+                return nameA.localeCompare(nameB);
+            });
+
+            renderServiceAccordion();
         }
-
-        try {
-            const response = await fetch(`${SMSBOWER_API_BASE}/services`);
-            const data = await response.json();
-            
-            if (data.services) {
-                // Sort services to put priority social/meta apps first
-                services = data.services.sort((a, b) => {
-                    const nameA = a.name.toLowerCase();
-                    const nameB = b.name.toLowerCase();
-                    
-                    const indexA = PRIORITY_SERVICES.findIndex(p => nameA.includes(p));
-                    const indexB = PRIORITY_SERVICES.findIndex(p => nameB.includes(p));
-                    
-                    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-                    if (indexA !== -1) return -1;
-                    if (indexB !== -1) return 1;
-                    
-                    return nameA.localeCompare(nameB);
-                });
-
-                renderServiceAccordion();
-            }
-        } catch (err) {
-            console.error("Xentrahub service sync failed", err);
-            if (container) {
-                container.innerHTML = `<p class="text-center text-xs py-10 text-red-500 font-bold uppercase bg-white rounded-2xl border border-brand-border">Failed to load services</p>`;
-            }
+    } catch (err) {
+        console.error("Service sync failed", err);
+        if (container) {
+            container.innerHTML = `<p class="text-center text-xs py-10 text-red-500 font-bold uppercase bg-white rounded-2xl border border-brand-border">Failed to load services</p>`;
         }
     }
+}
 
     function renderServiceAccordion(filter = "") {
         const container = document.getElementById('serviceAccordionList');

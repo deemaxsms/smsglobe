@@ -3552,22 +3552,43 @@ async function handleGetStock(req, res) {
 }
 
 /**
- * 2. FETCH SERVICES & PRICES
+ * 2. FETCH SERVICES & PRICES (Optimized for Frontend)
  */
 async function handleGetServicesAndPrices(req, res) {
     try {
-        // SMS-Activate format uses action=getPrices or getServices
+        // SMS-Activate format uses action=getPrices
         const response = await smsBowerClient.get('', {
             params: { action: 'getPrices' }
         });
 
-        return res.json({ success: true, data: response.data });
+        const rawData = response.data;
+
+        // SMSBower/SMS-Activate usually returns an object mapping service codes to countries and prices.
+        // Let's transform it into an array format that matches your frontend's expectation: [{ code: 'wa', name: 'WhatsApp' }, ...]
+        let servicesList = [];
+
+        if (typeof rawData === 'object' && rawData !== null) {
+            // If it's already an array
+            if (Array.isArray(rawData)) {
+                servicesList = rawData;
+            } else {
+                // If it's nested (e.g., { wa: { 0: { cost: 0.5 } } })
+                servicesList = Object.keys(rawData).map(serviceCode => {
+                    return {
+                        code: serviceCode,
+                        name: serviceCode.toUpperCase(), // You can map this to friendly names if needed
+                        countries: rawData[serviceCode]
+                    };
+                });
+            }
+        }
+
+        return res.json({ success: true, services: servicesList });
     } catch (err) {
         console.error("Failed to fetch SMSBower services:", err.message);
         return res.status(500).json({ success: false, message: "Failed to fetch services catalog from vendor." });
     }
 }
-
 async function handleGetCountries(req, res) {
     try {
         const serviceCode = req.query.service || req.params.service;
@@ -3575,38 +3596,46 @@ async function handleGetCountries(req, res) {
             return res.status(400).json({ success: false, message: "Service code is required." });
         }
 
-        const response = await xentraClient.get('/stratos/countries', {
-            params: { service: String(serviceCode).toLowerCase() }
+        // Call SMSBower using SMS-Activate format: action=getPrices
+        const response = await smsBowerClient.get('', {
+            params: { 
+                action: 'getPrices',
+                service: String(serviceCode).toLowerCase()
+            }
         });
 
-        const countriesList = Array.isArray(response.data) ? response.data : (response.data.countries || []);
+        const rawData = response.data;
         
-        const markupPercent = 0; // Add your custom markup profit margin here if desired (e.g., 2 for 2%)
+        // SMSBower/SMS-Activate response structure is typically:
+        // { [serviceCode]: { [countryId]: { cost: price, count: stock } } }
+        // or a flat list depending on the exact implementation. Let's parse it safely:
+        
+        let countriesMap = {};
+        if (rawData && rawData[serviceCode]) {
+            countriesMap = rawData[serviceCode];
+        } else if (rawData && typeof rawData === 'object') {
+            countriesMap = rawData;
+        }
+
+        const markupPercent = 0; // Set your profit margin markup here if desired
         const multiplier = 1 + (markupPercent / 100);
+        const exchangeRateToNgn = 1650; // Adjust your USD/RUB to NGN conversion rate here
 
-        const formattedCountries = countriesList.map(c => {
-            let finalNgnAmount = 0;
+        const formattedCountries = Object.keys(countriesMap).map(countryId => {
+            const countryData = countriesMap[countryId];
             
-            const preCalculatedNgn = c.price?.amount || 0;
-            const rawUsd = c.sellingPrice || c.price?.usd || 0;
+            // Extract cost and stock based on SMS-Activate format (.cost or .price, .count or .stock)
+            const rawCost = countryData.cost || countryData.price || 0;
+            const stockCount = countryData.count || countryData.stock || 'In Stock';
 
-            if (preCalculatedNgn > 0 && rawUsd > 0) {
-                // Dynamically derive XentraHub's exact live exchange rate from their own payload
-                const currentXentraRate = preCalculatedNgn / rawUsd;
-                finalNgnAmount = preCalculatedNgn;
-            } else if (preCalculatedNgn > 0) {
-                finalNgnAmount = preCalculatedNgn;
-            } else {
-                // Fallback estimation if USD reference is missing
-                finalNgnAmount = rawUsd * 1650; 
-            }
-
+            // Convert to NGN (Assuming raw cost is in USD/Base currency)
+            const finalNgnAmount = rawCost * exchangeRateToNgn;
             const finalPrice = Number((finalNgnAmount * multiplier).toFixed(2));
 
             return {
-                countryId: c.countryId || c.id || c.code,
-                countryName: c.countryName || c.name,
-                stock: c.stock || c.count || 'In Stock',
+                countryId: countryId,
+                countryName: countryData.countryName || `Country ${countryId}`, // Map names if you have a helper dictionary
+                stock: stockCount,
                 price: {
                     amount: finalPrice,
                     currency: 'NGN',
@@ -3617,8 +3646,8 @@ async function handleGetCountries(req, res) {
 
         return res.json(formattedCountries);
     } catch (err) {
-        console.error("Failed to fetch Xentrahub countries:", err.response?.data || err.message);
-        return res.status(500).json({ success: false, message: "Failed to fetch country catalog." });
+        console.error("Failed to fetch SMSBower countries:", err.message);
+        return res.status(500).json({ success: false, message: "Failed to fetch country catalog from vendor." });
     }
 }
 

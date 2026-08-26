@@ -3617,62 +3617,72 @@ async function handleGetServicesAndPrices(req, res) {
 async function handleGetCountries(req, res) {
     try {
         const serviceCode = req.query.service || req.params.service;
+        const targetRank = req.query.rank ? String(req.query.rank).toLowerCase() : null; // e.g. 'silver' or 'bronze'
+
         if (!serviceCode) {
             return res.status(400).json({ success: false, message: "Service code is required." });
         }
 
-        // Call SMSBower using SMS-Activate format: action=getPrices
+        // Call SMSBower with parameters matching SMS-Activate spec
         const response = await smsBowerClient.get('', {
             params: { 
                 action: 'getPrices',
-                service: String(serviceCode).toLowerCase()
+                service: String(serviceCode).toLowerCase(),
             }
         });
 
         const rawData = response.data;
-        
-        // SMSBower/SMS-Activate response structure is typically:
-        // { [serviceCode]: { [countryId]: { cost: price, count: stock } } }
-        // or a flat list depending on the exact implementation. Let's parse it safely:
-        
-        let countriesMap = {};
-        if (rawData && rawData[serviceCode]) {
-            countriesMap = rawData[serviceCode];
-        } else if (rawData && typeof rawData === 'object') {
-            countriesMap = rawData;
-        }
+        let countriesMap = rawData[serviceCode] || rawData || {};
 
-        const markupPercent = 0; // Set your profit margin markup here if desired
+        const markupPercent = 0; // Set your platform profit markup percentage here
         const multiplier = 1 + (markupPercent / 100);
-        const exchangeRateToNgn = 1650; // Adjust your USD/RUB to NGN conversion rate here
+        const exchangeRateToNgn = 1650; // USD to NGN exchange rate
 
-        const formattedCountries = Object.keys(countriesMap).map(countryId => {
-            const countryData = countriesMap[countryId];
+        let formattedCountries = [];
+
+        // Loop through countries
+        Object.keys(countriesMap).forEach(countryId => {
+            const countryData = countriesMap[countryDataKey = countryId];
+
+            // SMS-Activate pricing can sometimes be nested by tier/rank keys (e.g. 0, 1, 2 or specific rank names)
+            // Let's check if the countryData itself contains tier sub-keys or represents a single entry
             
-            // Extract cost and stock based on SMS-Activate format (.cost or .price, .count or .stock)
-            const rawCost = countryData.cost || countryData.price || 0;
-            const stockCount = countryData.count || countryData.stock || 'In Stock';
+            Object.keys(countryData).forEach(tierKey => {
+                const tierItem = countryData[tierKey];
+                
+                // If the item has a cost/price property, evaluate its rank
+                if (tierItem && (tierItem.cost || tierItem.price)) {
+                    // Determine rank name based on SMSBower's naming or standard numbering convention
+                    // (Adjust this mapping depending on how SMSBower labels silver/bronze in their JSON keys)
+                    let currentRank = String(tierItem.rank || tierKey).toLowerCase();
 
-            // Convert to NGN (Assuming raw cost is in USD/Base currency)
-            const finalNgnAmount = rawCost * exchangeRateToNgn;
-            const finalPrice = Number((finalNgnAmount * multiplier).toFixed(2));
+                    // MAPPING CHECK: Ensure we ONLY capture 'silver' or 'bronze'
+                    const isSilverOrBronze = currentRank.includes('silver') || currentRank.includes('bronze') || tierKey === 'silver' || tierKey === 'bronze';
 
-            return {
-                countryId: countryId,
-                countryName: countryData.countryName || `Country ${countryId}`, // Map names if you have a helper dictionary
-                stock: stockCount,
-                price: {
-                    amount: finalPrice,
-                    currency: 'NGN',
-                    symbol: '₦'
+                    if (isSilverOrBronze) {
+                        // If user requested a specific rank via query param, filter for it, otherwise keep both silver & bronze
+                        if (!targetRank || currentRank.includes(targetRank)) {
+                            formattedCountries.push({
+                                countryId: countryId,
+                                countryName: tierItem.countryName || `Country ${countryId}`,
+                                stock: tierItem.count || tierItem.stock || 'In Stock',
+                                rank: currentRank.includes('silver') ? 'Silver' : 'Bronze',
+                                price: {
+                                    amount: Number(((tierItem.cost || tierItem.price || 0) * exchangeRateToNgn * multiplier).toFixed(2)),
+                                    currency: 'NGN',
+                                    symbol: '₦'
+                                }
+                            });
+                        }
+                    }
                 }
-            };
+            });
         });
 
-        return res.json(formattedCountries);
+        return res.json({ success: true, countries: formattedCountries });
     } catch (err) {
         console.error("Failed to fetch SMSBower countries:", err.message);
-        return res.status(500).json({ success: false, message: "Failed to fetch country catalog from vendor." });
+        return res.status(500).json({ success: false, message: "Failed to fetch country catalog." });
     }
 }
 

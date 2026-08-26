@@ -315,47 +315,85 @@
             document.getElementById('rentPeriodSection').classList.remove('hidden');
         }
         
-        // Re-render accordion if a service is open to update price calculations
         if (expandedServiceCode) {
             renderServiceAccordion();
         }
     }
 
-   async function syncInventory() {
-    const container = document.getElementById('serviceAccordionList');
-    if (container && services.length === 0) {
-        container.innerHTML = `
-            <div class="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-brand-border">
-                <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
-                <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Loading SMSGlobe Services...</p>
-            </div>
-        `;
+    async function syncInventory() {
+        const container = document.getElementById('serviceAccordionList');
+        if (container && services.length === 0) {
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-brand-border">
+                    <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
+                    <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Loading SMSGlobe Services...</p>
+                </div>
+            `;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/services`);
+            const data = await response.json();
+            
+            const serviceList = data.services || data.data || data;
+
+            if (Array.isArray(serviceList)) {
+                // Sort services: Priority items first, then alphabetical
+                services = serviceList.sort((a, b) => {
+                    const codeA = (a.code || '').toLowerCase();
+                    const codeB = (b.code || '').toLowerCase();
+                    const indexA = PRIORITY_SERVICES.indexOf(codeA);
+                    const indexB = PRIORITY_SERVICES.indexOf(codeB);
+
+                    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                    if (indexA !== -1) return -1;
+                    if (indexB !== -1) return 1;
+
+                    return (a.name || '').localeCompare(b.name || '');
+                });
+
+                renderPriorityGrid();
+                renderServiceAccordion();
+            }
+        } catch (err) {
+            console.error("Service sync failed", err);
+            if (container) {
+                container.innerHTML = `<p class="text-center text-xs py-10 text-red-500 font-bold uppercase bg-white rounded-2xl border border-brand-border">Failed to load services</p>`;
+            }
+        }
     }
 
-    try {
-        // Calls your backend, which safely talks to SMSBower
-        const response = await fetch(`${API_BASE_URL}/services`);
-        const data = await response.json();
-        
-        // Adjust depending on how your backend formats the response payload
-        const serviceList = data.services || data.data || data;
+    function renderPriorityGrid() {
+        const gridContainer = document.getElementById('priorityServicesGrid');
+        if (!gridContainer) return;
 
-        if (Array.isArray(serviceList)) {
-            services = serviceList.sort((a, b) => {
-                const nameA = (a.name || '').toLowerCase();
-                const nameB = (b.name || '').toLowerCase();
-                return nameA.localeCompare(nameB);
-            });
+        // Map priority list icons/labels cleanly
+        const priorityItems = PRIORITY_SERVICES.map(code => {
+            const found = services.find(s => s.code.toLowerCase() === code);
+            return found || { code, name: code.charAt(0).toUpperCase() + code.slice(1) };
+        });
 
-            renderServiceAccordion();
-        }
-    } catch (err) {
-        console.error("Service sync failed", err);
-        if (container) {
-            container.innerHTML = `<p class="text-center text-xs py-10 text-red-500 font-bold uppercase bg-white rounded-2xl border border-brand-border">Failed to load services</p>`;
-        }
+        gridContainer.innerHTML = priorityItems.map(p => {
+            const isSelected = expandedServiceCode === p.code;
+            return `
+                <button onclick="selectPriorityService('${p.code}')" 
+                        class="flex flex-col items-center justify-center p-3 bg-white border ${isSelected ? 'border-brand-blue bg-brand-background shadow-sm' : 'border-brand-border'} rounded-2xl hover:border-brand-blue/60 transition-all active:scale-95 group">
+                    <span class="text-xs font-black text-brand-blue mb-1 uppercase">${p.name.substring(0, 2)}</span>
+                    <span class="text-[10px] font-bold text-brand-darkText truncate w-full text-center">${p.name}</span>
+                </button>
+            `;
+        }).join('');
     }
-}
+
+    async function selectPriorityService(code) {
+        expandedServiceCode = code;
+        if (!serviceCountriesCache[code]) {
+            await fetchCountriesForService(code);
+        }
+        renderPriorityGrid();
+        renderServiceAccordion();
+        document.getElementById('serviceAccordionList')?.scrollIntoView({ behavior: 'smooth' });
+    }
 
     function renderServiceAccordion(filter = "") {
         const container = document.getElementById('serviceAccordionList');
@@ -390,7 +428,7 @@
                     ${isExpanded ? `
                         <div class="border-t border-brand-border bg-brand-background/30 p-4 space-y-3">
                             <div class="relative mb-3">
-                                <input type="text" oninput="filterCountriesForService('${s.code}', this.value)" placeholder="Search countries (3+ letters)..." 
+                                <input type="text" oninput="filterCountriesForService('${s.code}', this.value)" placeholder="Search countries..." 
                                        class="text-xs bg-white border border-brand-border rounded-lg px-3 py-2 focus:outline-none focus:border-brand-blue w-full shadow-sm">
                             </div>
                             
@@ -404,81 +442,87 @@
         }).join('');
     }
 
-   function renderCountriesListHtml(serviceCode, countriesList) {
-    if (!countriesList || countriesList.length === 0) {
-        return `
-            <div class="flex flex-col items-center justify-center py-6">
-                <div class="w-5 h-5 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-2"></div>
-                <p class="text-[10px] text-brand-blue font-bold uppercase">Loading Country Inventory...</p>
-            </div>
-        `;
-    }
-
-    let multiplier = 1;
-    if (currentMode === 'rent') {
-        const select = document.getElementById('rentalPeriod');
-        if (select) {
-            multiplier = parseFloat(select.options[select.selectedIndex].getAttribute('data-multi'));
+    function renderCountriesListHtml(serviceCode, countriesList) {
+        if (!countriesList || countriesList.length === 0) {
+            return `
+                <div class="flex flex-col items-center justify-center py-6">
+                    <div class="w-5 h-5 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-2"></div>
+                    <p class="text-[10px] text-brand-blue font-bold uppercase">Loading Country Inventory...</p>
+                </div>
+            `;
         }
-    }
-    
-    const usdToNgnRate = 1650; // Hardcoded safety conversion rate matching XentraHub's NGN tier
 
-    return countriesList.map(c => {
-        let baseRate = 0;
+        let multiplier = 1;
+        if (currentMode === 'rent') {
+            const select = document.getElementById('rentalPeriod');
+            if (select) {
+                multiplier = parseFloat(select.options[select.selectedIndex].getAttribute('data-multi'));
+            }
+        }
         
-        // Check if XentraHub's nested price.amount exists and is fully calculated
-        if (c.price && typeof c.price === 'object' && c.price.amount > 50) {
-            baseRate = c.price.amount;
-        } else {
-            // Otherwise, grab raw price/sellingPrice (which is in USD like 0.80) and convert it to NGN
-            let rawUsd = 0;
-            if (c.price && typeof c.price === 'object') {
-                rawUsd = c.price.amount || c.price.usd || 0;
-            } else if (typeof c.price === 'number') {
-                rawUsd = c.price;
+        const usdToNgnRate = 1650; 
+
+        return countriesList.map(c => {
+            let baseRate = 0;
+            
+            if (c.price && typeof c.price === 'object' && c.price.amount > 50) {
+                baseRate = c.price.amount;
             } else {
-                rawUsd = c.sellingPrice || 0;
+                let rawUsd = 0;
+                if (c.price && typeof c.price === 'object') {
+                    rawUsd = c.price.amount || c.price.usd || 0;
+                } else if (typeof c.price === 'number') {
+                    rawUsd = c.price;
+                } else {
+                    rawUsd = c.sellingPrice || 0;
+                }
+                baseRate = rawUsd < 100 ? rawUsd * usdToNgnRate : rawUsd;
             }
             
-            // If it's small (USD), multiply by exchange rate. If already NGN, keep as is.
-            baseRate = rawUsd < 100 ? rawUsd * usdToNgnRate : rawUsd;
-        }
-        
-        const effectiveMultiplier = (typeof multiplier !== 'undefined' && multiplier > 0) ? multiplier : 1;
-        const finalDisplayPrice = Number(baseRate) * effectiveMultiplier;
+            const effectiveMultiplier = (typeof multiplier !== 'undefined' && multiplier > 0) ? multiplier : 1;
+            const finalDisplayPrice = Number(baseRate) * effectiveMultiplier;
 
-        const formattedPriceString = finalDisplayPrice.toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
+            const formattedPriceString = finalDisplayPrice.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
 
-        const stockStatus = c.stock || c.count || 'In Stock';
-        const countryId = c.countryId || c.id || c.code || '';
-        const flagCode = countryId.toString().toLowerCase();
-        const countryName = c.countryName || c.name || 'Unknown Country';
+            const stockStatus = c.stock || c.count || 'In Stock';
+            const countryId = c.countryId || c.id || c.code || '';
+            const flagCode = countryId.toString().toLowerCase();
+            const countryName = c.countryName || c.name || 'Unknown Country';
+            
+            // Rank styling (Silver vs Bronze badges)
+            const rankValue = (c.rank || 'silver').toLowerCase();
+            const isSilver = rankValue.includes('silver');
+            const rankBadgeClass = isSilver 
+                ? 'bg-gray-100 text-gray-700 border-gray-200' 
+                : 'bg-amber-50 text-amber-700 border-amber-200';
+            const rankLabel = isSilver ? 'Silver' : 'Bronze';
 
-        return `
-            <div class="bg-white border border-brand-border p-3 rounded-xl flex items-center justify-between hover:border-brand-blue/50 transition-all">
-                <div class="flex items-center gap-3">
-                    <img src="https://flagcdn.com/w40/${flagCode}.png" class="w-6 h-auto rounded-sm border border-gray-200" onerror="this.style.display='none'">
-                    <div>
-                        <p class="text-xs font-bold text-brand-darkText">${countryName}</p>
-                        <span class="text-[9px] text-green-600 font-bold uppercase">● ${stockStatus}</span>
+            return `
+                <div class="bg-white border border-brand-border p-3 rounded-xl flex items-center justify-between hover:border-brand-blue/50 transition-all">
+                    <div class="flex items-center gap-3">
+                        <img src="https://flagcdn.com/w40/${flagCode}.png" class="w-6 h-auto rounded-sm border border-gray-200" onerror="this.style.display='none'">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <p class="text-xs font-bold text-brand-darkText">${countryName}</p>
+                                <span class="text-[8px] font-semibold px-1.5 py-0.5 rounded border ${rankBadgeClass} uppercase">${rankLabel}</span>
+                            </div>
+                            <span class="text-[9px] text-green-600 font-bold uppercase">● ${stockStatus}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="text-xs font-black text-brand-blue">₦${formattedPriceString}</span>
+                        <button onclick="buyServiceCountry('${serviceCode}', '${countryId}', ${finalDisplayPrice}, '${rankLabel}')" 
+                                class="px-4 py-2 bg-brand-blue text-white rounded-lg text-xs font-bold hover:bg-brand-blue/90 active:scale-95 transition-all">
+                            Buy
+                        </button>
                     </div>
                 </div>
-                <div class="flex items-center gap-4">
-                    <span class="text-xs font-black text-brand-blue">₦${formattedPriceString}</span>
-                    <button onclick="buyServiceCountry('${serviceCode}', '${countryId}', ${finalDisplayPrice})" 
-                            class="px-4 py-2 bg-brand-blue text-white rounded-lg text-xs font-bold hover:bg-brand-blue/90 active:scale-95 transition-all">
-                        Buy
-                    </button>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
+            `;
+        }).join('');
+    }
 
     async function toggleServiceAccordion(code) {
         if (expandedServiceCode === code) {
@@ -489,7 +533,8 @@
                 await fetchCountriesForService(code);
             }
         }
-        renderServiceAccordion(document.getElementById('serviceSearchInput').value);
+        renderPriorityGrid();
+        renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
     }
 
     async function fetchCountriesForService(serviceCode) {
@@ -497,23 +542,32 @@
             const response = await fetch(`${SMSBOWER_API_BASE}/countries?service=${serviceCode}`);
             const data = await response.json();
             
+            let list = [];
             if (Array.isArray(data)) {
-                serviceCountriesCache[serviceCode] = data;
-            } else {
-                serviceCountriesCache[serviceCode] = [];
+                list = data;
+            } else if (data.countries && Array.isArray(data.countries)) {
+                list = data.countries;
             }
+
+            // Client filter to ensure only Silver and Bronze tiers are included
+            const filteredList = list.filter(c => {
+                const r = String(c.rank || 'silver').toLowerCase();
+                return r.includes('silver') || r.includes('bronze');
+            });
+
+            serviceCountriesCache[serviceCode] = filteredList.length > 0 ? filteredList : list;
         } catch (err) {
             console.error("Failed to fetch countries", err);
             serviceCountriesCache[serviceCode] = [];
         }
         if (expandedServiceCode === serviceCode) {
-            renderServiceAccordion(document.getElementById('serviceSearchInput').value);
+            renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
         }
     }
 
     function filterCountriesForService(serviceCode, query) {
         const allCountries = serviceCountriesCache[serviceCode] || [];
-        const filtered = allCountries.filter(c => c.countryName.toLowerCase().includes(query.toLowerCase()));
+        const filtered = allCountries.filter(c => (c.countryName || c.name || '').toLowerCase().includes(query.toLowerCase()));
         const listContainer = document.getElementById(`countriesList_${serviceCode}`);
         if (listContainer) {
             listContainer.innerHTML = renderCountriesListHtml(serviceCode, filtered);
@@ -527,11 +581,11 @@
 
     function recalculateCurrentServicePrices() {
         if (expandedServiceCode) {
-            renderServiceAccordion(document.getElementById('serviceSearchInput').value);
+            renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
         }
     }
 
-    async function buyServiceCountry(serviceCode, countryId, price) {
+    async function buyServiceCountry(serviceCode, countryId, price, rank) {
         const token = localStorage.getItem('userToken');
         if (!token) {
             Swal.fire({ title: 'Login Required', icon: 'warning' });
@@ -545,11 +599,11 @@
 
         const serviceObj = services.find(s => s.code === serviceCode);
         const countriesList = serviceCountriesCache[serviceCode] || [];
-        const countryObj = countriesList.find(c => c.countryId.toString() === countryId.toString());
+        const countryObj = countriesList.find(c => (c.countryId || c.id || c.code || '').toString() === countryId.toString());
 
         const confirmed = await Swal.fire({
             title: 'Confirm Purchase',
-            text: `Purchase ${serviceObj?.name || 'Service'} in ${countryObj?.countryName || 'Selected Country'} for ₦${price.toLocaleString()}?`,
+            text: `Purchase ${serviceObj?.name || 'Service'} (${rank} Tier) in ${countryObj?.countryName || countryObj?.name || 'Selected Country'} for ₦${price.toLocaleString()}?`,
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#0F54C6',
@@ -565,7 +619,8 @@
                 serviceType: 'virtual_number',
                 serviceName: serviceObj?.name || serviceCode,
                 countryCode: countryId,
-                provider: 'xentrahub'
+                rank: (rank || 'silver').toLowerCase(),
+                provider: 'smsbower'
             }
         };
 
@@ -587,7 +642,7 @@
                 
                 Swal.fire({
                     title: 'Order Placed!',
-                    text: 'Waiting for Xentrahub verification code...',
+                    text: 'Waiting for SMS verification code...',
                     icon: 'success',
                     timer: 2000,
                     showConfirmButton: false

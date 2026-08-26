@@ -3573,7 +3573,7 @@ async function handleGetServicesAndPrices(req, res) {
                             // Updated fallback to match smsbower.app domain and .svg format
                             const serviceImage = countryServices[serviceCode].image || 
                                                  countryServices[serviceCode].icon || 
-                                                 `https://smsbower.app/img/services/${serviceCode}.svg`;
+                                                 `https://smsbower.page/stubs/handler_api.php/img/services/${serviceCode}.svg`;
 
                             servicesMap[serviceCode] = {
                                 code: serviceCode,

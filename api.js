@@ -3550,45 +3550,63 @@ async function handleGetStock(req, res) {
         return res.json({ success: false, stock: { "GLOBAL": 0 } });
     }
 }
-
 /**
- * 2. FETCH SERVICES & PRICES (Optimized for Frontend)
+ * 2. FETCH SERVICES & PRICES (Corrected & Hardened for SMSBower)
  */
 async function handleGetServicesAndPrices(req, res) {
     try {
-        // SMS-Activate format uses action=getPrices
+        // Ensure API key is configured
+        if (!process.env.SMSBOWER_API_KEY) {
+            console.error("SMSBOWER_API_KEY is missing in your environment configuration.");
+            return res.status(500).json({ success: false, message: "Vendor configuration error." });
+        }
+
+        // Call SMSBower using the SMS-Activate getPrices action
         const response = await smsBowerClient.get('', {
             params: { action: 'getPrices' }
         });
 
         const rawData = response.data;
 
-        // SMSBower/SMS-Activate usually returns an object mapping service codes to countries and prices.
-        // Let's transform it into an array format that matches your frontend's expectation: [{ code: 'wa', name: 'WhatsApp' }, ...]
+        // If SMSBower returns an error string instead of JSON (e.g., "BAD_KEY")
+        if (typeof rawData === 'string') {
+            console.error("SMSBower returned string error:", rawData);
+            return res.status(400).json({ success: false, message: `Vendor error: ${rawData}` });
+        }
+
         let servicesList = [];
 
-        if (typeof rawData === 'object' && rawData !== null) {
-            // If it's already an array
+        if (rawData && typeof rawData === 'object') {
             if (Array.isArray(rawData)) {
                 servicesList = rawData;
             } else {
-                // If it's nested (e.g., { wa: { 0: { cost: 0.5 } } })
+                // SMS-Activate format: { serviceCode: { countryId: { cost: X, count: Y } } }
                 servicesList = Object.keys(rawData).map(serviceCode => {
                     return {
                         code: serviceCode,
-                        name: serviceCode.toUpperCase(), // You can map this to friendly names if needed
+                        // Clean up name or fallback to uppercase code
+                        name: serviceCode.charAt(0).toUpperCase() + serviceCode.slice(1), 
                         countries: rawData[serviceCode]
                     };
                 });
             }
         }
 
-        return res.json({ success: true, services: servicesList });
+        return res.json({ 
+            success: true, 
+            services: servicesList 
+        });
+
     } catch (err) {
-        console.error("Failed to fetch SMSBower services:", err.message);
-        return res.status(500).json({ success: false, message: "Failed to fetch services catalog from vendor." });
+        console.error("Failed to fetch SMSBower services:", err.response?.data || err.message);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Failed to fetch services catalog from vendor.",
+            error: err.message 
+        });
     }
 }
+
 async function handleGetCountries(req, res) {
     try {
         const serviceCode = req.query.service || req.params.service;

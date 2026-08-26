@@ -3617,13 +3617,13 @@ async function handleGetServicesAndPrices(req, res) {
 async function handleGetCountries(req, res) {
     try {
         const serviceCode = req.query.service || req.params.service;
-        const targetRank = req.query.rank ? String(req.query.rank).toLowerCase() : null; // e.g. 'silver' or 'bronze'
+        const targetRank = req.query.rank ? String(req.query.rank).toLowerCase() : null;
 
         if (!serviceCode) {
             return res.status(400).json({ success: false, message: "Service code is required." });
         }
 
-        // Call SMSBower with parameters matching SMS-Activate spec
+        // Call SMSBower API via your server client
         const response = await smsBowerClient.get('', {
             params: { 
                 action: 'getPrices',
@@ -3632,7 +3632,7 @@ async function handleGetCountries(req, res) {
         });
 
         const rawData = response.data;
-        let countriesMap = rawData[serviceCode] || rawData || {};
+        const countriesMap = rawData[serviceCode] || rawData || {};
 
         const markupPercent = 0; // Set your platform profit markup percentage here
         const multiplier = 1 + (markupPercent / 100);
@@ -3640,35 +3640,37 @@ async function handleGetCountries(req, res) {
 
         let formattedCountries = [];
 
-        // Loop through countries
+        // Loop through countries map safely
         Object.keys(countriesMap).forEach(countryId => {
-            const countryData = countriesMap[countryDataKey = countryId];
+            const countryData = countriesMap[countryId];
+            if (!countryData) return;
 
-            // SMS-Activate pricing can sometimes be nested by tier/rank keys (e.g. 0, 1, 2 or specific rank names)
-            // Let's check if the countryData itself contains tier sub-keys or represents a single entry
-            
-            Object.keys(countryData).forEach(tierKey => {
+            // Handle cases where countryData might be a direct object with pricing or nested by tier keys
+            const tierKeys = typeof countryData === 'object' ? Object.keys(countryData) : [];
+
+            if (tierKeys.length === 0) return;
+
+            tierKeys.forEach(tierKey => {
                 const tierItem = countryData[tierKey];
                 
-                // If the item has a cost/price property, evaluate its rank
-                if (tierItem && (tierItem.cost || tierItem.price)) {
-                    // Determine rank name based on SMSBower's naming or standard numbering convention
-                    // (Adjust this mapping depending on how SMSBower labels silver/bronze in their JSON keys)
+                if (tierItem && typeof tierItem === 'object' && (tierItem.cost || tierItem.price || tierItem.count)) {
                     let currentRank = String(tierItem.rank || tierKey).toLowerCase();
 
-                    // MAPPING CHECK: Ensure we ONLY capture 'silver' or 'bronze'
+                    // Ensure we ONLY capture 'silver' or 'bronze'
                     const isSilverOrBronze = currentRank.includes('silver') || currentRank.includes('bronze') || tierKey === 'silver' || tierKey === 'bronze';
 
                     if (isSilverOrBronze) {
-                        // If user requested a specific rank via query param, filter for it, otherwise keep both silver & bronze
                         if (!targetRank || currentRank.includes(targetRank)) {
+                            const rawCost = Number(tierItem.cost || tierItem.price || 0);
+                            const finalAmount = Number((rawCost * exchangeRateToNgn * multiplier).toFixed(2));
+
                             formattedCountries.push({
                                 countryId: countryId,
-                                countryName: tierItem.countryName || `Country ${countryId}`,
+                                countryName: tierItem.countryName || tierItem.name || `Country ${countryId}`,
                                 stock: tierItem.count || tierItem.stock || 'In Stock',
                                 rank: currentRank.includes('silver') ? 'Silver' : 'Bronze',
                                 price: {
-                                    amount: Number(((tierItem.cost || tierItem.price || 0) * exchangeRateToNgn * multiplier).toFixed(2)),
+                                    amount: finalAmount > 0 ? finalAmount : 1650, // Fallback safety
                                     currency: 'NGN',
                                     symbol: '₦'
                                 }

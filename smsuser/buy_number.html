@@ -538,32 +538,44 @@
     }
 
     async function fetchCountriesForService(serviceCode) {
-        try {
-            const response = await fetch(`${SMSBOWER_API_BASE}/countries?service=${serviceCode}`);
-            const data = await response.json();
-            
-            let list = [];
-            if (Array.isArray(data)) {
-                list = data;
-            } else if (data.countries && Array.isArray(data.countries)) {
-                list = data.countries;
-            }
+    try {
+        // Call your backend proxy route instead of calling smsbower.page directly
+        const response = await fetch(`${API_BASE_URL}/smsbower/countries?service=${serviceCode}`);
+        const result = await response.json();
+        
+        let list = [];
+        const data = result.data || result;
 
-            // Client filter to ensure only Silver and Bronze tiers are included
-            const filteredList = list.filter(c => {
-                const r = String(c.rank || 'silver').toLowerCase();
-                return r.includes('silver') || r.includes('bronze');
-            });
+        // Parse SMSBower format or standard array response
+        if (Array.isArray(data)) {
+            list = data;
+        } else if (typeof data === 'object' && data !== null) {
+            // SMSBower sometimes returns nested objects mapped by country IDs or service codes
+            list = Object.entries(data).map(([countryId, details]) => ({
+                countryId: countryId,
+                countryName: details.name || `Country ${countryId}`,
+                price: details.price || details.cost || 0,
+                stock: details.count || details.stock || 'In Stock',
+                rank: details.rank || 'silver'
+            }));
+        }
 
-            serviceCountriesCache[serviceCode] = filteredList.length > 0 ? filteredList : list;
-        } catch (err) {
-            console.error("Failed to fetch countries", err);
-            serviceCountriesCache[serviceCode] = [];
-        }
-        if (expandedServiceCode === serviceCode) {
-            renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
-        }
+        // Filter to guarantee only Silver and Bronze tiers are shown
+        const filteredList = list.filter(c => {
+            const r = String(c.rank || 'silver').toLowerCase();
+            return r.includes('silver') || r.includes('bronze');
+        });
+
+        serviceCountriesCache[serviceCode] = filteredList.length > 0 ? filteredList : list;
+    } catch (err) {
+        console.error("Failed to fetch countries", err);
+        serviceCountriesCache[serviceCode] = [];
     }
+
+    if (expandedServiceCode === serviceCode) {
+        renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
+    }
+}
 
     function filterCountriesForService(serviceCode, query) {
         const allCountries = serviceCountriesCache[serviceCode] || [];

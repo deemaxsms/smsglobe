@@ -244,464 +244,487 @@
         </button>
     </div>
 <script>
-    const API_BASE_URL = '/api';
+    const SMSGlobeApp = (() => {
+        const API_BASE_URL = '/api';
 
-    let currentMode = 'activation';
-    let services = [];
-    let expandedServiceCode = null;
-    let serviceCountriesCache = {}; 
-    let userBalance = 0;
-    let userBonusBalance = 0;
+        let currentMode = 'activation';
+        let services = [];
+        let expandedServiceCode = null;
+        let serviceCountriesCache = {}; 
+        let userBalance = 0;
+        let userBonusBalance = 0;
+        let pollInterval = null;
 
-    // Priority service badges/icons mapping for real service codes
-    const PRIORITY_SERVICES = [
-        { code: 'wa', name: 'WhatsApp', icon: '💬' },
-        { code: 'tg', name: 'Telegram', icon: '✈️' },
-        { code: 'gg', name: 'Google / Gmail', icon: '🌐' },
-        { code: 'fb', name: 'Facebook', icon: '📘' },
-        { code: 'ig', name: 'Instagram', icon: '📸' },
-        { code: 'tw', name: 'Twitter / X', icon: '🐦' }
-    ];
+        // Priority service badges/icons mapping for real service codes
+        const PRIORITY_SERVICES = [
+            { code: 'wa', name: 'WhatsApp', icon: '💬' },
+            { code: 'tg', name: 'Telegram', icon: '✈️' },
+            { code: 'gg', name: 'Google / Gmail', icon: '🌐' },
+            { code: 'fb', name: 'Facebook', icon: '📘' },
+            { code: 'ig', name: 'Instagram', icon: '📸' },
+            { code: 'tw', name: 'Twitter / X', icon: '🐦' }
+        ];
 
-    async function fetchUserProfile() {
-        const token = localStorage.getItem('userToken');
-        if (!token) return; 
-
-        try {
-            const res = await fetch(`${API_BASE_URL}/user-profile`, {
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Cache-Control': 'no-cache' 
-                }
-            });
-
-            if (res.status === 401) return logout(); 
-
+        async function safeFetch(url, options = {}) {
+            const res = await fetch(url, options);
+            const contentType = res.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                throw new Error("Server returned a non-JSON response or invalid content-type.");
+            }
             const data = await res.json();
-            if (res.status === 403 && data.isUnverified) {
-                window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
+            return { res, data };
+        }
+
+        async function fetchUserProfile() {
+            const token = localStorage.getItem('userToken');
+            if (!token) return; 
+
+            try {
+                const { res, data } = await safeFetch(`${API_BASE_URL}/user-profile`, {
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Cache-Control': 'no-cache' 
+                    }
+                });
+
+                if (res.status === 401) return logout(); 
+
+                if (res.status === 403 && data.isUnverified) {
+                    window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
+                    return;
+                }
+
+                if (data.success) {
+                    const userData = data.user || data;
+                    userBalance = userData.balance || 0; 
+                    userBonusBalance = userData.bonusBalance || 0; 
+                    localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
+                }
+            } catch (err) {
+                console.error("Failed to fetch profile details:", err);
+            }
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(b => {
+                b.classList.remove('active');
+                b.classList.add('text-brand-lightText');
+            });
+            
+            if (mode === 'activation') {
+                document.getElementById('btnActivation').classList.add('active');
+                document.getElementById('btnActivation').classList.remove('text-brand-lightText');
+                document.getElementById('rentPeriodSection').classList.add('hidden');
+            } else {
+                document.getElementById('btnRent').classList.add('active');
+                document.getElementById('btnRent').classList.remove('text-brand-lightText');
+                document.getElementById('rentPeriodSection').classList.remove('hidden');
+            }
+            
+            if (expandedServiceCode) {
+                renderServiceAccordion();
+            }
+        }
+
+        // Real Inventory Sync from Backend Services Endpoint
+        async function syncInventory() {
+            const container = document.getElementById('serviceAccordionList');
+            if (container && services.length === 0) {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-brand-border">
+                        <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
+                        <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Loading Live SMSGlobe Services...</p>
+                    </div>
+                `;
+            }
+
+            try {
+                const { data } = await safeFetch(`${API_BASE_URL}/services`);
+                const serviceList = data.services || data.data || data;
+
+                if (Array.isArray(serviceList)) {
+                    services = serviceList.sort((a, b) => {
+                        const codeA = (a.code || '').toLowerCase();
+                        const codeB = (b.code || '').toLowerCase();
+                        const indexA = PRIORITY_SERVICES.findIndex(p => p.code === codeA);
+                        const indexB = PRIORITY_SERVICES.findIndex(p => p.code === codeB);
+
+                        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                        if (indexA !== -1) return -1;
+                        if (indexB !== -1) return 1;
+
+                        return (a.name || '').localeCompare(b.name || '');
+                    });
+
+                    renderServiceAccordion();
+                }
+            } catch (err) {
+                console.error("Service sync failed", err);
+                if (container) {
+                    container.innerHTML = `<p class="text-center text-xs py-10 text-red-500 font-bold uppercase bg-white rounded-2xl border border-brand-border">Failed to load live services from backend</p>`;
+                }
+            }
+        }
+
+        function renderServiceAccordion(filter = "") {
+            const container = document.getElementById('serviceAccordionList');
+            if (!container) return;
+
+            const filtered = services.filter(s => (s.name || '').toLowerCase().includes(filter.toLowerCase()) || (s.code || '').toLowerCase().includes(filter.toLowerCase()));
+            
+            if (filtered.length === 0) {
+                container.innerHTML = `<p class="text-center text-xs text-gray-400 py-10 font-bold bg-white rounded-2xl border border-brand-border">No services match your search</p>`;
                 return;
             }
 
-            if (data.success) {
-                const userData = data.user || data;
-                userBalance = userData.balance || 0; 
-                userBonusBalance = userData.bonusBalance || 0; 
-                localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
+            container.innerHTML = filtered.map(s => {
+                const isExpanded = expandedServiceCode === s.code;
+                const countries = serviceCountriesCache[s.code] || [];
+                
+                return `
+                    <div class="bg-white border border-brand-border rounded-2xl overflow-hidden transition-all shadow-sm">
+                        <div onclick="SMSGlobeApp.toggleServiceAccordion('${s.code}')" class="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-brand-background/50 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-xl bg-brand-blue/10 text-brand-blue font-bold flex items-center justify-center text-xs uppercase">
+                                    ${(s.name || s.code).substring(0, 2)}
+                                </div>
+                                <div>
+                                    <span class="text-xs font-bold text-brand-darkText block">${s.name || s.code}</span>
+                                    <span class="text-[9px] text-brand-lightText uppercase">Code: ${s.code}</span>
+                                </div>
+                            </div>
+                            <button class="text-xs font-bold text-brand-midText flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border bg-white">
+                                ${isExpanded ? 'Collapse' : 'Select Country'}
+                                <svg class="w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+                        </div>
+
+                        ${isExpanded ? `
+                            <div class="border-t border-brand-border bg-brand-background/30 p-4 space-y-3">
+                                <div class="relative mb-3">
+                                    <input type="text" oninput="SMSGlobeApp.filterCountriesForService('${s.code}', this.value)" placeholder="Search country inventory..." 
+                                           class="text-xs bg-white border border-brand-border rounded-lg px-3 py-2 focus:outline-none focus:border-brand-blue w-full shadow-sm">
+                                </div>
+                                
+                                <div id="countriesList_${s.code}" class="space-y-2">
+                                    ${renderCountriesListHtml(s.code, countries)}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderCountriesListHtml(serviceCode, countriesList) {
+            if (!countriesList || countriesList.length === 0) {
+                return `
+                    <div class="flex flex-col items-center justify-center py-6 bg-white rounded-xl border border-brand-border">
+                        <div class="w-5 h-5 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-2"></div>
+                        <p class="text-[10px] text-brand-blue font-bold uppercase">Fetching Live Country Tiers (Silver & Bronze)...</p>
+                    </div>
+                `;
             }
-        } catch (err) {
-            console.error("Failed to fetch profile details:", err);
-        }
-    }
 
-    function setMode(mode) {
-        currentMode = mode;
-        document.querySelectorAll('.mode-btn').forEach(b => {
-            b.classList.remove('active');
-            b.classList.add('text-brand-lightText');
-        });
-        
-        if (mode === 'activation') {
-            document.getElementById('btnActivation').classList.add('active');
-            document.getElementById('btnActivation').classList.remove('text-brand-lightText');
-            document.getElementById('rentPeriodSection').classList.add('hidden');
-        } else {
-            document.getElementById('btnRent').classList.add('active');
-            document.getElementById('btnRent').classList.remove('text-brand-lightText');
-            document.getElementById('rentPeriodSection').classList.remove('hidden');
-        }
-        
-        if (expandedServiceCode) {
-            renderServiceAccordion();
-        }
-    }
-
-    // Real Inventory Sync from Backend Services Endpoint
-    async function syncInventory() {
-        const container = document.getElementById('serviceAccordionList');
-        if (container && services.length === 0) {
-            container.innerHTML = `
-                <div class="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-brand-border">
-                    <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
-                    <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Loading Live SMSGlobe Services...</p>
-                </div>
-            `;
-        }
-
-        try {
-            const response = await fetch(`${API_BASE_URL}/services`);
-            const data = await response.json();
+            let multiplier = 1;
+            if (currentMode === 'rent') {
+                const select = document.getElementById('rentalPeriod');
+                if (select) {
+                    multiplier = parseFloat(select.options[select.selectedIndex]?.getAttribute('data-multi')) || 1;
+                }
+            }
             
-            const serviceList = data.services || data.data || data;
+            const usdToNgnRate = 1650; 
 
-            if (Array.isArray(serviceList)) {
-                services = serviceList.sort((a, b) => {
-                    const codeA = (a.code || '').toLowerCase();
-                    const codeB = (b.code || '').toLowerCase();
-                    const indexA = PRIORITY_SERVICES.findIndex(p => p.code === codeA);
-                    const indexB = PRIORITY_SERVICES.findIndex(p => p.code === codeB);
-
-                    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-                    if (indexA !== -1) return -1;
-                    if (indexB !== -1) return 1;
-
-                    return (a.name || '').localeCompare(b.name || '');
+            return countriesList.map(c => {
+                let baseRate = 0;
+                
+                if (c.price && typeof c.price === 'object' && c.price.amount > 50) {
+                    baseRate = c.price.amount;
+                } else {
+                    let rawUsd = 0;
+                    if (c.price && typeof c.price === 'object') {
+                        rawUsd = c.price.amount || c.price.usd || 0;
+                    } else if (typeof c.price === 'number') {
+                        rawUsd = c.price;
+                    } else {
+                        rawUsd = c.sellingPrice || 0;
+                    }
+                    baseRate = rawUsd < 100 ? rawUsd * usdToNgnRate : rawUsd;
+                }
+                
+                const finalDisplayPrice = Number(baseRate) * multiplier;
+                const formattedPriceString = finalDisplayPrice.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
                 });
 
-                renderServiceAccordion();
-            }
-        } catch (err) {
-            console.error("Service sync failed", err);
-            if (container) {
-                container.innerHTML = `<p class="text-center text-xs py-10 text-red-500 font-bold uppercase bg-white rounded-2xl border border-brand-border">Failed to load live services from backend</p>`;
-            }
-        }
-    }
+                const stockStatus = c.stock || c.count || 'In Stock';
+                const countryId = c.countryId || c.id || c.code || '';
+                const flagCode = countryId.toString().toLowerCase();
+                const countryName = c.countryName || c.name || 'Global Country';
+                
+                const rankValue = (c.rank || 'silver').toLowerCase();
+                const isSilver = rankValue.includes('silver');
+                const rankBadgeClass = isSilver 
+                    ? 'bg-gray-100 text-gray-700 border-gray-200' 
+                    : 'bg-amber-50 text-amber-700 border-amber-200';
+                const rankLabel = isSilver ? 'Silver' : 'Bronze';
 
-    function renderServiceAccordion(filter = "") {
-        const container = document.getElementById('serviceAccordionList');
-        if (!container) return;
-
-        const filtered = services.filter(s => (s.name || '').toLowerCase().includes(filter.toLowerCase()) || (s.code || '').toLowerCase().includes(filter.toLowerCase()));
-        
-        if (filtered.length === 0) {
-            container.innerHTML = `<p class="text-center text-xs text-gray-400 py-10 font-bold bg-white rounded-2xl border border-brand-border">No services match your search</p>`;
-            return;
-        }
-
-        container.innerHTML = filtered.map(s => {
-            const isExpanded = expandedServiceCode === s.code;
-            const countries = serviceCountriesCache[s.code] || [];
-            
-            return `
-                <div class="bg-white border border-brand-border rounded-2xl overflow-hidden transition-all shadow-sm">
-                    <div onclick="toggleServiceAccordion('${s.code}')" class="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-brand-background/50 transition-colors">
+                return `
+                    <div class="bg-white border border-brand-border p-3 rounded-xl flex items-center justify-between hover:border-brand-blue/50 transition-all">
                         <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-xl bg-brand-blue/10 text-brand-blue font-bold flex items-center justify-center text-xs uppercase">
-                                ${(s.name || s.code).substring(0, 2)}
-                            </div>
+                            <img src="https://flagcdn.com/w40/${flagCode}.png" class="w-6 h-auto rounded-sm border border-gray-200" onerror="this.style.display='none'">
                             <div>
-                                <span class="text-xs font-bold text-brand-darkText block">${s.name || s.code}</span>
-                                <span class="text-[9px] text-brand-lightText uppercase">Code: ${s.code}</span>
+                                <div class="flex items-center gap-2">
+                                    <p class="text-xs font-bold text-brand-darkText">${countryName}</p>
+                                    <span class="text-[8px] font-semibold px-1.5 py-0.5 rounded border ${rankBadgeClass} uppercase">${rankLabel}</span>
+                                </div>
+                                <span class="text-[9px] text-green-600 font-bold uppercase">● Stock: ${stockStatus}</span>
                             </div>
                         </div>
-                        <button class="text-xs font-bold text-brand-midText flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border bg-white">
-                            ${isExpanded ? 'Collapse' : 'Select Country'}
-                            <svg class="w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </button>
+                        <div class="flex items-center gap-4">
+                            <span class="text-xs font-black text-brand-blue">₦${formattedPriceString}</span>
+                            <button onclick="SMSGlobeApp.buyServiceCountry('${serviceCode}', '${countryId}', ${finalDisplayPrice}, '${rankLabel}')" 
+                                    class="px-4 py-2 bg-brand-blue text-white rounded-lg text-xs font-bold hover:bg-brand-blue/90 active:scale-95 transition-all">
+                                Buy Number
+                            </button>
+                        </div>
                     </div>
-
-                    ${isExpanded ? `
-                        <div class="border-t border-brand-border bg-brand-background/30 p-4 space-y-3">
-                            <div class="relative mb-3">
-                                <input type="text" oninput="filterCountriesForService('${s.code}', this.value)" placeholder="Search country inventory..." 
-                                       class="text-xs bg-white border border-brand-border rounded-lg px-3 py-2 focus:outline-none focus:border-brand-blue w-full shadow-sm">
-                            </div>
-                            
-                            <div id="countriesList_${s.code}" class="space-y-2">
-                                ${renderCountriesListHtml(s.code, countries)}
-                            </div>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        }).join('');
-    }
-
-    function renderCountriesListHtml(serviceCode, countriesList) {
-        if (!countriesList || countriesList.length === 0) {
-            return `
-                <div class="flex flex-col items-center justify-center py-6 bg-white rounded-xl border border-brand-border">
-                    <div class="w-5 h-5 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-2"></div>
-                    <p class="text-[10px] text-brand-blue font-bold uppercase">Fetching Live Country Tiers (Silver & Bronze)...</p>
-                </div>
-            `;
+                `;
+            }).join('');
         }
 
-        let multiplier = 1;
-        if (currentMode === 'rent') {
-            const select = document.getElementById('rentalPeriod');
-            if (select) {
-                multiplier = parseFloat(select.options[select.selectedIndex].getAttribute('data-multi')) || 1;
-            }
-        }
-        
-        const usdToNgnRate = 1650; 
-
-        return countriesList.map(c => {
-            let baseRate = 0;
-            
-            if (c.price && typeof c.price === 'object' && c.price.amount > 50) {
-                baseRate = c.price.amount;
+        async function toggleServiceAccordion(code) {
+            if (expandedServiceCode === code) {
+                expandedServiceCode = null;
             } else {
-                let rawUsd = 0;
-                if (c.price && typeof c.price === 'object') {
-                    rawUsd = c.price.amount || c.price.usd || 0;
-                } else if (typeof c.price === 'number') {
-                    rawUsd = c.price;
-                } else {
-                    rawUsd = c.sellingPrice || 0;
+                expandedServiceCode = code;
+                if (!serviceCountriesCache[code]) {
+                    await fetchCountriesForService(code);
                 }
-                baseRate = rawUsd < 100 ? rawUsd * usdToNgnRate : rawUsd;
             }
-            
-            const finalDisplayPrice = Number(baseRate) * multiplier;
-            const formattedPriceString = finalDisplayPrice.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-
-            const stockStatus = c.stock || c.count || 'In Stock';
-            const countryId = c.countryId || c.id || c.code || '';
-            const flagCode = countryId.toString().toLowerCase();
-            const countryName = c.countryName || c.name || 'Global Country';
-            
-            // Silver vs Bronze tier rendering logic
-            const rankValue = (c.rank || 'silver').toLowerCase();
-            const isSilver = rankValue.includes('silver');
-            const rankBadgeClass = isSilver 
-                ? 'bg-gray-100 text-gray-700 border-gray-200' 
-                : 'bg-amber-50 text-amber-700 border-amber-200';
-            const rankLabel = isSilver ? 'Silver' : 'Bronze';
-
-            return `
-                <div class="bg-white border border-brand-border p-3 rounded-xl flex items-center justify-between hover:border-brand-blue/50 transition-all">
-                    <div class="flex items-center gap-3">
-                        <img src="https://flagcdn.com/w40/${flagCode}.png" class="w-6 h-auto rounded-sm border border-gray-200" onerror="this.style.display='none'">
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <p class="text-xs font-bold text-brand-darkText">${countryName}</p>
-                                <span class="text-[8px] font-semibold px-1.5 py-0.5 rounded border ${rankBadgeClass} uppercase">${rankLabel}</span>
-                            </div>
-                            <span class="text-[9px] text-green-600 font-bold uppercase">● Stock: ${stockStatus}</span>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <span class="text-xs font-black text-brand-blue">₦${formattedPriceString}</span>
-                        <button onclick="buyServiceCountry('${serviceCode}', '${countryId}', ${finalDisplayPrice}, '${rankLabel}')" 
-                                class="px-4 py-2 bg-brand-blue text-white rounded-lg text-xs font-bold hover:bg-brand-blue/90 active:scale-95 transition-all">
-                            Buy Number
-                        </button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    async function toggleServiceAccordion(code) {
-        if (expandedServiceCode === code) {
-            expandedServiceCode = null;
-        } else {
-            expandedServiceCode = code;
-            if (!serviceCountriesCache[code]) {
-                await fetchCountriesForService(code);
-            }
-        }
-        renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
-    }
-
-    async function fetchCountriesForService(serviceCode) {
-        if (!serviceCode || serviceCode === 'undefined' || serviceCode === 'null') {
-            console.error("Skipped fetch: Invalid service code.");
-            return;
-        }
-
-        try {
-            const response = await fetch(`${API_BASE_URL}/smsbower/countries?service=${encodeURIComponent(serviceCode)}`);
-            const contentType = response.headers.get("content-type");
-            if (!contentType || !contentType.includes("application/json")) {
-                throw new Error("Invalid response format from server.");
-            }
-
-            const result = await response.json();
-            let list = [];
-            const data = result.countries || result.data || result;
-
-            if (Array.isArray(data)) {
-                list = data;
-            } else if (typeof data === 'object' && data !== null) {
-                list = Object.entries(data).map(([countryId, details]) => ({
-                    countryId: countryId,
-                    countryName: details.countryName || details.name || `Country ${countryId}`,
-                    stock: details.stock || details.count || 'In Stock',
-                    rank: details.rank || 'Silver',
-                    price: details.price || { amount: 1650, currency: 'NGN', symbol: '₦' }
-                }));
-            }
-
-            // Filter strictly for Silver and Bronze items from SMSBower
-            const filteredList = list.filter(c => {
-                const r = String(c.rank || 'silver').toLowerCase();
-                return r.includes('silver') || r.includes('bronze');
-            });
-
-            serviceCountriesCache[serviceCode] = filteredList.length > 0 ? filteredList : list;
-        } catch (err) {
-            console.error("Failed to fetch countries for service:", err);
-            serviceCountriesCache[serviceCode] = [];
-        }
-
-        if (expandedServiceCode === serviceCode) {
             renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
         }
-    }
 
-    function filterCountriesForService(serviceCode, query) {
-        const allCountries = serviceCountriesCache[serviceCode] || [];
-        const filtered = allCountries.filter(c => (c.countryName || c.name || '').toLowerCase().includes(query.toLowerCase()));
-        const listContainer = document.getElementById(`countriesList_${serviceCode}`);
-        if (listContainer) {
-            listContainer.innerHTML = renderCountriesListHtml(serviceCode, filtered);
-        }
-    }
-
-    function filterServices() {
-        const query = document.getElementById('serviceSearchInput').value;
-        renderServiceAccordion(query);
-    }
-
-    async function buyServiceCountry(serviceCode, countryId, price, rank) {
-        const token = localStorage.getItem('userToken');
-        if (!token) {
-            Swal.fire({ title: 'Login Required', icon: 'warning', text: 'Please log in to purchase numbers.' });
-            return;
-        }
-
-        if (userBalance < price) {
-            Swal.fire('Insufficient Funds', `You need ₦${price.toLocaleString()} to purchase this option. Please fund your wallet.`, 'error');
-            return;
-        }
-
-        const serviceObj = services.find(s => s.code === serviceCode);
-        const countriesList = serviceCountriesCache[serviceCode] || [];
-        const countryObj = countriesList.find(c => (c.countryId || c.id || c.code || '').toString() === countryId.toString());
-
-        const confirmed = await Swal.fire({
-            title: 'Confirm Live Purchase',
-            text: `Get ${serviceObj?.name || serviceCode} (${rank} Tier) in ${countryObj?.countryName || countryObj?.name || 'Selected Country'} for ₦${price.toLocaleString()}?`,
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#0F54C6',
-            confirmButtonText: 'Proceed Order'
-        });
-
-        if (!confirmed.isConfirmed) return;
-
-        const payload = {
-            mobileNumber: `+${countryId}${Math.floor(10000000 + Math.random() * 90000000)}`,
-            planAmount: price,
-            metadata: {
-                serviceType: 'virtual_number',
-                serviceName: serviceObj?.name || serviceCode,
-                countryCode: countryId,
-                rank: (rank || 'silver').toLowerCase(),
-                provider: 'smsbower'
+        async function fetchCountriesForService(serviceCode) {
+            if (!serviceCode || serviceCode === 'undefined' || serviceCode === 'null') {
+                console.error("Skipped fetch: Invalid service code.");
+                return;
             }
-        };
 
-        try {
-            const response = await fetch(`${API_BASE_URL}/purchase-with-wallet`, { 
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify(payload)
-            });
-            
-            const res = await response.json();
-            
-            if (res.success) {
-                document.querySelector('main').classList.add('hidden');
-                document.getElementById('activationPanel').classList.remove('hidden'); 
-                document.getElementById('displayPurchasedNumber').innerText = payload.mobileNumber;
-                
-                startSmsPolling(res.order._id || res.orderId);
-                
-                Swal.fire({
-                    title: 'Order Dispatched!',
-                    text: 'Waiting for live SMS verification code...',
-                    icon: 'success',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
-            } else { 
-                Swal.fire('Order Failed', res.message || "Could not process purchase from provider.", 'error');
-            }
-        } catch (err) { 
-            console.error("Purchase Error:", err);
-            Swal.fire('Network Error', 'Check your connection and try again.', 'error');
-        }
-    }
-
-    function copyNumber() {
-        const num = document.getElementById('displayPurchasedNumber').innerText;
-        navigator.clipboard.writeText(num);
-        Swal.fire({ title: 'Copied!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000, icon: 'success' });
-    }
-
-    function startSmsPolling(orderId) {
-        if (window.pollInterval) clearInterval(window.pollInterval);
-
-        window.pollInterval = setInterval(async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}/order-details?id=${orderId}`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
+                const { data: result } = await safeFetch(`${API_BASE_URL}/smsbower/countries?service=${encodeURIComponent(serviceCode)}`);
+                let list = [];
+                const data = result.countries || result.data || result;
+
+                if (Array.isArray(data)) {
+                    list = data;
+                } else if (typeof data === 'object' && data !== null) {
+                    list = Object.entries(data).map(([countryId, details]) => ({
+                        countryId: countryId,
+                        countryName: details.countryName || details.name || `Country ${countryId}`,
+                        stock: details.stock || details.count || 'In Stock',
+                        rank: details.rank || 'Silver',
+                        price: details.price || { amount: 1650, currency: 'NGN', symbol: '₦' }
+                    }));
+                }
+
+                const filteredList = list.filter(c => {
+                    const r = String(c.rank || 'silver').toLowerCase();
+                    return r.includes('silver') || r.includes('bronze');
+                });
+
+                serviceCountriesCache[serviceCode] = filteredList.length > 0 ? filteredList : list;
+            } catch (err) {
+                console.error("Failed to fetch countries for service:", err);
+                serviceCountriesCache[serviceCode] = [];
+            }
+
+            if (expandedServiceCode === serviceCode) {
+                renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
+            }
+        }
+
+        function filterCountriesForService(serviceCode, query) {
+            const allCountries = serviceCountriesCache[serviceCode] || [];
+            const filtered = allCountries.filter(c => (c.countryName || c.name || '').toLowerCase().includes(query.toLowerCase()));
+            const listContainer = document.getElementById(`countriesList_${serviceCode}`);
+            if (listContainer) {
+                listContainer.innerHTML = renderCountriesListHtml(serviceCode, filtered);
+            }
+        }
+
+        function filterServices() {
+            const query = document.getElementById('serviceSearchInput')?.value || '';
+            renderServiceAccordion(query);
+        }
+
+        async function buyServiceCountry(serviceCode, countryId, price, rank) {
+            const token = localStorage.getItem('userToken');
+            if (!token) {
+                Swal.fire({ title: 'Login Required', icon: 'warning', text: 'Please log in to purchase numbers.' });
+                return;
+            }
+
+            if (userBalance < price) {
+                Swal.fire('Insufficient Funds', `You need ₦${price.toLocaleString()} to purchase this option. Please fund your wallet.`, 'error');
+                return;
+            }
+
+            const serviceObj = services.find(s => s.code === serviceCode);
+            const countriesList = serviceCountriesCache[serviceCode] || [];
+            const countryObj = countriesList.find(c => (c.countryId || c.id || c.code || '').toString() === countryId.toString());
+
+            const confirmed = await Swal.fire({
+                title: 'Confirm Live Purchase',
+                text: `Get ${serviceObj?.name || serviceCode} (${rank} Tier) in ${countryObj?.countryName || countryObj?.name || 'Selected Country'} for ₦${price.toLocaleString()}?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#0F54C6',
+                confirmButtonText: 'Proceed Order'
+            });
+
+            if (!confirmed.isConfirmed) return;
+
+            const payload = {
+                mobileNumber: `+${countryId}${Math.floor(10000000 + Math.random() * 90000000)}`,
+                planAmount: price,
+                metadata: {
+                    serviceType: 'virtual_number',
+                    serviceName: serviceObj?.name || serviceCode,
+                    countryCode: countryId,
+                    rank: (rank || 'silver').toLowerCase(),
+                    provider: 'smsbower'
+                }
+            };
+
+            try {
+                const { data: res } = await safeFetch(`${API_BASE_URL}/purchase-with-wallet`, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
                 });
                 
-                const data = await response.json();
-
-                if (data.success && data.order && data.order.smsCode) {
-                    clearInterval(window.pollInterval);
+                if (res.success) {
+                    document.querySelector('main')?.classList.add('hidden');
+                    document.getElementById('activationPanel')?.classList.remove('hidden'); 
+                    document.getElementById('displayPurchasedNumber').innerText = payload.mobileNumber;
                     
-                    const codeDigits = data.order.smsCode.split('');
-                    const container = document.getElementById('smsCodeContainer');
-                    
-                    container.innerHTML = codeDigits.map(d => `
-                        <div class="w-12 h-16 bg-brand-blue text-white rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg shadow-brand-blue/35 border-none animate-bounce">
-                            ${d}
-                        </div>
-                    `).join('');
-                    
-                    if (document.getElementById('fullSmsText')) {
-                        document.getElementById('fullSmsText').innerText = data.order.fullMessage || "Code received successfully.";
-                    }
+                    startSmsPolling(res.order._id || res.orderId);
                     
                     Swal.fire({
-                        title: 'SMS Code Received!',
-                        text: `Verification Code: ${data.order.smsCode}`,
+                        title: 'Order Dispatched!',
+                        text: 'Waiting for live SMS verification code...',
                         icon: 'success',
-                        confirmButtonColor: '#0F54C6'
+                        timer: 2000,
+                        showConfirmButton: false
                     });
+                } else { 
+                    Swal.fire('Order Failed', res.message || "Could not process purchase from provider.", 'error');
                 }
-            } catch (err) {
-                console.error("Polling error:", err);
+            } catch (err) { 
+                console.error("Purchase Error:", err);
+                Swal.fire('Network Error', 'Check your connection and try again.', 'error');
             }
-        }, 4000);
-    }
+        }
 
-    function toggleSupportMenu() {
-        document.getElementById('supportMenu')?.classList.toggle('hidden');
-    }
+        function copyNumber() {
+            const num = document.getElementById('displayPurchasedNumber')?.innerText || '';
+            navigator.clipboard.writeText(num);
+            Swal.fire({ title: 'Copied!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000, icon: 'success' });
+        }
 
-    function logout() {
-        localStorage.removeItem('userToken');
-        localStorage.removeItem('dashboard_cache');
-        window.location.href = 'user_login.html';
-    }
+        function startSmsPolling(orderId) {
+            if (pollInterval) clearInterval(pollInterval);
 
-    function toggleSidebar() {
-        document.getElementById('sidebar')?.classList.toggle('-translate-x-full');
-        document.getElementById('sidebarOverlay')?.classList.toggle('hidden');
-    }
+            let attempts = 0;
+            const maxAttempts = 75; // Poll for up to 5 minutes (every 4 seconds)
 
-    document.getElementById('openSidebar')?.addEventListener('click', toggleSidebar);
-    document.getElementById('closeSidebar')?.addEventListener('click', toggleSidebar);
-  
-    window.addEventListener('load', () => {
-        fetchUserProfile();
-        syncInventory(); 
-    });
+            pollInterval = setInterval(async () => {
+                attempts++;
+                if (attempts >= maxAttempts) {
+                    clearInterval(pollInterval);
+                    Swal.fire('Polling Timeout', 'Did not receive verification code in time. Please check your active orders list.', 'info');
+                    return;
+                }
 
-    setInterval(syncInventory, 60000);
+                try {
+                    const { data } = await safeFetch(`${API_BASE_URL}/order-details?id=${orderId}`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
+                    });
+                    
+                    if (data.success && data.order && data.order.smsCode) {
+                        clearInterval(pollInterval);
+                        
+                        const codeDigits = data.order.smsCode.split('');
+                        const container = document.getElementById('smsCodeContainer');
+                        
+                        if (container) {
+                            container.innerHTML = codeDigits.map(d => `
+                                <div class="w-12 h-16 bg-brand-blue text-white rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg shadow-brand-blue/35 border-none animate-bounce">
+                                    ${d}
+                                </div>
+                            `).join('');
+                        }
+                        
+                        if (document.getElementById('fullSmsText')) {
+                            document.getElementById('fullSmsText').innerText = data.order.fullMessage || "Code received successfully.";
+                        }
+                        
+                        Swal.fire({
+                            title: 'SMS Code Received!',
+                            text: `Verification Code: ${data.order.smsCode}`,
+                            icon: 'success',
+                            confirmButtonColor: '#0F54C6'
+                        });
+                    }
+                } catch (err) {
+                    console.error("Polling error:", err);
+                }
+            }, 4000);
+        }
+
+        function toggleSupportMenu() {
+            document.getElementById('supportMenu')?.classList.toggle('hidden');
+        }
+
+        function logout() {
+            localStorage.removeItem('userToken');
+            localStorage.removeItem('dashboard_cache');
+            window.location.href = 'user_login.html';
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar')?.classList.toggle('-translate-x-full');
+            document.getElementById('sidebarOverlay')?.classList.toggle('hidden');
+        }
+
+        // Attach Event Listeners on load
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('openSidebar')?.addEventListener('click', toggleSidebar);
+            document.getElementById('closeSidebar')?.addEventListener('click', toggleSidebar);
+            
+            fetchUserProfile();
+            syncInventory(); 
+
+            setInterval(syncInventory, 60000);
+        });
+
+        // Expose public handlers required by inline HTML templates
+        return {
+            setMode,
+            toggleServiceAccordion,
+            filterCountriesForService,
+            filterServices,
+            buyServiceCountry,
+            copyNumber,
+            toggleSupportMenu,
+            logout,
+            toggleSidebar
+        };
+    })();
 </script>
-
 </body>
 </html>

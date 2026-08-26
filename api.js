@@ -3557,48 +3557,49 @@ async function handleGetStock(req, res) {
         return res.json({ success: false, stock: { "GLOBAL": 0 } });
     }
 }
-
 /**
- * 2. FETCH SERVICES & PRICES (Corrected & Hardened for SMSBower)
+ * 2. FETCH SERVICES & PRICES (Corrected for SMS-Activate / SMSBower Structure)
  */
 async function handleGetServicesAndPrices(req, res) {
     try {
-        // Ensure API key is configured
         if (!process.env.SMSBOWER_API_KEY) {
             console.error("SMSBOWER_API_KEY is missing in your environment configuration.");
             return res.status(500).json({ success: false, message: "Vendor configuration error." });
         }
 
-        // Call SMSBower using the SMS-Activate getPrices action
         const response = await smsBowerClient.get('', {
             params: { action: 'getPrices' }
         });
 
         const rawData = response.data;
 
-        // If SMSBower returns an error string instead of JSON (e.g., "BAD_KEY")
         if (typeof rawData === 'string') {
             console.error("SMSBower returned string error:", rawData);
             return res.status(400).json({ success: false, message: `Vendor error: ${rawData}` });
         }
 
-        let servicesList = [];
+        let servicesMap = {};
 
         if (rawData && typeof rawData === 'object') {
-            if (Array.isArray(rawData)) {
-                servicesList = rawData;
-            } else {
-                // SMS-Activate format: { serviceCode: { countryId: { cost: X, count: Y } } }
-                servicesList = Object.keys(rawData).map(serviceCode => {
-                    return {
-                        code: serviceCode,
-                        // Clean up name or fallback to uppercase code
-                        name: serviceCode.charAt(0).toUpperCase() + serviceCode.slice(1), 
-                        countries: rawData[serviceCode]
-                    };
-                });
-            }
+            // SMS-Activate getPrices returns: { countryId: { serviceCode: { cost, count } } }
+            Object.keys(rawData).forEach(countryId => {
+                const countryServices = rawData[countryId];
+                if (countryServices && typeof countryServices === 'object') {
+                    Object.keys(countryServices).forEach(serviceCode => {
+                        if (!servicesMap[serviceCode]) {
+                            servicesMap[serviceCode] = {
+                                code: serviceCode,
+                                name: serviceCode.charAt(0).toUpperCase() + serviceCode.slice(1),
+                                countries: {}
+                            };
+                        }
+                        servicesMap[serviceCode].countries[countryId] = countryServices[serviceCode];
+                    });
+                }
+            });
         }
+
+        const servicesList = Object.values(servicesMap);
 
         return res.json({ 
             success: true, 
@@ -3624,7 +3625,6 @@ async function handleGetCountries(req, res) {
             return res.status(400).json({ success: false, message: "Service code is required." });
         }
 
-        // Call SMSBower API via your server client
         const response = await smsBowerClient.get('', {
             params: { 
                 action: 'getPrices',
@@ -3633,54 +3633,56 @@ async function handleGetCountries(req, res) {
         });
 
         const rawData = response.data;
-        const countriesMap = rawData[serviceCode] || rawData || {};
-
-        const markupPercent = 0; // Set your platform profit markup percentage here
+        const markupPercent = 0; 
         const multiplier = 1 + (markupPercent / 100);
-        const exchangeRateToNgn = 1650; // USD to NGN exchange rate
+        const exchangeRateToNgn = 1650; 
 
         let formattedCountries = [];
 
-        // Loop through countries map safely
-        Object.keys(countriesMap).forEach(countryId => {
-            const countryData = countriesMap[countryId];
-            if (!countryData) return;
+        if (rawData && typeof rawData === 'object') {
+            // Traverse country-first structure: { countryId: { serviceCode: { cost, count, ... } } }
+            Object.keys(rawData).forEach(countryId => {
+                const countryServices = rawData[countryId];
+                if (!countryServices || typeof countryServices !== 'object') return;
 
-            // Handle cases where countryData might be a direct object with pricing or nested by tier keys
-            const tierKeys = typeof countryData === 'object' ? Object.keys(countryData) : [];
+                // Find pricing for our specific service code inside this country
+                const serviceData = countryServices[serviceCode] || countryServices[String(serviceCode).toLowerCase()];
+                if (!serviceData) return;
 
-            if (tierKeys.length === 0) return;
+                // serviceData can be an object containing tiers or a direct pricing object
+                const tierKeys = Object.keys(serviceData);
+                if (tierKeys.length === 0) return;
 
-            tierKeys.forEach(tierKey => {
-                const tierItem = countryData[tierKey];
-                
-                if (tierItem && typeof tierItem === 'object' && (tierItem.cost || tierItem.price || tierItem.count)) {
-                    let currentRank = String(tierItem.rank || tierKey).toLowerCase();
+                tierKeys.forEach(tierKey => {
+                    const tierItem = serviceData[tierKey];
+                    
+                    if (tierItem && typeof tierItem === 'object' && (tierItem.cost || tierItem.price || tierItem.count)) {
+                        let currentRank = String(tierItem.rank || tierKey).toLowerCase();
 
-                    // Ensure we ONLY capture 'silver' or 'bronze'
-                    const isSilverOrBronze = currentRank.includes('silver') || currentRank.includes('bronze') || tierKey === 'silver' || tierKey === 'bronze';
+                        const isSilverOrBronze = currentRank.includes('silver') || currentRank.includes('bronze') || tierKey === 'silver' || tierKey === 'bronze' || !tierItem.rank;
 
-                    if (isSilverOrBronze) {
-                        if (!targetRank || currentRank.includes(targetRank)) {
-                            const rawCost = Number(tierItem.cost || tierItem.price || 0);
-                            const finalAmount = Number((rawCost * exchangeRateToNgn * multiplier).toFixed(2));
+                        if (isSilverOrBronze) {
+                            if (!targetRank || currentRank.includes(targetRank)) {
+                                const rawCost = Number(tierItem.cost || tierItem.price || 0);
+                                const finalAmount = Number((rawCost * exchangeRateToNgn * multiplier).toFixed(2));
 
-                            formattedCountries.push({
-                                countryId: countryId,
-                                countryName: tierItem.countryName || tierItem.name || `Country ${countryId}`,
-                                stock: tierItem.count || tierItem.stock || 'In Stock',
-                                rank: currentRank.includes('silver') ? 'Silver' : 'Bronze',
-                                price: {
-                                    amount: finalAmount > 0 ? finalAmount : 1650, // Fallback safety
-                                    currency: 'NGN',
-                                    symbol: '₦'
-                                }
-                            });
+                                formattedCountries.push({
+                                    countryId: countryId,
+                                    countryName: tierItem.countryName || tierItem.name || `Country ${countryId}`,
+                                    stock: tierItem.count || tierItem.stock || 'In Stock',
+                                    rank: currentRank.includes('silver') ? 'Silver' : (currentRank.includes('bronze') ? 'Bronze' : 'Standard'),
+                                    price: {
+                                        amount: finalAmount > 0 ? finalAmount : 1650, 
+                                        currency: 'NGN',
+                                        symbol: '₦'
+                                    }
+                                });
+                            }
                         }
                     }
-                }
+                });
             });
-        });
+        }
 
         return res.json({ success: true, countries: formattedCountries });
     } catch (err) {
@@ -3688,6 +3690,7 @@ async function handleGetCountries(req, res) {
         return res.status(500).json({ success: false, message: "Failed to fetch country catalog." });
     }
 }
+
 
 /**
  * 3. CHECK ORDER STATUS / SMS CODE POLLING

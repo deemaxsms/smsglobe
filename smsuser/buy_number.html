@@ -524,47 +524,55 @@
             renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
         }
 
-        async function fetchCountriesForService(serviceCode, isBackground = false) {
-            if (!serviceCode || serviceCode === 'undefined' || serviceCode === 'null') {
-                console.error("Skipped fetch: Invalid service code.");
-                return;
-            }
+      async function fetchCountriesForService(serviceCode, isBackground = false) {
+    if (!serviceCode || serviceCode === 'undefined' || serviceCode === 'null') {
+        console.error("Skipped fetch: Invalid service code.");
+        return;
+    }
 
-            try {
-                // Fixed endpoint to target /countries instead of /smsbower/countries
-                const { data: result } = await safeFetch(`${API_BASE_URL}/countries?service=${encodeURIComponent(serviceCode)}`);
-                let list = [];
-                const data = result.countries || result.data || result;
+    try {
+        const { data: result } = await safeFetch(`${API_BASE_URL}/countries?service=${encodeURIComponent(serviceCode)}`);
+        let list = [];
+        const data = result.countries || result.data || result;
 
-                if (Array.isArray(data)) {
-                    list = data;
-                } else if (typeof data === 'object' && data !== null) {
-                    list = Object.entries(data).map(([countryId, details]) => ({
-                        countryId: countryId,
-                        countryName: details.countryName || details.name || `Country ${countryId}`,
-                        stock: details.stock || details.count || 'In Stock',
-                        rank: details.rank || 'Silver',
-                        price: details.price || { amount: 1400, currency: 'NGN', symbol: '₦' }
-                    }));
-                }
-
-                const filteredList = list.filter(c => {
-                    const r = String(c.rank || 'silver').toLowerCase();
-                    return r.includes('silver') || r.includes('bronze');
-                });
-
-                serviceCountriesCache[serviceCode] = filteredList.length > 0 ? filteredList : list;
-            } catch (err) {
-                console.error("Failed to fetch countries for service:", err);
-                if (!isBackground) {
-                    serviceCountriesCache[serviceCode] = [];
-                }
-            }
-
-            if (!isBackground && expandedServiceCode === serviceCode) {
-                renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
-            }
+        if (Array.isArray(data)) {
+            // Map array items explicitly to ensure countryName, code, and price exist
+            list = data.map(item => ({
+                countryId: item.countryId || item.id,
+                countryName: item.countryName || item.name || `Country ${item.countryId || ''}`,
+                code: (item.code || item.countryId || '').toString().toLowerCase(),
+                stock: item.stock || item.count || 'In Stock',
+                rank: item.rank || 'Silver',
+                price: item.price || { amount: 1400, currency: 'NGN', symbol: '₦' }
+            }));
+        } else if (typeof data === 'object' && data !== null) {
+            list = Object.entries(data).map(([countryId, details]) => ({
+                countryId: countryId,
+                countryName: details.countryName || details.name || `Country ${countryId}`,
+                code: (details.code || countryId).toString().toLowerCase(),
+                stock: details.stock || details.count || 'In Stock',
+                rank: details.rank || 'Silver',
+                price: details.price || { amount: 1400, currency: 'NGN', symbol: '₦' }
+            }));
         }
+
+        const filteredList = list.filter(c => {
+            const r = String(c.rank || 'silver').toLowerCase();
+            return r.includes('silver') || r.includes('bronze');
+        });
+
+        serviceCountriesCache[serviceCode] = filteredList.length > 0 ? filteredList : list;
+    } catch (err) {
+        console.error("Failed to fetch countries for service:", err);
+        if (!isBackground) {
+            serviceCountriesCache[serviceCode] = [];
+        }
+    }
+
+    if (!isBackground && expandedServiceCode === serviceCode) {
+        renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
+    }
+}
 
         function filterCountriesForService(serviceCode, query) {
             const allCountries = serviceCountriesCache[serviceCode] || [];

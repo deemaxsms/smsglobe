@@ -3643,6 +3643,7 @@ async function handleProxyServiceImage(req, res) {
         return res.status(200).send(fallbackSvg);
     }
 }
+
 async function handleGetCountries(req, res) {
     try {
         const serviceCode = req.query.service || req.params.service;
@@ -3676,18 +3677,22 @@ async function handleGetCountries(req, res) {
             return res.status(400).json({ success: false, message: `Vendor error: ${rawPrices}` });
         }
 
-        // Build a dynamic country mapping dictionary straight from SMSBower's metadata response
-        // (Supports standard SMS-activate / SMSBower schema where countries metadata is an object or array)
+      // Build a dynamic country mapping dictionary straight from SMSBower's metadata response
         let countryMetaMap = {};
         const metaSource = rawCountriesMeta.countries || rawCountriesMeta.data || rawCountriesMeta;
         
-        if (metaSource && typeof metaSource === 'object') {
-            Object.keys(metaSource).forEach(id => {
-                const cInfo = metaSource[id];
+        if (metaSource) {
+            // Handle if metaSource is an array or an object dictionary
+            const entries = Array.isArray(metaSource) ? metaSource.map((c, idx) => [c.id || idx, c]) : Object.entries(metaSource);
+            
+            entries.forEach(([id, cInfo]) => {
+                if (!cInfo) return;
+                const cName = cInfo.name || cInfo.countryName || cInfo.til || cInfo.eng;
+                const cCode = (cInfo.iso || cInfo.code || cInfo.eng || cInfo.short || id).toString().toLowerCase();
+                
                 countryMetaMap[String(id)] = {
-                    name: cInfo.name || cInfo.countryName || `Country ${id}`,
-                    // Extract short code for flag rendering (e.g., 'ru', 'us', 'ng')
-                    code: (cInfo.iso || cInfo.code || cInfo.eng || id).toString().toLowerCase()
+                    name: cName || `Country ${id}`,
+                    code: cCode
                 };
             });
         }

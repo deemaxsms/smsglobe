@@ -3541,7 +3541,7 @@ async function handlePurchaseNumber(req, res) {
     }
 }
 /**
- * 2. FETCH SERVICES (Strictly utilizing SMSBower API response data)
+ * 2. FETCH SERVICES (Corrected with action: 'getServicesList')
  */
 async function handleGetServicesAndPrices(req, res) {
     try {
@@ -3550,10 +3550,10 @@ async function handleGetServicesAndPrices(req, res) {
             return res.status(500).json({ success: false, message: "Vendor configuration error." });
         }
 
-        // Call the official SMSBower services endpoint
+        // Use the official SMSBower action 'getServicesList'
         const response = await smsBowerClient.get('', {
             params: { 
-                action: 'services', 
+                action: 'getServicesList', 
                 api_key: process.env.SMSBOWER_API_KEY 
             }
         });
@@ -3576,7 +3576,7 @@ async function handleGetServicesAndPrices(req, res) {
                 code: code,
                 name: name,
                 image: item.image || item.icon || `https://smsbower.app/img/services/${code}.svg`,
-                countries: {} // Populated dynamically when user expands the accordion
+                countries: {} 
             };
         });
 

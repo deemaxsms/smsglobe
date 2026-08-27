@@ -3657,7 +3657,7 @@ async function handleGetCountries(req, res) {
             return res.status(400).json({ success: false, message: "Service code is required." });
         }
 
-        // 1. Fetch official country definitions/dictionary directly from SMSBower API
+        // 1. Fetch official country definitions dictionary directly from SMSBower API
         const countriesMetaResponse = await smsBowerClient.get('', {
             params: { 
                 api_key: process.env.SMSBOWER_API_KEY,
@@ -3681,12 +3681,11 @@ async function handleGetCountries(req, res) {
             return res.status(400).json({ success: false, message: `Vendor error: ${rawPrices}` });
         }
 
-      // Build a dynamic country mapping dictionary straight from SMSBower's metadata response
+        // Build a dynamic country mapping dictionary straight from SMSBower's metadata response
         let countryMetaMap = {};
         const metaSource = rawCountriesMeta.countries || rawCountriesMeta.data || rawCountriesMeta;
         
         if (metaSource) {
-            // Handle if metaSource is an array or an object dictionary
             const entries = Array.isArray(metaSource) ? metaSource.map((c, idx) => [c.id || idx, c]) : Object.entries(metaSource);
             
             entries.forEach(([id, cInfo]) => {
@@ -3713,23 +3712,28 @@ async function handleGetCountries(req, res) {
                 const serviceData = countryServices[serviceCode] || countryServices[String(serviceCode).toLowerCase()];
                 if (!serviceData) return;
 
+                // Helper to process individual price tiers or variants
                 const processTier = (tierItem, tierKey = '') => {
                     if (!tierItem) return;
                     
                     let itemObj = tierItem;
                     if (typeof tierItem !== 'object') {
-                        itemObj = { cost: tierItem, rank: 'silver' };
+                        itemObj = { cost: tierItem, rank: tierKey || 'silver' };
                     }
 
-                    const rankValue = String(itemObj.rank || itemObj.position || tierKey || 'silver').toLowerCase();
+                    const rankValue = String(itemObj.rank || itemObj.position || tierKey || '').toLowerCase();
                     const rawCost = Number(itemObj.cost || itemObj.price || itemObj.value || 0);
                     
                     if (rawCost <= 0) return;
 
-                    const hasRankSpecified = itemObj.rank || itemObj.position;
-                    const isSilverOrBronze = !hasRankSpecified || rankValue.includes('silver') || rankValue.includes('bronze');
+                    // Allow Silver, Bronze, or unranked baseline prices to ensure we get competitive rates
+                    const isAllowedRank = !rankValue || 
+                                          rankValue.includes('silver') || 
+                                          rankValue.includes('bronze') || 
+                                          rankValue.includes('retail') ||
+                                          rankValue.includes('default');
 
-                    if (isSilverOrBronze) {
+                    if (isAllowedRank) {
                         const finalAmount = Number((rawCost * exchangeRateToNgn).toFixed(2));
                         const normalizedRank = rankValue.includes('bronze') ? 'Bronze' : 'Silver';
 
@@ -3741,7 +3745,7 @@ async function handleGetCountries(req, res) {
                         const countryEntry = {
                             countryId: String(countryId),
                             countryName: resolvedName,
-                            code: resolvedCode, // Clean ISO code for flagcdn images on frontend
+                            code: resolvedCode, 
                             stock: itemObj.count || itemObj.stock || 'In Stock',
                             rank: normalizedRank, 
                             price: {
@@ -3752,6 +3756,8 @@ async function handleGetCountries(req, res) {
                         };
 
                         const existingIndex = formattedCountries.findIndex(c => String(c.countryId) === String(countryId));
+                        
+                        // Compare and keep ONLY the lowest price variant for this country
                         if (existingIndex === -1) {
                             formattedCountries.push(countryEntry);
                         } else if (finalAmount < formattedCountries[existingIndex].price.amount) {
@@ -3760,7 +3766,9 @@ async function handleGetCountries(req, res) {
                     }
                 };
 
-                if (serviceData.cost !== undefined || serviceData.price !== undefined || typeof serviceData !== 'object') {
+                if (Array.isArray(serviceData)) {
+                    serviceData.forEach((tier, idx) => processTier(tier, idx.toString()));
+                } else if (serviceData.cost !== undefined || serviceData.price !== undefined || typeof serviceData !== 'object') {
                     processTier(serviceData);
                 } else {
                     Object.keys(serviceData).forEach(tierKey => {

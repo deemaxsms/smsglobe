@@ -401,7 +401,7 @@ const Order = mongoose.models.Order || mongoose.model('Order', orderSchema);
 
 let isConnected = false;
 const connectDB = async () => {
-    if (isConnected) return;
+    if (isConnected && mongoose.connection.readyState === 1) return;
     try {
         await mongoose.connect(process.env.MONGODB_URI, {
             maxPoolSize: 100, 
@@ -409,10 +409,11 @@ const connectDB = async () => {
         });
         isConnected = true;
     } catch (err) {
+        isConnected = false;
         console.error("DB Error:", err);
+        throw err; // Rethrow so the handler catches it instead of silently failing
     }
 };
-
 // --- 4. HELPERS ---
 async function verifyRecaptcha(token) {
     if (!token) return false;
@@ -622,9 +623,10 @@ case 'system-status': // Public route for the frontend to check
             });
     }
 });
-
 // --- 7. LOGIC HANDLERS ---
 async function handleLogin(req, res) {
+    await connectDB(); // <-- Add this here!
+
     const { email, password, captchaToken } = req.body;
     const isHuman = await verifyRecaptcha(captchaToken);    
     if (!isHuman) {
@@ -653,6 +655,8 @@ async function handleLogin(req, res) {
 }
 
 async function handleGoogleLogin(req, res) {
+    await connectDB(); // <-- Add this here too!
+
     const { idToken, loginType } = req.body; // 'admin' or 'user'
     try {
         const ticket = await googleClient.verifyIdToken({

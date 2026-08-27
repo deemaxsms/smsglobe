@@ -580,8 +580,12 @@ app.all('/api/:action', async (req, res) => {
      case 'rdp-request-complete': // This matches the fetch URL in your HTML file
     if (req.method === 'POST') return handleCompleteRDPOrder(req, res);
     break; 
-    case 'services':
+   case 'services':
         if (req.method === 'GET') return handleGetServicesAndPrices(req, res);
+        break;
+
+    case 'service-image':
+        if (req.method === 'GET') return handleProxyServiceImage(req, res);
         break;
     case 'countries':
         if (req.method === 'GET') return handleGetCountries(req, res);
@@ -3566,17 +3570,19 @@ async function handleGetServicesAndPrices(req, res) {
         }
 
         const serviceItems = rawData.services || rawData.data || (Array.isArray(rawData) ? rawData : []);
-        
+
 let servicesList = serviceItems.map(item => {
     const serviceId = item.id || item.code || '';
     const code = (item.code || item.id || '').toLowerCase();
     const name = item.name || code.toUpperCase();
     
+    // Route the image through your own server proxy endpoint
+    const proxyImageUrl = serviceId ? `/api/service-image?id=${serviceId}` : '';
+
     return {
         code: code,
         name: name,
-        // Use the exact domain pattern from your network logs
-        image: item.image || item.icon || (serviceId ? `https://smsbower.app/img/services/${serviceId}.svg` : ''),
+        image: proxyImageUrl,
         countries: {} 
     };
 });
@@ -3593,6 +3599,33 @@ return res.json({
             message: "Failed to fetch services catalog from vendor.",
             error: err.message 
         });
+    }
+}
+
+/**
+ * Image Proxy Route: GET /api/service-image?id=271
+ */
+async function handleProxyServiceImage(req, res) {
+    try {
+        const serviceId = req.query.id;
+        if (!serviceId) {
+            return res.status(400).send("Missing service ID");
+        }
+
+        // Server-to-server request bypasses browser CORS and cookie restrictions
+        const imageResponse = await axios.get(`https://smsbower.app/img/services/${serviceId}.svg`, {
+            responseType: 'arraybuffer',
+            headers: {
+                'Referer': 'https://smsbower.app/'
+            }
+        });
+
+        res.setHeader('Content-Type', 'image/svg+xml');
+        res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+        return res.send(imageResponse.data);
+
+    } catch (err) {
+        return res.status(404).send("Image not found");
     }
 }
 

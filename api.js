@@ -3652,7 +3652,7 @@ async function handleProxyServiceImage(req, res) {
     }
 }
 
-async function fetchCountriesForService(serviceCode, isBackground = false) {
+async function handleGetCountries(serviceCode, isBackground = false) {
     if (!serviceCode || serviceCode === 'undefined' || serviceCode === 'null') {
         console.error("Skipped fetch: Invalid service code.");
         return;

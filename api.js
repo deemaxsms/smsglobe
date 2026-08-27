@@ -3544,6 +3544,7 @@ async function handlePurchaseNumber(req, res) {
         return res.status(500).json({ success: false, message: "Server error processing purchase." });
     }
 }
+
 /**
  * 2. FETCH SERVICES (Corrected with action: 'getServicesList')
  */
@@ -3572,12 +3573,14 @@ async function handleGetServicesAndPrices(req, res) {
         const serviceItems = rawData.services || rawData.data || (Array.isArray(rawData) ? rawData : []);
 
 let servicesList = serviceItems.map(item => {
-    const code = (item.code || item.id || '').toLowerCase();
+    // TEMPORARY: Check your terminal console to see what fields SMSBower actually provides
+    console.log("SMSBower Service Item Keys:", Object.keys(item), item);
+
+    const code = (item.code || item.short || item.id || '').toLowerCase();
     const name = item.name || code.toUpperCase();
     
-    // Explicitly check for numeric/alternative image identifiers returned by SMSBower
-    // Adjust 'service_id' or 'imgId' based on what SMSBower's raw object actually returns
-    const imgIdentifier = item.service_id || (typeof item.id === 'number' ? item.id : '') || item.code || '';
+    // Look for any field that might hold the correct asset identifier from the API response
+    const imgIdentifier = item.code || item.short || item.service_code || item.id || '';
     const proxyImageUrl = imgIdentifier ? `/api/service-image?id=${imgIdentifier}` : '';
 
     return {
@@ -3610,10 +3613,11 @@ async function handleProxyServiceImage(req, res) {
             return res.status(400).send("Missing service ID");
         }
 
-        const imageResponse = await axios.get(`https://smsbower.app/img/services/${serviceId}.svg`, {
+        // Use the current active SMSBower domain endpoint
+        const imageResponse = await axios.get(`https://smsbower.online/img/services/${serviceId}.svg`, {
             responseType: 'arraybuffer',
             headers: {
-                'Referer': 'https://smsbower.app/'
+                'Referer': 'https://smsbower.online/'
             }
         });
 
@@ -3622,8 +3626,8 @@ async function handleProxyServiceImage(req, res) {
         return res.send(imageResponse.data);
 
     } catch (err) {
-        // Return 404 so the browser's onerror event triggers on the frontend
-        return res.status(404).send("Image not found");
+        // Pass through the upstream error cleanly if SMSBower doesn't have an image for that specific code
+        return res.status(404).send("Image not found on vendor server");
     }
 }
 

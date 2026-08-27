@@ -358,6 +358,9 @@
                     });
 
                     renderServiceAccordion();
+                    
+                    // Automatically pre-fetch countries for all services in the background so clicks are instant
+                    preFetchAllServiceCountries();
                 }
             } catch (err) {
                 console.error("Service sync failed", err);
@@ -365,6 +368,15 @@
                     container.innerHTML = `<p class="text-center text-xs py-10 text-red-500 font-bold uppercase bg-white rounded-2xl border border-brand-border">Failed to load live services from backend</p>`;
                 }
             }
+        }
+
+        // Background Pre-fetcher to load country catalogs without blocking the UI
+        async function preFetchAllServiceCountries() {
+            services.forEach(s => {
+                if (s.code && !serviceCountriesCache[s.code]) {
+                    fetchCountriesForService(s.code, true); // silent background fetch
+                }
+            });
         }
 
         function renderServiceAccordion(filter = "") {
@@ -382,27 +394,27 @@
                 const isExpanded = expandedServiceCode === s.code;
                 const countries = serviceCountriesCache[s.code] || [];
                 
-              const serviceImgUrl = s.image || s.icon || s.logo || s.img || '';
-const fallbackInitials = (s.name || s.code).substring(0, 2);
+                const serviceImgUrl = s.image || s.icon || s.logo || s.img || '';
+                const fallbackInitials = (s.name || s.code).substring(0, 2);
 
-return `
-    <div class="bg-white border border-brand-border rounded-2xl overflow-hidden transition-all shadow-sm">
-        <div onclick="SMSGlobeApp.toggleServiceAccordion('${s.code}')" class="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-brand-background/50 transition-colors">
-            <div class="flex items-center gap-3">
-               <div class="w-8 h-8 rounded-xl bg-brand-blue/10 text-brand-blue font-bold flex items-center justify-center text-xs uppercase overflow-hidden">
-             ${serviceImgUrl ? `<img src="${serviceImgUrl}" alt="${s.name || s.code}" class="w-full h-full object-contain" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">` : ''}
-               <span style="display: ${serviceImgUrl ? 'none' : 'flex'};" class="items-center justify-center w-full h-full">${fallbackInitials}</span>
-                </div>
-                <div>
-                    <span class="text-xs font-bold text-brand-darkText block">${s.name || s.code}</span>
-                    <span class="text-[9px] text-brand-lightText uppercase">Code: ${s.code}</span>
-                </div>
-            </div>
-            <button class="text-xs font-bold text-brand-midText flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border bg-white">
-                ${isExpanded ? 'Collapse' : 'Select Country'}
-                <svg class="w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-            </button>
-        </div>
+                return `
+                    <div class="bg-white border border-brand-border rounded-2xl overflow-hidden transition-all shadow-sm">
+                        <div onclick="SMSGlobeApp.toggleServiceAccordion('${s.code}')" class="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-brand-background/50 transition-colors">
+                            <div class="flex items-center gap-3">
+                               <div class="w-8 h-8 rounded-xl bg-brand-blue/10 text-brand-blue font-bold flex items-center justify-center text-xs uppercase overflow-hidden">
+                               ${serviceImgUrl ? `<img src="${serviceImgUrl}" alt="${s.name || s.code}" class="w-full h-full object-contain" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">` : ''}
+                               <span style="display: ${serviceImgUrl ? 'none' : 'flex'};" class="items-center justify-center w-full h-full">${fallbackInitials}</span>
+                                </div>
+                                <div>
+                                    <span class="text-xs font-bold text-brand-darkText block">${s.name || s.code}</span>
+                                    <span class="text-[9px] text-brand-lightText uppercase">Code: ${s.code}</span>
+                                </div>
+                            </div>
+                            <button class="text-xs font-bold text-brand-midText flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border bg-white">
+                                ${isExpanded ? 'Collapse' : 'Select Country'}
+                                <svg class="w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+                        </div>
 
                         ${isExpanded ? `
                             <div class="border-t border-brand-border bg-brand-background/30 p-4 space-y-3">
@@ -512,13 +524,14 @@ return `
             renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
         }
 
-        async function fetchCountriesForService(serviceCode) {
+        async function fetchCountriesForService(serviceCode, isBackground = false) {
             if (!serviceCode || serviceCode === 'undefined' || serviceCode === 'null') {
                 console.error("Skipped fetch: Invalid service code.");
                 return;
             }
 
             try {
+                // Fixed endpoint to target /countries instead of /smsbower/countries
                 const { data: result } = await safeFetch(`${API_BASE_URL}/countries?service=${encodeURIComponent(serviceCode)}`);
                 let list = [];
                 const data = result.countries || result.data || result;
@@ -543,10 +556,12 @@ return `
                 serviceCountriesCache[serviceCode] = filteredList.length > 0 ? filteredList : list;
             } catch (err) {
                 console.error("Failed to fetch countries for service:", err);
-                serviceCountriesCache[serviceCode] = [];
+                if (!isBackground) {
+                    serviceCountriesCache[serviceCode] = [];
+                }
             }
 
-            if (expandedServiceCode === serviceCode) {
+            if (!isBackground && expandedServiceCode === serviceCode) {
                 renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
             }
         }
@@ -565,79 +580,77 @@ return `
             renderServiceAccordion(query);
         }
 
-      async function buyServiceCountry(serviceCode, countryId, price, rank) {
-    const token = localStorage.getItem('userToken');
-    if (!token) {
-        Swal.fire({ title: 'Login Required', icon: 'warning', text: 'Please log in to purchase numbers.' });
-        return;
-    }
+        async function buyServiceCountry(serviceCode, countryId, price, rank) {
+            const token = localStorage.getItem('userToken');
+            if (!token) {
+                Swal.fire({ title: 'Login Required', icon: 'warning', text: 'Please log in to purchase numbers.' });
+                return;
+            }
 
-    if (userBalance < price) {
-        Swal.fire('Insufficient Funds', `You need ₦${price.toLocaleString()} to purchase this option. Please fund your wallet.`, 'error');
-        return;
-    }
+            if (userBalance < price) {
+                Swal.fire('Insufficient Funds', `You need ₦${price.toLocaleString()} to purchase this option. Please fund your wallet.`, 'error');
+                return;
+            }
 
-    const serviceObj = services.find(s => s.code === serviceCode);
-    const countriesList = serviceCountriesCache[serviceCode] || [];
-    const countryObj = countriesList.find(c => (c.countryId || c.id || c.code || '').toString() === countryId.toString());
+            const serviceObj = services.find(s => s.code === serviceCode);
+            const countriesList = serviceCountriesCache[serviceCode] || [];
+            const countryObj = countriesList.find(c => (c.countryId || c.id || c.code || '').toString() === countryId.toString());
 
-    const confirmed = await Swal.fire({
-        title: 'Confirm Live Purchase',
-        text: `Get ${serviceObj?.name || serviceCode} (${rank} Tier) in ${countryObj?.countryName || countryObj?.name || 'Selected Country'} for ₦${price.toLocaleString()}?`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#0F54C6',
-        confirmButtonText: 'Proceed Order'
-    });
-
-    if (!confirmed.isConfirmed) return;
-
-    // Send the core parameters to the backend; let the server provision the real number via SMSBower
-    const payload = {
-        serviceCode: serviceCode,
-        countryId: countryId,
-        planAmount: price,
-        rank: (rank || 'silver').toLowerCase(),
-        metadata: {
-            serviceType: 'virtual_number',
-            serviceName: serviceObj?.name || serviceCode,
-            countryCode: countryId,
-            provider: 'smsbower'
-        }
-    };
-
-    try {
-        const { data: res } = await safeFetch(`${API_BASE_URL}/purchase-with-wallet`, { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify(payload)
-        });
-        
-        if (res.success) {
-            // Extract the real provisioned mobile number returned by the server/upstream provider
-            const realMobileNumber = res.order?.mobileNumber || res.mobileNumber;
-
-            document.querySelector('main')?.classList.add('hidden');
-            document.getElementById('activationPanel')?.classList.remove('hidden'); 
-            document.getElementById('displayPurchasedNumber').innerText = realMobileNumber;
-            
-            startSmsPolling(res.order?._id || res.orderId);
-            
-            Swal.fire({
-                title: 'Order Dispatched!',
-                text: 'Waiting for live SMS verification code...',
-                icon: 'success',
-                timer: 2000,
-                showConfirmButton: false
+            const confirmed = await Swal.fire({
+                title: 'Confirm Live Purchase',
+                text: `Get ${serviceObj?.name || serviceCode} (${rank} Tier) in ${countryObj?.countryName || countryObj?.name || 'Selected Country'} for ₦${price.toLocaleString()}?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#0F54C6',
+                confirmButtonText: 'Proceed Order'
             });
-        } else { 
-            Swal.fire('Order Failed', res.message || "Could not process purchase from provider.", 'error');
+
+            if (!confirmed.isConfirmed) return;
+
+            const payload = {
+                serviceCode: serviceCode,
+                countryId: countryId,
+                planAmount: price,
+                rank: (rank || 'silver').toLowerCase(),
+                metadata: {
+                    serviceType: 'virtual_number',
+                    serviceName: serviceObj?.name || serviceCode,
+                    countryCode: countryId,
+                    provider: 'smsbower'
+                }
+            };
+
+            try {
+                const { data: res } = await safeFetch(`${API_BASE_URL}/purchase-with-wallet`, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (res.success) {
+                    const realMobileNumber = res.order?.mobileNumber || res.mobileNumber;
+
+                    document.querySelector('main')?.classList.add('hidden');
+                    document.getElementById('activationPanel')?.classList.remove('hidden'); 
+                    document.getElementById('displayPurchasedNumber').innerText = realMobileNumber;
+                    
+                    startSmsPolling(res.order?._id || res.orderId);
+                    
+                    Swal.fire({
+                        title: 'Order Dispatched!',
+                        text: 'Waiting for live SMS verification code...',
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                } else { 
+                    Swal.fire('Order Failed', res.message || "Could not process purchase from provider.", 'error');
+                }
+            } catch (err) { 
+                console.error("Purchase Error:", err);
+                Swal.fire('Network Error', 'Check your connection and try again.', 'error');
+            }
         }
-    } catch (err) { 
-        console.error("Purchase Error:", err);
-        Swal.fire('Network Error', 'Check your connection and try again.', 'error');
-    }
-}
 
         function copyNumber() {
             const num = document.getElementById('displayPurchasedNumber')?.innerText || '';
@@ -649,7 +662,7 @@ return `
             if (pollInterval) clearInterval(pollInterval);
 
             let attempts = 0;
-            const maxAttempts = 75; // Poll for up to 5 minutes (every 4 seconds)
+            const maxAttempts = 75;
 
             pollInterval = setInterval(async () => {
                 attempts++;
@@ -710,7 +723,6 @@ return `
             document.getElementById('sidebarOverlay')?.classList.toggle('hidden');
         }
 
-        // Attach Event Listeners on load
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('openSidebar')?.addEventListener('click', toggleSidebar);
             document.getElementById('closeSidebar')?.addEventListener('click', toggleSidebar);
@@ -721,7 +733,6 @@ return `
             setInterval(syncInventory, 60000);
         });
 
-        // Expose public handlers required by inline HTML templates
         return {
             setMode,
             toggleServiceAccordion,
@@ -733,8 +744,7 @@ return `
             logout,
             toggleSidebar
         };
-    })
-    ();
+    })();
 </script>
 </body>
 </html>

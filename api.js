@@ -3540,9 +3540,8 @@ async function handlePurchaseNumber(req, res) {
         return res.status(500).json({ success: false, message: "Server error processing purchase." });
     }
 }
-
 /**
- * 2. FETCH SERVICES & PRICES (Updated with correct SMSBower image URL)
+ * 2. FETCH SERVICES & PRICES (Corrected for SMSBower GET_SERVICES schema)
  */
 async function handleGetServicesAndPrices(req, res) {
     try {
@@ -3551,8 +3550,12 @@ async function handleGetServicesAndPrices(req, res) {
             return res.status(500).json({ success: false, message: "Vendor configuration error." });
         }
 
+        // Call SMSBower using the action matching your partner API documentation
         const response = await smsBowerClient.get('', {
-            params: { action: 'getPrices' }
+            params: { 
+                action: 'GET_SERVICES', 
+                key: process.env.SMSBOWER_API_KEY // Note: SMSBower partner API uses 'key', check if your client appends api_key globally
+            }
         });
 
         const rawData = response.data;
@@ -3564,27 +3567,41 @@ async function handleGetServicesAndPrices(req, res) {
 
         let servicesMap = {};
 
-        if (rawData && typeof rawData === 'object') {
-            Object.keys(rawData).forEach(countryId => {
-                const countryServices = rawData[countryId];
-                if (countryServices && typeof countryServices === 'object') {
-                    Object.keys(countryServices).forEach(serviceCode => {
-                        if (!servicesMap[serviceCode]) {
-                            // Updated fallback to match smsbower.app domain and .svg format
-                            const serviceImage = countryServices[serviceCode].image || 
-                                                 countryServices[serviceCode].icon || 
-                                                 `https://smsbower.page/stubs/handler_api.php/img/services/${serviceCode}.svg`;
+        // SMSBower returns data wrapped inside a `countryList` array
+        const countryList = rawData.countryList || [];
 
-                            servicesMap[serviceCode] = {
-                                code: serviceCode,
-                                name: serviceCode.charAt(0).toUpperCase() + serviceCode.slice(1),
-                                image: serviceImage,
-                                countries: {}
-                            };
-                        }
-                        servicesMap[serviceCode].countries[countryId] = countryServices[serviceCode];
-                    });
-                }
+        if (Array.isArray(countryList)) {
+            countryList.forEach(countryItem => {
+                const countryId = countryItem.country;
+                const operatorMap = countryItem.operatorMap || {};
+
+                // Iterate through operators (e.g., beeline, megafon, life)
+                Object.keys(operatorMap).forEach(operatorName => {
+                    const servicesObj = operatorMap[operatorName];
+                    
+                    if (servicesObj && typeof servicesObj === 'object') {
+                        // Iterate through service codes (e.g., wa, tg, ok, vk)
+                        Object.keys(servicesObj).forEach(serviceCode => {
+                            const servicePriceOrData = servicesObj[serviceCode];
+                            const normalizedCode = serviceCode.toLowerCase();
+
+                            if (!servicesMap[normalizedCode]) {
+                                servicesMap[normalizedCode] = {
+                                    code: normalizedCode,
+                                    name: formatServiceName(normalizedCode),
+                                    image: `https://smsbower.app/img/services/${normalizedCode}.svg`,
+                                    countries: {}
+                                };
+                            }
+
+                            // Organize pricing/stock details per country and operator
+                            if (!servicesMap[normalizedCode].countries[countryId]) {
+                                servicesMap[normalizedCode].countries[countryId] = {};
+                            }
+                            servicesMap[normalizedCode].countries[countryId][operatorName] = servicePriceOrData;
+                        });
+                    }
+                });
             });
         }
 
@@ -3604,6 +3621,23 @@ async function handleGetServicesAndPrices(req, res) {
         });
     }
 }
+
+// Helper function to turn shorthand codes into readable titles without manual hardcoding of every single option
+function formatServiceName(code) {
+    const commonNames = {
+        wa: 'WhatsApp',
+        tg: 'Telegram',
+        gg: 'Google / Gmail',
+        fb: 'Facebook',
+        ig: 'Instagram',
+        tw: 'Twitter / X',
+        vk: 'VKontakte',
+        ok: 'Odnoklassniki'
+    };
+    
+    return commonNames[code] || code.charAt(0).toUpperCase() + code.slice(1);
+}
+
 async function handleGetCountries(req, res) {
     try {
         const serviceCode = req.query.service || req.params.service;

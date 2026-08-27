@@ -3643,7 +3643,6 @@ async function handleProxyServiceImage(req, res) {
         return res.status(200).send(fallbackSvg);
     }
 }
-
 async function handleGetCountries(req, res) {
     try {
         const serviceCode = req.query.service || req.params.service;
@@ -3653,27 +3652,49 @@ async function handleGetCountries(req, res) {
             return res.status(400).json({ success: false, message: "Service code is required." });
         }
 
-        const response = await smsBowerClient.get('', {
-    params: { 
-        api_key: process.env.SMSBOWER_API_KEY,
-        action: 'getPrices',
-        service: String(serviceCode).toLowerCase(),
-    }
-});
+        // 1. Fetch official country definitions/dictionary directly from SMSBower API
+        const countriesMetaResponse = await smsBowerClient.get('', {
+            params: { 
+                api_key: process.env.SMSBOWER_API_KEY,
+                action: 'getCountries'
+            }
+        });
 
-        const rawData = response.data;
+        // 2. Fetch prices/inventory for the requested service
+        const pricesResponse = await smsBowerClient.get('', {
+            params: { 
+                api_key: process.env.SMSBOWER_API_KEY,
+                action: 'getPrices',
+                service: String(serviceCode).toLowerCase(),
+            }
+        });
 
-        if (typeof rawData === 'string') {
-            return res.status(400).json({ 
-                success: false, 
-                message: `Vendor error: ${rawData}` 
+        const rawPrices = pricesResponse.data;
+        const rawCountriesMeta = countriesMetaResponse.data;
+
+        if (typeof rawPrices === 'string') {
+            return res.status(400).json({ success: false, message: `Vendor error: ${rawPrices}` });
+        }
+
+        // Build a dynamic country mapping dictionary straight from SMSBower's metadata response
+        // (Supports standard SMS-activate / SMSBower schema where countries metadata is an object or array)
+        let countryMetaMap = {};
+        const metaSource = rawCountriesMeta.countries || rawCountriesMeta.data || rawCountriesMeta;
+        
+        if (metaSource && typeof metaSource === 'object') {
+            Object.keys(metaSource).forEach(id => {
+                const cInfo = metaSource[id];
+                countryMetaMap[String(id)] = {
+                    name: cInfo.name || cInfo.countryName || `Country ${id}`,
+                    // Extract short code for flag rendering (e.g., 'ru', 'us', 'ng')
+                    code: (cInfo.iso || cInfo.code || cInfo.eng || id).toString().toLowerCase()
+                };
             });
         }
 
-        const exchangeRateToNgn = 1650; 
+        const exchangeRateToNgn = 1400; 
         let formattedCountries = [];
-
-        const priceData = rawData.prices || rawData.data || rawData;
+        const priceData = rawPrices.prices || rawPrices.data || rawPrices;
 
         if (priceData && typeof priceData === 'object') {
             Object.keys(priceData).forEach(countryId => {
@@ -3683,7 +3704,6 @@ async function handleGetCountries(req, res) {
                 const serviceData = countryServices[serviceCode] || countryServices[String(serviceCode).toLowerCase()];
                 if (!serviceData) return;
 
-                // Helper to process individual tiers or direct price entries safely
                 const processTier = (tierItem, tierKey = '') => {
                     if (!tierItem) return;
                     
@@ -3697,7 +3717,6 @@ async function handleGetCountries(req, res) {
                     
                     if (rawCost <= 0) return;
 
-                    // STRICT REQUIREMENT: Only allow Silver and Bronze position ranks (or standard entries)
                     const hasRankSpecified = itemObj.rank || itemObj.position;
                     const isSilverOrBronze = !hasRankSpecified || rankValue.includes('silver') || rankValue.includes('bronze');
 
@@ -3705,19 +3724,24 @@ async function handleGetCountries(req, res) {
                         const finalAmount = Number((rawCost * exchangeRateToNgn).toFixed(2));
                         const normalizedRank = rankValue.includes('bronze') ? 'Bronze' : 'Silver';
 
+                        // Pull direct metadata from SMSBower's fetched country dictionary
+                        const vendorMeta = countryMetaMap[String(countryId)] || {};
+                        const resolvedName = itemObj.countryName || itemObj.name || vendorMeta.name || `Country ${countryId}`;
+                        const resolvedCode = vendorMeta.code || String(countryId).toLowerCase();
+
                         const countryEntry = {
                             countryId: String(countryId),
-                            countryName: itemObj.countryName || itemObj.name || `Country ${countryId}`,
+                            countryName: resolvedName,
+                            code: resolvedCode, // Clean ISO code for flagcdn images on frontend
                             stock: itemObj.count || itemObj.stock || 'In Stock',
                             rank: normalizedRank, 
                             price: {
-                                amount: finalAmount > 0 ? finalAmount : 1650, 
+                                amount: finalAmount > 0 ? finalAmount : 1400, 
                                 currency: 'NGN',
                                 symbol: '₦'
                             }
                         };
 
-                        // Avoid duplicates per country and pick the best price if multiple tiers exist
                         const existingIndex = formattedCountries.findIndex(c => String(c.countryId) === String(countryId));
                         if (existingIndex === -1) {
                             formattedCountries.push(countryEntry);
@@ -3727,7 +3751,6 @@ async function handleGetCountries(req, res) {
                     }
                 };
 
-                // Check if serviceData is a direct price object or contains nested tiers
                 if (serviceData.cost !== undefined || serviceData.price !== undefined || typeof serviceData !== 'object') {
                     processTier(serviceData);
                 } else {
@@ -3740,11 +3763,11 @@ async function handleGetCountries(req, res) {
 
         return res.status(200).json({ success: true, countries: formattedCountries });
     } catch (err) {
-        console.error("Failed to fetch SMSBower countries:", err.response?.data || err.message);
+        console.error("Failed to fetch SMSBower countries from vendor:", err.response?.data || err.message);
         res.setHeader('Content-Type', 'application/json');
         return res.status(500).json({ 
             success: false, 
-            message: "Failed to fetch country catalog.",
+            message: "Failed to fetch country catalog from vendor.",
             error: err.message 
         });
     }

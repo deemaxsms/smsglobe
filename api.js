@@ -3613,12 +3613,12 @@ async function handleProxyServiceImage(req, res) {
             return res.status(400).send("Missing service ID");
         }
 
-        // Use the current active SMSBower domain endpoint
+        // Attempt to fetch from SMSBower vendor
         const imageResponse = await axios.get(`https://smsbower.online/img/services/${serviceId}.svg`, {
             responseType: 'arraybuffer',
             headers: {
                 'Referer': 'https://smsbower.online/'
-            }
+            },
         });
 
         res.setHeader('Content-Type', 'image/svg+xml');
@@ -3626,8 +3626,22 @@ async function handleProxyServiceImage(req, res) {
         return res.send(imageResponse.data);
 
     } catch (err) {
-        // Pass through the upstream error cleanly if SMSBower doesn't have an image for that specific code
-        return res.status(404).send("Image not found on vendor server");
+        // Fallback: Generate a clean dynamic SVG placeholder using the service ID initials
+        const fallbackId = (req.query.id || '?').toUpperCase().substring(0, 3);
+        
+        const fallbackSvg = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+              <rect width="64" height="64" rx="12" fill="#4F46E5"/>
+              <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" 
+                    fill="#FFFFFF" font-family="sans-serif" font-size="20" font-weight="bold">
+                ${fallbackId}
+              </text>
+            </svg>
+        `;
+
+        res.setHeader('Content-Type', 'image/svg+xml');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        return res.status(200).send(fallbackSvg);
     }
 }
 

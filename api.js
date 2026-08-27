@@ -3541,7 +3541,7 @@ async function handlePurchaseNumber(req, res) {
     }
 }
 /**
- * 2. FETCH SERVICES & PRICES (Corrected for SMSBower GET_SERVICES schema)
+ * 2. FETCH SERVICES & PRICES (Patched for Full Names & Icons)
  */
 async function handleGetServicesAndPrices(req, res) {
     try {
@@ -3550,12 +3550,8 @@ async function handleGetServicesAndPrices(req, res) {
             return res.status(500).json({ success: false, message: "Vendor configuration error." });
         }
 
-        // Call SMSBower using the action matching your partner API documentation
         const response = await smsBowerClient.get('', {
-            params: { 
-                action: 'GET_SERVICES', 
-                key: process.env.SMSBOWER_API_KEY // Note: SMSBower partner API uses 'key', check if your client appends api_key globally
-            }
+            params: { action: 'getPrices' }
         });
 
         const rawData = response.data;
@@ -3567,41 +3563,29 @@ async function handleGetServicesAndPrices(req, res) {
 
         let servicesMap = {};
 
-        // SMSBower returns data wrapped inside a `countryList` array
-        const countryList = rawData.countryList || [];
+        if (rawData && typeof rawData === 'object') {
+            Object.keys(rawData).forEach(countryId => {
+                const countryServices = rawData[countryId];
+                if (countryServices && typeof countryServices === 'object') {
+                    Object.keys(countryServices).forEach(serviceCode => {
+                        const normalizedCode = serviceCode.toLowerCase();
 
-        if (Array.isArray(countryList)) {
-            countryList.forEach(countryItem => {
-                const countryId = countryItem.country;
-                const operatorMap = countryItem.operatorMap || {};
+                        if (!servicesMap[normalizedCode]) {
+                            // Use correct domain and path for SVG icons
+                            const serviceImage = countryServices[serviceCode].image || 
+                                                   countryServices[serviceCode].icon || 
+                                                   `https://smsbower.app/img/services/${normalizedCode}.svg`;
 
-                // Iterate through operators (e.g., beeline, megafon, life)
-                Object.keys(operatorMap).forEach(operatorName => {
-                    const servicesObj = operatorMap[operatorName];
-                    
-                    if (servicesObj && typeof servicesObj === 'object') {
-                        // Iterate through service codes (e.g., wa, tg, ok, vk)
-                        Object.keys(servicesObj).forEach(serviceCode => {
-                            const servicePriceOrData = servicesObj[serviceCode];
-                            const normalizedCode = serviceCode.toLowerCase();
-
-                            if (!servicesMap[normalizedCode]) {
-                                servicesMap[normalizedCode] = {
-                                    code: normalizedCode,
-                                    name: formatServiceName(normalizedCode),
-                                    image: `https://smsbower.app/img/services/${normalizedCode}.svg`,
-                                    countries: {}
-                                };
-                            }
-
-                            // Organize pricing/stock details per country and operator
-                            if (!servicesMap[normalizedCode].countries[countryId]) {
-                                servicesMap[normalizedCode].countries[countryId] = {};
-                            }
-                            servicesMap[normalizedCode].countries[countryId][operatorName] = servicePriceOrData;
-                        });
-                    }
-                });
+                            servicesMap[normalizedCode] = {
+                                code: normalizedCode,
+                                name: formatServiceName(normalizedCode), // Uses the full name map below
+                                image: serviceImage,
+                                countries: {}
+                            };
+                        }
+                        servicesMap[normalizedCode].countries[countryId] = countryServices[serviceCode];
+                    });
+                }
             });
         }
 
@@ -3622,7 +3606,7 @@ async function handleGetServicesAndPrices(req, res) {
     }
 }
 
-// Helper function to turn shorthand codes into readable titles without manual hardcoding of every single option
+// Helper to convert shorthand service codes into proper display titles
 function formatServiceName(code) {
     const commonNames = {
         wa: 'WhatsApp',
@@ -3632,7 +3616,11 @@ function formatServiceName(code) {
         ig: 'Instagram',
         tw: 'Twitter / X',
         vk: 'VKontakte',
-        ok: 'Odnoklassniki'
+        ok: 'Odnoklassniki',
+        ti: 'TikTok',
+        vi: 'Viber',
+        ub: 'Uber',
+        nf: 'Netflix'
     };
     
     return commonNames[code] || code.charAt(0).toUpperCase() + code.slice(1);

@@ -3716,6 +3716,9 @@ async function handleGetCountries(req, res) {
                 const serviceData = countryServices[serviceCode] || countryServices[String(serviceCode).toLowerCase()];
                 if (!serviceData) return;
 
+                // Track all valid price tiers/variants for this country
+                const countryAvailablePrices = [];
+
                 // Helper to process individual price tiers or variants
                 const processTier = (tierItem, tierKey = '') => {
                     if (!tierItem) return;
@@ -3730,43 +3733,19 @@ async function handleGetCountries(req, res) {
                     
                     if (rawCost <= 0) return;
 
-                    // Allow Silver, Bronze, or unranked baseline prices to ensure we get competitive rates
-                    const isAllowedRank = !rankValue || 
-                                          rankValue.includes('silver') || 
-                                          rankValue.includes('bronze') || 
-                                          rankValue.includes('retail') ||
-                                          rankValue.includes('default');
+                    // STRICT ENFORCEMENT: ONLY allow Silver and Bronze. Retail & Default are explicitly excluded.
+                    const isSilver = rankValue.includes('silver');
+                    const isBronze = rankValue.includes('bronze');
 
-                    if (isAllowedRank) {
+                    if (isSilver || isBronze) {
                         const finalAmount = Number((rawCost * exchangeRateToNgn).toFixed(2));
-                        const normalizedRank = rankValue.includes('bronze') ? 'Bronze' : 'Silver';
+                        const normalizedRank = isBronze ? 'Bronze' : 'Silver';
 
-                        // Pull direct metadata from SMSBower's fetched country dictionary
-                        const vendorMeta = countryMetaMap[String(countryId)] || {};
-                        const resolvedName = itemObj.countryName || itemObj.name || vendorMeta.name || `Country ${countryId}`;
-                        const resolvedCode = vendorMeta.code || String(countryId).toLowerCase();
-
-                        const countryEntry = {
-                            countryId: String(countryId),
-                            countryName: resolvedName,
-                            code: resolvedCode, 
-                            stock: itemObj.count || itemObj.stock || 'In Stock',
-                            rank: normalizedRank, 
-                            price: {
-                                amount: finalAmount > 0 ? finalAmount : 1400, 
-                                currency: 'NGN',
-                                symbol: '₦'
-                            }
-                        };
-
-                        const existingIndex = formattedCountries.findIndex(c => String(c.countryId) === String(countryId));
-                        
-                        // Compare and keep ONLY the lowest price variant for this country
-                        if (existingIndex === -1) {
-                            formattedCountries.push(countryEntry);
-                        } else if (finalAmount < formattedCountries[existingIndex].price.amount) {
-                            formattedCountries[existingIndex] = countryEntry;
-                        }
+                        countryAvailablePrices.push({
+                            amount: finalAmount > 0 ? finalAmount : 1400,
+                            rank: normalizedRank,
+                            stock: itemObj.count || itemObj.stock || 'In Stock'
+                        });
                     }
                 };
 
@@ -3778,6 +3757,31 @@ async function handleGetCountries(req, res) {
                 } else {
                     Object.keys(serviceData).forEach(tierKey => {
                         processTier(serviceData[tierKey], tierKey);
+                    });
+                }
+
+                // If valid Silver/Bronze options exist, aggregate them into the country record
+                if (countryAvailablePrices.length > 0) {
+                    // Sort options ascending so the absolute lowest price sits at index 0
+                    countryAvailablePrices.sort((a, b) => a.amount - b.amount);
+
+                    const vendorMeta = countryMetaMap[String(countryId)] || {};
+                    const resolvedName = vendorMeta.name || `Country ${countryId}`;
+                    const resolvedCode = vendorMeta.code || String(countryId).toLowerCase();
+
+                    formattedCountries.push({
+                        countryId: String(countryId),
+                        countryName: resolvedName,
+                        code: resolvedCode,
+                        stock: countryAvailablePrices[0].stock,
+                        rank: countryAvailablePrices[0].rank,
+                        price: {
+                            amount: countryAvailablePrices[0].amount,
+                            currency: 'NGN',
+                            symbol: '₦'
+                        },
+                        // Attach all available tiers so the frontend can display and switch between them dynamically
+                        availablePrices: countryAvailablePrices
                     });
                 }
             });

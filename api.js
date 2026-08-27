@@ -3653,7 +3653,7 @@ async function handleGetCountries(req, res) {
             return res.status(400).json({ success: false, message: "Service code is required." });
         }
 
-        // Query SMSBower API for pricing data
+        // Query SMSBower API for pricing data following their official documentation
         const response = await smsBowerClient.get('/stubs/handler_api.php', {
             params: { 
                 api_key: process.env.SMSBOWER_API_KEY,
@@ -3684,32 +3684,58 @@ async function handleGetCountries(req, res) {
                 const serviceData = countryServices[serviceCode] || countryServices[String(serviceCode).toLowerCase()];
                 if (!serviceData) return;
 
-                Object.keys(serviceData).forEach(tierKey => {
-                    const tierItem = serviceData[tierKey];
+                // Helper to process individual tiers or direct price entries safely
+                const processTier = (tierItem, tierKey = '') => {
+                    if (!tierItem) return;
                     
-                    if (tierItem && typeof tierItem === 'object') {
-                        const rankValue = String(tierItem.rank || tierItem.position || 'silver').toLowerCase();
-                        
-                        // STRICT REQUIREMENT: Only allow Silver and Bronze position ranks
-                        if (rankValue.includes('silver') || rankValue.includes('bronze')) {
-                            const rawCost = Number(tierItem.cost || tierItem.price || 0);
-                            const finalAmount = Number((rawCost * exchangeRateToNgn).toFixed(2));
-                            const normalizedRank = rankValue.includes('bronze') ? 'Bronze' : 'Silver';
+                    let itemObj = tierItem;
+                    if (typeof tierItem !== 'object') {
+                        itemObj = { cost: tierItem, rank: 'silver' };
+                    }
 
-                            formattedCountries.push({
-                                countryId: countryId,
-                                countryName: tierItem.countryName || tierItem.name || `Country ${countryId}`,
-                                stock: tierItem.count || tierItem.stock || 'In Stock',
-                                rank: normalizedRank, 
-                                price: {
-                                    amount: finalAmount > 0 ? finalAmount : 1650, 
-                                    currency: 'NGN',
-                                    symbol: '₦'
-                                }
-                            });
+                    const rankValue = String(itemObj.rank || itemObj.position || tierKey || 'silver').toLowerCase();
+                    const rawCost = Number(itemObj.cost || itemObj.price || itemObj.value || 0);
+                    
+                    if (rawCost <= 0) return;
+
+                    // STRICT REQUIREMENT: Only allow Silver and Bronze position ranks (or standard entries)
+                    const hasRankSpecified = itemObj.rank || itemObj.position;
+                    const isSilverOrBronze = !hasRankSpecified || rankValue.includes('silver') || rankValue.includes('bronze');
+
+                    if (isSilverOrBronze) {
+                        const finalAmount = Number((rawCost * exchangeRateToNgn).toFixed(2));
+                        const normalizedRank = rankValue.includes('bronze') ? 'Bronze' : 'Silver';
+
+                        const countryEntry = {
+                            countryId: String(countryId),
+                            countryName: itemObj.countryName || itemObj.name || `Country ${countryId}`,
+                            stock: itemObj.count || itemObj.stock || 'In Stock',
+                            rank: normalizedRank, 
+                            price: {
+                                amount: finalAmount > 0 ? finalAmount : 1650, 
+                                currency: 'NGN',
+                                symbol: '₦'
+                            }
+                        };
+
+                        // Avoid duplicates per country and pick the best price if multiple tiers exist
+                        const existingIndex = formattedCountries.findIndex(c => String(c.countryId) === String(countryId));
+                        if (existingIndex === -1) {
+                            formattedCountries.push(countryEntry);
+                        } else if (finalAmount < formattedCountries[existingIndex].price.amount) {
+                            formattedCountries[existingIndex] = countryEntry;
                         }
                     }
-                });
+                };
+
+                // Check if serviceData is a direct price object or contains nested tiers
+                if (serviceData.cost !== undefined || serviceData.price !== undefined || typeof serviceData !== 'object') {
+                    processTier(serviceData);
+                } else {
+                    Object.keys(serviceData).forEach(tierKey => {
+                        processTier(serviceData[tierKey], tierKey);
+                    });
+                }
             });
         }
 

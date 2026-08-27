@@ -3625,7 +3625,11 @@ async function handleProxyServiceImage(req, res) {
         return res.send(imageResponse.data);
 
     } catch (err) {
-        return res.status(404).send("Image not found");
+        // Gracefully return a 1x1 blank SVG instead of a 404 to keep the console clean.
+        // Your frontend image onerror fallback will automatically catch this and render text initials (WH, TE, etc.)
+        res.setHeader('Content-Type', 'image/svg+xml');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        return res.status(200).send('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>');
     }
 }
 

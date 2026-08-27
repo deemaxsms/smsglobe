@@ -3652,66 +3652,146 @@ async function handleProxyServiceImage(req, res) {
     }
 }
 
-async function handleGetCountries(serviceCode, isBackground = false) {
-    if (!serviceCode || serviceCode === 'undefined' || serviceCode === 'null') {
-        console.error("Skipped fetch: Invalid service code.");
-        return;
-    }
-
+async function handleGetCountries(req, res) {
     try {
-        const { data: result } = await safeFetch(`${API_BASE_URL}/countries?service=${encodeURIComponent(serviceCode)}`);
-        let list = [];
-        const data = result.countries || result.data || result;
+        const serviceCode = req.query.service || req.params.service;
+        res.setHeader('Content-Type', 'application/json');
 
-        if (Array.isArray(data)) {
-            list = data.map(item => ({
-                countryId: String(item.countryId || item.id),
-                countryName: item.countryName || item.name || `Country ${item.countryId || ''}`,
-                code: (item.code || item.countryId || '').toString().toLowerCase(),
-                stock: item.stock || item.count || 'In Stock',
-                rank: item.rank || 'Silver',
-                price: item.price || { amount: 1400, currency: 'NGN', symbol: '₦' }
-            }));
-        } else if (typeof data === 'object' && data !== null) {
-            list = Object.entries(data).map(([countryId, details]) => ({
-                countryId: String(countryId),
-                countryName: details.countryName || details.name || `Country ${countryId}`,
-                code: (details.code || countryId).toString().toLowerCase(),
-                stock: details.stock || details.count || 'In Stock',
-                rank: details.rank || 'Silver',
-                price: details.price || { amount: 1400, currency: 'NGN', symbol: '₦' }
-            }));
+        if (!serviceCode) {
+            return res.status(400).json({ success: false, message: "Service code is required." });
         }
 
-        // Filter for Silver/Bronze ranks
-        const filteredList = list.filter(c => {
-            const r = String(c.rank || 'silver').toLowerCase();
-            return r.includes('silver') || r.includes('bronze');
-        });
-
-        const rawListToProcess = filteredList.length > 0 ? filteredList : list;
-
-        // EXTRA SAFETY: Ensure unique countries by countryId, keeping the one with the lowest price amount
-        const lowestPriceMap = {};
-        rawListToProcess.forEach(item => {
-            const cId = item.countryId;
-            const currentAmount = item.price?.amount || item.price || 1400;
-
-            if (!lowestPriceMap[cId] || currentAmount < (lowestPriceMap[cId].price?.amount || 1400)) {
-                lowestPriceMap[cId] = item;
+        // 1. Fetch official country definitions dictionary directly from SMSBower API
+        const countriesMetaResponse = await smsBowerClient.get('', {
+            params: { 
+                api_key: process.env.SMSBOWER_API_KEY,
+                action: 'getCountries'
             }
         });
 
-        serviceCountriesCache[serviceCode] = Object.values(lowestPriceMap);
-    } catch (err) {
-        console.error("Failed to fetch countries for service:", err);
-        if (!isBackground) {
-            serviceCountriesCache[serviceCode] = [];
-        }
-    }
+        // 2. Fetch prices/inventory for the requested service
+        const pricesResponse = await smsBowerClient.get('', {
+            params: { 
+                api_key: process.env.SMSBOWER_API_KEY,
+                action: 'getPrices',
+                service: String(serviceCode).toLowerCase(),
+            }
+        });
 
-    if (!isBackground && expandedServiceCode === serviceCode) {
-        renderServiceAccordion(document.getElementById('serviceSearchInput')?.value || '');
+        const rawPrices = pricesResponse.data;
+        const rawCountriesMeta = countriesMetaResponse.data;
+
+        if (typeof rawPrices === 'string') {
+            return res.status(400).json({ success: false, message: `Vendor error: ${rawPrices}` });
+        }
+
+        // Build a dynamic country mapping dictionary straight from SMSBower's metadata response
+        let countryMetaMap = {};
+        const metaSource = rawCountriesMeta.countries || rawCountriesMeta.data || rawCountriesMeta;
+        
+        if (metaSource) {
+            const entries = Array.isArray(metaSource) ? metaSource.map((c, idx) => [c.id || idx, c]) : Object.entries(metaSource);
+            
+            entries.forEach(([id, cInfo]) => {
+                if (!cInfo) return;
+                const cName = cInfo.name || cInfo.countryName || cInfo.til || cInfo.eng;
+                const cCode = (cInfo.iso || cInfo.code || cInfo.eng || cInfo.short || id).toString().toLowerCase();
+                
+                countryMetaMap[String(id)] = {
+                    name: cName || `Country ${id}`,
+                    code: cCode
+                };
+            });
+        }
+
+        const exchangeRateToNgn = 1400; 
+        let formattedCountries = [];
+        const priceData = rawPrices.prices || rawPrices.data || rawPrices;
+
+        if (priceData && typeof priceData === 'object') {
+            Object.keys(priceData).forEach(countryId => {
+                const countryServices = priceData[countryId];
+                if (!countryServices || typeof countryServices !== 'object') return;
+
+                const serviceData = countryServices[serviceCode] || countryServices[String(serviceCode).toLowerCase()];
+                if (!serviceData) return;
+
+                // Helper to process individual price tiers or variants
+                const processTier = (tierItem, tierKey = '') => {
+                    if (!tierItem) return;
+                    
+                    let itemObj = tierItem;
+                    if (typeof tierItem !== 'object') {
+                        itemObj = { cost: tierItem, rank: tierKey || 'silver' };
+                    }
+
+                    const rankValue = String(itemObj.rank || itemObj.position || tierKey || '').toLowerCase();
+                    const rawCost = Number(itemObj.cost || itemObj.price || itemObj.value || 0);
+                    
+                    if (rawCost <= 0) return;
+
+                    // Allow Silver, Bronze, or unranked baseline prices to ensure we get competitive rates
+                    const isAllowedRank = !rankValue || 
+                                          rankValue.includes('silver') || 
+                                          rankValue.includes('bronze') || 
+                                          rankValue.includes('retail') ||
+                                          rankValue.includes('default');
+
+                    if (isAllowedRank) {
+                        const finalAmount = Number((rawCost * exchangeRateToNgn).toFixed(2));
+                        const normalizedRank = rankValue.includes('bronze') ? 'Bronze' : 'Silver';
+
+                        // Pull direct metadata from SMSBower's fetched country dictionary
+                        const vendorMeta = countryMetaMap[String(countryId)] || {};
+                        const resolvedName = itemObj.countryName || itemObj.name || vendorMeta.name || `Country ${countryId}`;
+                        const resolvedCode = vendorMeta.code || String(countryId).toLowerCase();
+
+                        const countryEntry = {
+                            countryId: String(countryId),
+                            countryName: resolvedName,
+                            code: resolvedCode, 
+                            stock: itemObj.count || itemObj.stock || 'In Stock',
+                            rank: normalizedRank, 
+                            price: {
+                                amount: finalAmount > 0 ? finalAmount : 1400, 
+                                currency: 'NGN',
+                                symbol: '₦'
+                            }
+                        };
+
+                        const existingIndex = formattedCountries.findIndex(c => String(c.countryId) === String(countryId));
+                        
+                        // Compare and keep ONLY the lowest price variant for this country
+                        if (existingIndex === -1) {
+                            formattedCountries.push(countryEntry);
+                        } else if (finalAmount < formattedCountries[existingIndex].price.amount) {
+                            formattedCountries[existingIndex] = countryEntry;
+                        }
+                    }
+                };
+
+                // Handle both direct pricing objects and multi-tier/multi-rank objects/arrays
+                if (Array.isArray(serviceData)) {
+                    serviceData.forEach((tier, idx) => processTier(tier, idx.toString()));
+                } else if (serviceData.cost !== undefined || serviceData.price !== undefined || typeof serviceData !== 'object') {
+                    processTier(serviceData);
+                } else {
+                    Object.keys(serviceData).forEach(tierKey => {
+                        processTier(serviceData[tierKey], tierKey);
+                    });
+                }
+            });
+        }
+
+        return res.status(200).json({ success: true, countries: formattedCountries });
+    } catch (err) {
+        console.error("Failed to fetch SMSBower countries from vendor:", err.response?.data || err.message);
+        res.setHeader('Content-Type', 'application/json');
+        return res.status(500).json({ 
+            success: false, 
+            message: "Failed to fetch country catalog from vendor.",
+            error: err.message 
+        });
     }
 }
 

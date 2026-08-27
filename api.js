@@ -3572,12 +3572,12 @@ async function handleGetServicesAndPrices(req, res) {
         const serviceItems = rawData.services || rawData.data || (Array.isArray(rawData) ? rawData : []);
 
 let servicesList = serviceItems.map(item => {
-    const serviceId = item.id || item.code || '';
     const code = (item.code || item.id || '').toLowerCase();
     const name = item.name || code.toUpperCase();
     
-    // Route the image through your own server proxy endpoint
-    const proxyImageUrl = serviceId ? `/api/service-image?id=${serviceId}` : '';
+    // Prioritize numeric ID for images if available, fallback to code
+    const imgIdentifier = item.id || item.code || '';
+    const proxyImageUrl = imgIdentifier ? `/api/service-image?id=${imgIdentifier}` : '';
 
     return {
         code: code,
@@ -3602,9 +3602,6 @@ return res.json({
     }
 }
 
-/**
- * Image Proxy Route: GET /api/service-image?id=271
- */
 async function handleProxyServiceImage(req, res) {
     try {
         const serviceId = req.query.id;
@@ -3612,7 +3609,6 @@ async function handleProxyServiceImage(req, res) {
             return res.status(400).send("Missing service ID");
         }
 
-        // Server-to-server request bypasses browser CORS and cookie restrictions
         const imageResponse = await axios.get(`https://smsbower.app/img/services/${serviceId}.svg`, {
             responseType: 'arraybuffer',
             headers: {
@@ -3621,15 +3617,12 @@ async function handleProxyServiceImage(req, res) {
         });
 
         res.setHeader('Content-Type', 'image/svg+xml');
-        res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+        res.setHeader('Cache-Control', 'public, max-age=86400');
         return res.send(imageResponse.data);
 
     } catch (err) {
-        // Gracefully return a 1x1 blank SVG instead of a 404 to keep the console clean.
-        // Your frontend image onerror fallback will automatically catch this and render text initials (WH, TE, etc.)
-        res.setHeader('Content-Type', 'image/svg+xml');
-        res.setHeader('Cache-Control', 'public, max-age=86400');
-        return res.status(200).send('<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>');
+        // Return 404 so the browser's onerror event triggers on the frontend
+        return res.status(404).send("Image not found");
     }
 }
 

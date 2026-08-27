@@ -3644,11 +3644,13 @@ async function handleProxyServiceImage(req, res) {
         return res.status(200).send(fallbackSvg);
     }
 }
-
 async function handleGetCountries(req, res) {
     try {
         const serviceCode = req.query.service || req.params.service;
         const targetRank = req.query.rank ? String(req.query.rank).toLowerCase() : null;
+
+        // Set header first before status or json
+        res.setHeader('Content-Type', 'application/json');
 
         if (!serviceCode) {
             return res.status(400).json({ success: false, message: "Service code is required." });
@@ -3662,6 +3664,15 @@ async function handleGetCountries(req, res) {
         });
 
         const rawData = response.data;
+
+        // If the vendor returns a string error instead of an object, catch it early
+        if (typeof rawData === 'string') {
+            return res.status(400).json({ 
+                success: false, 
+                message: `Vendor error: ${rawData}` 
+            });
+        }
+
         const markupPercent = 0; 
         const multiplier = 1 + (markupPercent / 100);
         const exchangeRateToNgn = 1650; 
@@ -3669,16 +3680,13 @@ async function handleGetCountries(req, res) {
         let formattedCountries = [];
 
         if (rawData && typeof rawData === 'object') {
-            // Traverse country-first structure: { countryId: { serviceCode: { cost, count, ... } } }
             Object.keys(rawData).forEach(countryId => {
                 const countryServices = rawData[countryId];
                 if (!countryServices || typeof countryServices !== 'object') return;
 
-                // Find pricing for our specific service code inside this country
                 const serviceData = countryServices[serviceCode] || countryServices[String(serviceCode).toLowerCase()];
                 if (!serviceData) return;
 
-                // serviceData can be an object containing tiers or a direct pricing object
                 const tierKeys = Object.keys(serviceData);
                 if (tierKeys.length === 0) return;
 
@@ -3713,10 +3721,17 @@ async function handleGetCountries(req, res) {
             });
         }
 
-        return res.json({ success: true, countries: formattedCountries });
+        return res.status(200).json({ success: true, countries: formattedCountries });
     } catch (err) {
-        console.error("Failed to fetch SMSBower countries:", err.message);
-        return res.status(500).json({ success: false, message: "Failed to fetch country catalog." });
+        console.error("Failed to fetch SMSBower countries:", err.response?.data || err.message);
+        
+        // Ensure header is set for error responses too on Vercel
+        res.setHeader('Content-Type', 'application/json');
+        return res.status(500).json({ 
+            success: false, 
+            message: "Failed to fetch country catalog.",
+            error: err.message 
+        });
     }
 }
 

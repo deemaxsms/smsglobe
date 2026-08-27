@@ -3653,14 +3653,13 @@ async function handleGetCountries(req, res) {
             return res.status(400).json({ success: false, message: "Service code is required." });
         }
 
-        // Query SMSBower API for pricing data following their official documentation
-        const response = await smsBowerClient.get('/stubs/handler_api.php', {
-            params: { 
-                api_key: process.env.SMSBOWER_API_KEY,
-                action: 'getPrices',
-                service: String(serviceCode).toLowerCase(),
-            }
-        });
+        const response = await smsBowerClient.get('', {
+    params: { 
+        api_key: process.env.SMSBOWER_API_KEY,
+        action: 'getPrices',
+        service: String(serviceCode).toLowerCase(),
+    }
+});
 
         const rawData = response.data;
 

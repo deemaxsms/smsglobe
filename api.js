@@ -3565,25 +3565,26 @@ async function handleGetServicesAndPrices(req, res) {
             return res.status(400).json({ success: false, message: `Vendor error: ${rawData}` });
         }
 
-        // Extract the service items array from SMSBower's response
         const serviceItems = rawData.services || rawData.data || (Array.isArray(rawData) ? rawData : []);
+        
+let servicesList = serviceItems.map(item => {
+    const serviceId = item.id || item.code || '';
+    const code = (item.code || item.id || '').toLowerCase();
+    const name = item.name || code.toUpperCase();
+    
+    return {
+        code: code,
+        name: name,
+        // Use the exact domain pattern from your network logs
+        image: item.image || item.icon || (serviceId ? `https://smsbower.app/img/services/${serviceId}.svg` : ''),
+        countries: {} 
+    };
+});
 
-        let servicesList = serviceItems.map(item => {
-            const code = (item.code || item.id || '').toLowerCase();
-            const name = item.name || code.toUpperCase();
-            
-            return {
-                code: code,
-                name: name,
-                image: item.image || item.icon || `https://smsbower.app/img/services/${code}.svg`,
-                countries: {} 
-            };
-        });
-
-        return res.json({ 
-            success: true, 
-            services: servicesList 
-        });
+return res.json({ 
+    success: true, 
+    services: servicesList 
+});
 
     } catch (err) {
         console.error("Failed to fetch SMSBower services:", err.response?.data || err.message);

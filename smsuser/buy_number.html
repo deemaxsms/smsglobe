@@ -382,27 +382,27 @@
                 const isExpanded = expandedServiceCode === s.code;
                 const countries = serviceCountriesCache[s.code] || [];
                 
-                // Pull the image/icon property sent from the backend
-                const serviceImgUrl = s.image || s.icon || s.logo || s.img || '';
-                const fallbackInitials = (s.name || s.code).substring(0, 2);
+              const serviceImgUrl = s.image || s.icon || s.logo || s.img || '';
+const fallbackInitials = (s.name || s.code).substring(0, 2);
 
-                return `
-                    <div class="bg-white border border-brand-border rounded-2xl overflow-hidden transition-all shadow-sm">
-                        <div onclick="SMSGlobeApp.toggleServiceAccordion('${s.code}')" class="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-brand-background/50 transition-colors">
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-xl bg-brand-blue/10 text-brand-blue font-bold flex items-center justify-center text-xs uppercase overflow-hidden">
-                                    ${serviceImgUrl ? `<img src="${serviceImgUrl}" alt="${s.name || s.code}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='${fallbackInitials}'">` : fallbackInitials}
-                                </div>
-                                <div>
-                                    <span class="text-xs font-bold text-brand-darkText block">${s.name || s.code}</span>
-                                    <span class="text-[9px] text-brand-lightText uppercase">Code: ${s.code}</span>
-                                </div>
-                            </div>
-                            <button class="text-xs font-bold text-brand-midText flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border bg-white">
-                                ${isExpanded ? 'Collapse' : 'Select Country'}
-                                <svg class="w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                            </button>
-                        </div>
+return `
+    <div class="bg-white border border-brand-border rounded-2xl overflow-hidden transition-all shadow-sm">
+        <div onclick="SMSGlobeApp.toggleServiceAccordion('${s.code}')" class="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-brand-background/50 transition-colors">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-brand-blue/10 text-brand-blue font-bold flex items-center justify-center text-xs uppercase overflow-hidden">
+                    ${serviceImgUrl ? `<img src="${serviceImgUrl}" alt="${s.name || s.code}" class="w-full h-full object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : ''}
+                    <span style="display: ${serviceImgUrl ? 'none' : 'flex'};" class="items-center justify-center w-full h-full">${fallbackInitials}</span>
+                </div>
+                <div>
+                    <span class="text-xs font-bold text-brand-darkText block">${s.name || s.code}</span>
+                    <span class="text-[9px] text-brand-lightText uppercase">Code: ${s.code}</span>
+                </div>
+            </div>
+            <button class="text-xs font-bold text-brand-midText flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border bg-white">
+                ${isExpanded ? 'Collapse' : 'Select Country'}
+                <svg class="w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+        </div>
 
                         ${isExpanded ? `
                             <div class="border-t border-brand-border bg-brand-background/30 p-4 space-y-3">

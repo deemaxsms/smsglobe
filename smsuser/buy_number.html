@@ -519,7 +519,7 @@ return `
             }
 
             try {
-                const { data: result } = await safeFetch(`${API_BASE_URL}/smsbower/countries?service=${encodeURIComponent(serviceCode)}`);
+                const { data: result } = await safeFetch(`${API_BASE_URL}/countries?service=${encodeURIComponent(serviceCode)}`);
                 let list = [];
                 const data = result.countries || result.data || result;
 

@@ -3644,28 +3644,29 @@ async function handleProxyServiceImage(req, res) {
         return res.status(200).send(fallbackSvg);
     }
 }
+
 async function handleGetCountries(req, res) {
     try {
         const serviceCode = req.query.service || req.params.service;
         const targetRank = req.query.rank ? String(req.query.rank).toLowerCase() : null;
 
-        // Set header first before status or json
         res.setHeader('Content-Type', 'application/json');
 
         if (!serviceCode) {
             return res.status(400).json({ success: false, message: "Service code is required." });
         }
 
-        const response = await smsBowerClient.get('', {
+        // Match official SMSBower API documentation endpoint action: 'getCountries' or 'getPrices'
+        const response = await smsBowerClient.get('/stubs/handler_api.php', {
             params: { 
-                action: 'getPrices',
+                api_key: process.env.SMSBOWER_API_KEY,
+                action: 'getPrices', // or 'getCountries' based on exact requirements
                 service: String(serviceCode).toLowerCase(),
             }
         });
 
         const rawData = response.data;
 
-        // If the vendor returns a string error instead of an object, catch it early
         if (typeof rawData === 'string') {
             return res.status(400).json({ 
                 success: false, 
@@ -3673,49 +3674,37 @@ async function handleGetCountries(req, res) {
             });
         }
 
-        const markupPercent = 0; 
-        const multiplier = 1 + (markupPercent / 100);
         const exchangeRateToNgn = 1650; 
-
         let formattedCountries = [];
 
-        if (rawData && typeof rawData === 'object') {
-            Object.keys(rawData).forEach(countryId => {
-                const countryServices = rawData[countryId];
+        // SMSBower price response structure usually nests under response.data.prices or directly keyed by country/service
+        const priceData = rawData.prices || rawData.data || rawData;
+
+        if (priceData && typeof priceData === 'object') {
+            Object.keys(priceData).forEach(countryId => {
+                const countryServices = priceData[countryId];
                 if (!countryServices || typeof countryServices !== 'object') return;
 
                 const serviceData = countryServices[serviceCode] || countryServices[String(serviceCode).toLowerCase()];
                 if (!serviceData) return;
 
-                const tierKeys = Object.keys(serviceData);
-                if (tierKeys.length === 0) return;
-
-                tierKeys.forEach(tierKey => {
+                Object.keys(serviceData).forEach(tierKey => {
                     const tierItem = serviceData[tierKey];
                     
-                    if (tierItem && typeof tierItem === 'object' && (tierItem.cost || tierItem.price || tierItem.count)) {
-                        let currentRank = String(tierItem.rank || tierKey).toLowerCase();
+                    if (tierItem && typeof tierItem === 'object') {
+                        const rawCost = Number(tierItem.cost || tierItem.price || 0);
+                        const finalAmount = Number((rawCost * exchangeRateToNgn).toFixed(2));
 
-                        const isSilverOrBronze = currentRank.includes('silver') || currentRank.includes('bronze') || tierKey === 'silver' || tierKey === 'bronze' || !tierItem.rank;
-
-                        if (isSilverOrBronze) {
-                            if (!targetRank || currentRank.includes(targetRank)) {
-                                const rawCost = Number(tierItem.cost || tierItem.price || 0);
-                                const finalAmount = Number((rawCost * exchangeRateToNgn * multiplier).toFixed(2));
-
-                                formattedCountries.push({
-                                    countryId: countryId,
-                                    countryName: tierItem.countryName || tierItem.name || `Country ${countryId}`,
-                                    stock: tierItem.count || tierItem.stock || 'In Stock',
-                                    rank: currentRank.includes('silver') ? 'Silver' : (currentRank.includes('bronze') ? 'Bronze' : 'Standard'),
-                                    price: {
-                                        amount: finalAmount > 0 ? finalAmount : 1650, 
-                                        currency: 'NGN',
-                                        symbol: '₦'
-                                    }
-                                });
+                        formattedCountries.push({
+                            countryId: countryId,
+                            countryName: tierItem.countryName || tierItem.name || `Country ${countryId}`,
+                            stock: tierItem.count || tierItem.stock || 'In Stock',
+                            price: {
+                                amount: finalAmount > 0 ? finalAmount : 1650, 
+                                currency: 'NGN',
+                                symbol: '₦'
                             }
-                        }
+                        });
                     }
                 });
             });
@@ -3724,8 +3713,6 @@ async function handleGetCountries(req, res) {
         return res.status(200).json({ success: true, countries: formattedCountries });
     } catch (err) {
         console.error("Failed to fetch SMSBower countries:", err.response?.data || err.message);
-        
-        // Ensure header is set for error responses too on Vercel
         res.setHeader('Content-Type', 'application/json');
         return res.status(500).json({ 
             success: false, 
@@ -3734,7 +3721,6 @@ async function handleGetCountries(req, res) {
         });
     }
 }
-
 
 /**
  * 3. CHECK ORDER STATUS / SMS CODE POLLING

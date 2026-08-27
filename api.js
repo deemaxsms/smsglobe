@@ -3575,8 +3575,9 @@ let servicesList = serviceItems.map(item => {
     const code = (item.code || item.id || '').toLowerCase();
     const name = item.name || code.toUpperCase();
     
-    // Prioritize numeric ID for images if available, fallback to code
-    const imgIdentifier = item.id || item.code || '';
+    // Explicitly check for numeric/alternative image identifiers returned by SMSBower
+    // Adjust 'service_id' or 'imgId' based on what SMSBower's raw object actually returns
+    const imgIdentifier = item.service_id || (typeof item.id === 'number' ? item.id : '') || item.code || '';
     const proxyImageUrl = imgIdentifier ? `/api/service-image?id=${imgIdentifier}` : '';
 
     return {

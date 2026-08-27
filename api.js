@@ -591,7 +591,6 @@ app.all('/api/:action', async (req, res) => {
         if (req.method === 'GET') return handleGetCountries(req, res);
         break;
     case 'get-numbers': return handleGetNumbers(req, res);
-    case 'get-countries': return handleGetCountries(req, res);
      case 'get-stock':  return handleGetStock(req, res);
      case 'sms-receive':  return handleSmsReceive(req, res);
 case 'change-passwords': 
@@ -3648,19 +3647,17 @@ async function handleProxyServiceImage(req, res) {
 async function handleGetCountries(req, res) {
     try {
         const serviceCode = req.query.service || req.params.service;
-        const targetRank = req.query.rank ? String(req.query.rank).toLowerCase() : null;
-
         res.setHeader('Content-Type', 'application/json');
 
         if (!serviceCode) {
             return res.status(400).json({ success: false, message: "Service code is required." });
         }
 
-        // Match official SMSBower API documentation endpoint action: 'getCountries' or 'getPrices'
+        // Query SMSBower API for pricing data
         const response = await smsBowerClient.get('/stubs/handler_api.php', {
             params: { 
                 api_key: process.env.SMSBOWER_API_KEY,
-                action: 'getPrices', // or 'getCountries' based on exact requirements
+                action: 'getPrices',
                 service: String(serviceCode).toLowerCase(),
             }
         });
@@ -3677,7 +3674,6 @@ async function handleGetCountries(req, res) {
         const exchangeRateToNgn = 1650; 
         let formattedCountries = [];
 
-        // SMSBower price response structure usually nests under response.data.prices or directly keyed by country/service
         const priceData = rawData.prices || rawData.data || rawData;
 
         if (priceData && typeof priceData === 'object') {
@@ -3692,19 +3688,26 @@ async function handleGetCountries(req, res) {
                     const tierItem = serviceData[tierKey];
                     
                     if (tierItem && typeof tierItem === 'object') {
-                        const rawCost = Number(tierItem.cost || tierItem.price || 0);
-                        const finalAmount = Number((rawCost * exchangeRateToNgn).toFixed(2));
+                        const rankValue = String(tierItem.rank || tierItem.position || 'silver').toLowerCase();
+                        
+                        // STRICT REQUIREMENT: Only allow Silver and Bronze position ranks
+                        if (rankValue.includes('silver') || rankValue.includes('bronze')) {
+                            const rawCost = Number(tierItem.cost || tierItem.price || 0);
+                            const finalAmount = Number((rawCost * exchangeRateToNgn).toFixed(2));
+                            const normalizedRank = rankValue.includes('bronze') ? 'Bronze' : 'Silver';
 
-                        formattedCountries.push({
-                            countryId: countryId,
-                            countryName: tierItem.countryName || tierItem.name || `Country ${countryId}`,
-                            stock: tierItem.count || tierItem.stock || 'In Stock',
-                            price: {
-                                amount: finalAmount > 0 ? finalAmount : 1650, 
-                                currency: 'NGN',
-                                symbol: '₦'
-                            }
-                        });
+                            formattedCountries.push({
+                                countryId: countryId,
+                                countryName: tierItem.countryName || tierItem.name || `Country ${countryId}`,
+                                stock: tierItem.count || tierItem.stock || 'In Stock',
+                                rank: normalizedRank, 
+                                price: {
+                                    amount: finalAmount > 0 ? finalAmount : 1650, 
+                                    currency: 'NGN',
+                                    symbol: '₦'
+                                }
+                            });
+                        }
                     }
                 });
             });

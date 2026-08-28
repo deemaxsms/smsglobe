@@ -438,10 +438,7 @@
             const usdToNgnRate = 1400; 
 
             return countriesList.map(c => {
-                // c.availablePrices contains all options/tiers retrieved from the backend API for this country
                 const options = c.availablePrices || [{ amount: c.priceAmount, rank: c.rank, stock: c.stock }];
-                
-                // Determine currently selected index or default to lowest price item index (0)
                 const selectedIdx = c.selectedPriceIndex || 0;
                 const activeTier = options[selectedIdx] || options[0];
 
@@ -458,6 +455,7 @@
 
                 return `
                     <div class="bg-white border border-brand-border p-3 rounded-xl flex items-center justify-between hover:border-brand-blue/50 transition-all">
+                        <!-- Left Side: Flag & Name -->
                         <div class="flex items-center gap-3">
                             <img src="https://flagcdn.com/w40/${flagCode}.png" class="w-6 h-auto rounded-sm border border-gray-200" onerror="this.style.display='none'">
                             <div>
@@ -468,6 +466,21 @@
                                 <span class="text-[9px] text-green-600 font-bold uppercase">● Stock: ${stockStatus}</span>
                             </div>
                         </div>
+
+                        <!-- Middle Space: Added Shuffle / Alternate Tier Button -->
+                        <div class="flex items-center">
+                            ${options.length > 1 ? `
+                                <button onclick="SMSGlobeApp.shuffleCountryPriceTier('${serviceCode}', '${countryId}', this)" 
+                                        title="Shuffle / Cycle alternative price tier"
+                                        class="p-2 text-gray-400 hover:text-brand-blue bg-gray-50 hover:bg-brand-blue/10 rounded-lg transition-all border border-gray-200 flex items-center justify-center">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                </button>
+                            ` : ''}
+                        </div>
+
+                        <!-- Right Side: Price & Action -->
                         <div class="flex items-center gap-3">
                             <div class="flex flex-col items-end">
                                 <span class="text-xs font-black text-brand-blue">₦${formattedPriceString}</span>
@@ -521,7 +534,6 @@
 
                 list = parseItems(data);
 
-                // Group all inventory records by countryId to gather all price tiers/options per country
                 const countryMap = {};
                 list.forEach(item => {
                     const cId = String(item.countryId || item.id || item.code || '');
@@ -547,13 +559,20 @@
                     });
                 });
 
-                // Post-process each country: sort available price options ascending to ensure the lowest price is first, and select index 0 by default
+                // Post-process countries: sort options ascending so index 0 is always the absolute lowest price
                 const processedCountries = Object.values(countryMap).map(country => {
                     country.availablePrices.sort((a, b) => a.amount - b.amount);
                     return {
                         ...country,
-                        selectedPriceIndex: 0 // Default to the absolute lowest price option
+                        selectedPriceIndex: 0 
                     };
+                });
+
+                // SORT ENTIRE COUNTRIES LIST BY LOWEST PRICE ASCENDING (Lowest price starting from bottom up / top)
+                processedCountries.sort((a, b) => {
+                    const lowestA = a.availablePrices[0]?.amount || 0;
+                    const lowestB = b.availablePrices[0]?.amount || 0;
+                    return lowestA - lowestB;
                 });
 
                 serviceCountriesCache[serviceCode] = processedCountries;
@@ -582,6 +601,32 @@
                     listContainer.innerHTML = renderCountriesListHtml(serviceCode, countries.filter(c => (c.countryName || '').toLowerCase().includes(query.toLowerCase())));
                 }
             }
+        }
+
+        // Shuffle action button helper to cycle through available price tiers for a specific country
+        function shuffleCountryPriceTier(serviceCode, countryId, buttonElement) {
+            const countries = serviceCountriesCache[serviceCode];
+            if (!countries) return;
+
+            const country = countries.find(c => String(c.countryId) === String(countryId));
+            if (!country || !country.availablePrices || country.availablePrices.length <= 1) return;
+
+            // Visual spin feedback
+            const svgIcon = buttonElement.querySelector('svg');
+            if (svgIcon) svgIcon.classList.add('animate-spin');
+
+            setTimeout(() => {
+                if (svgIcon) svgIcon.classList.remove('animate-spin');
+                
+                // Cycle to next price tier index
+                country.selectedPriceIndex = (country.selectedPriceIndex + 1) % country.availablePrices.length;
+                
+                const query = document.getElementById('serviceSearchInput')?.value || '';
+                const listContainer = document.getElementById(`countriesList_${serviceCode}`);
+                if (listContainer) {
+                    listContainer.innerHTML = renderCountriesListHtml(serviceCode, countries.filter(c => (c.countryName || '').toLowerCase().includes(query.toLowerCase())));
+                }
+            }, 300);
         }
 
         function filterCountriesForService(serviceCode, query) {
@@ -746,6 +791,7 @@
             toggleServiceAccordion,
             fetchCountriesForService,
             switchCountryPriceTier,
+            shuffleCountryPriceTier,
             filterCountriesForService,
             buyServiceCountry,
             copyNumber,

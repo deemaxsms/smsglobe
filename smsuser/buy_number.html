@@ -417,7 +417,7 @@
             }).join('');
         }
 
-        function renderCountriesListHtml(serviceCode, countriesList) {
+      function renderCountriesListHtml(serviceCode, countriesList) {
             if (!countriesList || countriesList.length === 0) {
                 return `
                     <div class="flex flex-col items-center justify-center py-6 bg-white rounded-xl border border-brand-border">
@@ -434,16 +434,15 @@
                     multiplier = parseFloat(select.options[select.selectedIndex]?.getAttribute('data-multi')) || 1;
                 }
             }
-            
-            const usdToNgnRate = 1400; 
 
             return countriesList.map(c => {
-                const options = c.availablePrices || [{ amount: c.priceAmount, rank: c.rank, stock: c.stock }];
+                // c.availablePrices now contains the pre-converted NGN amounts from the backend
+                const options = c.availablePrices || [{ amount: c.priceAmount, rank: c.rank, stock: c.stock, providerId: c.providerId }];
                 const selectedIdx = c.selectedPriceIndex || 0;
                 const activeTier = options[selectedIdx] || options[0];
 
-                let baseRate = activeTier.amount < 100 ? activeTier.amount * usdToNgnRate : activeTier.amount;
-                const finalDisplayPrice = Number(baseRate) * multiplier;
+                // Since backend already converts USD to NGN (1400 rate), we use activeTier.amount directly multiplied by rent multiplier if applicable
+                const finalDisplayPrice = Number(activeTier.amount || 0) * multiplier;
                 const formattedPriceString = finalDisplayPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
                 const stockStatus = activeTier.stock || c.stock || 'In Stock';
@@ -451,6 +450,7 @@
                 const flagCode = countryId.toString().toLowerCase();
                 const countryName = c.countryName;
                 const rankLabel = activeTier.rank || 'Silver';
+                const providerId = activeTier.providerId || c.providerId || '';
                 const rankBadgeClass = rankLabel.toLowerCase().includes('silver') ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-amber-50 text-amber-700 border-amber-200';
 
                 return `
@@ -467,7 +467,7 @@
                             </div>
                         </div>
 
-                        <!-- Middle Space: Added Shuffle / Alternate Tier Button -->
+                        <!-- Middle Space: Shuffle / Alternate Tier Button -->
                         <div class="flex items-center">
                             ${options.length > 1 ? `
                                 <button onclick="SMSGlobeApp.shuffleCountryPriceTier('${serviceCode}', '${countryId}', this)" 
@@ -488,13 +488,14 @@
                                     <select onchange="SMSGlobeApp.switchCountryPriceTier('${serviceCode}', '${countryId}', this.value)" class="text-[9px] text-gray-500 bg-gray-50 border border-gray-200 rounded px-1 py-0.5 mt-0.5 focus:outline-none">
                                         ${options.map((opt, idx) => `
                                             <option value="${idx}" ${idx === selectedIdx ? 'selected' : ''}>
-                                                ${opt.rank || 'Tier'} - ₦${((opt.amount < 100 ? opt.amount * usdToNgnRate : opt.amount) * multiplier).toLocaleString()} (${opt.stock || 'In Stock'})
+                                                ${opt.rank || 'Tier'} - ₦${(Number(opt.amount) * multiplier).toLocaleString()} (${opt.stock || 'In Stock'})
                                             </option>
                                         `).join('')}
                                     </select>
                                 ` : ''}
                             </div>
-                            <button onclick="SMSGlobeApp.buyServiceCountry('${serviceCode}', '${countryId}', ${finalDisplayPrice}, '${rankLabel}')" 
+                            <!-- Pass providerId safely into the purchase call -->
+                            <button onclick="SMSGlobeApp.buyServiceCountry('${serviceCode}', '${countryId}', ${finalDisplayPrice}, '${rankLabel}', '${providerId}')" 
                                     class="px-4 py-2 bg-brand-blue text-white rounded-lg text-xs font-bold hover:bg-brand-blue/90 active:scale-95 transition-all">
                                 Buy Number
                             </button>
@@ -638,7 +639,7 @@
             }
         }
 
-        async function buyServiceCountry(serviceCode, countryId, price, rank) {
+      async function buyServiceCountry(serviceCode, countryId, price, rank, providerId = '') {
             const token = localStorage.getItem('userToken');
             if (!token) {
                 Swal.fire({ title: 'Login Required', icon: 'warning', text: 'Please log in to purchase numbers.' });
@@ -668,6 +669,7 @@
             const payload = {
                 serviceCode: serviceCode,
                 countryId: countryId,
+                providerId: providerId, // Crucial for routing purchase to the correct low-cost provider
                 planAmount: price,
                 rank: (rank || 'silver').toLowerCase(),
                 metadata: {
@@ -709,7 +711,7 @@
                 Swal.fire('Network Error', 'Check your connection and try again.', 'error');
             }
         }
-
+        
         function copyNumber() {
             const num = document.getElementById('displayPurchasedNumber')?.innerText || '';
             navigator.clipboard.writeText(num);

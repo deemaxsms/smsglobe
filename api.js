@@ -3694,10 +3694,10 @@ async function handleGetCountries(req, res) {
             }
         });
 
-        // 2. Fetch prices/inventory using getPricesV3 for multi-provider / multi-tier pricing support
+        // 2. Fetch prices/inventory using getPricesV3 for multi-provider support
         const pricesResponse = await smsBowerClient.get('', {
             params: { 
-                api_key: process.env.SMSBOWER_API_KEY,
+                api_key: process.env.SMSBower_API_KEY || process.env.SMSBOWER_API_KEY,
                 action: 'getPricesV3',
                 service: String(serviceCode).toLowerCase(),
             }
@@ -3710,7 +3710,7 @@ async function handleGetCountries(req, res) {
             return res.status(400).json({ success: false, message: `Vendor error: ${rawPrices}` });
         }
 
-        // Build a dynamic country mapping dictionary straight from SMSBower's metadata response
+        // Build dynamic country mapping dictionary
         let countryMetaMap = {};
         const metaSource = rawCountriesMeta.countries || rawCountriesMeta.data || rawCountriesMeta;
         
@@ -3744,23 +3744,24 @@ async function handleGetCountries(req, res) {
                 let lowestVariant = null;
                 let lowestAmount = Infinity;
 
-                // Iterate through all provider IDs / price tiers in getPricesV3
+                // Iterate through ALL provider IDs / price tiers to find the absolute cheapest USD rate
                 Object.keys(serviceData).forEach(providerKey => {
                     const tierItem = serviceData[providerKey];
                     if (!tierItem || typeof tierItem !== 'object') return;
 
-                    const rawCost = Number(tierItem.price || tierItem.cost || tierItem.value || 0);
-                    if (rawCost <= 0) return;
+                    const rawCostUsd = Number(tierItem.price || tierItem.cost || tierItem.value || 0);
+                    if (rawCostUsd <= 0) return;
 
-                    const finalAmount = Number((rawCost * exchangeRateToNgn).toFixed(2));
+                    // Convert SMSBower USD price directly into NGN using your 1400 conversion rate
+                    const finalAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
                     
-                    // Compare and track only the lowest priced provider ID/tier
-                    if (finalAmount < lowestAmount) {
-                        lowestAmount = finalAmount;
+                    // Track only the lowest priced provider ID/tier based on the resulting NGN amount
+                    if (finalAmountNgn < lowestAmount) {
+                        lowestAmount = finalAmountNgn;
                         lowestVariant = {
                             providerId: String(tierItem.provider_id || providerKey),
                             count: tierItem.count || tierItem.stock || 'In Stock',
-                            amount: finalAmount
+                            amount: finalAmountNgn
                         };
                     }
                 });
@@ -3772,11 +3773,11 @@ async function handleGetCountries(req, res) {
 
                     const countryEntry = {
                         countryId: String(countryId),
-                        providerId: lowestVariant.providerId, // Passes the exact low-price provider ID for ordering
+                        providerId: lowestVariant.providerId, // Locks in the correct low-price provider ID
                         countryName: resolvedName,
                         code: resolvedCode, 
                         stock: lowestVariant.count,
-                        rank: 'lowest Price', 
+                        rank: 'Lowest Price', 
                         price: {
                             amount: lowestVariant.amount,
                             currency: 'NGN',
@@ -3800,7 +3801,6 @@ async function handleGetCountries(req, res) {
         });
     }
 }
-
 /**
  * 3. CHECK ORDER STATUS / SMS CODE POLLING
  */

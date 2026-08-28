@@ -3553,54 +3553,43 @@ async function handlePurchaseNumber(req, res) {
     }
 }
 /**
- * 2. FETCH SERVICES (Corrected with action: 'getServicesList')
+ * 2. FETCH SERVICES FROM SMSGLOBE.NET
  */
 async function handleGetServicesAndPrices(req, res) {
     try {
-        if (!process.env.SMSBOWER_API_KEY) {
-            console.error("SMSBOWER_API_KEY is missing in your environment configuration.");
+        if (!process.env.SMSGLOBE_API_KEY) {
+            console.error("SMSGLOBE_API_KEY is missing in your environment configuration.");
             return res.status(500).json({ success: false, message: "Vendor configuration error." });
         }
 
-        // Use the official SMSBower action 'getServicesList'
-        const response = await smsBowerClient.get('', {
+        // Call SMSGlobe.net API endpoint
+        const response = await smsglobeClient.get('', {
             params: { 
                 action: 'getServicesList', 
-                api_key: process.env.SMSBOWER_API_KEY 
+                api_key: process.env.SMSGLOBE_API_KEY 
             }
         });
 
         const rawData = response.data;
 
         if (typeof rawData === 'string') {
-            console.error("SMSBower returned string error:", rawData);
+            console.error("SMSGlobe returned string error:", rawData);
             return res.status(400).json({ success: false, message: `Vendor error: ${rawData}` });
         }
 
         const serviceItems = rawData.services || rawData.data || (Array.isArray(rawData) ? rawData : []);
 
         let servicesList = serviceItems.map(item => {
-            const code = (item.code || item.short || item.id || '').toLowerCase();
+            const code = (item.code || item.id || item.short || '').toLowerCase();
             const name = item.name || code.toUpperCase();
             
-            // Generate clean initials for the SVG badge (e.g. WH, TE, FB)
-            const initials = (name.substring(0, 2) || code.substring(0, 2) || 'SG').toUpperCase();
-            
-            // Assign a deterministic nice background color based on the service code string
-            const bgColors = ['#4f46e5', '#3b82f6', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6366f1'];
-            const colorIndex = code.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % bgColors.length;
-            const bgColor = bgColors[colorIndex];
-
-            // Build a self-contained inline SVG string
-            const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" rx="8" fill="${bgColor}"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="14" font-weight="600">${initials}</text></svg>`;
-            
-            // Convert to a base64 Data URI so it renders instantly as an image in the frontend <img> tag
-            const dataUriImage = `data:image/svg+xml;base64,${Buffer.from(svgString).toString('base64')}`;
+            // Point the image field directly to your backend service-image proxy route
+            const dynamicImageUrl = `/api/service-image?id=${encodeURIComponent(code)}`;
 
             return {
                 code: code,
                 name: name,
-                image: dataUriImage, // Self-contained inline graphic, no external calls required!
+                image: dynamicImageUrl, 
                 countries: {} 
             };
         });
@@ -3611,7 +3600,7 @@ async function handleGetServicesAndPrices(req, res) {
         });
 
     } catch (err) {
-        console.error("Failed to fetch SMSBower services:", err.response?.data || err.message);
+        console.error("Failed to fetch SMSGlobe services:", err.response?.data || err.message);
         return res.status(500).json({ 
             success: false, 
             message: "Failed to fetch services catalog from vendor.",
@@ -3619,7 +3608,6 @@ async function handleGetServicesAndPrices(req, res) {
         });
     }
 }
-
 async function handleProxyServiceImage(req, res) {
     try {
         const serviceId = req.query.id;
@@ -3632,16 +3620,12 @@ async function handleProxyServiceImage(req, res) {
         let imageResponse = null;
         let successfulExt = 'svg';
 
-        // Try multiple file extensions on SMSBower's actual app domain
         for (const ext of extensions) {
             try {
-                const targetUrl = `https://smsbower.app/img/services/${cleanId}.${ext}`;
+                // Update domain to smsglobe.net asset path if applicable
+                const targetUrl = `https://smsglobe.net/img/services/${cleanId}.${ext}`;
                 imageResponse = await axios.get(targetUrl, {
                     responseType: 'arraybuffer',
-                    headers: {
-                        'Referer': 'https://smsbower.app/',
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-                    },
                     timeout: 5000
                 });
 
@@ -3650,21 +3634,17 @@ async function handleProxyServiceImage(req, res) {
                     break;
                 }
             } catch (e) {
-                // Continue trying next extension
+                // Try next extension
             }
         }
 
         if (!imageResponse || imageResponse.status !== 200) {
-            // STRICT: NO FALLBACK IMAGE. Return 404 so the browser/frontend knows it doesn't exist.
             return res.status(404).send(`Image for '${cleanId}' not found on vendor.`);
         }
 
-        // Determine correct Content-Type header
         let contentType = imageResponse.headers['content-type'];
         if (!contentType || contentType.includes('text/html')) {
-            if (successfulExt === 'svg') contentType = 'image/svg+xml';
-            else if (successfulExt === 'jpg' || successfulExt === 'jpeg') contentType = 'image/jpeg';
-            else contentType = 'image/png';
+            contentType = successfulExt === 'svg' ? 'image/svg+xml' : 'image/png';
         }
 
         res.setHeader('Content-Type', contentType);
@@ -3672,10 +3652,10 @@ async function handleProxyServiceImage(req, res) {
         return res.status(200).send(Buffer.from(imageResponse.data));
 
     } catch (err) {
-        console.error("Failed to fetch actual service image:", err.message);
         return res.status(500).send("Error proxying service image.");
     }
 }
+
 
 async function handleGetCountries(req, res) {
     try {
@@ -3777,7 +3757,7 @@ async function handleGetCountries(req, res) {
                         countryName: resolvedName,
                         code: resolvedCode, 
                         stock: lowestVariant.count,
-                        rank: 'Lowest Price', 
+                        rank: 'Best Price', 
                         price: {
                             amount: lowestVariant.amount,
                             currency: 'NGN',

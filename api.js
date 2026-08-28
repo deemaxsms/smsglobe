@@ -3661,7 +3661,15 @@ async function handleGetCountries(req, res) {
             return res.status(400).json({ success: false, message: "Service code is required." });
         }
 
-        // Fetch prices/inventory for the requested service using SMSBower's correct actions
+        // 1. Fetch official country definitions dictionary directly from SMSBower API
+        const countriesMetaResponse = await smsBowerClient.get('', {
+            params: { 
+                api_key: process.env.SMSBOWER_API_KEY,
+                action: 'getCountries'
+            }
+        });
+
+        // 2. Fetch prices/inventory for the requested service
         const pricesResponse = await smsBowerClient.get('', {
             params: { 
                 api_key: process.env.SMSBOWER_API_KEY,
@@ -3671,9 +3679,29 @@ async function handleGetCountries(req, res) {
         });
 
         const rawPrices = pricesResponse.data;
+        const rawCountriesMeta = countriesMetaResponse.data;
 
         if (typeof rawPrices === 'string') {
             return res.status(400).json({ success: false, message: `Vendor error: ${rawPrices}` });
+        }
+
+        // Build a dynamic country mapping dictionary straight from SMSBower's metadata response
+        let countryMetaMap = {};
+        const metaSource = rawCountriesMeta.countries || rawCountriesMeta.data || rawCountriesMeta;
+        
+        if (metaSource) {
+            const entries = Array.isArray(metaSource) ? metaSource.map((c, idx) => [c.id || idx, c]) : Object.entries(metaSource);
+            
+            entries.forEach(([id, cInfo]) => {
+                if (!cInfo) return;
+                const cName = cInfo.name || cInfo.countryName || cInfo.til || cInfo.eng;
+                const cCode = (cInfo.iso || cInfo.code || cInfo.eng || cInfo.short || id).toString().toLowerCase();
+                
+                countryMetaMap[String(id)] = {
+                    name: cName || `Country ${id}`,
+                    code: cCode
+                };
+            });
         }
 
         const exchangeRateToNgn = 1400; 
@@ -3685,64 +3713,71 @@ async function handleGetCountries(req, res) {
                 const countryServices = priceData[countryId];
                 if (!countryServices || typeof countryServices !== 'object') return;
 
-                // Handle nested service keys or direct structures
-                const serviceData = countryServices[serviceCode] || countryServices[String(serviceCode).toLowerCase()] || countryServices;
-                if (!serviceData || typeof serviceData !== 'object') return;
+                const serviceData = countryServices[serviceCode] || countryServices[String(serviceCode).toLowerCase()];
+                if (!serviceData) return;
 
-                const countryAvailablePrices = [];
-
+                // Helper to process individual price tiers or variants
                 const processTier = (tierItem, tierKey = '') => {
                     if (!tierItem) return;
                     
                     let itemObj = tierItem;
                     if (typeof tierItem !== 'object') {
-                        itemObj = { cost: tierItem, price: tierItem, rank: tierKey || 'silver' };
+                        itemObj = { cost: tierItem, rank: tierKey || 'silver' };
                     }
 
-                    const rankValue = String(itemObj.rank || itemObj.position || tierKey || 'silver').toLowerCase();
+                    const rankValue = String(itemObj.rank || itemObj.position || tierKey || '').toLowerCase();
                     const rawCost = Number(itemObj.cost || itemObj.price || itemObj.value || 0);
                     
                     if (rawCost <= 0) return;
 
-                    // Filter strictly for Silver or Bronze, or treat unranked items as Silver baseline
-                    const isSilver = rankValue.includes('silver') || (!rankValue.includes('bronze') && !rankValue.includes('retail'));
-                    const isBronze = rankValue.includes('bronze');
+                    // Allow Silver, Bronze, or unranked baseline prices to ensure we get competitive rates
+                    const isAllowedRank = !rankValue || 
+                                          rankValue.includes('silver') || 
+                                          rankValue.includes('bronze') || 
+                                          rankValue.includes('retail') ||
+                                          rankValue.includes('default');
 
-                    if (isSilver || isBronze) {
+                    if (isAllowedRank) {
                         const finalAmount = Number((rawCost * exchangeRateToNgn).toFixed(2));
-                        const normalizedRank = isBronze ? 'Bronze' : 'Silver';
+                        const normalizedRank = rankValue.includes('bronze') ? 'Bronze' : 'Silver';
 
-                        countryAvailablePrices.push({
-                            amount: finalAmount > 0 ? finalAmount : 1400,
-                            rank: normalizedRank,
-                            stock: itemObj.count || itemObj.stock || 'In Stock'
-                        });
+                        // Pull direct metadata from SMSBower's fetched country dictionary
+                        const vendorMeta = countryMetaMap[String(countryId)] || {};
+                        const resolvedName = itemObj.countryName || itemObj.name || vendorMeta.name || `Country ${countryId}`;
+                        const resolvedCode = vendorMeta.code || String(countryId).toLowerCase();
+
+                        const countryEntry = {
+                            countryId: String(countryId),
+                            countryName: resolvedName,
+                            code: resolvedCode, 
+                            stock: itemObj.count || itemObj.stock || 'In Stock',
+                            rank: normalizedRank, 
+                            price: {
+                                amount: finalAmount > 0 ? finalAmount : 1400, 
+                                currency: 'NGN',
+                                symbol: '₦'
+                            }
+                        };
+
+                        const existingIndex = formattedCountries.findIndex(c => String(c.countryId) === String(countryId));
+                        
+                        // Compare and keep ONLY the lowest price variant for this country
+                        if (existingIndex === -1) {
+                            formattedCountries.push(countryEntry);
+                        } else if (finalAmount < formattedCountries[existingIndex].price.amount) {
+                            formattedCountries[existingIndex] = countryEntry;
+                        }
                     }
                 };
 
+                // Handle both direct pricing objects and multi-tier/multi-rank objects/arrays
                 if (Array.isArray(serviceData)) {
                     serviceData.forEach((tier, idx) => processTier(tier, idx.toString()));
+                } else if (serviceData.cost !== undefined || serviceData.price !== undefined || typeof serviceData !== 'object') {
+                    processTier(serviceData);
                 } else {
                     Object.keys(serviceData).forEach(tierKey => {
                         processTier(serviceData[tierKey], tierKey);
-                    });
-                }
-
-                if (countryAvailablePrices.length > 0) {
-                    countryAvailablePrices.sort((a, b) => a.amount - b.amount);
-
-                    formattedCountries.push({
-                        countryId: String(countryId),
-                        countryName: `Country ${countryId}`,
-                        code: String(countryId).toLowerCase(),
-                        stock: countryAvailablePrices[0].stock,
-                        rank: countryAvailablePrices[0].rank,
-                        price: {
-                            amount: countryAvailablePrices[0].amount,
-                            currency: 'NGN',
-                            symbol: '₦'
-                        },
-                        availablePrices: countryAvailablePrices
                     });
                 }
             });
@@ -3759,7 +3794,6 @@ async function handleGetCountries(req, res) {
         });
     }
 }
-
 /**
  * 3. CHECK ORDER STATUS / SMS CODE POLLING
  */

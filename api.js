@@ -3620,35 +3620,53 @@ async function handleProxyServiceImage(req, res) {
             return res.status(400).send("Missing service ID");
         }
 
-        // Attempt to fetch from SMSBower vendor
-        const imageResponse = await axios.get(`https://smsbower.online/img/services/${serviceId}.svg`, {
-            responseType: 'arraybuffer',
-            headers: {
-                'Referer': 'https://smsbower.online/'
-            },
-        });
+        const cleanId = String(serviceId).trim().toLowerCase();
+        const extensions = ['svg', 'png', 'jpg', 'jpeg', 'ico'];
+        let imageResponse = null;
+        let successfulExt = 'svg';
 
-        res.setHeader('Content-Type', 'image/svg+xml');
-        res.setHeader('Cache-Control', 'public, max-age=86400');
-        return res.send(imageResponse.data);
+        // Try multiple file extensions on SMSBower's actual app domain
+        for (const ext of extensions) {
+            try {
+                const targetUrl = `https://smsbower.app/img/services/${cleanId}.${ext}`;
+                imageResponse = await axios.get(targetUrl, {
+                    responseType: 'arraybuffer',
+                    headers: {
+                        'Referer': 'https://smsbower.app/',
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                    },
+                    timeout: 5000
+                });
+
+                if (imageResponse && imageResponse.status === 200 && imageResponse.data.byteLength > 50) {
+                    successfulExt = ext;
+                    break;
+                }
+            } catch (e) {
+                // Continue trying next extension
+            }
+        }
+
+        if (!imageResponse || imageResponse.status !== 200) {
+            // STRICT: NO FALLBACK IMAGE. Return 404 so the browser/frontend knows it doesn't exist.
+            return res.status(404).send(`Image for '${cleanId}' not found on vendor.`);
+        }
+
+        // Determine correct Content-Type header
+        let contentType = imageResponse.headers['content-type'];
+        if (!contentType || contentType.includes('text/html')) {
+            if (successfulExt === 'svg') contentType = 'image/svg+xml';
+            else if (successfulExt === 'jpg' || successfulExt === 'jpeg') contentType = 'image/jpeg';
+            else contentType = 'image/png';
+        }
+
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+        return res.status(200).send(Buffer.from(imageResponse.data));
 
     } catch (err) {
-        // Fallback: Generate a clean dynamic SVG placeholder using the service ID initials
-        const fallbackId = (req.query.id || '?').toUpperCase().substring(0, 3);
-        
-        const fallbackSvg = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-              <rect width="64" height="64" rx="12" fill="#4F46E5"/>
-              <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" 
-                    fill="#FFFFFF" font-family="sans-serif" font-size="20" font-weight="bold">
-                ${fallbackId}
-              </text>
-            </svg>
-        `;
-
-        res.setHeader('Content-Type', 'image/svg+xml');
-        res.setHeader('Cache-Control', 'public, max-age=86400');
-        return res.status(200).send(fallbackSvg);
+        console.error("Failed to fetch actual service image:", err.message);
+        return res.status(500).send("Error proxying service image.");
     }
 }
 

@@ -3694,11 +3694,11 @@ async function handleGetCountries(req, res) {
             }
         });
 
-        // 2. Fetch prices/inventory for the requested service
+        // 2. Fetch prices/inventory using getPricesV3 for multi-provider / multi-tier pricing support
         const pricesResponse = await smsBowerClient.get('', {
             params: { 
                 api_key: process.env.SMSBOWER_API_KEY,
-                action: 'getPrices',
+                action: 'getPricesV3',
                 service: String(serviceCode).toLowerCase(),
             }
         });
@@ -3731,7 +3731,7 @@ async function handleGetCountries(req, res) {
 
         const exchangeRateToNgn = 1400; 
         let formattedCountries = [];
-        const priceData = rawPrices.prices || rawPrices.data || rawPrices;
+        const priceData = rawPrices.countries || rawPrices.data || rawPrices;
 
         if (priceData && typeof priceData === 'object') {
             Object.keys(priceData).forEach(countryId => {
@@ -3739,71 +3739,52 @@ async function handleGetCountries(req, res) {
                 if (!countryServices || typeof countryServices !== 'object') return;
 
                 const serviceData = countryServices[serviceCode] || countryServices[String(serviceCode).toLowerCase()];
-                if (!serviceData) return;
+                if (!serviceData || typeof serviceData !== 'object') return;
 
-                // Helper to process individual price tiers or variants
-                const processTier = (tierItem, tierKey = '') => {
-                    if (!tierItem) return;
-                    
-                    let itemObj = tierItem;
-                    if (typeof tierItem !== 'object') {
-                        itemObj = { cost: tierItem, rank: tierKey || 'silver' };
-                    }
+                let lowestVariant = null;
+                let lowestAmount = Infinity;
 
-                    const rankValue = String(itemObj.rank || itemObj.position || tierKey || '').toLowerCase();
-                    const rawCost = Number(itemObj.cost || itemObj.price || itemObj.value || 0);
-                    
+                // Iterate through all provider IDs / price tiers in getPricesV3
+                Object.keys(serviceData).forEach(providerKey => {
+                    const tierItem = serviceData[providerKey];
+                    if (!tierItem || typeof tierItem !== 'object') return;
+
+                    const rawCost = Number(tierItem.price || tierItem.cost || tierItem.value || 0);
                     if (rawCost <= 0) return;
 
-                    // Allow Silver, Bronze, or unranked baseline prices to ensure we get competitive rates
-                    const isAllowedRank = !rankValue || 
-                                          rankValue.includes('silver') || 
-                                          rankValue.includes('bronze') || 
-                                          rankValue.includes('retail') ||
-                                          rankValue.includes('default');
-
-                    if (isAllowedRank) {
-                        const finalAmount = Number((rawCost * exchangeRateToNgn).toFixed(2));
-                        const normalizedRank = rankValue.includes('bronze') ? 'Bronze' : 'Silver';
-
-                        // Pull direct metadata from SMSBower's fetched country dictionary
-                        const vendorMeta = countryMetaMap[String(countryId)] || {};
-                        const resolvedName = itemObj.countryName || itemObj.name || vendorMeta.name || `Country ${countryId}`;
-                        const resolvedCode = vendorMeta.code || String(countryId).toLowerCase();
-
-                        const countryEntry = {
-                            countryId: String(countryId),
-                            countryName: resolvedName,
-                            code: resolvedCode, 
-                            stock: itemObj.count || itemObj.stock || 'In Stock',
-                            rank: normalizedRank, 
-                            price: {
-                                amount: finalAmount > 0 ? finalAmount : 1400, 
-                                currency: 'NGN',
-                                symbol: '₦'
-                            }
+                    const finalAmount = Number((rawCost * exchangeRateToNgn).toFixed(2));
+                    
+                    // Compare and track only the lowest priced provider ID/tier
+                    if (finalAmount < lowestAmount) {
+                        lowestAmount = finalAmount;
+                        lowestVariant = {
+                            providerId: String(tierItem.provider_id || providerKey),
+                            count: tierItem.count || tierItem.stock || 'In Stock',
+                            amount: finalAmount
                         };
-
-                        const existingIndex = formattedCountries.findIndex(c => String(c.countryId) === String(countryId));
-                        
-                        // Compare and keep ONLY the lowest price variant for this country
-                        if (existingIndex === -1) {
-                            formattedCountries.push(countryEntry);
-                        } else if (finalAmount < formattedCountries[existingIndex].price.amount) {
-                            formattedCountries[existingIndex] = countryEntry;
-                        }
                     }
-                };
+                });
 
-                // Handle both direct pricing objects and multi-tier/multi-rank objects/arrays
-                if (Array.isArray(serviceData)) {
-                    serviceData.forEach((tier, idx) => processTier(tier, idx.toString()));
-                } else if (serviceData.cost !== undefined || serviceData.price !== undefined || typeof serviceData !== 'object') {
-                    processTier(serviceData);
-                } else {
-                    Object.keys(serviceData).forEach(tierKey => {
-                        processTier(serviceData[tierKey], tierKey);
-                    });
+                if (lowestVariant) {
+                    const vendorMeta = countryMetaMap[String(countryId)] || {};
+                    const resolvedName = vendorMeta.name || `Country ${countryId}`;
+                    const resolvedCode = vendorMeta.code || String(countryId).toLowerCase();
+
+                    const countryEntry = {
+                        countryId: String(countryId),
+                        providerId: lowestVariant.providerId, // Passes the exact low-price provider ID for ordering
+                        countryName: resolvedName,
+                        code: resolvedCode, 
+                        stock: lowestVariant.count,
+                        rank: 'lowest Price', 
+                        price: {
+                            amount: lowestVariant.amount,
+                            currency: 'NGN',
+                            symbol: '₦'
+                        }
+                    };
+
+                    formattedCountries.push(countryEntry);
                 }
             });
         }
@@ -3819,6 +3800,7 @@ async function handleGetCountries(req, res) {
         });
     }
 }
+
 /**
  * 3. CHECK ORDER STATUS / SMS CODE POLLING
  */

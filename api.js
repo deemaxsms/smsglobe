@@ -3552,7 +3552,6 @@ async function handlePurchaseNumber(req, res) {
         return res.status(500).json({ success: false, message: "Server error processing purchase." });
     }
 }
-
 /**
  * 2. FETCH SERVICES (Corrected with action: 'getServicesList')
  */
@@ -3580,29 +3579,36 @@ async function handleGetServicesAndPrices(req, res) {
 
         const serviceItems = rawData.services || rawData.data || (Array.isArray(rawData) ? rawData : []);
 
-let servicesList = serviceItems.map(item => {
-    const code = (item.code || item.short || item.id || '').toLowerCase();
-    const name = item.name || code.toUpperCase();
-    
-    // Automatically generate a dynamic, clean online SVG badge/icon 
-    // using clean domain keyword mapping or an automated service identifier
-    const formattedKey = code.replace(/[^a-z0-9]/g, '');
-    
-    // Uses an automated public SVG vector icon source (e.g., Iconify brand/logo registry)
-    const dynamicSvgUrl = `https://api.iconify.dev/logos:${formattedKey}.svg`;
+        let servicesList = serviceItems.map(item => {
+            const code = (item.code || item.short || item.id || '').toLowerCase();
+            const name = item.name || code.toUpperCase();
+            
+            // Generate clean initials for the SVG badge (e.g. WH, TE, FB)
+            const initials = (name.substring(0, 2) || code.substring(0, 2) || 'SG').toUpperCase();
+            
+            // Assign a deterministic nice background color based on the service code string
+            const bgColors = ['#4f46e5', '#3b82f6', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6366f1'];
+            const colorIndex = code.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % bgColors.length;
+            const bgColor = bgColors[colorIndex];
 
-    return {
-        code: code,
-        name: name,
-        image: dynamicSvgUrl, // Automatically points to the online vector icon
-        countries: {} 
-    };
-});
+            // Build a self-contained inline SVG string
+            const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="40" height="40" rx="8" fill="${bgColor}"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="14" font-weight="600">${initials}</text></svg>`;
+            
+            // Convert to a base64 Data URI so it renders instantly as an image in the frontend <img> tag
+            const dataUriImage = `data:image/svg+xml;base64,${Buffer.from(svgString).toString('base64')}`;
 
-return res.json({ 
-    success: true, 
-    services: servicesList 
-});
+            return {
+                code: code,
+                name: name,
+                image: dataUriImage, // Self-contained inline graphic, no external calls required!
+                countries: {} 
+            };
+        });
+
+        return res.json({ 
+            success: true, 
+            services: servicesList 
+        });
 
     } catch (err) {
         console.error("Failed to fetch SMSBower services:", err.response?.data || err.message);

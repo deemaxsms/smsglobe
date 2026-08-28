@@ -405,15 +405,16 @@ const connectDB = async () => {
     if (isConnected && mongoose.connection.readyState === 1) return;
     try {
         await mongoose.connect(process.env.MONGODB_URI, {
-            maxPoolSize: 10, // Reduced from 100 to prevent connection saturation on serverless
+            maxPoolSize: 10,
             serverSelectionTimeoutMS: 5000,
             socketTimeoutMS: 45000,
+            autoSelectFamily: false, // Prevents IPv6 handshake issues on serverless
         });
         isConnected = true;
     } catch (err) {
         isConnected = false;
         console.error("DB Error:", err);
-        throw err; // Rethrow so the handler catches it instead of silently failing
+        throw err;
     }
 };
 
@@ -3580,20 +3581,20 @@ async function handleGetServicesAndPrices(req, res) {
         const serviceItems = rawData.services || rawData.data || (Array.isArray(rawData) ? rawData : []);
 
 let servicesList = serviceItems.map(item => {
-    // TEMPORARY: Check your terminal console to see what fields SMSBower actually provides
-    console.log("SMSBower Service Item Keys:", Object.keys(item), item);
-
     const code = (item.code || item.short || item.id || '').toLowerCase();
     const name = item.name || code.toUpperCase();
     
-    // Look for any field that might hold the correct asset identifier from the API response
-    const imgIdentifier = item.code || item.short || item.service_code || item.id || '';
-    const proxyImageUrl = imgIdentifier ? `/api/service-image?id=${imgIdentifier}` : '';
+    // Automatically generate a dynamic, clean online SVG badge/icon 
+    // using clean domain keyword mapping or an automated service identifier
+    const formattedKey = code.replace(/[^a-z0-9]/g, '');
+    
+    // Uses an automated public SVG vector icon source (e.g., Iconify brand/logo registry)
+    const dynamicSvgUrl = `https://api.iconify.dev/logos:${formattedKey}.svg`;
 
     return {
         code: code,
         name: name,
-        image: proxyImageUrl,
+        image: dynamicSvgUrl, // Automatically points to the online vector icon
         countries: {} 
     };
 });

@@ -246,6 +246,13 @@
         let userBonusBalance = 0;
         let pollInterval = null;
 
+        // Dynamic config loaded from backend
+        let appConfig = {
+            currencySymbol: '₦',
+            exchangeRate: 1,
+            defaultCountry: null
+        };
+
         const PRIORITY_SERVICES = [
             { code: 'wa', name: 'WhatsApp', icon: '💬' },
             { code: 'tg', name: 'Telegram', icon: '✈️' },
@@ -263,6 +270,22 @@
             }
             const data = await res.json();
             return { res, data };
+        }
+
+        // Fetch dynamic platform configurations (currency, rates, etc.) from backend
+        async function fetchAppConfig() {
+            try {
+                const { data } = await safeFetch(`${API_BASE_URL}/config`);
+                if (data.success && data.config) {
+                    appConfig = {
+                        currencySymbol: data.config.currencySymbol || appConfig.currencySymbol,
+                        exchangeRate: data.config.exchangeRate || appConfig.exchangeRate,
+                        defaultCountry: data.config.defaultCountry || appConfig.defaultCountry
+                    };
+                }
+            } catch (err) {
+                console.warn("Could not fetch dynamic app config, using defaults:", err);
+            }
         }
 
         async function fetchUserProfile() {
@@ -403,9 +426,13 @@
 
                         ${isExpanded ? `
                             <div class="border-t border-brand-border bg-brand-background/30 p-4 space-y-3">
-                                <div class="relative mb-3">
+                                <div class="relative mb-3 flex items-center gap-2">
                                     <input type="text" oninput="SMSGlobeApp.filterCountriesForService('${s.code}', this.value)" placeholder="Search country inventory..." 
                                            class="text-xs bg-white border border-brand-border rounded-lg px-3 py-2 focus:outline-none focus:border-brand-blue w-full shadow-sm">
+                                    <button onclick="SMSGlobeApp.fetchCountriesForService('${s.code}')" title="Reload all countries and prices for this service" class="px-3 py-2 bg-white border border-brand-border text-brand-blue rounded-lg text-xs font-bold hover:bg-brand-blue/10 flex items-center gap-1 shrink-0 shadow-sm">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                        Reload
+                                    </button>
                                 </div>
                                 <div id="countriesList_${s.code}" class="space-y-2">
                                     ${renderCountriesListHtml(s.code, countries)}
@@ -417,7 +444,7 @@
             }).join('');
         }
 
-      function renderCountriesListHtml(serviceCode, countriesList) {
+        function renderCountriesListHtml(serviceCode, countriesList) {
             if (!countriesList || countriesList.length === 0) {
                 return `
                     <div class="flex flex-col items-center justify-center py-6 bg-white rounded-xl border border-brand-border">
@@ -436,13 +463,12 @@
             }
 
             return countriesList.map(c => {
-                // c.availablePrices now contains the pre-converted NGN amounts from the backend
                 const options = c.availablePrices || [{ amount: c.priceAmount, rank: c.rank, stock: c.stock, providerId: c.providerId }];
                 const selectedIdx = c.selectedPriceIndex || 0;
                 const activeTier = options[selectedIdx] || options[0];
 
-                // Since backend already converts USD to NGN (1400 rate), we use activeTier.amount directly multiplied by rent multiplier if applicable
-                const finalDisplayPrice = Number(activeTier.amount || 0) * multiplier;
+                // Automatically apply backend-synced exchange rate multiplier
+                const finalDisplayPrice = Number(activeTier.amount || 0) * multiplier * appConfig.exchangeRate;
                 const formattedPriceString = finalDisplayPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
                 const stockStatus = activeTier.stock || c.stock || 'In Stock';
@@ -467,34 +493,32 @@
                             </div>
                         </div>
 
-                        <!-- Middle Space: Shuffle / Alternate Tier Button -->
-                        <div class="flex items-center">
-                            ${options.length > 1 ? `
-                                <button onclick="SMSGlobeApp.shuffleCountryPriceTier('${serviceCode}', '${countryId}', this)" 
-                                        title="Shuffle / Cycle alternative price tier"
-                                        class="p-2 text-gray-400 hover:text-brand-blue bg-gray-50 hover:bg-brand-blue/10 rounded-lg transition-all border border-gray-200 flex items-center justify-center">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                                    </svg>
-                                </button>
-                            ` : ''}
+                        <!-- Middle Space: Dedicated Reload / Refresh Price Button -->
+                        <div class="flex items-center gap-2">
+                            <button onclick="SMSGlobeApp.reloadSingleCountryPrice('${serviceCode}', '${countryId}', this)" 
+                                    title="Reload and update price/number tier"
+                                    class="px-2.5 py-1.5 text-gray-500 hover:text-brand-blue bg-gray-50 hover:bg-brand-blue/10 rounded-lg transition-all border border-gray-200 flex items-center gap-1 text-[10px] font-bold">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Reload Price
+                            </button>
                         </div>
 
-                        <!-- Right Side: Price & Action -->
+                        <!-- Right Side: Price Display & Action -->
                         <div class="flex items-center gap-3">
                             <div class="flex flex-col items-end">
-                                <span class="text-xs font-black text-brand-blue">₦${formattedPriceString}</span>
+                                <span class="text-xs font-black text-brand-blue">${appConfig.currencySymbol}${formattedPriceString}</span>
                                 ${options.length > 1 ? `
                                     <select onchange="SMSGlobeApp.switchCountryPriceTier('${serviceCode}', '${countryId}', this.value)" class="text-[9px] text-gray-500 bg-gray-50 border border-gray-200 rounded px-1 py-0.5 mt-0.5 focus:outline-none">
                                         ${options.map((opt, idx) => `
                                             <option value="${idx}" ${idx === selectedIdx ? 'selected' : ''}>
-                                                ${opt.rank || 'Tier'} - ₦${(Number(opt.amount) * multiplier).toLocaleString()} (${opt.stock || 'In Stock'})
+                                                ${opt.rank || 'Tier'} - ${appConfig.currencySymbol}${(Number(opt.amount) * multiplier * appConfig.exchangeRate).toLocaleString()} (${opt.stock || 'In Stock'})
                                             </option>
                                         `).join('')}
                                     </select>
                                 ` : ''}
                             </div>
-                            <!-- Pass providerId safely into the purchase call -->
                             <button onclick="SMSGlobeApp.buyServiceCountry('${serviceCode}', '${countryId}', ${finalDisplayPrice}, '${rankLabel}', '${providerId}')" 
                                     class="px-4 py-2 bg-brand-blue text-white rounded-lg text-xs font-bold hover:bg-brand-blue/90 active:scale-95 transition-all">
                                 Buy Number
@@ -541,7 +565,7 @@
                     if (!cId) return;
 
                     const cName = item.countryName || item.name || `Country ${cId}`;
-                    const rawPrice = item.price?.amount || item.price || item.sellingPrice || 1400;
+                    const rawPrice = item.price?.amount || item.price || item.sellingPrice || 0;
                     const rank = item.rank || 'Silver';
                     const stock = item.stock || item.count || 'In Stock';
 
@@ -560,7 +584,6 @@
                     });
                 });
 
-                // Post-process countries: sort options ascending so index 0 is always the absolute lowest price
                 const processedCountries = Object.values(countryMap).map(country => {
                     country.availablePrices.sort((a, b) => a.amount - b.amount);
                     return {
@@ -569,7 +592,6 @@
                     };
                 });
 
-                // SORT ENTIRE COUNTRIES LIST BY LOWEST PRICE ASCENDING (Lowest price starting from bottom up / top)
                 processedCountries.sort((a, b) => {
                     const lowestA = a.availablePrices[0]?.amount || 0;
                     const lowestB = b.availablePrices[0]?.amount || 0;
@@ -589,6 +611,17 @@
             }
         }
 
+        async function reloadSingleCountryPrice(serviceCode, countryId, buttonElement) {
+            const svgIcon = buttonElement.querySelector('svg');
+            if (svgIcon) svgIcon.classList.add('animate-spin');
+
+            await fetchCountriesForService(serviceCode);
+
+            setTimeout(() => {
+                if (svgIcon) svgIcon.classList.remove('animate-spin');
+            }, 300);
+        }
+
         function switchCountryPriceTier(serviceCode, countryId, priceIndex) {
             const countries = serviceCountriesCache[serviceCode];
             if (!countries) return;
@@ -604,32 +637,6 @@
             }
         }
 
-        // Shuffle action button helper to cycle through available price tiers for a specific country
-        function shuffleCountryPriceTier(serviceCode, countryId, buttonElement) {
-            const countries = serviceCountriesCache[serviceCode];
-            if (!countries) return;
-
-            const country = countries.find(c => String(c.countryId) === String(countryId));
-            if (!country || !country.availablePrices || country.availablePrices.length <= 1) return;
-
-            // Visual spin feedback
-            const svgIcon = buttonElement.querySelector('svg');
-            if (svgIcon) svgIcon.classList.add('animate-spin');
-
-            setTimeout(() => {
-                if (svgIcon) svgIcon.classList.remove('animate-spin');
-                
-                // Cycle to next price tier index
-                country.selectedPriceIndex = (country.selectedPriceIndex + 1) % country.availablePrices.length;
-                
-                const query = document.getElementById('serviceSearchInput')?.value || '';
-                const listContainer = document.getElementById(`countriesList_${serviceCode}`);
-                if (listContainer) {
-                    listContainer.innerHTML = renderCountriesListHtml(serviceCode, countries.filter(c => (c.countryName || '').toLowerCase().includes(query.toLowerCase())));
-                }
-            }, 300);
-        }
-
         function filterCountriesForService(serviceCode, query) {
             const allCountries = serviceCountriesCache[serviceCode] || [];
             const filtered = allCountries.filter(c => (c.countryName || '').toLowerCase().includes(query.toLowerCase()));
@@ -639,7 +646,7 @@
             }
         }
 
-      async function buyServiceCountry(serviceCode, countryId, price, rank, providerId = '') {
+        async function buyServiceCountry(serviceCode, countryId, price, rank, providerId = '') {
             const token = localStorage.getItem('userToken');
             if (!token) {
                 Swal.fire({ title: 'Login Required', icon: 'warning', text: 'Please log in to purchase numbers.' });
@@ -647,7 +654,7 @@
             }
 
             if (userBalance < price) {
-                Swal.fire('Insufficient Funds', `You need ₦${price.toLocaleString()} to purchase this option. Please fund your wallet.`, 'error');
+                Swal.fire('Insufficient Funds', `You need ${appConfig.currencySymbol}${price.toLocaleString()} to purchase this option. Please fund your wallet.`, 'error');
                 return;
             }
 
@@ -657,7 +664,7 @@
 
             const confirmed = await Swal.fire({
                 title: 'Confirm Live Purchase',
-                text: `Get ${serviceObj?.name || serviceCode} (${rank} Tier) in ${countryObj?.countryName || 'Selected Country'} for ₦${price.toLocaleString()}?`,
+                text: `Get ${serviceObj?.name || serviceCode} (${rank} Tier) in ${countryObj?.countryName || 'Selected Country'} for ${appConfig.currencySymbol}${price.toLocaleString()}?`,
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#0F54C6',
@@ -669,7 +676,7 @@
             const payload = {
                 serviceCode: serviceCode,
                 countryId: countryId,
-                providerId: providerId, // Crucial for routing purchase to the correct low-cost provider
+                providerId: providerId,
                 planAmount: price,
                 rank: (rank || 'silver').toLowerCase(),
                 metadata: {
@@ -778,12 +785,14 @@
             document.getElementById('sidebarOverlay')?.classList.toggle('hidden');
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('openSidebar')?.addEventListener('click', toggleSidebar);
             document.getElementById('closeSidebar')?.addEventListener('click', toggleSidebar);
             
-            fetchUserProfile();
-            syncInventory(); 
+            // Fetch platform configs, user profile, and inventory dynamically on load
+            await fetchAppConfig();
+            await fetchUserProfile();
+            await syncInventory(); 
 
             setInterval(syncInventory, 60000);
         });
@@ -792,8 +801,8 @@
             setMode,
             toggleServiceAccordion,
             fetchCountriesForService,
+            reloadSingleCountryPrice,
             switchCountryPriceTier,
-            shuffleCountryPriceTier,
             filterCountriesForService,
             buyServiceCountry,
             copyNumber,

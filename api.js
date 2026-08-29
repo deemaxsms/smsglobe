@@ -3552,6 +3552,64 @@ async function handlePurchaseNumber(req, res) {
         return res.status(500).json({ success: false, message: "Server error processing purchase." });
     }
 }
+
+/**
+ * 2. FETCH SERVICES (Dynamic Vendor Image Mapping)
+ */
+async function handleGetServicesAndPrices(req, res) {
+    try {
+        if (!process.env.SMSBOWER_API_KEY) {
+            console.error("SMSBOWER_API_KEY is missing in your environment configuration.");
+            return res.status(500).json({ success: false, message: "Vendor configuration error." });
+        }
+
+        // Use the official SMSBower action 'getServicesList'
+        const response = await smsBowerClient.get('', {
+            params: { 
+                action: 'getServicesList', 
+                api_key: process.env.SMSBOWER_API_KEY 
+            }
+        });
+
+        const rawData = response.data;
+
+        if (typeof rawData === 'string') {
+            console.error("SMSBower returned string error:", rawData);
+            return res.status(400).json({ success: false, message: `Vendor error: ${rawData}` });
+        }
+
+        const serviceItems = rawData.services || rawData.data || (Array.isArray(rawData) ? rawData : []);
+
+        let servicesList = serviceItems.map(item => {
+            // Extract the service code/ID exactly as returned by the vendor API (e.g., 'kt', 'tg', '14')
+            const code = (item.code || item.id || item.short || '').toLowerCase();
+            const name = item.name || code.toUpperCase();
+            
+            // Point the image field directly to your backend proxy route passing the unique service code/id
+            const dynamicImageUrl = `/api/service-image?id=${encodeURIComponent(code)}`;
+
+            return {
+                code: code,
+                name: name,
+                image: dynamicImageUrl, // Dynamically points to the vendor's actual image via your proxy
+                countries: {} 
+            };
+        });
+
+        return res.json({ 
+            success: true, 
+            services: servicesList 
+        });
+
+    } catch (err) {
+        console.error("Failed to fetch SMSBower services:", err.response?.data || err.message);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Failed to fetch services catalog from vendor.",
+            error: err.message 
+        });
+    }
+}
 async function handleProxyServiceImage(req, res) {
     try {
         const serviceId = req.query.id;

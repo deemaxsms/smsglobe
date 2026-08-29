@@ -366,56 +366,58 @@
         }
 
 function renderServiceAccordion(filter = "") {
-            const container = document.getElementById('serviceAccordionList');
-            if (!container) return;
+    const container = document.getElementById('serviceAccordionList');
+    if (!container) return;
 
-            const filtered = services.filter(s => (s.name || '').toLowerCase().includes(filter.toLowerCase()) || (s.code || '').toLowerCase().includes(filter.toLowerCase()));
-            
-            if (filtered.length === 0) {
-                container.innerHTML = `<p class="text-center text-xs text-gray-400 py-10 font-bold bg-white rounded-2xl border border-brand-border">No services match your search</p>`;
-                return;
-            }
+    const filtered = services.filter(s => (s.name || '').toLowerCase().includes(filter.toLowerCase()) || (s.code || '').toLowerCase().includes(filter.toLowerCase()));
+    
+    if (filtered.length === 0) {
+        container.innerHTML = `<p class="text-center text-xs text-gray-400 py-10 font-bold bg-white rounded-2xl border border-brand-border">No services match your search</p>`;
+        return;
+    }
 
-            container.innerHTML = filtered.map(s => {
-                const isExpanded = expandedServiceCode === s.code;
-                const countries = serviceCountriesCache[s.code] || [];
-                const serviceImgUrl = s.image || s.icon || s.logo || s.img || '';
-                const fallbackInitials = (s.name || s.code).substring(0, 2);
+    container.innerHTML = filtered.map(s => {
+        const isExpanded = expandedServiceCode === s.code;
+        const countries = serviceCountriesCache[s.code] || [];
+        
+        // Directly point to SMSBower's predictable SVG asset endpoint
+        const serviceImgUrl = `https://smsbower.app/img/services/${encodeURIComponent(s.code)}.svg`;
+        const fallbackInitials = (s.name || s.code).substring(0, 2);
 
-                return `
-                    <div class="bg-white border border-brand-border rounded-2xl overflow-hidden transition-all shadow-sm">
-                        <div onclick="SMSGlobeApp.toggleServiceAccordion('${s.code}')" class="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-brand-background/50 transition-colors">
-                            <div class="flex items-center gap-3">
-                               <div class="w-8 h-8 rounded-xl bg-brand-blue/10 text-brand-blue font-bold flex items-center justify-center text-xs uppercase overflow-hidden">
-                               ${serviceImgUrl ? `<img src="${serviceImgUrl}" alt="${s.name || s.code}" loading="lazy" class="w-full h-full object-contain" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">` : ''}
-                               <span style="display: ${serviceImgUrl ? 'none' : 'flex'};" class="items-center justify-center w-full h-full">${fallbackInitials}</span>
-                                </div>
-                                <div>
-                                    <span class="text-xs font-bold text-brand-darkText block">${s.name || s.code}</span>
-                                    <span class="text-[9px] text-brand-lightText uppercase">Code: ${s.code}</span>
-                                </div>
-                            </div>
-                            <button class="text-xs font-bold text-brand-midText flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border bg-white">
-                                ${isExpanded ? 'Collapse' : 'Select Country'}
-                                <svg class="w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                            </button>
+        return `
+            <div class="bg-white border border-brand-border rounded-2xl overflow-hidden transition-all shadow-sm">
+                <div onclick="SMSGlobeApp.toggleServiceAccordion('${s.code}')" class="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-brand-background/50 transition-colors">
+                    <div class="flex items-center gap-3">
+                       <div class="w-8 h-8 rounded-xl bg-brand-blue/10 text-brand-blue font-bold flex items-center justify-center text-xs uppercase overflow-hidden">
+                       <img src="${serviceImgUrl}" alt="${s.name || s.code}" loading="lazy" class="w-full h-full object-contain" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                       <span style="display: none;" class="items-center justify-center w-full h-full">${fallbackInitials}</span>
                         </div>
-
-                        ${isExpanded ? `
-                            <div class="border-t border-brand-border bg-brand-background/30 p-4 space-y-3">
-                                <div class="relative mb-3">
-                                    <input type="text" oninput="SMSGlobeApp.filterCountriesForService('${s.code}', this.value)" placeholder="Search country inventory..." 
-                                           class="text-xs bg-white border border-brand-border rounded-lg px-3 py-2 focus:outline-none focus:border-brand-blue w-full shadow-sm">
-                                </div>
-                                <div id="countriesList_${s.code}" class="space-y-2">
-                                    ${renderCountriesListHtml(s.code, countries)}
-                                </div>
-                            </div>
-                        ` : ''}
+                        <div>
+                            <span class="text-xs font-bold text-brand-darkText block">${s.name || s.code}</span>
+                            <span class="text-[9px] text-brand-lightText uppercase">Code: ${s.code}</span>
+                        </div>
                     </div>
-                `;
-            }).join('');
-        }
+                    <button class="text-xs font-bold text-brand-midText flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border bg-white">
+                        ${isExpanded ? 'Collapse' : 'Select Country'}
+                        <svg class="w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                </div>
+
+                ${isExpanded ? `
+                    <div class="border-t border-brand-border bg-brand-background/30 p-4 space-y-3">
+                        <div class="relative mb-3">
+                            <input type="text" oninput="SMSGlobeApp.filterCountriesForService('${s.code}', this.value)" placeholder="Search country inventory..." 
+                                   class="text-xs bg-white border border-brand-border rounded-lg px-3 py-2 focus:outline-none focus:border-brand-blue w-full shadow-sm">
+                        </div>
+                        <div id="countriesList_${s.code}" class="space-y-2">
+                            ${renderCountriesListHtml(s.code, countries)}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+}
 
       function renderCountriesListHtml(serviceCode, countriesList) {
             if (!countriesList || countriesList.length === 0) {

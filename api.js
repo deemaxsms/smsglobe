@@ -3552,9 +3552,8 @@ async function handlePurchaseNumber(req, res) {
         return res.status(500).json({ success: false, message: "Server error processing purchase." });
     }
 }
-
 /**
- * 2. FETCH SERVICES (Dynamic Vendor Image Mapping)
+ * 1. FETCH SERVICES (Direct Vendor Image Mapping)
  */
 async function handleGetServicesAndPrices(req, res) {
     try {
@@ -3581,17 +3580,16 @@ async function handleGetServicesAndPrices(req, res) {
         const serviceItems = rawData.services || rawData.data || (Array.isArray(rawData) ? rawData : []);
 
         let servicesList = serviceItems.map(item => {
-            // Extract the service code/ID exactly as returned by the vendor API (e.g., 'kt', 'tg', '14')
             const code = (item.code || item.id || item.short || '').toLowerCase();
             const name = item.name || code.toUpperCase();
             
-            // Point the image field directly to your backend proxy route passing the unique service code/id
-            const dynamicImageUrl = `/api/service-image?id=${encodeURIComponent(code)}`;
+            // Directly map to SMSBower's public asset URL pattern
+            const directImageUrl = `https://smsbower.app/img/services/${encodeURIComponent(code)}.svg`;
 
             return {
                 code: code,
                 name: name,
-                image: dynamicImageUrl, // Dynamically points to the vendor's actual image via your proxy
+                image: directImageUrl, 
                 countries: {} 
             };
         });

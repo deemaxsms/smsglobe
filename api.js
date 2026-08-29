@@ -3552,63 +3552,6 @@ async function handlePurchaseNumber(req, res) {
         return res.status(500).json({ success: false, message: "Server error processing purchase." });
     }
 }
-/**
- * 2. FETCH SERVICES (Dynamic Vendor Image Mapping)
- */
-async function handleGetServicesAndPrices(req, res) {
-    try {
-        if (!process.env.SMSBOWER_API_KEY) {
-            console.error("SMSBOWER_API_KEY is missing in your environment configuration.");
-            return res.status(500).json({ success: false, message: "Vendor configuration error." });
-        }
-
-        // Use the official SMSBower action 'getServicesList'
-        const response = await smsBowerClient.get('', {
-            params: { 
-                action: 'getServicesList', 
-                api_key: process.env.SMSBOWER_API_KEY 
-            }
-        });
-
-        const rawData = response.data;
-
-        if (typeof rawData === 'string') {
-            console.error("SMSBower returned string error:", rawData);
-            return res.status(400).json({ success: false, message: `Vendor error: ${rawData}` });
-        }
-
-        const serviceItems = rawData.services || rawData.data || (Array.isArray(rawData) ? rawData : []);
-
-        let servicesList = serviceItems.map(item => {
-            // Extract the service code/ID exactly as returned by the vendor API (e.g., 'kt', 'tg', '14')
-            const code = (item.code || item.id || item.short || '').toLowerCase();
-            const name = item.name || code.toUpperCase();
-            
-            // Point the image field directly to your backend proxy route passing the unique service code/id
-            const dynamicImageUrl = `/api/service-image?id=${encodeURIComponent(code)}`;
-
-            return {
-                code: code,
-                name: name,
-                image: dynamicImageUrl, // Dynamically points to the vendor's actual image via your proxy
-                countries: {} 
-            };
-        });
-
-        return res.json({ 
-            success: true, 
-            services: servicesList 
-        });
-
-    } catch (err) {
-        console.error("Failed to fetch SMSBower services:", err.response?.data || err.message);
-        return res.status(500).json({ 
-            success: false, 
-            message: "Failed to fetch services catalog from vendor.",
-            error: err.message 
-        });
-    }
-}
 async function handleProxyServiceImage(req, res) {
     try {
         const serviceId = req.query.id;
@@ -3618,33 +3561,44 @@ async function handleProxyServiceImage(req, res) {
 
         const cleanId = String(serviceId).trim().toLowerCase();
         const extensions = ['svg', 'png', 'jpg', 'jpeg', 'ico'];
+        
+        // Potential base URLs and directories used by SMS-Activate / SMSBower type panels
+        const targetPaths = [
+            `https://smsbower.app/img/services/${cleanId}`,
+            `https://smsbower.app/assets/ico/${cleanId}`,
+            `https://smsbower.app/ico/${cleanId}`,
+            `https://smsbower.page/img/services/${cleanId}`,
+            `https://smsbower.page/assets/ico/${cleanId}`
+        ];
+
         let imageResponse = null;
         let successfulExt = 'svg';
 
-        // Try multiple file extensions on SMSBower's actual app domain
-        for (const ext of extensions) {
-            try {
-                const targetUrl = `https://smsbower.app/img/services/${cleanId}.${ext}`;
-                imageResponse = await axios.get(targetUrl, {
-                    responseType: 'arraybuffer',
-                    headers: {
-                        'Referer': 'https://smsbower.app/',
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-                    },
-                    timeout: 5000
-                });
+        // Loop through paths and extensions to find the valid icon
+        outerLoop: for (const basePath of targetPaths) {
+            for (const ext of extensions) {
+                try {
+                    const targetUrl = `${basePath}.${ext}`;
+                    imageResponse = await axios.get(targetUrl, {
+                        responseType: 'arraybuffer',
+                        headers: {
+                            'Referer': 'https://smsbower.app/',
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                        },
+                        timeout: 3000
+                    });
 
-                if (imageResponse && imageResponse.status === 200 && imageResponse.data.byteLength > 50) {
-                    successfulExt = ext;
-                    break;
+                    if (imageResponse && imageResponse.status === 200 && imageResponse.data.byteLength > 50) {
+                        successfulExt = ext;
+                        break outerLoop;
+                    }
+                } catch (e) {
+                    // Continue trying next combination
                 }
-            } catch (e) {
-                // Continue trying next extension
             }
         }
 
         if (!imageResponse || imageResponse.status !== 200) {
-            // STRICT: NO FALLBACK IMAGE. Return 404 so the browser/frontend knows it doesn't exist.
             return res.status(404).send(`Image for '${cleanId}' not found on vendor.`);
         }
 

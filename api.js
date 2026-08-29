@@ -3610,6 +3610,7 @@ async function handleGetServicesAndPrices(req, res) {
         });
     }
 }
+
 async function handleProxyServiceImage(req, res) {
     try {
         const serviceId = req.query.id;
@@ -3618,63 +3619,31 @@ async function handleProxyServiceImage(req, res) {
         }
 
         const cleanId = String(serviceId).trim().toLowerCase();
-        const extensions = ['svg', 'png', 'jpg', 'jpeg', 'ico'];
         
-        // Potential base URLs and directories used by SMS-Activate / SMSBower type panels
-        const targetPaths = [
-            `https://smsbower.app/img/services/${cleanId}`,
-            `https://smsbower.app/assets/ico/${cleanId}`,
-            `https://smsbower.app/ico/${cleanId}`,
-            `https://smsbower.page/img/services/${cleanId}`,
-            `https://smsbower.page/assets/ico/${cleanId}`
-        ];
+        // Target the standard primary SVG path first (most activation panels use svg for service logos)
+        const targetUrl = `https://smsbower.app/img/services/${cleanId}.svg`;
 
-        let imageResponse = null;
-        let successfulExt = 'svg';
+        const imageResponse = await axios.get(targetUrl, {
+            responseType: 'arraybuffer',
+            headers: {
+                'Referer': 'https://smsbower.app/',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+            },
+            timeout: 3000
+        });
 
-        // Loop through paths and extensions to find the valid icon
-        outerLoop: for (const basePath of targetPaths) {
-            for (const ext of extensions) {
-                try {
-                    const targetUrl = `${basePath}.${ext}`;
-                    imageResponse = await axios.get(targetUrl, {
-                        responseType: 'arraybuffer',
-                        headers: {
-                            'Referer': 'https://smsbower.app/',
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-                        },
-                        timeout: 3000
-                    });
-
-                    if (imageResponse && imageResponse.status === 200 && imageResponse.data.byteLength > 50) {
-                        successfulExt = ext;
-                        break outerLoop;
-                    }
-                } catch (e) {
-                    // Continue trying next combination
-                }
-            }
+        if (imageResponse && imageResponse.status === 200) {
+            res.setHeader('Content-Type', 'image/svg+xml');
+            // Cache aggressively for 7 days so it never hits the vendor again for the same user
+            res.setHeader('Cache-Control', 'public, max-age=604800, s-maxage=604800');
+            return res.status(200).send(Buffer.from(imageResponse.data));
         }
 
-        if (!imageResponse || imageResponse.status !== 200) {
-            return res.status(404).send(`Image for '${cleanId}' not found on vendor.`);
-        }
-
-        // Determine correct Content-Type header
-        let contentType = imageResponse.headers['content-type'];
-        if (!contentType || contentType.includes('text/html')) {
-            if (successfulExt === 'svg') contentType = 'image/svg+xml';
-            else if (successfulExt === 'jpg' || successfulExt === 'jpeg') contentType = 'image/jpeg';
-            else contentType = 'image/png';
-        }
-
-        res.setHeader('Content-Type', contentType);
-        res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400');
-        return res.status(200).send(Buffer.from(imageResponse.data));
+        return res.status(404).send("Image not found");
 
     } catch (err) {
-        console.error("Failed to fetch actual service image:", err.message);
-        return res.status(500).send("Error proxying service image.");
+        // Fallback or graceful 404 so the frontend fallback initials show up instantly without crashing
+        return res.status(404).send("Image proxy error");
     }
 }
 

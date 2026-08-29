@@ -365,7 +365,7 @@
             });
         }
 
-        function renderServiceAccordion(filter = "") {
+function renderServiceAccordion(filter = "") {
             const container = document.getElementById('serviceAccordionList');
             if (!container) return;
 
@@ -387,7 +387,7 @@
                         <div onclick="SMSGlobeApp.toggleServiceAccordion('${s.code}')" class="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-brand-background/50 transition-colors">
                             <div class="flex items-center gap-3">
                                <div class="w-8 h-8 rounded-xl bg-brand-blue/10 text-brand-blue font-bold flex items-center justify-center text-xs uppercase overflow-hidden">
-                               ${serviceImgUrl ? `<img src="${serviceImgUrl}" alt="${s.name || s.code}" class="w-full h-full object-contain" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">` : ''}
+                               ${serviceImgUrl ? `<img src="${serviceImgUrl}" alt="${s.name || s.code}" loading="lazy" class="w-full h-full object-contain" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">` : ''}
                                <span style="display: ${serviceImgUrl ? 'none' : 'flex'};" class="items-center justify-center w-full h-full">${fallbackInitials}</span>
                                 </div>
                                 <div>

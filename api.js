@@ -3552,9 +3552,6 @@ async function handlePurchaseNumber(req, res) {
         return res.status(500).json({ success: false, message: "Server error processing purchase." });
     }
 }
-/**
- * 1. FETCH SERVICES (Direct Vendor Image Mapping)
- */
 async function handleGetServicesAndPrices(req, res) {
     try {
         if (!process.env.SMSBOWER_API_KEY) {
@@ -3562,7 +3559,6 @@ async function handleGetServicesAndPrices(req, res) {
             return res.status(500).json({ success: false, message: "Vendor configuration error." });
         }
 
-        // Use the official SMSBower action 'getServicesList'
         const response = await smsBowerClient.get('', {
             params: { 
                 action: 'getServicesList', 
@@ -3580,14 +3576,15 @@ async function handleGetServicesAndPrices(req, res) {
         const serviceItems = rawData.services || rawData.data || (Array.isArray(rawData) ? rawData : []);
 
         let servicesList = serviceItems.map(item => {
-            const code = (item.code || item.id || item.short || '').toLowerCase();
-            const name = item.name || code.toUpperCase();
+            // Explicitly grab ID first as shown in SMSBower documentation
+            const serviceId = (item.id || item.code || item.short || '').toLowerCase();
+            const name = item.name || serviceId.toUpperCase();
             
-            // Directly map to SMSBower's public asset URL pattern
-            const directImageUrl = `https://smsbower.app/img/services/${encodeURIComponent(code)}.svg`;
+            // Construct direct public URL using their exact ID format (e.g., kt.svg, ig.svg, fb.svg)
+            const directImageUrl = `https://smsbower.app/img/services/${encodeURIComponent(serviceId)}.svg`;
 
             return {
-                code: code,
+                code: serviceId,
                 name: name,
                 image: directImageUrl, 
                 countries: {} 

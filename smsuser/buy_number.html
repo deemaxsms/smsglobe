@@ -141,8 +141,8 @@
     <div class="flex items-center justify-between mb-4">
         <h3 class="text-xs font-bold text-brand-darkText uppercase tracking-wider">Services Catalog</h3>
         <div class="relative">
-            <input type="text" id="serviceSearchInput" oninput="filterServices()" placeholder="Search services..." 
-                   class="text-xs bg-white border border-brand-border rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-blue w-48 shadow-sm">
+          <input type="text" id="serviceSearchInput" oninput="SMSGlobeApp.filterServices()" placeholder="Search services..." 
+       class="text-xs bg-white border border-brand-border rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-blue w-48 shadow-sm">
         </div>
     </div>
 
@@ -1703,7 +1703,8 @@ function filterServices() {
             buyServiceCountry,
             copyNumber,
             logout,
-            toggleSidebar
+            toggleSidebar,
+            filterServices
         };
     })();
 </script>

@@ -3892,33 +3892,46 @@ async function handleGetUserOrders(req, res) {
 }
 async function handleGetOrderDetails(req, res) {
     try {
-        const orderId = req.query.id; // Get ID from URL query ?id=...
-        if (!orderId) return res.status(400).json({ success: false, message: "Order ID required" });
+        // Extract the order ID from the query string (e.g., /api/order-details?id=...)
+        const urlParams = new URL(req.url, `http://${req.headers.host}`).searchParams;
+        const orderId = urlParams.get('id');
 
+        if (!orderId) {
+            return res.status(400).json({ success: false, message: "Order ID required" });
+        }
+
+        // Ensure your Mongoose Order model is imported or available in api.js
         const order = await Order.findById(orderId);
-        if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+        if (!order) {
+            return res.status(404).json({ success: false, message: "Order not found" });
+        }
 
-        res.json({ success: true, order });
+        return res.status(200).json({ success: true, order });
     } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+        console.error("Order Details Error:", err);
+        return res.status(500).json({ success: false, message: err.message });
     }
 }
 
-// Add this function logic
 async function handleSmsWebhook(req, res) {
     try {
         const { message, sender, deviceId } = req.body;
         console.log(`📩 New SMS from ${sender}: ${message}`);
 
+        // FIX 1: Search by pending status and matching phone number fields
         const order = await Order.findOne({ 
-            targetNumber: sender, // or the number receiving the text
+            $or: [
+                { targetNumber: sender },
+                { "target.number": sender },
+                { "metadata.allocatedNumber": sender }
+            ],
             productType: 'SmsNumber',
-            status: 'successful' // The financial status was successful
+            status: 'pending' // FIX 2: Virtual numbers are pending until code arrival
         }).sort({ createdAt: -1 });
 
         if (!order) {
             console.log("No matching pending order found for this sender.");
-            return res.status(200).json({ success: true }); // Always return 200 to TextBee
+            return res.status(200).json({ success: true }); 
         }
 
         const codeMatch = message.match(/\b\d{4,6}\b/);
@@ -3927,7 +3940,9 @@ async function handleSmsWebhook(req, res) {
         if (extractedCode) {
             order.smsCode = extractedCode;
             order.fullMessage = message;
+            order.status = 'successful'; // Mark order successful now that code is found
             await order.save();
+
             await SmsNumber.findOneAndUpdate(
                 { phoneNumber: order.targetNumber, status: 'pending' },
                 { smsCode: extractedCode, fullMessage: message, status: 'completed' }
@@ -3939,7 +3954,7 @@ async function handleSmsWebhook(req, res) {
         return res.status(200).json({ success: true });
     } catch (err) {
         console.error("Webhook Error:", err.message);
-        return res.status(200).json({ success: false }); // Still return 200 so TextBee doesn't retry infinitely
+        return res.status(200).json({ success: false });
     }
 }
 

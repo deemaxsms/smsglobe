@@ -113,13 +113,17 @@
     </aside>
 
     <div class="flex-grow lg:ml-64 flex flex-col min-h-screen">
-        <header class="bg-white border-b border-brand-border sticky top-0 z-30 px-4 md:px-8 py-3 flex items-center justify-between">
-            <button id="openSidebar" class="lg:hidden p-1.5 text-brand-midText border border-brand-border rounded-md">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-            </button>
-            <span class="text-sm font-bold text-brand-darkText">Number Marketplace</span>
-            <div class="w-8 h-8 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center text-xs font-bold">U</div>
-        </header>
+       <header class="bg-white border-b border-brand-border sticky top-0 z-30 px-4 md:px-8 py-3 flex items-center justify-between">
+    <button id="openSidebar" class="lg:hidden p-1.5 text-brand-midText border border-brand-border rounded-md">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+    </button>
+    <span class="text-sm font-bold text-brand-darkText">Number Marketplace</span>
+    
+    <!-- Make this a clickable anchor tag pointing to user_profile.html -->
+    <a href="user_profile.html" id="userAvatar" class="w-8 h-8 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center text-xs font-bold hover:bg-brand-blue/20 transition-colors shadow-sm cursor-pointer">
+        U
+    </a>
+</header>
 
 <main class="p-4 md:p-6 max-w-5xl w-full mx-auto flex-grow pb-12">
 
@@ -846,7 +850,7 @@ const PRIORITY_SERVICES = [
             return { res, data };
         }
 
-       async function fetchUserProfile() {
+     async function fetchUserProfile() {
     const token = localStorage.getItem('userToken');
     if (!token) return; 
 
@@ -875,11 +879,20 @@ const PRIORITY_SERVICES = [
             // Cache locally
             localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
 
-            // Update UI Displays (from esim-refill style)
+            // Update UI Balances
             const elBal = document.getElementById('displayBalance');
             const elBonus = document.getElementById('displayBonus');
             if (elBal) elBal.innerText = `₦${ngnBalance.toLocaleString()}`;
             if (elBonus) elBonus.innerText = `₦${bonusBalance.toLocaleString()}`;
+
+            // NEW: Update User Avatar Initial
+            const userAvatarEl = document.getElementById('userAvatar');
+            if (userAvatarEl) {
+                // Tries full name, first name, username, or falls back to email prefix, or 'U'
+                const identifier = userData.name || userData.fullName || userData.username || userData.email || 'U';
+                const firstLetter = identifier.charAt(0).toUpperCase();
+                userAvatarEl.innerText = firstLetter;
+            }
         }
     } catch (err) {
         console.error("Failed to fetch profile details:", err);

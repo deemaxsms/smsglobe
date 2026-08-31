@@ -3552,6 +3552,7 @@ async function handlePurchaseNumber(req, res) {
         return res.status(500).json({ success: false, message: "Server error processing purchase." });
     }
 }
+
 async function handleGetServicesAndPrices(req, res) {
     try {
         if (!process.env.SMSBOWER_API_KEY) {
@@ -3575,18 +3576,18 @@ async function handleGetServicesAndPrices(req, res) {
 
         const serviceItems = rawData.services || rawData.data || (Array.isArray(rawData) ? rawData : []);
 
-        let servicesList = serviceItems.map(item => {
+     let servicesList = serviceItems.map(item => {
             // Explicitly grab ID first as shown in SMSBower documentation
             const serviceId = (item.id || item.code || item.short || '').toLowerCase();
             const name = item.name || serviceId.toUpperCase();
             
-            // Construct direct public URL using their exact ID format (e.g., kt.svg, ig.svg, fb.svg)
-            const directImageUrl = `https://smsbower.app/img/services/${encodeURIComponent(serviceId)}.svg`;
+            // POINT TO YOUR LOCAL PROXY INSTEAD OF SMSBOWER DIRECTLY
+            const proxyImageUrl = `/api/service-image?id=${encodeURIComponent(serviceId)}`;
 
             return {
                 code: serviceId,
                 name: name,
-                image: directImageUrl, 
+                image: proxyImageUrl, // <--- Now points to your secure proxy endpoint
                 countries: {} 
             };
         });

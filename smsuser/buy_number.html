@@ -381,7 +381,7 @@ function renderServiceAccordion(filter = "") {
         const countries = serviceCountriesCache[s.code] || [];
         
         // Directly point to SMSBower's predictable SVG asset endpoint
-        const serviceImgUrl = `https://smsbower.app/img/services/${encodeURIComponent(s.code)}.svg`;
+        const serviceImgUrl = `/api/service-image?id=${encodeURIComponent(s.code)}`;
         const fallbackInitials = (s.name || s.code).substring(0, 2);
 
         return `

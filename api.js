@@ -3733,19 +3733,23 @@ async function handleGetCountries(req, res) {
                     const resolvedName = vendorMeta.name || `Country ${countryId}`;
                     const resolvedCode = vendorMeta.code || String(countryId).toLowerCase();
 
-                    const countryEntry = {
-                        countryId: String(countryId),
-                        providerId: lowestVariant.providerId, // Locks in the correct low-price provider ID
-                        countryName: resolvedName,
-                        code: resolvedCode, 
-                        stock: lowestVariant.count,
-                        rank: 'Best Price', 
-                        price: {
-                            amount: lowestVariant.amount,
-                            currency: 'NGN',
-                            symbol: '₦'
-                        }
-                    };
+                 // Inside your formattedCountries loop:
+const countryEntry = {
+    countryId: String(countryId),
+    providerId: lowestVariant.providerId,
+    countryName: resolvedName,
+    code: resolvedCode, 
+    flagUrl: resolvedCode && resolvedCode.length === 2 
+        ? `https://flagcdn.com/w40/${resolvedCode.toLowerCase()}.png` 
+        : `https://flagcdn.com/w40/un.png`, // Fallback generic flag if code is missing/invalid
+    stock: lowestVariant.count,
+    rank: 'Best Price', 
+    price: {
+        amount: lowestVariant.amount,
+        currency: 'NGN',
+        symbol: '₦'
+    }
+};
 
                     formattedCountries.push(countryEntry);
                 }

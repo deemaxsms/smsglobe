@@ -246,13 +246,40 @@
         let userBonusBalance = 0;
         let pollInterval = null;
 
-      const PRIORITY_SERVICES = [
+ const PRIORITY_SERVICES = [
     { code: 'wa', name: 'WhatsApp', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/whatsapp.svg' },
     { code: 'tg', name: 'Telegram', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/telegram.svg' },
     { code: 'gg', name: 'Google / Gmail', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/google.svg' },
     { code: 'fb', name: 'Facebook', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/facebook.svg' },
     { code: 'ig', name: 'Instagram', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/instagram.svg' },
-    { code: 'tw', name: 'Twitter / X', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/x.svg' }
+    { code: 'tw', name: 'Twitter / X', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/x.svg' },
+    { code: 'tik', name: 'TikTok', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/tiktok.svg' },
+    { code: 'nf', name: 'Netflix', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/netflix.svg' },
+    { code: 'oi', name: 'Tinder', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/tinder.svg' },
+    { code: 'ub', name: 'Uber', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/uber.svg' },
+    { code: 'ms', name: 'Microsoft', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/microsoft.svg' },
+    { code: 'ap', name: 'Apple', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/apple.svg' },
+    { code: 'ds', name: 'Discord', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/discord.svg' },
+    { code: 'akd', name: 'Feels', iconUrl: 'https://www.google.com/s2/favicons?domain=feels.com&sz=128' },
+    { code: 'acc', name: 'LuckyLand Slots', iconUrl: 'https://www.google.com/s2/favicons?domain=luckylandslots.com&sz=128' },
+    { code: 'ail', name: 'Zoo Game', iconUrl: 'https://www.google.com/s2/favicons?domain=zoogame.com&sz=128' },
+    { code: 'wp', name: '163COM', iconUrl: 'https://www.google.com/s2/favicons?domain=163.com&sz=128' },
+    { code: 'hn', name: '1688', iconUrl: 'https://www.google.com/s2/favicons?domain=1688.com&sz=128' },
+    { code: 'ahs', name: '1and1', iconUrl: 'https://www.google.com/s2/favicons?domain=ionos.com&sz=128' },
+    { code: 'wj', name: '1xbet', iconUrl: 'https://www.google.com/s2/favicons?domain=1xbet.com&sz=128' },
+    { code: 'qi', name: '32Red', iconUrl: 'https://www.google.com/s2/favicons?domain=32red.com&sz=128' },
+    { code: 'auw', name: '3Fun', iconUrl: 'https://www.google.com/s2/favicons?domain=go3fun.com&sz=128' },
+    { code: 'hk', name: '4FunLite', iconUrl: 'https://www.google.com/s2/favicons?domain=4fun.com&sz=128' },
+    { code: 'fpx', name: '500px', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/500px.svg' },
+    { code: 'boc', name: '51exch', iconUrl: 'https://www.google.com/s2/favicons?domain=51exch.com&sz=128' },
+    { code: 'otk', name: '51game', iconUrl: 'https://www.google.com/s2/favicons?domain=51game.com&sz=128' },
+    { code: 'fw', name: '99acres', iconUrl: 'https://www.google.com/s2/favicons?domain=99acres.com&sz=128' },
+    { code: 'ki', name: '99app', iconUrl: 'https://www.google.com/s2/favicons?domain=99app.com&sz=128' },
+    { code: 'acv', name: 'A23', iconUrl: 'https://www.google.com/s2/favicons?domain=a23.com&sz=128' },
+    { code: 'gn', name: 'A9A', iconUrl: 'https://www.google.com/s2/favicons?domain=a9a.com&sz=128' },
+    { code: 'hra', name: 'Aadhaar', iconUrl: 'https://www.google.com/s2/favicons?domain=uidai.gov.in&sz=128' },
+    { code: 'ags', name: 'Abbott', iconUrl: 'https://www.google.com/s2/favicons?domain=abbott.com&sz=128' },
+    { code: 'rh', name: 'Ace2Three', iconUrl: 'https://www.google.com/s2/favicons?domain=ace2three.com&sz=128' }
 ];
 
         async function safeFetch(url, options = {}) {
@@ -380,34 +407,33 @@ function renderServiceAccordion(filter = "") {
         const isExpanded = expandedServiceCode === s.code;
         const countries = serviceCountriesCache[s.code] || [];
         
-        // Check if it's one of your priority services with a vector iconUrl
         const priorityMatch = PRIORITY_SERVICES.find(p => p.code === s.code);
-        
-        // Use priority iconUrl if available, otherwise fallback to your proxy endpoint
         const serviceImgUrl = priorityMatch ? priorityMatch.iconUrl : `/api/service-image?id=${encodeURIComponent(s.code)}`;
         const fallbackInitials = (s.name || s.code).substring(0, 2).toUpperCase();
 
         return `
             <div class="bg-white border border-brand-border rounded-2xl overflow-hidden transition-all shadow-sm">
-                <div onclick="SMSGlobeApp.toggleServiceAccordion('${s.code}')" class="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-brand-background/50 transition-colors">
-                    <div class="flex items-center gap-3">
-                       <div class="w-8 h-8 rounded-xl bg-brand-blue/10 text-brand-blue font-bold flex items-center justify-center text-xs uppercase overflow-hidden p-1.5">
-                          <img src="${serviceImgUrl}" alt="${s.name || s.code}" loading="lazy" class="w-full h-full object-contain" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                          <span style="display: none;" class="items-center justify-center w-full h-full text-[10px]">${fallbackInitials}</span>
+                <div onclick="SMSGlobeApp.toggleServiceAccordion('${s.code}')" class="px-4 sm:px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-brand-background/50 transition-colors gap-2">
+                    <div class="flex items-center gap-3 min-w-0">
+                       <!-- Responsive wrapper with flex-shrink-0 to prevent icon crushing on mobile -->
+                       <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gray-50 border border-gray-100 flex-shrink-0 flex items-center justify-center overflow-hidden p-1.5 shadow-2xs">
+                          <img src="${serviceImgUrl}" alt="${s.name || s.code}" loading="lazy" class="w-full h-full object-contain block" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                          <span style="display: none;" class="items-center justify-center w-full h-full text-[10px] font-bold text-brand-darkText bg-brand-blue/10">${fallbackInitials}</span>
                        </div>
-                       <div>
-                            <span class="text-xs font-bold text-brand-darkText block">${s.name || s.code}</span>
-                            <span class="text-[9px] text-brand-lightText uppercase">Code: ${s.code}</span>
+                       <div class="min-w-0">
+                            <span class="text-xs sm:text-sm font-bold text-brand-darkText block truncate">${s.name || s.code}</span>
+                            <span class="text-[9px] sm:text-[10px] text-brand-lightText uppercase tracking-wider">Code: ${s.code}</span>
                        </div>
                     </div>
-                    <button class="text-xs font-bold text-brand-midText flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border bg-white">
-                        ${isExpanded ? 'Collapse' : 'Select Country'}
+                    <button class="text-xs font-bold text-brand-midText flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg border border-brand-border bg-white flex-shrink-0">
+                        <span class="hidden sm:inline">${isExpanded ? 'Collapse' : 'Select Country'}</span>
+                        <span class="sm:hidden">${isExpanded ? 'Close' : 'Select'}</span>
                         <svg class="w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
                 </div>
 
                 ${isExpanded ? `
-                    <div class="border-t border-brand-border bg-brand-background/30 p-4 space-y-3">
+                    <div class="border-t border-brand-border bg-brand-background/30 p-3 sm:p-4 space-y-3">
                         <div class="relative mb-3">
                             <input type="text" oninput="SMSGlobeApp.filterCountriesForService('${s.code}', this.value)" placeholder="Search country inventory..." 
                                    class="text-xs bg-white border border-brand-border rounded-lg px-3 py-2 focus:outline-none focus:border-brand-blue w-full shadow-sm">
@@ -421,7 +447,6 @@ function renderServiceAccordion(filter = "") {
         `;
     }).join('');
 }
-
       function renderCountriesListHtml(serviceCode, countriesList) {
             if (!countriesList || countriesList.length === 0) {
                 return `

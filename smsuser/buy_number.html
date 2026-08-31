@@ -246,14 +246,14 @@
         let userBonusBalance = 0;
         let pollInterval = null;
 
-        const PRIORITY_SERVICES = [
-            { code: 'wa', name: 'WhatsApp', icon: '💬' },
-            { code: 'tg', name: 'Telegram', icon: '✈️' },
-            { code: 'gg', name: 'Google / Gmail', icon: '🌐' },
-            { code: 'fb', name: 'Facebook', icon: '📘' },
-            { code: 'ig', name: 'Instagram', icon: '📸' },
-            { code: 'tw', name: 'Twitter / X', icon: '🐦' }
-        ];
+      const PRIORITY_SERVICES = [
+    { code: 'wa', name: 'WhatsApp', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/whatsapp.svg' },
+    { code: 'tg', name: 'Telegram', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/telegram.svg' },
+    { code: 'gg', name: 'Google / Gmail', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/google.svg' },
+    { code: 'fb', name: 'Facebook', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/facebook.svg' },
+    { code: 'ig', name: 'Instagram', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/instagram.svg' },
+    { code: 'tw', name: 'Twitter / X', iconUrl: 'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/x.svg' }
+];
 
         async function safeFetch(url, options = {}) {
             const res = await fetch(url, options);
@@ -380,25 +380,20 @@ function renderServiceAccordion(filter = "") {
         const isExpanded = expandedServiceCode === s.code;
         const countries = serviceCountriesCache[s.code] || [];
         
-        // Check if it's one of your priority services with a known emoji/icon representation
+        // Check if it's one of your priority services with a vector iconUrl
         const priorityMatch = PRIORITY_SERVICES.find(p => p.code === s.code);
         
-        // Only target the proxy if it's a known major service or you want to try fetching it, 
-        // otherwise skip the network request entirely and use text/emoji fallback.
-        const serviceImgUrl = `/api/service-image?id=${encodeURIComponent(s.code)}`;
+        // Use priority iconUrl if available, otherwise fallback to your proxy endpoint
+        const serviceImgUrl = priorityMatch ? priorityMatch.iconUrl : `/api/service-image?id=${encodeURIComponent(s.code)}`;
         const fallbackInitials = (s.name || s.code).substring(0, 2).toUpperCase();
 
         return `
             <div class="bg-white border border-brand-border rounded-2xl overflow-hidden transition-all shadow-sm">
                 <div onclick="SMSGlobeApp.toggleServiceAccordion('${s.code}')" class="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-brand-background/50 transition-colors">
                     <div class="flex items-center gap-3">
-                       <div class="w-8 h-8 rounded-xl bg-brand-blue/10 text-brand-blue font-bold flex items-center justify-center text-xs uppercase overflow-hidden">
-                          ${priorityMatch ? `
-                             <span class="flex items-center justify-center w-full h-full text-base">${priorityMatch.icon}</span>
-                          ` : `
-                             <img src="${serviceImgUrl}" alt="${s.name || s.code}" loading="lazy" class="w-full h-full object-contain" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                             <span style="display: none;" class="items-center justify-center w-full h-full">${fallbackInitials}</span>
-                          `}
+                       <div class="w-8 h-8 rounded-xl bg-brand-blue/10 text-brand-blue font-bold flex items-center justify-center text-xs uppercase overflow-hidden p-1.5">
+                          <img src="${serviceImgUrl}" alt="${s.name || s.code}" loading="lazy" class="w-full h-full object-contain" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                          <span style="display: none;" class="items-center justify-center w-full h-full text-[10px]">${fallbackInitials}</span>
                        </div>
                        <div>
                             <span class="text-xs font-bold text-brand-darkText block">${s.name || s.code}</span>

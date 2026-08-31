@@ -1000,7 +1000,7 @@ function renderServiceAccordion(filter = "") {
         `;
     }).join('');
 }
-     function renderCountriesListHtml(serviceCode, countriesList) {
+   function renderCountriesListHtml(serviceCode, countriesList) {
     if (!countriesList || countriesList.length === 0) {
         return `
             <div class="flex flex-col items-center justify-center py-6 bg-white rounded-xl border border-brand-border">
@@ -1018,6 +1018,181 @@ function renderServiceAccordion(filter = "") {
         }
     }
 
+ // Comprehensive mapping dictionary for provider country names/IDs to ISO 2-letter codes
+    const countryCodeMap = {
+        // --- AMERICAS ---
+        'united states': 'us', 'usa': 'us', 'united states (virtual)': 'us', 'america': 'us', 'canada': 'ca', 'mexico': 'mx', 'brazil': 'br', 'argentina': 'ar',
+        'colombia': 'co', 'chile': 'cl', 'peru': 'pe', 'venezuela': 've', 'ecuador': 'ec', 'bolivia': 'bo', 'paraguay': 'py', 'uruguay': 'uy', 'costa rica': 'cr',
+        'panama': 'pa', 'cuba': 'cu', 'dominican republic': 'do',
+        'puerto rico': 'pr',
+        'guatemala': 'gt',
+        'honduras': 'hn',
+        'el salvador': 'sv',
+        'nicaragua': 'ni',
+        'haiti': 'ht',
+        'jamaica': 'jm',
+        'trinidad and tobago': 'tt',
+        'bahamas': 'bs',
+        'barbados': 'bb',
+
+        // --- EUROPE ---
+        'united kingdom': 'gb', 'uk': 'gb', 'great britain': 'gb', 'england': 'gb',
+        'germany': 'de',
+        'france': 'fr',
+        'italy': 'it',
+        'spain': 'es',
+        'ukraine': 'ua',
+        'russia': 'ru',
+        'poland': 'pl',
+        'romania': 'ro',
+        'netherlands': 'nl', 'holland': 'nl',
+        'belgium': 'be',
+        'greece': 'gr',
+        'czech republic': 'cz', 'czechia': 'cz',
+        'PORTUGAL': 'pt', 'portugal': 'pt',
+        'sweden': 'se',
+        'hungary': 'hu',
+        'belarus': 'by',
+        'austria': 'at',
+        'switzerland': 'ch',
+        'bulgaria': 'bg',
+        'serbia': 'rs',
+        'denmark': 'dk',
+        'finland': 'fi',
+        'slovakia': 'sk',
+        'norway': 'no',
+        'ireland': 'ie',
+        'croatia': 'hr',
+        'moldova': 'md',
+        'bosnia and herzegovina': 'ba',
+        'albania': 'al',
+        'lithuania': 'lt',
+        'north macedonia': 'mk',
+        'slovenia': 'si',
+        'latvia': 'lv',
+        'estonia': 'ee',
+        'montenegro': 'me',
+        'luxembourg': 'lu',
+        'malta': 'mt',
+        'iceland': 'is',
+        'andorra': 'ad',
+        'monaco': 'mc',
+        'liechtenstein': 'li',
+        'san marino': 'sm',
+        'vatican city': 'va',
+        'cyprus': 'cy',
+
+        // --- AFRICA ---
+        'nigeria': 'ng',
+        'egypt': 'eg',
+        'south africa': 'za',
+        'kenya': 'ke',
+        'ghana': 'gh',
+        'cameroon': 'cm',
+        'guinea': 'gn',
+        'ethiopia': 'et',
+        'tanzania': 'tz',
+        'algeria': 'dz',
+        'morocco': 'ma',
+        'uganda': 'ug',
+        'sudan': 'sd',
+        'angola': 'ao',
+        'mozambique': 'mz',
+        'ivory coast': 'ci', 'cote d ivoire': 'ci',
+        'madagascar': 'mg',
+        'zambia': 'zm',
+        'zimbabwe': 'zw',
+        'senegal': 'sn',
+        'mali': 'ml',
+        'rwanda': 'rw',
+        'somalia': 'so',
+        'tunisia': 'tn',
+        'chad': 'td',
+        'benin': 'bj',
+        'burundi': 'bi',
+        'south sudan': 'ss',
+        'eritrea': 'er',
+        'namibia': 'na',
+        'gambia': 'gm',
+        'botswana': 'bw',
+        'gabon': 'ga',
+        'lesotho': 'ls',
+        'guinea-bissau': 'gw',
+        'equatorial guinea': 'gq',
+        'mauritius': 'mu',
+        'eswatini': 'sz',
+        'djibouti': 'dj',
+        'comoros': 'km',
+        'cape verde': 'cv',
+        'sao tome and principe': 'st',
+        'seychelles': 'sc',
+
+        // --- ASIA ---
+        'china': 'cn',
+        'india': 'in',
+        'indonesia': 'id',
+        'pakistan': 'pk',
+        'bangladesh': 'bd',
+        'japan': 'jp',
+        'philippines': 'ph',
+        'vietnam': 'vn',
+        'turkey': 'tr', 'turkiye': 'tr',
+        'iran': 'ir',
+        'thailand': 'th',
+        'myanmar': 'mm',
+        'south korea': 'kr', 'korea': 'kr',
+        'iraq': 'iq',
+        'afghanistan': 'af',
+        'saudi arabia': 'sa',
+        'uzbekistan': 'uz',
+        'yemen': 'ye',
+        'malaysia': 'my',
+        'nepal': 'np',
+        'north korea': 'kp',
+        'sri lanka': 'lk',
+        'kazakhstan': 'kz',
+        'syria': 'sy',
+        'cambodia': 'kh',
+        'jordan': 'jo',
+        'azerbaijan': 'az',
+        'united arab emirates': 'ae', 'uae': 'ae',
+        'tajikistan': 'tj',
+        'israel': 'il',
+        'laos': 'la',
+        'lebanon': 'lb',
+        'kyrgyzstan': 'kg',
+        'turkmenistan': 'tm',
+        'singapore': 'sg',
+        'palestine': 'ps',
+        'oman': 'om',
+        'kuwait': 'kw',
+        'georgia': 'ge',
+        'mongolia': 'mn',
+        'armenia': 'am',
+        'qatar': 'qa',
+        'bahrain': 'bh',
+        'timor-leste': 'tl',
+        'bhutan': 'bt',
+        'maldives': 'mv',
+        'brunei': 'bn',
+
+        // --- OCEANIA ---
+        'australia': 'au',
+        'papua new guinea': 'pg',
+        'new zealand': 'nz',
+        'fiji': 'fj',
+        'solomon islands': 'sb',
+        'vanuatu': 'vu',
+        'samoa': 'ws',
+        'kiribati': 'ki',
+        'micronesia': 'fm',
+        'tonga': 'to',
+        'marshall islands': 'mh',
+        'palau': 'pw',
+        'tuvalu': 'tv',
+        'nauru': 'nr'
+    };
+
     return countriesList.map(c => {
         // c.availablePrices now contains the pre-converted NGN amounts from the backend
         const options = c.availablePrices || [{ amount: c.priceAmount, rank: c.rank, stock: c.stock, providerId: c.providerId }];
@@ -1029,12 +1204,25 @@ function renderServiceAccordion(filter = "") {
         const formattedPriceString = finalDisplayPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
         const stockStatus = activeTier.stock || c.stock || 'In Stock';
-        const countryId = c.countryId;
-        
-        // Use the proper ISO code stored in c.code, falling back safely if missing
-        const flagCode = (c.code && c.code.length === 2 ? c.code : (countryId.toString().length === 2 ? countryId : 'un')).toLowerCase();
-        
-        const countryName = c.countryName;
+        const countryId = String(c.countryId || '').toLowerCase();
+        const countryName = c.countryName || c.name || '';
+        const cleanName = countryName.toLowerCase().trim();
+
+        // Resolve the exact 2-letter ISO flag code safely using our dictionary or fallback logic
+        let flagCode = 'un';
+        if (c.code && c.code.length === 2) {
+            flagCode = c.code.toLowerCase();
+        } else if (countryCodeMap[cleanName]) {
+            flagCode = countryCodeMap[cleanName];
+        } else {
+            const matchedKey = Object.keys(countryCodeMap).find(key => cleanName.includes(key));
+            if (matchedKey) {
+                flagCode = countryCodeMap[matchedKey];
+            } else if (countryId.length === 2) {
+                flagCode = countryId;
+            }
+        }
+
         const rankLabel = activeTier.rank || 'Silver';
         const providerId = activeTier.providerId || c.providerId || '';
         const rankBadgeClass = rankLabel.toLowerCase().includes('silver') ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-amber-50 text-amber-700 border-amber-200';
@@ -1056,7 +1244,7 @@ function renderServiceAccordion(filter = "") {
                 <!-- Middle Space: Shuffle / Alternate Tier Button -->
                 <div class="flex items-center">
                     ${options.length > 1 ? `
-                        <button onclick="SMSGlobeApp.shuffleCountryPriceTier('${serviceCode}', '${countryId}', this)" 
+                        <button onclick="SMSGlobeApp.shuffleCountryPriceTier('${serviceCode}', '${c.countryId}', this)" 
                                 title="Shuffle / Cycle alternative price tier"
                                 class="p-2 text-gray-400 hover:text-brand-blue bg-gray-50 hover:bg-brand-blue/10 rounded-lg transition-all border border-gray-200 flex items-center justify-center">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -1071,7 +1259,7 @@ function renderServiceAccordion(filter = "") {
                     <div class="flex flex-col items-end">
                         <span class="text-xs font-black text-brand-blue">₦${formattedPriceString}</span>
                         ${options.length > 1 ? `
-                            <select onchange="SMSGlobeApp.switchCountryPriceTier('${serviceCode}', '${countryId}', this.value)" class="text-[9px] text-gray-500 bg-gray-50 border border-gray-200 rounded px-1 py-0.5 mt-0.5 focus:outline-none">
+                            <select onchange="SMSGlobeApp.switchCountryPriceTier('${serviceCode}', '${c.countryId}', this.value)" class="text-[9px] text-gray-500 bg-gray-50 border border-gray-200 rounded px-1 py-0.5 mt-0.5 focus:outline-none">
                                 ${options.map((opt, idx) => `
                                     <option value="${idx}" ${idx === selectedIdx ? 'selected' : ''}>
                                         ${opt.rank || 'Tier'} - ₦${(Number(opt.amount) * multiplier).toLocaleString()} (${opt.stock || 'In Stock'})
@@ -1081,7 +1269,7 @@ function renderServiceAccordion(filter = "") {
                         ` : ''}
                     </div>
                     <!-- Pass providerId safely into the purchase call -->
-                    <button onclick="SMSGlobeApp.buyServiceCountry('${serviceCode}', '${countryId}', ${finalDisplayPrice}, '${rankLabel}', '${providerId}')" 
+                    <button onclick="SMSGlobeApp.buyServiceCountry('${serviceCode}', '${c.countryId}', ${finalDisplayPrice}, '${rankLabel}', '${providerId}')" 
                             class="px-4 py-2 bg-brand-blue text-white rounded-lg text-xs font-bold hover:bg-brand-blue/90 active:scale-95 transition-all">
                         Buy Number
                     </button>

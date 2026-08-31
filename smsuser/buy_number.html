@@ -380,22 +380,30 @@ function renderServiceAccordion(filter = "") {
         const isExpanded = expandedServiceCode === s.code;
         const countries = serviceCountriesCache[s.code] || [];
         
-        // Directly point to SMSBower's predictable SVG asset endpoint
+        // Check if it's one of your priority services with a known emoji/icon representation
+        const priorityMatch = PRIORITY_SERVICES.find(p => p.code === s.code);
+        
+        // Only target the proxy if it's a known major service or you want to try fetching it, 
+        // otherwise skip the network request entirely and use text/emoji fallback.
         const serviceImgUrl = `/api/service-image?id=${encodeURIComponent(s.code)}`;
-        const fallbackInitials = (s.name || s.code).substring(0, 2);
+        const fallbackInitials = (s.name || s.code).substring(0, 2).toUpperCase();
 
         return `
             <div class="bg-white border border-brand-border rounded-2xl overflow-hidden transition-all shadow-sm">
                 <div onclick="SMSGlobeApp.toggleServiceAccordion('${s.code}')" class="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-brand-background/50 transition-colors">
                     <div class="flex items-center gap-3">
                        <div class="w-8 h-8 rounded-xl bg-brand-blue/10 text-brand-blue font-bold flex items-center justify-center text-xs uppercase overflow-hidden">
-                       <img src="${serviceImgUrl}" alt="${s.name || s.code}" loading="lazy" class="w-full h-full object-contain" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                       <span style="display: none;" class="items-center justify-center w-full h-full">${fallbackInitials}</span>
-                        </div>
-                        <div>
+                          ${priorityMatch ? `
+                             <span class="flex items-center justify-center w-full h-full text-base">${priorityMatch.icon}</span>
+                          ` : `
+                             <img src="${serviceImgUrl}" alt="${s.name || s.code}" loading="lazy" class="w-full h-full object-contain" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <span style="display: none;" class="items-center justify-center w-full h-full">${fallbackInitials}</span>
+                          `}
+                       </div>
+                       <div>
                             <span class="text-xs font-bold text-brand-darkText block">${s.name || s.code}</span>
                             <span class="text-[9px] text-brand-lightText uppercase">Code: ${s.code}</span>
-                        </div>
+                       </div>
                     </div>
                     <button class="text-xs font-bold text-brand-midText flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand-border bg-white">
                         ${isExpanded ? 'Collapse' : 'Select Country'}

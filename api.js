@@ -3576,21 +3576,17 @@ async function handleGetServicesAndPrices(req, res) {
 
         const serviceItems = rawData.services || rawData.data || (Array.isArray(rawData) ? rawData : []);
 
-     let servicesList = serviceItems.map(item => {
-            // Explicitly grab ID first as shown in SMSBower documentation
-            const serviceId = (item.id || item.code || item.short || '').toLowerCase();
-            const name = item.name || serviceId.toUpperCase();
-            
-            // POINT TO YOUR LOCAL PROXY INSTEAD OF SMSBOWER DIRECTLY
-            const proxyImageUrl = `/api/service-image?id=${encodeURIComponent(serviceId)}`;
-
-            return {
-                code: serviceId,
-                name: name,
-                image: proxyImageUrl, // <--- Now points to your secure proxy endpoint
-                countries: {} 
-            };
-        });
+   let servicesList = serviceItems.map(item => {
+    const serviceId = (item.id || item.code || item.short || '').toLowerCase();
+    const name = item.name || serviceId.toUpperCase();
+    
+    return {
+        code: serviceId,
+        name: name,
+        image: null, // Don't point to a broken proxy path
+        countries: {} 
+    };
+});
 
         return res.json({ 
             success: true, 

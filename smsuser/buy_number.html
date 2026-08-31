@@ -960,13 +960,17 @@ window.setMode = function(mode) {
             }
         }
 
-        async function preFetchAllServiceCountries() {
-            services.forEach(s => {
-                if (s.code && !serviceCountriesCache[s.code]) {
-                    fetchCountriesForService(s.code, true);
-                }
-            });
-        }
+      async function preFetchAllServiceCountries() {
+    const servicesToFetch = services.filter(s => s.code && !serviceCountriesCache[s.code]);
+        const batchSize = 4;
+    for (let i = 0; i < servicesToFetch.length; i += batchSize) {
+        const batch = servicesToFetch.slice(i, i + batchSize);
+                await Promise.all(
+            batch.map(s => fetchCountriesForService(s.code, true))
+        );
+                await new Promise(resolve => setTimeout(resolve, 50));
+    }
+}
 
 function renderServiceAccordion(filter = "") {
     const container = document.getElementById('serviceAccordionList');
@@ -1676,13 +1680,18 @@ function filterServices() {
             document.getElementById('sidebarOverlay')?.classList.toggle('hidden');
         }
 
-      document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Setup UI Event Listeners immediately
     document.getElementById('openSidebar')?.addEventListener('click', toggleSidebar);
     document.getElementById('closeSidebar')?.addEventListener('click', toggleSidebar);
     
-    fetchUserProfile();
-    syncInventory(); 
+    // 2. Fetch user profile and sync inventory/catalogs in parallel to prevent hanging
+    await Promise.all([
+        fetchUserProfile(),
+        syncInventory()
+    ]);
 
+    // 3. Render active orders and kick off polling for missing codes
     renderActiveOrdersDashboard();
     const activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
     activeOrders.forEach(order => {
@@ -1691,6 +1700,7 @@ function filterServices() {
         }
     });
 
+    // 4. Background interval updates
     setInterval(syncInventory, 60000);
 });
 

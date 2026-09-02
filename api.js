@@ -3504,16 +3504,21 @@ async function handleGetRdpRequests(req, res) {
 }
 
 /**
- * 1. PURCHASE / ALLOCATE NUMBER FROM SMSBOWER (Vercel Optimized)
+ * 1. PURCHASE / ALLOCATE NUMBER FROM SMSBOWER (Vercel Optimized & Fixed)
  */
 async function handlePurchaseNumber(req, res) {
     try {
         await connectDB();
-        const { planAmount, metadata } = req.body;
+        
+        // Extract planAmount, metadata, AND providerId from the root request body
+        const { planAmount, metadata, providerId } = req.body;
         const userId = req.user._id;
 
         const serviceCode = metadata?.serviceCode || metadata?.serviceName || 'ot';
         const countryId = metadata?.countryCode || metadata?.countryId || 0;
+        
+        // Extract operator/provider from request body or metadata fallback
+        const selectedOperator = providerId || metadata?.providerId || metadata?.operator;
 
         if (!planAmount || planAmount <= 0) {
             return res.status(400).json({ success: false, message: "Invalid plan amount." });
@@ -3531,14 +3536,20 @@ async function handlePurchaseNumber(req, res) {
         }
 
         try {
-            // 2. Call SMSBower Number Allocation API
-            const response = await smsBowerClient.get('', {
-                params: {
-                    action: 'getNumber',
-                    service: serviceCode,
-                    country: countryId
-                }
-            });
+            // 2. Build SMSBower Number Allocation Query Parameters
+            const apiParams = {
+                action: 'getNumber',
+                service: serviceCode,
+                country: countryId
+            };
+
+            // Only attach operator parameter if a specific provider ID is chosen and valid
+            if (selectedOperator && selectedOperator !== 'undefined' && selectedOperator !== '') {
+                apiParams.operator = selectedOperator;
+            }
+
+            // Call SMSBower Number Allocation API
+            const response = await smsBowerClient.get('', { params: apiParams });
 
             const respText = response.data; // e.g., "ACCESS_NUMBER:1:2347012345678:123456" or "NO_NUMBERS"
 
@@ -3567,6 +3578,7 @@ async function handlePurchaseNumber(req, res) {
                 });
 
             } else {
+                // Refund balance if vendor didn't return an access number
                 await User.findByIdAndUpdate(userId, { $inc: { balance: planAmount } });
 
                 return res.status(400).json({
@@ -3576,6 +3588,7 @@ async function handlePurchaseNumber(req, res) {
             }
 
         } catch (vendorErr) {
+            // Refund balance on vendor network error
             await User.findByIdAndUpdate(userId, { $inc: { balance: planAmount } });
             
             console.error("SMSBower Vendor Request Failed:", vendorErr.message);

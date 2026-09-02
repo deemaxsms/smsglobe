@@ -1515,29 +1515,61 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
         return;
     }
 
+    // Fetch live user balance and bonus info
     const currentBalance = parseFloat(window.userBalance ?? userBalance ?? localStorage.getItem('user_balance') ?? 0);
+    const userBonus = parseFloat(window.userBonus ?? window.bonusBalance ?? 0); // Adjust based on your user schema field name
     const itemPrice = parseFloat(price);
-
-    if (currentBalance < itemPrice) {
-        const deficit = (itemPrice - currentBalance).toLocaleString();
-        Swal.fire('Insufficient Funds', `You need ₦${deficit} more to purchase this option. Please fund your wallet.`, 'error');
-        return;
-    }
-
     const serviceObj = services.find(s => s.code === serviceCode);
     const countriesList = serviceCountriesCache[serviceCode] || [];
     const countryObj = countriesList.find(c => String(c.countryId) === String(countryId));
 
+    // Custom HTML modal matching your VPN design
     const confirmed = await Swal.fire({
-        title: 'Confirm Live Purchase',
-        text: `Get ${serviceObj?.name || serviceCode} (${rank} Tier) in ${countryObj?.countryName || 'Selected Country'} for ₦${itemPrice.toLocaleString()}?`,
-        icon: 'question',
+        title: '<div class="text-lg font-bold text-gray-800">CONFIRM PURCHASE</div>',
+        html: `
+            <div class="text-left space-y-3 pt-2">
+                <div class="bg-gray-50 border border-gray-200 p-3 rounded-xl">
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Service & Location</label>
+                    <p class="text-sm font-semibold text-gray-800">${serviceObj?.name || serviceCode} (${rank} Tier)</p>
+                    <p class="text-xs text-gray-500">${countryObj?.countryName || 'Selected Country'}</p>
+                </div>
+
+                <div class="bg-gray-50 border border-gray-200 p-3 rounded-xl flex justify-between items-center">
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-400">Main Wallet</label>
+                        <span class="text-sm font-bold text-brand-blue">₦${currentBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    </div>
+                    ${userBonus > 0 ? `
+                    <div class="text-right">
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-400">Bonus Wallet</label>
+                        <span class="text-sm font-bold text-emerald-600">₦${userBonus.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    </div>` : ''}
+                </div>
+
+                <div class="bg-blue-50/50 border border-blue-100 p-3 rounded-xl">
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-blue-500">Total Price</label>
+                    <span class="text-base font-black text-gray-900">₦${itemPrice.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                </div>
+            </div>
+        `,
         showCancelButton: true,
-        confirmButtonColor: '#0F54C6',
-        confirmButtonText: 'Proceed Order'
+        confirmButtonText: currentBalance >= itemPrice ? 'Proceed Order' : 'Topup Wallet',
+        confirmButtonColor: currentBalance >= itemPrice ? '#0F54C6' : '#047857',
+        cancelButtonText: 'Cancel',
+        customClass: {
+            popup: 'rounded-2xl p-5',
+            confirmButton: 'rounded-xl px-5 py-2.5 font-bold',
+            cancelButton: 'rounded-xl px-5 py-2.5 font-bold'
+        }
     });
 
     if (!confirmed.isConfirmed) return;
+
+    // Handle low balance redirect to funding page if they clicked Topup Wallet
+    if (currentBalance < itemPrice) {
+        window.location.href = 'topup.html'; // Or your wallet funding route
+        return;
+    }
 
     const payload = {
         serviceCode: serviceCode,
@@ -1563,25 +1595,15 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
         const res = response.data;
 
         if (res && res.success) {
-            // Updated mapping to match backend Mongoose schema fields
             const realMobileNumber = res.order?.phoneNumber || res.order?.mobileNumber || res.mobileNumber;
             const orderId = res.order?._id || res.order?.id || res.orderId;
             
-            if (!orderId || !realMobileNumber) {
-                console.error("Invalid order structure returned:", res);
-                Swal.fire('Error', 'Order created, but received invalid data format from server.', 'error');
-                return;
-            }
-
-            const serviceName = serviceObj?.name || serviceCode;
-            const countryName = countryObj?.countryName || 'Selected Country';
-
             let activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
             const newActiveOrder = {
                 id: orderId,
                 phoneNumber: realMobileNumber,
-                serviceName: serviceName,
-                countryName: countryName,
+                serviceName: serviceObj?.name || serviceCode,
+                countryName: countryObj?.countryName || 'Selected Country',
                 status: 'Waiting for SMS...',
                 smsCode: null,
                 fullMessage: null,
@@ -1607,7 +1629,7 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
         }
     } catch (err) { 
         console.error("Purchase Error:", err);
-        Swal.fire('Network Error', 'Check your connection or server response and try again.', 'error');
+        Swal.fire('Network Error', 'Check your connection and try again.', 'error');
     }
 }
 

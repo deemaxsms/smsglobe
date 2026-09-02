@@ -1728,7 +1728,7 @@ function renderActiveOrdersDashboard() {
 }
 
 // Global helper function to close/hide the active orders modal overlay
-function closeActiveOrdersModal() {
+window.closeActiveOrdersModal = function() {
     const container = document.getElementById('activeOrdersContainer');
     if (container) {
         container.style.display = 'none';

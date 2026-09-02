@@ -3502,6 +3502,7 @@ async function handleGetRdpRequests(req, res) {
         return res.status(500).json({ success: false, message: "Failed to fetch" });
     }
 }
+
 /**
  * 1. PURCHASE / ALLOCATE NUMBER FROM SMSBOWER (Vercel Optimized & Fixed)
  */
@@ -3539,19 +3540,19 @@ async function handlePurchaseNumber(req, res) {
         }
 
         try {
-            // 2. Build SMSBower Number Allocation Query Parameters using v2/standard parameters
+            // 2. Build SMSBower Number Allocation Query Parameters matching their API handler spec
             const apiParams = {
-                action: 'getNumber', // Or 'getNumbersV2' depending on your endpoint handler setup
+                action: 'getNumber',
                 service: String(serviceCode).trim().toLowerCase(),
                 country: String(countryId).trim()
             };
 
-            // Only attach operator parameter if a specific provider ID is chosen and valid
+            // SMSBower API expects 'providerIds' (plural, comma-separated) instead of 'operator'
             if (selectedOperator && selectedOperator !== 'undefined' && selectedOperator !== '' && selectedOperator !== 'null') {
-                apiParams.operator = String(selectedOperator).trim();
+                apiParams.providerIds = String(selectedOperator).trim();
             }
 
-            console.log("Sending allocation query to SMSBower:", apiParams);
+            console.log("Sending clean allocation query to SMSBower:", apiParams);
 
             // Call SMSBower Number Allocation API
             const response = await smsBowerClient.get('', { params: apiParams });
@@ -3582,6 +3583,7 @@ async function handlePurchaseNumber(req, res) {
                 });
 
             } else {
+                // Refund balance if vendor didn't return an access number
                 await User.findByIdAndUpdate(userId, { $inc: { balance: planAmount } });
 
                 return res.status(400).json({
@@ -3631,17 +3633,18 @@ async function handleGetServicesAndPrices(req, res) {
 
         const serviceItems = rawData.services || rawData.data || (Array.isArray(rawData) ? rawData : []);
 
-   let servicesList = serviceItems.map(item => {
-    const serviceId = (item.id || item.code || item.short || '').toLowerCase();
-    const name = item.name || serviceId.toUpperCase();
-    
-    return {
-        code: serviceId,
-        name: name,
-        image: null, // Don't point to a broken proxy path
-        countries: {} 
-    };
-});
+        let servicesList = serviceItems.map(item => {
+            // Ensure we use the exact service identifier key ('code' or 'id') required by SMSBower
+            const serviceId = (item.code || item.id || item.short || '').toLowerCase();
+            const name = item.name || serviceId.toUpperCase();
+            
+            return {
+                code: serviceId,
+                name: name,
+                image: null, 
+                countries: {} 
+            };
+        });
 
         return res.json({ 
             success: true, 

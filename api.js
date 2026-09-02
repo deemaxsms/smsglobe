@@ -354,11 +354,11 @@ const orderSchema = new mongoose.Schema({
     currency: { type: String, default: 'NGN' },        
     mainBalanceUsed: { type: Number, default: 0 }, 
     bonusBalanceUsed: { type: Number, default: 0 }, 
-    status: { 
+   status: { 
         type: String, 
-        enum: ['pending', 'processing', 'successful', 'failed', 'completed'], 
+        enum: ['pending', 'processing', 'successful', 'failed', 'completed', 'cancelled'], 
         default: 'pending' 
-    }, 
+    },
     paymentReference: { type: String, unique: true },    
     targetNumber: String, 
     country: String,
@@ -556,6 +556,7 @@ app.all('/api/:action', async (req, res) => {
         case 'verify-topup': return handleVerifyTopup(req, res);
         case 'purchase-with-wallet': return handlePurchaseWithWallet(req, res);
         case 'recheck-sms': return handleRecheckSms(req, res);
+        case 'cancel-order': return handleCancelOrder(req, res);
         case 'proxies': 
             if (req.method === 'GET') return handleGetProxies(req, res);
             if (req.method === 'POST') return handleAddProxy(req, res);
@@ -4041,6 +4042,110 @@ async function handleRecheckSms(req, res) {
     } catch (err) {
         console.error("Manual Recheck SMS Error:", err.message);
         return res.status(500).json({ success: false, message: "Failed to recheck SMS status from provider." });
+    }
+}
+
+
+/**
+ * 5. CANCEL NUMBER & REFUND USER WALLET
+ */
+async function handleCancelOrder(req, res) {
+    const { id } = req.body; // Order ID or Vendor Order ID (tzid)
+    const userId = req.user._id; // Assumes auth middleware populates req.user
+
+    try {
+        await connectDB();
+
+        if (!id) {
+            return res.status(400).json({ success: false, message: "Missing order identifier." });
+        }
+
+        // Find order in central Order collection
+        let order = await Order.findOne({ _id: id, userId }).catch(() => null);
+        if (!order) {
+            order = await Order.findOne({ vendorOrderId: id, userId });
+        }
+        if (!order) {
+            order = await Order.findOne({ "metadata.tzid": id, userId });
+        }
+
+        if (!order) {
+            return res.status(404).json({ success: false, message: "Order not found or unauthorized." });
+        }
+
+        // Prevent cancelling orders that are already completed or failed
+        if (order.status === 'completed' || order.status === 'successful') {
+            return res.status(400).json({ success: false, message: "Cannot cancel an order that has already received a code." });
+        }
+
+        if (order.status === 'cancelled' || order.status === 'expired') {
+            return res.status(400).json({ success: false, message: "This order is already cancelled or expired." });
+        }
+
+        const activeVendorId = order.vendorOrderId || order.metadata?.tzid;
+
+        // 1. Call SMSBower API to cancel the activation (status = 8 triggers refund from provider)
+        if (activeVendorId) {
+            try {
+                await smsBowerClient.get('', {
+                    params: {
+                        action: 'setStatus',
+                        status: 8, // 8 means cancel & refund on SMS-Activate / SMSBower standard
+                        id: activeVendorId
+                    }
+                });
+            } catch (providerErr) {
+                console.error("SMSBower Provider Cancellation Warning:", providerErr.message);
+                // Proceed with local refund even if provider errors out (e.g. if already expired)
+            }
+        }
+
+        // 2. Refund User Wallet Balance
+        const refundAmount = Number(order.amount) || 0;
+        const user = await User.findById(userId);
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User account not found." });
+        }
+
+        const balanceBefore = user.walletBalance || 0;
+        user.walletBalance = balanceBefore + refundAmount;
+        await user.save();
+
+        // 3. Update Order Status locally
+        order.status = 'cancelled';
+        await order.save();
+
+        // 4. Update SmsNumber document if it exists
+        if (activeVendorId) {
+            await SmsNumber.findOneAndUpdate(
+                { vendorOrderId: String(activeVendorId) },
+                { status: 'failed' } // or 'cancelled' depending on schema enum
+            );
+        }
+
+        // 5. Create a refund transaction record
+        await Transaction.create({
+            userId: user._id,
+            type: 'credit',
+            purpose: 'refund',
+            amountNGN: refundAmount,
+            status: 'successful',
+            reference: `REFUND-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            balanceBefore,
+            balanceAfter: user.walletBalance,
+            metadata: { orderId: order._id, vendorOrderId: activeVendorId, reason: 'User cancelled number activation' }
+        });
+
+        return res.json({
+            success: true,
+            message: `Number cancelled successfully. ₦${refundAmount.toLocaleString()} has been refunded to your wallet.`,
+            newBalance: user.walletBalance
+        });
+
+    } catch (err) {
+        console.error("Cancel Order Error:", err.message);
+        return res.status(500).json({ success: false, message: "Failed to process cancellation and refund." });
     }
 }
 

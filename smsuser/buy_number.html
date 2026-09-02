@@ -1724,15 +1724,21 @@ function renderActiveOrdersDashboard() {
                             </div>
                         ` : `
                            <div class="flex flex-col items-center justify-center gap-2 py-2 text-gray-500 text-xs">
-        <div class="flex items-center gap-2 italic">
-            <div class="w-4 h-4 border-2 border-brand-blue border-t-transparent rounded-full animate-spin"></div>
-            Waiting for OTP code... Keep this modal open.
-        </div>
-        <button onclick="manualRecheckSms('${order._id || order.id || order.tzid}')" 
-                class="mt-2 text-[11px] bg-brand-blue/10 hover:bg-brand-blue hover:text-white text-brand-blue font-bold px-3 py-1.5 rounded-lg transition-all">
-            🔄 Check / Request SMS Again
-        </button>
-    </div>
+                                <div class="flex items-center gap-2 italic">
+                                    <div class="w-4 h-4 border-2 border-brand-blue border-t-transparent rounded-full animate-spin"></div>
+                                    Waiting for OTP code... Keep this modal open.
+                                </div>
+                                <div class="flex items-center gap-2 mt-2 w-full justify-center">
+                                    <button onclick="manualRecheckSms('${order._id || order.id || order.tzid}')" 
+                                            class="text-[11px] bg-brand-blue/10 hover:bg-brand-blue hover:text-white text-brand-blue font-bold px-3 py-1.5 rounded-lg transition-all">
+                                        🔄 Check Status
+                                    </button>
+                                    <button onclick="cancelActiveOrder('${order._id || order.id || order.tzid}')" 
+                                            class="text-[11px] bg-red-50 hover:bg-red-600 hover:text-white text-red-600 border border-red-200 font-bold px-3 py-1.5 rounded-lg transition-all">
+                                        ❌ Cancel & Refund
+                                    </button>
+                                </div>
+                            </div>
                         `}
                     </div>
                 </div>
@@ -1750,6 +1756,31 @@ window.closeActiveOrdersModal = function() {
         container.style.display = 'none';
     }
 }
+
+window.manualRecheckSms = async function(orderId) {
+    try {
+        Swal.fire({ title: 'Checking with provider...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                const data = await safeFetch(`/api/recheck-sms`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: orderId })
+        });
+        
+        Swal.close();
+
+        if (data && data.success && data.code) {
+            Swal.fire({ icon: 'success', title: 'OTP Received!', text: `Code: ${data.code}`, timer: 2000 });
+        } else {
+            Swal.fire({ icon: 'info', title: 'Still Waiting', text: (data && data.message) || 'No SMS code arrived yet.', timer: 2000 });
+        }
+        
+        if (typeof fetchActiveOrders === 'function') fetchActiveOrders();
+        if (typeof renderActiveOrdersDashboard === 'function') renderActiveOrdersDashboard();
+    } catch (err) {
+        console.error("Manual recheck error:", err);
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Could not connect to server to recheck SMS.' });
+    }
+};
 
         function copyNumber() {
             const num = document.getElementById('displayPurchasedNumber')?.innerText || '';

@@ -1855,65 +1855,100 @@ else if (metadata?.serviceType === 'virtual_number') {
             return res.status(400).json({ success: false, message: "Transaction failed." });
         }
 
-// --- EXCLUSIVE LIVE SMSBOWER API ALLOCATION ---
+// --- EXCLUSIVE LIVE SMSBOWER API ALLOCATION & ORDER RECORDING ---
 if (isOnlineSimFlow) {
     try {
         const smsBowerBaseUrl = process.env.SMSBOWER_BASE_URL || 'https://smsbower.page/stubs/handler_api.php';
         const smsBowerApiKey = process.env.SMSBOWER_API_KEY;
         
-        const reqCountry = (metadata.countryCode || '0').toLowerCase();
-        const reqService = (metadata.serviceName || 'whatsapp').toLowerCase();
+        const reqCountry = String(metadata.countryCode || metadata.countryId || '0').trim();
+        const reqService = String(metadata.serviceCode || metadata.serviceName || 'wa').trim().toLowerCase();
+        const selectedOperator = metadata.providerId || metadata.operator;
 
-        const getNumUrl = `${smsBowerBaseUrl}?api_key=${smsBowerApiKey}&action=getNumber&service=${reqService}&country=${reqCountry}`;
+        let getNumUrl = `${smsBowerBaseUrl}?api_key=${smsBowerApiKey}&action=getNumber&service=${encodeURIComponent(reqService)}&country=${encodeURIComponent(reqCountry)}`;
+
+        if (selectedOperator && String(selectedOperator).length <= 3 && selectedOperator !== 'null' && selectedOperator !== 'undefined') {
+            getNumUrl += `&providerIds=${encodeURIComponent(String(selectedOperator).trim())}`;
+        }
+
+        console.log("Dispatching URL to SMSBower:", getNumUrl);
+
         const sbResponse = await axios.get(getNumUrl, { timeout: 15000 });
-
         const responseText = typeof sbResponse.data === 'string' ? sbResponse.data : JSON.stringify(sbResponse.data);
 
-        // SMSBower returns "ACCESS_NUMBER:<id>:<number>" on successful lease
         if (responseText.startsWith('ACCESS_NUMBER:')) {
             const parts = responseText.split(':');
-            const trackingTzid = parts[1]; // Provider order ID / activation ID
-            const allocatedNumber = parts.slice(2).join(':'); // Full telephone number
+            const trackingTzid = parts[1]; // Vendor order ID / Tzid
+            const allocatedNumber = parts.slice(2).join(':'); // Assigned phone number
 
-            // Re-assign localized variables with live data points
-            orderSpecifics.deviceId = trackingTzid; 
-            orderSpecifics.vendorOrderId = trackingTzid;
-            orderSpecifics.targetNumber = allocatedNumber;
-            orderSpecifics.instructions = "SMSBower allocated line successfully. Waiting for incoming code stream...";
-            
-            if (!orderSpecifics.metadata) orderSpecifics.metadata = {};
-            orderSpecifics.metadata.allocatedNumber = allocatedNumber;
-            orderSpecifics.metadata.tzid = trackingTzid;
-
-            // Generate auxiliary entry record matching your schema fields
+            // 1. Create the dedicated SmsNumber record for polling incoming SMS codes
             await SmsNumber.create({
                 userId: user._id,
                 userEmail: user.email,
                 vendorOrderId: trackingTzid,
-                countryId: metadata.countryCode || '',
+                countryId: reqCountry,
                 phoneNumber: allocatedNumber,
-                serviceName: metadata.serviceName,
+                serviceName: reqService,
                 amount: costNGN,
                 status: 'pending'
             });
+
+            // 2. Create the central dashboard Order record matching your orderSchema
+            const createdOrder = await Order.create({
+                userId: user._id,
+                userEmail: user.email,
+                fullName: user.fullName || user.name || 'User',
+                productType: 'SmsNumber', // Matches enum in orderSchema
+                planName: metadata.planName || `${reqService.toUpperCase()} Virtual Number`,
+                amount: costNGN,
+                currency: 'NGN',
+                mainBalanceUsed: mainDeduction,
+                bonusBalanceUsed: bonusDeduction,
+                status: 'completed', // Or 'successful' depending on flow preference
+                paymentReference: `SMS_${trackingTzid}_${Date.now()}`,
+                targetNumber: allocatedNumber,
+                country: reqCountry,
+                instructions: "Line allocated successfully. Waiting for SMS code...",
+                metadata: {
+                    tzid: trackingTzid,
+                    serviceCode: reqService,
+                    countryCode: reqCountry,
+                    operator: selectedOperator || null
+                },
+                deliveredAt: new Date()
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: "Virtual number purchased successfully",
+                order: createdOrder,
+                data: {
+                    phoneNumber: allocatedNumber,
+                    tzid: trackingTzid,
+                    service: reqService
+                }
+            });
+
         } else {
-            // Reverse user charges cleanly if external API allocation fails
+            // Refund user wallet balance if vendor returns an error state (e.g., NO_NUMBERS)
             await User.findByIdAndUpdate(user._id, { 
                 $inc: { balance: mainDeduction, bonusBalance: bonusDeduction } 
             });
             return res.status(400).json({ 
                 success: false, 
-                message: `Line Reservation Failed: ${responseText || "Vendor out of stock"}` 
+                message: `Line Allocation Failed: ${responseText || "Vendor out of stock"}` 
             });
         }
     } catch (apiErr) {
-        console.error("Critical SMSBower API connection block:", apiErr.message);
+        console.error("Critical SMSBower API connection error:", apiErr.message);
+        // Refund user wallet balance on timeout/network crash
         await User.findByIdAndUpdate(user._id, { 
             $inc: { balance: mainDeduction, bonusBalance: bonusDeduction } 
         });
         return res.status(502).json({ success: false, message: "External vendor API processing timeout." });
     }
 }
+
         const paymentReference = `WAL-${Date.now()}-${user._id.toString().slice(-4)}`;
 
         // CREATE SYSTEM ORDER ENTRY

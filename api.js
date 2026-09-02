@@ -1685,31 +1685,34 @@ else if (metadata?.serviceType === 'virtual_number') {
 
     productDetails.name = `SMSBower Global Provision (${metadata.countryCode || 'NG'})`;
     productDetails.plan = metadata.serviceName || "SMS Verification";
-    isOnlineSimFlow = true; // Retained flag name to control downstream execution safely
+    isOnlineSimFlow = true; 
 
-    // 2. Check SMSBower balance before pulling from user wallet
+    // 2. Check SMSBower balance and convert USD to NGN at 1400 rate
     try {
-        const smsBowerBaseUrl = process.env.SMSBOWER_BASE_URL;
-        const smsBowerApiKey = process.env.SMSBOWER_API_KEY;
+        const smsBowerBaseUrl = process.env.SMSBOWER_BASE_URL || 'https://smsbower.page/stubs/handler_api.php';
+        const smsBowerApiKey = process.env.SMSBOWER_API_KEY || 'ak9jLLeJY3suV0B3HEglObnLKFfPAfxN';
 
         const balanceUrl = `${smsBowerBaseUrl}?api_key=${smsBowerApiKey}&action=getBalance`;
         const balanceRes = await axios.get(balanceUrl, { timeout: 15000 });
         
-        // SMS-Activate protocol returns text like "ACCESS_BALANCE:150.50"
-        let providerBalance = 0;
+        let providerBalanceUSD = 0;
         const balanceText = typeof balanceRes.data === 'string' ? balanceRes.data : JSON.stringify(balanceRes.data);
         
         if (balanceText.startsWith('ACCESS_BALANCE:')) {
-            providerBalance = parseFloat(balanceText.split(':')[1]) || 0;
+            providerBalanceUSD = parseFloat(balanceText.split(':')[1]) || 0;
         } else if (typeof balanceRes.data?.balance === 'number') {
-            providerBalance = balanceRes.data.balance;
+            providerBalanceUSD = balanceRes.data.balance;
         }
 
-        // Ensure SMSBower has enough provider funds
-        if (providerBalance < baseAmount) {
+        // Convert USD balance to NGN using the 1400 rate
+        const exchangeRate = 1400;
+        const providerBalanceNGN = providerBalanceUSD * exchangeRate;
+
+        // Ensure SMSBower has enough provider funds in Naira to cover the base cost
+        if (providerBalanceNGN < baseAmount) {
             return res.status(400).json({ 
                 success: false, 
-                message: "System provider balance is currently low. Please contact support or try again shortly." 
+                message: "System provider balance is currently low. Please top up your SMSBower account." 
             });
         }
     } catch (err) {
@@ -1731,7 +1734,6 @@ else if (metadata?.serviceType === 'virtual_number') {
         }
     };
 }
-
         else if (rdpId) {
             itemType = "RDP";
             const rdpPlans = {
@@ -1852,11 +1854,10 @@ else if (metadata?.serviceType === 'virtual_number') {
             return res.status(400).json({ success: false, message: "Transaction failed." });
         }
 
-        // --- EXCLUSIVE LIVE ONLINESIM API ALLOCATION ---
 // --- EXCLUSIVE LIVE SMSBOWER API ALLOCATION ---
 if (isOnlineSimFlow) {
     try {
-        const smsBowerBaseUrl = process.env.SMSBOWER_BASE_URL;
+        const smsBowerBaseUrl = process.env.SMSBOWER_BASE_URL || 'https://smsbower.page/stubs/handler_api.php';
         const smsBowerApiKey = process.env.SMSBOWER_API_KEY;
         
         const reqCountry = (metadata.countryCode || '0').toLowerCase();
@@ -1883,12 +1884,12 @@ if (isOnlineSimFlow) {
             orderSpecifics.metadata.allocatedNumber = allocatedNumber;
             orderSpecifics.metadata.tzid = trackingTzid;
 
-            // Generate auxiliary entry record for monitoring tools
+            // Generate auxiliary entry record matching your schema fields
             await SmsNumber.create({
                 userId: user._id,
                 userEmail: user.email,
-                deviceId: trackingTzid,
                 vendorOrderId: trackingTzid,
+                countryId: metadata.countryCode || '',
                 phoneNumber: allocatedNumber,
                 serviceName: metadata.serviceName,
                 amount: costNGN,

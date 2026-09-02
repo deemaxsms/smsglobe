@@ -1571,14 +1571,15 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
         return;
     }
 
-    const payload = {
-        serviceCode: serviceCode,
+   const payload = {
+        serviceCode: serviceCode, // e.g., 'wa'
         countryId: countryId,
         providerId: providerId,
         planAmount: itemPrice,
         rank: (rank || 'silver').toLowerCase(),
         metadata: {
             serviceType: 'virtual_number',
+            serviceCode: serviceCode, // <-- ADD THIS LINE so backend metadata catches it
             serviceName: serviceObj?.name || serviceCode,
             countryCode: countryId,
             provider: 'smsbower'

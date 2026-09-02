@@ -1919,11 +1919,15 @@ if (isOnlineSimFlow) {
                 deliveredAt: new Date()
             });
 
-            // 3. Return a fully populated payload matching what frontend state checks
+          // 3. Return a fully populated payload matching what frontend state checks
             return res.status(200).json({
                 success: true,
                 message: "Virtual number purchased successfully",
-                order: createdOrder,
+                order: {
+                    ...createdOrder.toObject(),
+                    phoneNumber: allocatedNumber,  // <-- Ensures order.phoneNumber exists
+                    targetNumber: allocatedNumber  // <-- Alias support
+                },
                 phoneNumber: allocatedNumber,
                 number: allocatedNumber,
                 targetNumber: allocatedNumber,

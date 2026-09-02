@@ -1596,7 +1596,7 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
         const res = response.data;
 
         if (res && res.success) {
-            const realMobileNumber = res.order?.phoneNumber || res.order?.mobileNumber || res.mobileNumber;
+            const realMobileNumber = res.phoneNumber || res.number || res.targetNumber || res.order?.phoneNumber || res.order?.targetNumber || res.order?.number || res.data?.phoneNumber || 'N/A';
             const orderId = res.order?._id || res.order?.id || res.orderId;
             
             let activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
@@ -1715,7 +1715,7 @@ function renderActiveOrdersDashboard() {
                                 ` : `
                                     <div class="flex items-center justify-center gap-2 py-2 text-gray-500 text-xs italic">
                                         <div class="w-4 h-4 border-2 border-brand-blue border-t-transparent rounded-full animate-spin"></div>
-                                        Waiting for SMSBower to deliver OTP code... Keep this modal open.
+                                        Waiting for OTP code... Keep this modal open.
                                     </div>
                                 `}
                             </div>

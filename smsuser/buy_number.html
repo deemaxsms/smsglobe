@@ -1773,9 +1773,15 @@ window.cancelActiveOrder = async function(orderId) {
     try {
         Swal.fire({ title: 'Processing refund...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
+        // Retrieve token from localStorage (adjust key name if your app uses a different one)
+        const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+
         const data = await safeFetch(`/api/cancel-order`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` // 👈 Critical fix for the 401 Unauthorized error
+            },
             body: JSON.stringify({ id: orderId })
         });
 

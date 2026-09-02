@@ -933,7 +933,7 @@ const PRIORITY_SERVICES = [
             return { res, data };
         }
 
-     async function fetchUserProfile() {
+   async function fetchUserProfile() {
     const token = localStorage.getItem('userToken');
     if (!token) return; 
 
@@ -955,26 +955,25 @@ const PRIORITY_SERVICES = [
         if (data.success) {
             const userData = data.user || data;
             
-            // Assign to your tracking variables
-            const ngnBalance = userData.balance || 0; 
-            const bonusBalance = userData.bonusBalance || 0; 
+            // Update global balance variable & parse safely as float
+            userBalance = parseFloat(userData.balance || 0); 
+            const bonusBalance = parseFloat(userData.bonusBalance || 0); 
             
-            // Cache locally
+            // Cache locally including balance for persistence across reloads
             localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
+            localStorage.setItem('user_balance', userBalance);
 
             // Update UI Balances
             const elBal = document.getElementById('displayBalance');
             const elBonus = document.getElementById('displayBonus');
-            if (elBal) elBal.innerText = `₦${ngnBalance.toLocaleString()}`;
+            if (elBal) elBal.innerText = `₦${userBalance.toLocaleString()}`;
             if (elBonus) elBonus.innerText = `₦${bonusBalance.toLocaleString()}`;
 
-            // NEW: Update User Avatar Initial
+            // Update User Avatar Initial
             const userAvatarEl = document.getElementById('userAvatar');
             if (userAvatarEl) {
-                // Tries full name, first name, username, or falls back to email prefix, or 'U'
                 const identifier = userData.name || userData.fullName || userData.username || userData.email || 'U';
-                const firstLetter = identifier.charAt(0).toUpperCase();
-                userAvatarEl.innerText = firstLetter;
+                userAvatarEl.innerText = identifier.charAt(0).toUpperCase();
             }
         }
     } catch (err) {
@@ -1516,8 +1515,13 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
         return;
     }
 
-    if (userBalance < price) {
-        Swal.fire('Insufficient Funds', `You need ₦${price.toLocaleString()} to purchase this option. Please fund your wallet.`, 'error');
+    // Fallback sync with localStorage if global variable wasn't set yet
+    const currentBalance = parseFloat(window.userBalance ?? userBalance ?? localStorage.getItem('user_balance') ?? 0);
+    const itemPrice = parseFloat(price);
+
+    if (currentBalance < itemPrice) {
+        const deficit = (itemPrice - currentBalance).toLocaleString();
+        Swal.fire('Insufficient Funds', `You need ₦${deficit} more to purchase this option. Please fund your wallet.`, 'error');
         return;
     }
 
@@ -1527,7 +1531,7 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
 
     const confirmed = await Swal.fire({
         title: 'Confirm Live Purchase',
-        text: `Get ${serviceObj?.name || serviceCode} (${rank} Tier) in ${countryObj?.countryName || 'Selected Country'} for ₦${price.toLocaleString()}?`,
+        text: `Get ${serviceObj?.name || serviceCode} (${rank} Tier) in ${countryObj?.countryName || 'Selected Country'} for ₦${itemPrice.toLocaleString()}?`,
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#0F54C6',
@@ -1540,7 +1544,7 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
         serviceCode: serviceCode,
         countryId: countryId,
         providerId: providerId,
-        planAmount: price,
+        planAmount: itemPrice,
         rank: (rank || 'silver').toLowerCase(),
         metadata: {
             serviceType: 'virtual_number',
@@ -1576,14 +1580,14 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
                 createdAt: Date.now()
             };
 
-            // Avoid duplicates and add to top
             activeOrders = [newActiveOrder, ...activeOrders.filter(o => o.id !== orderId)];
             localStorage.setItem('sms_active_orders', JSON.stringify(activeOrders));
 
-            // Render persistent active dashboard box
             renderActiveOrdersDashboard();
             startPersistentSmsPolling(orderId);
-            // ------------------------------
+            
+            // Refresh user balance automatically post-purchase
+            fetchUserProfile();
 
             Swal.fire({
                 title: 'Order Dispatched!',

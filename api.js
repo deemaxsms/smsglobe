@@ -3881,6 +3881,7 @@ const countryEntry = {
         });
     }
 }
+
 /**
  * 3. CHECK ORDER STATUS / SMS CODE POLLING
  */
@@ -4047,33 +4048,48 @@ async function handleRecheckSms(req, res) {
 
 
 /**
- * 5. CANCEL NUMBER & REFUND USER WALLET
+ * 5. CANCEL NUMBER & REFUND USER WALLET (Secured with unified JWT extraction)
  */
 async function handleCancelOrder(req, res) {
-    const { id } = req.body; // Order ID or Vendor Order ID (tzid)
-    const userId = req.user._id; // Assumes auth middleware populates req.user
+    const { id } = req.body; 
 
     try {
+        // Unified token extraction matching handleGetUserOrders style
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ success: false, message: "Unauthorized: No token provided." });
+        }
+
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userEmail = decoded.email;
+        const userId = decoded.userId || decoded._id || decoded.id;
+
+        if (!userEmail && !userId) {
+            return res.status(401).json({ success: false, message: "Invalid session token payload." });
+        }
+
         await connectDB();
 
         if (!id) {
             return res.status(400).json({ success: false, message: "Missing order identifier." });
         }
 
-        // Find order in central Order collection
-        let order = await Order.findOne({ _id: id, userId }).catch(() => null);
+        // Find order matching user via userId or userEmail fallback
+        const queryFilter = userId ? { _id: id, userId } : { _id: id, userEmail };
+        let order = await Order.findOne(queryFilter).catch(() => null);
+        
         if (!order) {
-            order = await Order.findOne({ vendorOrderId: id, userId });
+            order = await Order.findOne(userId ? { vendorOrderId: id, userId } : { vendorOrderId: id, userEmail });
         }
         if (!order) {
-            order = await Order.findOne({ "metadata.tzid": id, userId });
+            order = await Order.findOne(userId ? { "metadata.tzid": id, userId } : { "metadata.tzid": id, userEmail });
         }
 
         if (!order) {
             return res.status(404).json({ success: false, message: "Order not found or unauthorized." });
         }
 
-        // Prevent cancelling orders that are already completed or failed
         if (order.status === 'completed' || order.status === 'successful') {
             return res.status(400).json({ success: false, message: "Cannot cancel an order that has already received a code." });
         }
@@ -4084,25 +4100,24 @@ async function handleCancelOrder(req, res) {
 
         const activeVendorId = order.vendorOrderId || order.metadata?.tzid;
 
-        // 1. Call SMSBower API to cancel the activation (status = 8 triggers refund from provider)
-        if (activeVendorId) {
+        // 1. Call SMSBower API to cancel activation
+        if (activeVendorId && typeof smsBowerClient !== 'undefined') {
             try {
                 await smsBowerClient.get('', {
                     params: {
                         action: 'setStatus',
-                        status: 8, // 8 means cancel & refund on SMS-Activate / SMSBower standard
+                        status: 8,
                         id: activeVendorId
                     }
                 });
             } catch (providerErr) {
                 console.error("SMSBower Provider Cancellation Warning:", providerErr.message);
-                // Proceed with local refund even if provider errors out (e.g. if already expired)
             }
         }
 
-        // 2. Refund User Wallet Balance
+        // 2. Find and Refund User Wallet Balance
         const refundAmount = Number(order.amount) || 0;
-        const user = await User.findById(userId);
+        const user = userId ? await User.findById(userId) : await User.findOne({ email: userEmail });
 
         if (!user) {
             return res.status(404).json({ success: false, message: "User account not found." });
@@ -4120,8 +4135,8 @@ async function handleCancelOrder(req, res) {
         if (activeVendorId) {
             await SmsNumber.findOneAndUpdate(
                 { vendorOrderId: String(activeVendorId) },
-                { status: 'failed' } // or 'cancelled' depending on schema enum
-            );
+                { status: 'failed' }
+            ).catch(() => {});
         }
 
         // 5. Create a refund transaction record
@@ -4135,6 +4150,8 @@ async function handleCancelOrder(req, res) {
             balanceBefore,
             balanceAfter: user.walletBalance,
             metadata: { orderId: order._id, vendorOrderId: activeVendorId, reason: 'User cancelled number activation' }
+        }).catch(txErr => {
+            console.error("Transaction log creation warning:", txErr.message);
         });
 
         return res.json({
@@ -4145,6 +4162,9 @@ async function handleCancelOrder(req, res) {
 
     } catch (err) {
         console.error("Cancel Order Error:", err.message);
+        if (err.name === 'JsonWebTokenError') {
+            return res.status(401).json({ success: false, message: "Invalid Session" });
+        }
         return res.status(500).json({ success: false, message: "Failed to process cancellation and refund." });
     }
 }

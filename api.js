@@ -341,7 +341,7 @@ const Transaction = mongoose.models.Transaction || mongoose.model('Transaction',
 const orderSchema = new mongoose.Schema({
     userEmail: { type: String, required: true, index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    fullName: { type: String },         
+    fullName: { type: String },        
     productType: { 
         type: String, 
         enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill', 'eSIM_Activation', 'RDP', 'RentedNumber', 'SmsNumber'], 
@@ -351,7 +351,7 @@ const orderSchema = new mongoose.Schema({
     planName: String, 
     nodeName: String, 
     amount: { type: Number, required: true },
-    currency: { type: String, default: 'NGN' },         
+    currency: { type: String, default: 'NGN' },        
     mainBalanceUsed: { type: Number, default: 0 }, 
     bonusBalanceUsed: { type: Number, default: 0 }, 
     status: { 
@@ -362,6 +362,12 @@ const orderSchema = new mongoose.Schema({
     paymentReference: { type: String, unique: true },    
     targetNumber: String, 
     country: String,
+    
+    // --- ADD THESE TWO FIELDS HERE ---
+    smsCode: { type: String },
+    fullMessage: { type: String },
+    // ---------------------------------
+
     target: {
         number: String,
         country: String
@@ -376,14 +382,14 @@ const orderSchema = new mongoose.Schema({
     adminNote: String, 
     receiptUrl: String,
     ram: String,
-    cpu: String,   // This allows "2 Cores" to be stored at the top level
+    cpu: String, 
     storage: String,
-    net: String,   // This allows "1Gbps" to be stored at the top level
+    net: String, 
     os: String,
-    ipAddress: String,    // Critical: Allows saving the IP
-    port: { type: String, default: '3389' }, // Critical: Allows saving the Port
-    rdpUsername: String,  // Critical: Allows saving the Username
-    rdpPassword: String,  // Critical: Allows saving the Password
+    ipAddress: String,    
+    port: { type: String, default: '3389' }, 
+    rdpUsername: String,  
+    rdpPassword: String,  
     deliveredAt: Date,
     extraCPU: { type: Number, default: 0 },
     extraStorage: { type: Number, default: 0 },    
@@ -549,6 +555,7 @@ app.all('/api/:action', async (req, res) => {
         case 'initiate-topup': return handleInitiateTopup(req, res);
         case 'verify-topup': return handleVerifyTopup(req, res);
         case 'purchase-with-wallet': return handlePurchaseWithWallet(req, res);
+        case 'recheck-sms': return handleRecheckSms(req, res);
         case 'proxies': 
             if (req.method === 'GET') return handleGetProxies(req, res);
             if (req.method === 'POST') return handleAddProxy(req, res);
@@ -1907,7 +1914,7 @@ const createdOrder = await Order.create({
     currency: 'NGN',
     mainBalanceUsed: mainDeduction,
     bonusBalanceUsed: bonusDeduction,
-    status: 'completed',
+    status: 'pending',
     paymentReference: `SMS_${trackingTzid}_${Date.now()}`,
     targetNumber: allocatedNumber,
     country: reqCountry,
@@ -3903,8 +3910,9 @@ async function handleOrderDetails(req, res) {
             return res.status(404).json({ success: false, message: "Order not found." });
         }
 
-        // If order is already completed or has a code, return it immediately
-        if (order.status === 'completed' || order.smsCode) {
+        // 3. FIXED: Only return early if we actually have the SMS code. 
+        // This ensures orders missing the code will always proceed to poll SMSBower.
+        if (order.smsCode) {
             return res.json({ 
                 success: true, 
                 order: {
@@ -3914,7 +3922,7 @@ async function handleOrderDetails(req, res) {
             });
         }
 
-        // 3. Poll SMSBower for status if we have a vendorOrderId (tzid)
+        // 4. Poll SMSBower for status if we have a vendorOrderId (tzid)
         const activeVendorId = order.vendorOrderId || order.metadata?.tzid;
         if (activeVendorId) {
             try {
@@ -3959,6 +3967,80 @@ async function handleOrderDetails(req, res) {
     } catch (err) {
         console.error("SMSBower Polling Error:", err.message);
         return res.status(500).json({ success: false, message: "Failed to read order update." });
+    }
+}
+
+/**
+ * 4. MANUAL RE-REQUEST / RE-POLL SMS STATUS
+ */
+async function handleRecheckSms(req, res) {
+    const { id } = req.body; // Order ID or Vendor Order ID (tzid)
+
+    try {
+        await connectDB();
+
+        if (!id) {
+            return res.status(400).json({ success: false, message: "Missing order identifier." });
+        }
+
+        let order = await Order.findById(id).catch(() => null);
+        if (!order && mongoose.Types.ObjectId.isValid(id)) {
+            order = await Order.findOne({ vendorOrderId: id });
+        }
+        if (!order) {
+            order = await Order.findOne({ "metadata.tzid": id });
+        }
+
+        if (!order) {
+            return res.status(404).json({ success: false, message: "Order not found." });
+        }
+
+        const activeVendorId = order.vendorOrderId || order.metadata?.tzid;
+        if (!activeVendorId) {
+            return res.status(400).json({ success: false, message: "No active vendor activation ID found for this order." });
+        }
+
+        // Call SMSBower to get the current status / code again
+        const response = await smsBowerClient.get('', {
+            params: {
+                action: 'getStatus',
+                id: activeVendorId
+            }
+        });
+
+        const respText = response.data; // e.g., "STATUS_OK:1234" or "STATUS_WAIT_CODE"
+
+        if (typeof respText === 'string' && respText.startsWith('STATUS_OK')) {
+            const code = respText.split(':')[1];
+            
+            order.smsCode = code;
+            order.fullMessage = `Verification Code: ${code}`;
+            order.status = 'completed';
+            await order.save();
+
+            await SmsNumber.findOneAndUpdate(
+                { vendorOrderId: String(activeVendorId) },
+                { smsCode: code, fullMessage: order.fullMessage, status: 'completed' }
+            );
+
+            return res.json({ 
+                success: true, 
+                message: "OTP Code retrieved successfully!", 
+                code, 
+                order 
+            });
+        }
+
+        return res.json({ 
+            success: true, 
+            message: "Status checked. Still waiting for SMS code from provider.", 
+            statusResponse: respText,
+            order 
+        });
+
+    } catch (err) {
+        console.error("Manual Recheck SMS Error:", err.message);
+        return res.status(500).json({ success: false, message: "Failed to recheck SMS status from provider." });
     }
 }
 

@@ -290,8 +290,8 @@ const smsNumberSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     userEmail: { type: String, required: true },
     
-    // Vendor Identity (Xentrahub)
-    vendorOrderId: { type: String, index: true }, // Order ID returned by Xentrahub
+    // Vendor Identity (SMSBower)
+    vendorOrderId: { type: String, index: true }, // Order ID / Tzid returned by SMSBower
     countryId: { type: String }, // Country code/ID selected
     phoneNumber: { type: String }, // The virtual number assigned
     serviceName: { type: String, required: true }, // e.g., 'WhatsApp', 'Telegram'
@@ -1667,60 +1667,70 @@ async function handlePurchaseWithWallet(req, res) {
 
 
 else if (metadata?.serviceType === 'virtual_number') {
-            itemType = "SmsNumber"; 
-            
-            // 1. Fetch system settings for SMS markup percentage
-            const settings = await SystemSettings.findOne();
-            const smsMarkup = settings?.smsMarkupPercentage || 0; 
+    itemType = "SmsNumber"; 
+    
+    // 1. Fetch system settings for SMS markup percentage
+    const settings = await SystemSettings.findOne();
+    const smsMarkup = settings?.smsMarkupPercentage || 0; 
 
-            const baseAmount = Number(planAmount);
-            if (!baseAmount || isNaN(baseAmount)) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: "Invalid plan amount received for virtual number purchase." 
-                });
-            }
+    const baseAmount = Number(planAmount);
+    if (!baseAmount || isNaN(baseAmount)) {
+        return res.status(400).json({ 
+            success: false, 
+            message: "Invalid plan amount received for virtual number purchase." 
+        });
+    }
 
-            costNGN = Math.round(baseAmount * (1 + smsMarkup / 100));
+    costNGN = Math.round(baseAmount * (1 + smsMarkup / 100));
 
-            productDetails.name = `OnlineSIM Global Provision (${metadata.countryCode || 'NG'})`;
-            productDetails.plan = metadata.serviceName || "SMS Verification";
-            isOnlineSimFlow = true;
+    productDetails.name = `SMSBower Global Provision (${metadata.countryCode || 'NG'})`;
+    productDetails.plan = metadata.serviceName || "SMS Verification";
+    isOnlineSimFlow = true; // Retained flag name to control downstream execution safely
 
-            // 2. Check Xentrahub balance before pulling from user wallet
-            try {
-                const xentraBalanceRes = await axios.get(`${XENTRA_API_BASE}/balance`, {
-                    headers: { 'Authorization': `Bearer ${XENTRA_API_KEY}` }
-                });
+    // 2. Check SMSBower balance before pulling from user wallet
+    try {
+        const smsBowerBaseUrl = process.env.SMSBOWER_BASE_URL;
+        const smsBowerApiKey = process.env.SMSBOWER_API_KEY;
 
-                const xentraBalance = xentraBalanceRes.data?.balance || 0;
-
-                // Ensure Xentrahub has enough provider funds based on the dynamic base amount required
-                if (xentraBalance < baseAmount) {
-                    return res.status(400).json({ 
-                        success: false, 
-                        message: "System provider balance is currently low. Please contact support or try again shortly." 
-                    });
-                }
-            } catch (err) {
-                console.error("Xentrahub Balance Verification Error:", err.response?.data || err.message);
-                return res.status(500).json({ 
-                    success: false, 
-                    message: "Failed to communicate with SMS provider gateway." 
-                });
-            }
-
-            orderSpecifics = {
-                serviceName: metadata.serviceName,
-                status: 'pending', 
-                instructions: "Allocating lease from dynamic server fields... Please stand by.",
-                metadata: { 
-                    ...metadata, 
-                    provider: 'onlinesim',
-                    markupApplied: smsMarkup
-                }
-            };
+        const balanceUrl = `${smsBowerBaseUrl}?api_key=${smsBowerApiKey}&action=getBalance`;
+        const balanceRes = await axios.get(balanceUrl, { timeout: 15000 });
+        
+        // SMS-Activate protocol returns text like "ACCESS_BALANCE:150.50"
+        let providerBalance = 0;
+        const balanceText = typeof balanceRes.data === 'string' ? balanceRes.data : JSON.stringify(balanceRes.data);
+        
+        if (balanceText.startsWith('ACCESS_BALANCE:')) {
+            providerBalance = parseFloat(balanceText.split(':')[1]) || 0;
+        } else if (typeof balanceRes.data?.balance === 'number') {
+            providerBalance = balanceRes.data.balance;
         }
+
+        // Ensure SMSBower has enough provider funds
+        if (providerBalance < baseAmount) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "System provider balance is currently low. Please contact support or try again shortly." 
+            });
+        }
+    } catch (err) {
+        console.error("SMSBower Balance Verification Error:", err.response?.data || err.message);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Failed to communicate with SMS provider gateway." 
+        });
+    }
+
+    orderSpecifics = {
+        serviceName: metadata.serviceName,
+        status: 'pending', 
+        instructions: "Allocating lease from SMSBower gateway... Please stand by.",
+        metadata: { 
+            ...metadata, 
+            provider: 'smsbower',
+            markupApplied: smsMarkup
+        }
+    };
+}
 
         else if (rdpId) {
             itemType = "RDP";
@@ -1843,60 +1853,65 @@ else if (metadata?.serviceType === 'virtual_number') {
         }
 
         // --- EXCLUSIVE LIVE ONLINESIM API ALLOCATION ---
-        if (isOnlineSimFlow) {
-            try {
-                const api_key = process.env.ONLINESIM_API_KEY;
-                const reqCountry = (metadata.countryCode || 'NG').toLowerCase();
-                const reqService = (metadata.serviceName || 'whatsapp').toLowerCase();
+// --- EXCLUSIVE LIVE SMSBOWER API ALLOCATION ---
+if (isOnlineSimFlow) {
+    try {
+        const smsBowerBaseUrl = process.env.SMSBOWER_BASE_URL;
+        const smsBowerApiKey = process.env.SMSBOWER_API_KEY;
+        
+        const reqCountry = (metadata.countryCode || '0').toLowerCase();
+        const reqService = (metadata.serviceName || 'whatsapp').toLowerCase();
 
-                const osUrl = `https://onlinesim.io/api/getNum.php?apikey=${api_key}&service=${reqService}&country=${reqCountry}`;
-                const osResponse = await axios.get(osUrl, { timeout: 15000 });
+        const getNumUrl = `${smsBowerBaseUrl}?api_key=${smsBowerApiKey}&action=getNumber&service=${reqService}&country=${reqCountry}`;
+        const sbResponse = await axios.get(getNumUrl, { timeout: 15000 });
 
-                // OnlineSIM gives response: "1" for a valid purchase transaction
-                if (osResponse.data?.response === '1' || osResponse.data?.tzid) {
-                    const allocatedNumber = osResponse.data.number;
-                    const trackingTzid = osResponse.data.tzid;
+        const responseText = typeof sbResponse.data === 'string' ? sbResponse.data : JSON.stringify(sbResponse.data);
 
-                    // Re-assign localized variables with live data points
-                    orderSpecifics.deviceId = trackingTzid; // Used as the identifier for polling checks
-                    orderSpecifics.vendorOrderId = trackingTzid;
-                    orderSpecifics.targetNumber = allocatedNumber;
-                    orderSpecifics.instructions = "OnlineSIM allocated line successfully. Waiting for incoming code stream...";
-                    
-                    if (!orderSpecifics.metadata) orderSpecifics.metadata = {};
-                    orderSpecifics.metadata.allocatedNumber = allocatedNumber;
-                    orderSpecifics.metadata.tzid = trackingTzid;
+        // SMSBower returns "ACCESS_NUMBER:<id>:<number>" on successful lease
+        if (responseText.startsWith('ACCESS_NUMBER:')) {
+            const parts = responseText.split(':');
+            const trackingTzid = parts[1]; // Provider order ID / activation ID
+            const allocatedNumber = parts.slice(2).join(':'); // Full telephone number
 
-                    // Generate auxiliary entry record for monitoring tools
-                    await SmsNumber.create({
-                        userId: user._id,
-                        userEmail: user.email,
-                        deviceId: trackingTzid,
-                        vendorOrderId: trackingTzid,
-                        phoneNumber: allocatedNumber,
-                        serviceName: metadata.serviceName,
-                        amount: costNGN,
-                        status: 'pending'
-                    });
-                } else {
-                    // Reverse user charges cleanly if external API allocation fails
-                    await User.findByIdAndUpdate(user._id, { 
-                        $inc: { balance: mainDeduction, bonusBalance: bonusDeduction } 
-                    });
-                    return res.status(400).json({ 
-                        success: false, 
-                        message: `Line Reservation Failed: ${osResponse.data?.error || "Vendor out of stock"}` 
-                    });
-                }
-            } catch (apiErr) {
-                console.error("Critical OnlineSIM API connection block:", apiErr.message);
-                await User.findByIdAndUpdate(user._id, { 
-                    $inc: { balance: mainDeduction, bonusBalance: bonusDeduction } 
-                });
-                return res.status(502).json({ success: false, message: "External vendor API processing timeout." });
-            }
+            // Re-assign localized variables with live data points
+            orderSpecifics.deviceId = trackingTzid; 
+            orderSpecifics.vendorOrderId = trackingTzid;
+            orderSpecifics.targetNumber = allocatedNumber;
+            orderSpecifics.instructions = "SMSBower allocated line successfully. Waiting for incoming code stream...";
+            
+            if (!orderSpecifics.metadata) orderSpecifics.metadata = {};
+            orderSpecifics.metadata.allocatedNumber = allocatedNumber;
+            orderSpecifics.metadata.tzid = trackingTzid;
+
+            // Generate auxiliary entry record for monitoring tools
+            await SmsNumber.create({
+                userId: user._id,
+                userEmail: user.email,
+                deviceId: trackingTzid,
+                vendorOrderId: trackingTzid,
+                phoneNumber: allocatedNumber,
+                serviceName: metadata.serviceName,
+                amount: costNGN,
+                status: 'pending'
+            });
+        } else {
+            // Reverse user charges cleanly if external API allocation fails
+            await User.findByIdAndUpdate(user._id, { 
+                $inc: { balance: mainDeduction, bonusBalance: bonusDeduction } 
+            });
+            return res.status(400).json({ 
+                success: false, 
+                message: `Line Reservation Failed: ${responseText || "Vendor out of stock"}` 
+            });
         }
-
+    } catch (apiErr) {
+        console.error("Critical SMSBower API connection block:", apiErr.message);
+        await User.findByIdAndUpdate(user._id, { 
+            $inc: { balance: mainDeduction, bonusBalance: bonusDeduction } 
+        });
+        return res.status(502).json({ success: false, message: "External vendor API processing timeout." });
+    }
+}
         const paymentReference = `WAL-${Date.now()}-${user._id.toString().slice(-4)}`;
 
         // CREATE SYSTEM ORDER ENTRY

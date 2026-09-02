@@ -1635,80 +1635,104 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
 }
 
 function renderActiveOrdersDashboard() {
-    // Ensure you have a container element in your HTML with id="activeOrdersContainer"
     let container = document.getElementById('activeOrdersContainer');
     if (!container) {
-        // Create container dynamically right above the service accordion if not present in markup
-        const mainEl = document.querySelector('main') || document.body;
         container = document.createElement('div');
         container.id = 'activeOrdersContainer';
-        container.className = 'mb-6';
-        mainEl.prepend(container);
+        // Modal wrapper styles: Fixed overlay centered on screen for desktop & mobile
+        container.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto';
+        document.body.appendChild(container);
     }
 
     const activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
     if (activeOrders.length === 0) {
         container.innerHTML = '';
+        container.style.display = 'none';
         return;
     }
 
+    // Ensure modal is visible if orders exist
+    container.style.display = 'flex';
+
     container.innerHTML = `
-        <div class="bg-blue-50/60 border border-brand-blue/30 rounded-2xl p-4 sm:p-5 shadow-sm">
-            <div class="flex items-center justify-between mb-3">
+        <div class="bg-white border border-brand-blue/30 rounded-2xl p-5 sm:p-6 shadow-2xl w-full max-w-lg relative animate-in fade-in zoom-in duration-200">
+            <!-- Modal Header with Close Button -->
+            <div class="flex items-center justify-between mb-4 border-b border-gray-100 pb-3">
                 <h3 class="text-xs font-black text-brand-blue uppercase tracking-wider flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-brand-blue animate-ping"></span>
                     Active Numbers & Live OTP Feed
                 </h3>
-                <span class="text-[10px] bg-brand-blue text-white px-2.5 py-0.5 rounded-full font-bold">Persistent Session</span>
+                <div class="flex items-center gap-3">
+                    <span class="text-[10px] bg-brand-blue text-white px-2.5 py-0.5 rounded-full font-bold">Persistent Session</span>
+                    <button onclick="closeActiveOrdersModal()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center font-bold text-sm transition-colors" title="Close Modal">
+                        &times;
+                    </button>
+                </div>
             </div>
             
-            <div class="space-y-3">
-                ${activeOrders.map(order => `
-                    <div class="bg-white border border-brand-border p-4 rounded-xl flex flex-col gap-3 shadow-2xs" id="persistent-order-${order.id}">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-bold text-brand-darkText">${order.serviceName} <span class="text-brand-lightText font-normal">(${order.countryName})</span></span>
-                            <span class="text-[10px] px-2 py-0.5 rounded font-bold ${order.smsCode ? 'bg-green-100 text-green-700' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${order.status}</span>
-                        </div>
+            <!-- Scrollable Orders List Container -->
+            <div class="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+                ${activeOrders.map(order => {
+                    // Fallback resolver for phone number to prevent "undefined" display
+                    const displayNum = order.phoneNumber || order.targetNumber || order.number || order.data?.phoneNumber || 'N/A';
+                    const sName = order.serviceName || order.service || 'Service';
+                    const cName = order.countryName || order.country || '';
 
-                        <!-- Number Box -->
-                        <div class="flex items-center justify-between bg-gray-50 border border-gray-200 px-3.5 py-2.5 rounded-xl">
-                            <span class="font-mono text-sm sm:text-base font-black text-brand-darkText tracking-wide">${order.phoneNumber}</span>
-                            <button onclick="navigator.clipboard.writeText('${order.phoneNumber}'); Swal.fire({title: 'Number Copied!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000, icon: 'success'});" 
-                                    class="text-xs bg-brand-blue/10 text-brand-blue hover:bg-brand-blue hover:text-white px-3 py-1.5 rounded-lg font-bold transition-all">
-                                Copy Number
-                            </button>
-                        </div>
+                    return `
+                        <div class="bg-gray-50/70 border border-brand-border p-4 rounded-xl flex flex-col gap-3 shadow-2xs" id="persistent-order-${order.id || order.tzid}">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-brand-darkText">${sName} <span class="text-brand-lightText font-normal">(${cName})</span></span>
+                                <span class="text-[10px] px-2 py-0.5 rounded font-bold ${order.smsCode ? 'bg-green-100 text-green-700' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${order.status || 'pending'}</span>
+                            </div>
 
-                        <!-- OTP Box / Status -->
-                        <div>
-                            ${order.smsCode ? `
-                                <div class="bg-green-50 border border-green-200 p-3 rounded-xl flex flex-col gap-2">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-xs font-bold text-green-800 uppercase tracking-wide">Verification Code Received:</span>
-                                        <button onclick="navigator.clipboard.writeText('${order.smsCode}'); Swal.fire({title: 'OTP Copied!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000, icon: 'success'});" 
-                                                class="text-xs bg-green-600 text-white px-2.5 py-1 rounded-md font-bold">Copy OTP</button>
+                            <!-- Number Box -->
+                            <div class="flex items-center justify-between bg-white border border-gray-200 px-3.5 py-2.5 rounded-xl shadow-xs">
+                                <span class="font-mono text-sm sm:text-base font-black text-brand-darkText tracking-wide">${displayNum}</span>
+                                <button onclick="navigator.clipboard.writeText('${displayNum}'); Swal.fire({title: 'Number Copied!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000, icon: 'success'});" 
+                                        class="text-xs bg-brand-blue/10 text-brand-blue hover:bg-brand-blue hover:text-white px-3 py-1.5 rounded-lg font-bold transition-all">
+                                    Copy Number
+                                </button>
+                            </div>
+
+                            <!-- OTP Box / Status -->
+                            <div>
+                                ${order.smsCode ? `
+                                    <div class="bg-green-50 border border-green-200 p-3 rounded-xl flex flex-col gap-2">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs font-bold text-green-800 uppercase tracking-wide">Verification Code Received:</span>
+                                            <button onclick="navigator.clipboard.writeText('${order.smsCode}'); Swal.fire({title: 'OTP Copied!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000, icon: 'success'});" 
+                                                    class="text-xs bg-green-600 text-white px-2.5 py-1 rounded-md font-bold">Copy OTP</button>
+                                        </div>
+                                        <div class="flex gap-1.5 justify-center py-1">
+                                            ${order.smsCode.split('').map(d => `
+                                                <div class="w-10 h-12 bg-green-600 text-white rounded-xl flex items-center justify-center text-xl font-black shadow-md">
+                                                    ${d}
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                        <p class="text-[10px] text-green-700 italic text-center mt-1">${order.fullMessage || ''}</p>
                                     </div>
-                                    <div class="flex gap-1.5 justify-center py-1">
-                                        ${order.smsCode.split('').map(d => `
-                                            <div class="w-10 h-12 bg-green-600 text-white rounded-xl flex items-center justify-center text-xl font-black shadow-md">
-                                                ${d}
-                                            </div>
-                                        `).join('')}
+                                ` : `
+                                    <div class="flex items-center justify-center gap-2 py-2 text-gray-500 text-xs italic">
+                                        <div class="w-4 h-4 border-2 border-brand-blue border-t-transparent rounded-full animate-spin"></div>
+                                        Waiting for SMSBower to deliver OTP code... Keep this modal open.
                                     </div>
-                                    <p class="text-[10px] text-green-700 italic text-center mt-1">${order.fullMessage || ''}</p>
-                                </div>
-                            ` : `
-                                <div class="flex items-center justify-center gap-2 py-2 text-gray-400 text-xs italic">
-                                    <div class="w-4 h-4 border-2 border-brand-blue border-t-transparent rounded-full animate-spin"></div>
-                                    Waiting for SMSBower to deliver OTP code... Keep this page open.
-                                </div>
-                            `}
+                                `}
+                            </div>
                         </div>
-                    </div>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>
         </div>
     `;
+}
+
+// Global helper function to close/hide the active orders modal overlay
+function closeActiveOrdersModal() {
+    const container = document.getElementById('activeOrdersContainer');
+    if (container) {
+        container.style.display = 'none';
+    }
 }
 
         function copyNumber() {

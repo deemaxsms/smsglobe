@@ -1865,23 +1865,24 @@ if (isOnlineSimFlow) {
         const reqService = String(metadata.serviceCode || metadata.serviceName || 'wa').trim().toLowerCase();
         const selectedOperator = metadata.providerId || metadata.operator;
 
-        let getNumUrl = `${smsBowerBaseUrl}?api_key=${smsBowerApiKey}&action=getNumber&service=${encodeURIComponent(reqService)}&country=${encodeURIComponent(reqCountry)}`;
+        // Switched action to getNumberV2 for structured JSON response
+        let getNumUrl = `${smsBowerBaseUrl}?api_key=${smsBowerApiKey}&action=getNumberV2&service=${encodeURIComponent(reqService)}&country=${encodeURIComponent(reqCountry)}`;
 
         if (selectedOperator && String(selectedOperator).length <= 3 && selectedOperator !== 'null' && selectedOperator !== 'undefined') {
             getNumUrl += `&providerIds=${encodeURIComponent(String(selectedOperator).trim())}`;
         }
 
-        console.log("Dispatching URL to SMSBower:", getNumUrl);
+        console.log("Dispatching V2 URL to SMSBower:", getNumUrl);
 
         const sbResponse = await axios.get(getNumUrl, { timeout: 15000 });
-        const responseText = typeof sbResponse.data === 'string' ? sbResponse.data : JSON.stringify(sbResponse.data);
+        const data = sbResponse.data;
 
-        if (responseText.startsWith('ACCESS_NUMBER:')) {
-            const parts = responseText.split(':');
-            const trackingTzid = parts[1]; // Vendor order ID / Tzid
-            const allocatedNumber = parts.slice(2).join(':'); // Assigned phone number
+        // SMSBower getNumberV2 returns a JSON object on success
+        if (data && (data.phoneNumber || data.activationId)) {
+            const trackingTzid = data.activationId;
+            const allocatedNumber = data.phoneNumber;
 
-            // 1. Create the dedicated SmsNumber record for polling incoming SMS codes
+            // 1. Create SmsNumber record for polling incoming SMS codes
             await SmsNumber.create({
                 userId: user._id,
                 userEmail: user.email,
@@ -1893,18 +1894,18 @@ if (isOnlineSimFlow) {
                 status: 'pending'
             });
 
-            // 2. Create the central dashboard Order record matching your orderSchema
+            // 2. Create the central dashboard Order record
             const createdOrder = await Order.create({
                 userId: user._id,
                 userEmail: user.email,
                 fullName: user.fullName || user.name || 'User',
-                productType: 'SmsNumber', // Matches enum in orderSchema
+                productType: 'SmsNumber',
                 planName: metadata.planName || `${reqService.toUpperCase()} Virtual Number`,
                 amount: costNGN,
                 currency: 'NGN',
                 mainBalanceUsed: mainDeduction,
                 bonusBalanceUsed: bonusDeduction,
-                status: 'completed', // Or 'successful' depending on flow preference
+                status: 'completed',
                 paymentReference: `SMS_${trackingTzid}_${Date.now()}`,
                 targetNumber: allocatedNumber,
                 country: reqCountry,
@@ -1918,30 +1919,36 @@ if (isOnlineSimFlow) {
                 deliveredAt: new Date()
             });
 
+            // 3. Return a fully populated payload matching what frontend state checks
             return res.status(200).json({
                 success: true,
                 message: "Virtual number purchased successfully",
                 order: createdOrder,
+                phoneNumber: allocatedNumber,
+                number: allocatedNumber,
+                targetNumber: allocatedNumber,
                 data: {
                     phoneNumber: allocatedNumber,
+                    number: allocatedNumber,
+                    targetNumber: allocatedNumber,
                     tzid: trackingTzid,
                     service: reqService
                 }
             });
 
         } else {
-            // Refund user wallet balance if vendor returns an error state (e.g., NO_NUMBERS)
+            const errorMsg = typeof data === 'string' ? data : (data?.error || "Vendor out of stock or request rejected");
+            
             await User.findByIdAndUpdate(user._id, { 
                 $inc: { balance: mainDeduction, bonusBalance: bonusDeduction } 
             });
             return res.status(400).json({ 
                 success: false, 
-                message: `Line Allocation Failed: ${responseText || "Vendor out of stock"}` 
+                message: `Line Allocation Failed: ${errorMsg}` 
             });
         }
     } catch (apiErr) {
         console.error("Critical SMSBower API connection error:", apiErr.message);
-        // Refund user wallet balance on timeout/network crash
         await User.findByIdAndUpdate(user._id, { 
             $inc: { balance: mainDeduction, bonusBalance: bonusDeduction } 
         });

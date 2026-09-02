@@ -1811,7 +1811,8 @@ window.closeActiveOrdersModal = function() {
     }, 4000);
 }
 
-async function manualRecheckSms(orderId) {
+// Expose it globally so inline onclick handlers can find it
+window.manualRecheckSms = async function(orderId) {
     try {
         Swal.fire({ title: 'Checking with provider...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         
@@ -1829,11 +1830,14 @@ async function manualRecheckSms(orderId) {
         } else {
             Swal.fire({ icon: 'info', title: 'Still Waiting', text: data.message || 'No SMS code arrived yet.', timer: 2000 });
         }
-                if (typeof fetchActiveOrders === 'function') fetchActiveOrders();
+        
+        if (typeof fetchActiveOrders === 'function') fetchActiveOrders();
+        if (typeof renderActiveOrdersDashboard === 'function') renderActiveOrdersDashboard();
     } catch (err) {
+        console.error("Manual recheck error:", err);
         Swal.fire({ icon: 'error', title: 'Error', text: 'Could not connect to server to recheck SMS.' });
     }
-}
+};
 
 function filterServices() {
     const query = document.getElementById('serviceSearchInput').value;

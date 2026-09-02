@@ -347,6 +347,7 @@ const orderSchema = new mongoose.Schema({
         enum: ['VPN', 'Proxy', 'eSIM', 'eSIM_Refill', 'eSIM_Activation', 'RDP', 'RentedNumber', 'SmsNumber'], 
         required: true 
     },
+    vendorOrderId: { type: String, index: true },
     planName: String, 
     nodeName: String, 
     amount: { type: Number, required: true },
@@ -539,7 +540,7 @@ app.all('/api/:action', async (req, res) => {
         case 'user-profile': return handleGetUserProfile(req, res);
         case 'user-messages': return handleGetUserMessages(req, res);
         case 'user-orders': return handleGetUserOrders(req, res);
-        case 'sms-receive': return handleSmsWebhook(req, res);
+        case 'sms-receive': return handleSmsBowerWebhook(req, res);
         case 'order-details':  return handleGetOrderDetails(req, res);
         case 'change-password': return handleChangePassword(req, res);
         case 'forgot-password': return handleForgotPasswordRequest(req, res);
@@ -1894,30 +1895,31 @@ if (isOnlineSimFlow) {
                 status: 'pending'
             });
 
-            // 2. Create the central dashboard Order record
-            const createdOrder = await Order.create({
-                userId: user._id,
-                userEmail: user.email,
-                fullName: user.fullName || user.name || 'User',
-                productType: 'SmsNumber',
-                planName: metadata.planName || `${reqService.toUpperCase()} Virtual Number`,
-                amount: costNGN,
-                currency: 'NGN',
-                mainBalanceUsed: mainDeduction,
-                bonusBalanceUsed: bonusDeduction,
-                status: 'completed',
-                paymentReference: `SMS_${trackingTzid}_${Date.now()}`,
-                targetNumber: allocatedNumber,
-                country: reqCountry,
-                instructions: "Line allocated successfully. Waiting for SMS code...",
-                metadata: {
-                    tzid: trackingTzid,
-                    serviceCode: reqService,
-                    countryCode: reqCountry,
-                    operator: selectedOperator || null
-                },
-                deliveredAt: new Date()
-            });
+          // 2. Create the central dashboard Order record
+const createdOrder = await Order.create({
+    userId: user._id,
+    userEmail: user.email,
+    fullName: user.fullName || user.name || 'User',
+    productType: 'SmsNumber',
+    vendorOrderId: trackingTzid, // <-- CORRECTED: Use trackingTzid instead of res.vendorOrderId
+    planName: metadata.planName || `${reqService.toUpperCase()} Virtual Number`,
+    amount: costNGN,
+    currency: 'NGN',
+    mainBalanceUsed: mainDeduction,
+    bonusBalanceUsed: bonusDeduction,
+    status: 'completed',
+    paymentReference: `SMS_${trackingTzid}_${Date.now()}`,
+    targetNumber: allocatedNumber,
+    country: reqCountry,
+    instructions: "Line allocated successfully. Waiting for SMS code...",
+    metadata: {
+        tzid: trackingTzid,
+        serviceCode: reqService,
+        countryCode: reqCountry,
+        operator: selectedOperator || null
+    },
+    deliveredAt: new Date()
+});
 
           // 3. Return a fully populated payload matching what frontend state checks
             return res.status(200).json({
@@ -4017,48 +4019,48 @@ async function handleGetOrderDetails(req, res) {
     }
 }
 
-async function handleSmsWebhook(req, res) {
+/**
+ * 6. SMSBOWER WEBHOOK HANDLER
+ */
+async function handleSmsBowerWebhook(req, res) {
     try {
-        const { message, sender, deviceId } = req.body;
-        console.log(`📩 New SMS from ${sender}: ${message}`);
+        const { activationId, code, text } = req.body;
+        
+        console.log(`📩 SMSBower Webhook received for Activation ID: ${activationId}, Code: ${code}`);
 
-        // FIX 1: Search by pending status and matching phone number fields
+        if (!activationId || !code) {
+            return res.status(200).json({ success: false, message: 'Missing activationId or code' });
+        }
+
+        // 1. Find the pending order using vendorOrderId
         const order = await Order.findOne({ 
-            $or: [
-                { targetNumber: sender },
-                { "target.number": sender },
-                { "metadata.allocatedNumber": sender }
-            ],
-            productType: 'SmsNumber',
-            status: 'pending' // FIX 2: Virtual numbers are pending until code arrival
-        }).sort({ createdAt: -1 });
+            vendorOrderId: String(activationId), 
+            status: 'pending' 
+        });
 
         if (!order) {
-            console.log("No matching pending order found for this sender.");
-            return res.status(200).json({ success: true }); 
+            console.warn(`⚠️ No pending order found for SMSBower activationId: ${activationId}`);
+            return res.status(200).json({ success: true, message: 'Order not found or already processed' });
         }
 
-        const codeMatch = message.match(/\b\d{4,6}\b/);
-        const extractedCode = codeMatch ? codeMatch[0] : null;
+        // 2. Update Order fields
+        order.smsCode = code;
+        order.fullMessage = text || `Verification code is ${code}`;
+        order.status = 'completed'; // Matches your schema enum options cleanly
+        await order.save();
 
-        if (extractedCode) {
-            order.smsCode = extractedCode;
-            order.fullMessage = message;
-            order.status = 'successful'; // Mark order successful now that code is found
-            await order.save();
+        // 3. Update SmsNumber inventory/record using vendorOrderId for precision
+        await SmsNumber.findOneAndUpdate(
+            { vendorOrderId: String(activationId), status: 'pending' },
+            { smsCode: code, fullMessage: text, status: 'completed' }
+        );
 
-            await SmsNumber.findOneAndUpdate(
-                { phoneNumber: order.targetNumber, status: 'pending' },
-                { smsCode: extractedCode, fullMessage: message, status: 'completed' }
-            );
-
-            console.log(`✅ Code ${extractedCode} saved to Order ${order._id}`);
-        }
-
+        console.log(`✅ Code ${code} successfully saved to Order ${order._id}`);
         return res.status(200).json({ success: true });
+
     } catch (err) {
-        console.error("Webhook Error:", err.message);
-        return res.status(200).json({ success: false });
+        console.error("SMSBower Webhook Error:", err.message);
+        return res.status(200).json({ success: false, error: err.message });
     }
 }
 

@@ -1515,7 +1515,6 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
         return;
     }
 
-    // Fallback sync with localStorage if global variable wasn't set yet
     const currentBalance = parseFloat(window.userBalance ?? userBalance ?? localStorage.getItem('user_balance') ?? 0);
     const itemPrice = parseFloat(price);
 
@@ -1555,19 +1554,28 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
     };
 
     try {
-        const { data: res } = await safeFetch(`${API_BASE_URL}/purchase-with-wallet`, { 
+        const response = await safeFetch(`${API_BASE_URL}/purchase-with-wallet`, { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(payload)
         });
         
-        if (res.success) {
-            const realMobileNumber = res.order?.mobileNumber || res.mobileNumber;
-            const orderId = res.order?._id || res.orderId;
+        const res = response.data;
+
+        if (res && res.success) {
+            // Updated mapping to match backend Mongoose schema fields
+            const realMobileNumber = res.order?.phoneNumber || res.order?.mobileNumber || res.mobileNumber;
+            const orderId = res.order?._id || res.order?.id || res.orderId;
+            
+            if (!orderId || !realMobileNumber) {
+                console.error("Invalid order structure returned:", res);
+                Swal.fire('Error', 'Order created, but received invalid data format from server.', 'error');
+                return;
+            }
+
             const serviceName = serviceObj?.name || serviceCode;
             const countryName = countryObj?.countryName || 'Selected Country';
 
-            // --- PERSISTENT STATE LOGIC ---
             let activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
             const newActiveOrder = {
                 id: orderId,
@@ -1585,8 +1593,6 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
 
             renderActiveOrdersDashboard();
             startPersistentSmsPolling(orderId);
-            
-            // Refresh user balance automatically post-purchase
             fetchUserProfile();
 
             Swal.fire({
@@ -1597,11 +1603,11 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
                 showConfirmButton: false
             });
         } else { 
-            Swal.fire('Order Failed', res.message || "Could not process purchase from provider.", 'error');
+            Swal.fire('Order Failed', res?.message || "Could not process purchase from provider.", 'error');
         }
     } catch (err) { 
         console.error("Purchase Error:", err);
-        Swal.fire('Network Error', 'Check your connection and try again.', 'error');
+        Swal.fire('Network Error', 'Check your connection or server response and try again.', 'error');
     }
 }
 

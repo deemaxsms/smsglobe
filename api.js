@@ -35,10 +35,11 @@ const storage = new CloudinaryStorage({
 const upload = multer({ storage: storage });
 
 const smsBowerClient = axios.create({
-    baseURL: 'https://smsbower.page/stubs/handler_api.php',
+    baseURL: process.env.SMSBOWER_BASE_URL || 'https://smsbower.page/stubs/handler_api.php',
     params: {
         api_key: process.env.SMSBOWER_API_KEY
-    }
+    },
+    timeout: 15000
 });
 
 app.use(cors());
@@ -3503,7 +3504,7 @@ async function handleGetRdpRequests(req, res) {
 }
 
 /**
- * 1. PURCHASE / ALLOCATE NUMBER FROM SMSBOWER
+ * 1. PURCHASE / ALLOCATE NUMBER FROM SMSBOWER (Vercel Optimized)
  */
 async function handlePurchaseNumber(req, res) {
     try {
@@ -3514,57 +3515,78 @@ async function handlePurchaseNumber(req, res) {
         const serviceCode = metadata?.serviceCode || metadata?.serviceName || 'ot';
         const countryId = metadata?.countryCode || metadata?.countryId || 0;
 
-        // 1. Verify user wallet balance
-        const user = await User.findById(userId);
-        if (!user || user.balance < planAmount) {
+        if (!planAmount || planAmount <= 0) {
+            return res.status(400).json({ success: false, message: "Invalid plan amount." });
+        }
+
+        // 1. ATOMIC BALANCE CHECK & DEDUCTION (Prevents race conditions & double-spending)
+        const updatedUser = await User.findOneAndUpdate(
+            { _id: userId, balance: { $gte: planAmount } },
+            { $inc: { balance: -planAmount } },
+            { new: true }
+        );
+
+        if (!updatedUser) {
             return res.status(400).json({ success: false, message: "Insufficient wallet balance." });
         }
 
-        // 2. Call SMSBower Number Allocation API (SMS-Activate format: action=getNumber)
-        const response = await smsBowerClient.get('', {
-            params: {
-                action: 'getNumber',
-                service: serviceCode,
-                country: countryId
+        try {
+            // 2. Call SMSBower Number Allocation API
+            const response = await smsBowerClient.get('', {
+                params: {
+                    action: 'getNumber',
+                    service: serviceCode,
+                    country: countryId
+                }
+            });
+
+            const respText = response.data; // e.g., "ACCESS_NUMBER:1:2347012345678:123456" or "NO_NUMBERS"
+
+            if (typeof respText === 'string' && respText.startsWith('ACCESS_NUMBER')) {
+                const parts = respText.split(':');
+                const vendorOrderId = parts[1];
+                const allocatedNumber = parts[2];
+
+                // 3. Save local active order record in MongoDB
+                const newOrder = await SmsNumber.create({
+                    userId: userId,
+                    userEmail: updatedUser.email,
+                    phoneNumber: allocatedNumber,
+                    vendorOrderId: String(vendorOrderId),
+                    countryId: String(countryId),
+                    serviceName: serviceCode,
+                    status: 'pending',
+                    amount: planAmount,
+                    expiresAt: new Date(Date.now() + 15 * 60 * 1000)
+                });
+
+                return res.json({
+                    success: true,
+                    order: newOrder,
+                    newBalance: updatedUser.balance
+                });
+
+            } else {
+                await User.findByIdAndUpdate(userId, { $inc: { balance: planAmount } });
+
+                return res.status(400).json({
+                    success: false,
+                    message: respText || "No numbers available from SMSBower right now."
+                });
             }
-        });
 
-        const respText = response.data; // e.g., "ACCESS_NUMBER:1:2347012345678:123456" or "NO_NUMBERS"
-        
-        if (typeof respText === 'string' && respText.startsWith('ACCESS_NUMBER')) {
-            const parts = respText.split(':');
-            const vendorOrderId = parts[1];
-            const allocatedNumber = parts[2];
-
-            // 3. Deduct user balance & save local order record
-            user.balance -= planAmount;
-            await user.save();
-
-            const newOrder = await SmsNumber.create({
-                userId: userId,
-                userEmail: user.email,
-                phoneNumber: allocatedNumber,
-                vendorOrderId: String(vendorOrderId),
-                countryId: String(countryId),
-                serviceName: serviceCode,
-                status: 'pending',
-                amount: planAmount,
-                expiresAt: new Date(Date.now() + 15 * 60 * 1000)
-            });
-
-            return res.json({
-                success: true,
-                order: newOrder
-            });
-        } else {
-            return res.status(400).json({
-                success: false,
-                message: respText || "No numbers available from SMSBower right now."
+        } catch (vendorErr) {
+            await User.findByIdAndUpdate(userId, { $inc: { balance: planAmount } });
+            
+            console.error("SMSBower Vendor Request Failed:", vendorErr.message);
+            return res.status(502).json({ 
+                success: false, 
+                message: "Vendor API error while allocating number. Your balance has been refunded." 
             });
         }
 
     } catch (err) {
-        console.error("SMSBower Purchase Error:", err.message);
+        console.error("SMSBower Purchase System Error:", err.message);
         return res.status(500).json({ success: false, message: "Server error processing purchase." });
     }
 }

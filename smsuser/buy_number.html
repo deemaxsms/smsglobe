@@ -1757,28 +1757,59 @@ window.closeActiveOrdersModal = function() {
     }
 }
 
-window.manualRecheckSms = async function(orderId) {
+window.cancelActiveOrder = async function(orderId) {
+    const confirmResult = await Swal.fire({
+        title: 'Cancel Number & Get Refund?',
+        text: "If you haven't received your code, cancelling will return your funds back to your wallet instantly.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, Cancel & Refund!'
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
     try {
-        Swal.fire({ title: 'Checking with provider...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-                const data = await safeFetch(`/api/recheck-sms`, {
+        Swal.fire({ title: 'Processing refund...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        const data = await safeFetch(`/api/cancel-order`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: orderId })
         });
-        
+
         Swal.close();
 
-        if (data && data.success && data.code) {
-            Swal.fire({ icon: 'success', title: 'OTP Received!', text: `Code: ${data.code}`, timer: 2000 });
+        if (data && data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Refund Successful!',
+                text: data.message,
+                timer: 2500
+            });
+
+            // Clean up localStorage active orders cache
+            let activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
+            activeOrders = activeOrders.filter(o => (o._id !== orderId && o.id !== orderId && o.tzid !== orderId));
+            localStorage.setItem('sms_active_orders', JSON.stringify(activeOrders));
+
+            // Refresh UI dashboards & wallet balance
+            if (typeof fetchActiveOrders === 'function') fetchActiveOrders();
+            if (typeof renderActiveOrdersDashboard === 'function') renderActiveOrdersDashboard();
+            if (typeof updateUserBalanceUI === 'function' && data.newBalance !== undefined) {
+                updateUserBalanceUI(data.newBalance);
+            }
         } else {
-            Swal.fire({ icon: 'info', title: 'Still Waiting', text: (data && data.message) || 'No SMS code arrived yet.', timer: 2000 });
+            Swal.fire({
+                icon: 'error',
+                title: 'Cancellation Failed',
+                text: (data && data.message) || 'Could not cancel the order.'
+            });
         }
-        
-        if (typeof fetchActiveOrders === 'function') fetchActiveOrders();
-        if (typeof renderActiveOrdersDashboard === 'function') renderActiveOrdersDashboard();
     } catch (err) {
-        console.error("Manual recheck error:", err);
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Could not connect to server to recheck SMS.' });
+        console.error("Cancel order frontend error:", err);
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Network error connecting to server.' });
     }
 };
 

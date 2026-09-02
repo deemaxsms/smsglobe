@@ -3877,38 +3877,85 @@ const countryEntry = {
  * 3. CHECK ORDER STATUS / SMS CODE POLLING
  */
 async function handleOrderDetails(req, res) {
-    const { id } = req.query; // Local DB Order ID
+    const { id } = req.query; // Local DB Order ID (passed from frontend)
 
     try {
         await connectDB();
-        const order = await SmsNumber.findById(id);
-        if (!order) return res.status(404).json({ success: false, message: "Order not found." });
 
-        if (order.status === 'completed' || order.smsCode) {
-            return res.json({ success: true, order });
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: "Invalid or missing order ID." });
         }
 
-        // Poll SMSBower for status (SMS-Activate format: action=getStatus&id=vendorOrderId)
-        if (order.vendorOrderId) {
-            const response = await smsBowerClient.get('', {
-                params: {
-                    action: 'getStatus',
-                    id: order.vendorOrderId
-                }
-            });
+        // 1. Look up the main Order document first (since frontend polls using Order _id)
+        let order = await Order.findById(id);
 
-            const respText = response.data; // e.g., "STATUS_OK:1234" or "STATUS_WAIT_CODE"
-
-            if (typeof respText === 'string' && respText.startsWith('STATUS_OK')) {
-                const code = respText.split(':')[1];
-                order.smsCode = code;
-                order.fullMessage = `Verification Code: ${code}`;
-                order.status = 'completed';
-                await order.save();
+        // 2. Fallback: If not found in Order, try finding in SmsNumber collection directly
+        let smsNumberDoc = null;
+        if (!order) {
+            smsNumberDoc = await SmsNumber.findById(id);
+            if (smsNumberDoc) {
+                // If found in SmsNumber, sync/find the matching Order by vendorOrderId
+                order = await Order.findOne({ vendorOrderId: smsNumberDoc.vendorOrderId });
             }
         }
 
-        return res.json({ success: true, order });
+        if (!order) {
+            return res.status(404).json({ success: false, message: "Order not found." });
+        }
+
+        // If order is already completed or has a code, return it immediately
+        if (order.status === 'completed' || order.smsCode) {
+            return res.json({ 
+                success: true, 
+                order: {
+                    ...order.toObject(),
+                    phoneNumber: order.targetNumber || order.phoneNumber
+                } 
+            });
+        }
+
+        // 3. Poll SMSBower for status if we have a vendorOrderId (tzid)
+        const activeVendorId = order.vendorOrderId || order.metadata?.tzid;
+        if (activeVendorId) {
+            try {
+                const response = await smsBowerClient.get('', {
+                    params: {
+                        action: 'getStatus',
+                        id: activeVendorId
+                    }
+                });
+
+                const respText = response.data; // e.g., "STATUS_OK:1234" or "STATUS_WAIT_CODE"
+
+                if (typeof respText === 'string' && respText.startsWith('STATUS_OK')) {
+                    const code = respText.split(':')[1];
+                    
+                    // Update Central Order
+                    order.smsCode = code;
+                    order.fullMessage = `Verification Code: ${code}`;
+                    order.status = 'completed';
+                    await order.save();
+
+                    // Update corresponding SmsNumber record if it exists
+                    await SmsNumber.findOneAndUpdate(
+                        { vendorOrderId: String(activeVendorId) },
+                        { smsCode: code, fullMessage: order.fullMessage, status: 'completed' }
+                    );
+                }
+            } catch (pollErr) {
+                console.error("SMSBower Active Poll Request Error:", pollErr.message);
+                // Non-blocking: continue to return current order state even if external api hiccups
+            }
+        }
+
+        return res.json({ 
+            success: true, 
+            order: {
+                ...order.toObject(),
+                phoneNumber: order.targetNumber || order.phoneNumber
+            } 
+        });
+
     } catch (err) {
         console.error("SMSBower Polling Error:", err.message);
         return res.status(500).json({ success: false, message: "Failed to read order update." });

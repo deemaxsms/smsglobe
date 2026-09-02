@@ -1605,6 +1605,7 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
                 phoneNumber: realMobileNumber,
                 serviceName: serviceObj?.name || serviceCode,
                 countryName: countryObj?.countryName || 'Selected Country',
+                countryFlag: countryObj?.flag || countryObj?.flagUrl || countryObj?.icon || '', // Captures the flag source
                 status: 'Waiting for SMS...',
                 smsCode: null,
                 fullMessage: null,
@@ -1670,60 +1671,69 @@ function renderActiveOrdersDashboard() {
                 </div>
             </div>
             
-            <!-- Scrollable Orders List Container -->
-            <div class="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
-                ${activeOrders.map(order => {
-                    // Fallback resolver for phone number to prevent "undefined" display
-                    const displayNum = order.phoneNumber || order.targetNumber || order.number || order.data?.phoneNumber || 'N/A';
-                    const sName = order.serviceName || order.service || 'Service';
-                    const cName = order.countryName || order.country || '';
+         <!-- Scrollable Orders List Container -->
+    <div class="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+        ${activeOrders.map(order => {
+            // Fallback resolver for phone number to prevent "undefined" display
+            const displayNum = order.phoneNumber || order.targetNumber || order.number || order.data?.phoneNumber || 'N/A';
+            const sName = order.serviceName || order.service || 'Service';
+            const cName = order.countryName || order.country || '';
+            
+            // Flag resolver supporting multiple schema fields
+            const flagUrl = order.countryFlag || order.flag || order.flagUrl || order.icon || '';
+            const flagHtml = flagUrl 
+                ? `<img src="${flagUrl}" class="w-5 h-3.5 object-cover rounded-xs shadow-2xs inline-block shrink-0" alt="flag">` 
+                : '';
 
-                    return `
-                        <div class="bg-gray-50/70 border border-brand-border p-4 rounded-xl flex flex-col gap-3 shadow-2xs" id="persistent-order-${order.id || order.tzid}">
-                            <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold text-brand-darkText">${sName} <span class="text-brand-lightText font-normal">(${cName})</span></span>
-                                <span class="text-[10px] px-2 py-0.5 rounded font-bold ${order.smsCode ? 'bg-green-100 text-green-700' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${order.status || 'pending'}</span>
-                            </div>
-
-                            <!-- Number Box -->
-                            <div class="flex items-center justify-between bg-white border border-gray-200 px-3.5 py-2.5 rounded-xl shadow-xs">
-                                <span class="font-mono text-sm sm:text-base font-black text-brand-darkText tracking-wide">${displayNum}</span>
-                                <button onclick="navigator.clipboard.writeText('${displayNum}'); Swal.fire({title: 'Number Copied!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000, icon: 'success'});" 
-                                        class="text-xs bg-brand-blue/10 text-brand-blue hover:bg-brand-blue hover:text-white px-3 py-1.5 rounded-lg font-bold transition-all">
-                                    Copy Number
-                                </button>
-                            </div>
-
-                            <!-- OTP Box / Status -->
-                            <div>
-                                ${order.smsCode ? `
-                                    <div class="bg-green-50 border border-green-200 p-3 rounded-xl flex flex-col gap-2">
-                                        <div class="flex items-center justify-between">
-                                            <span class="text-xs font-bold text-green-800 uppercase tracking-wide">Verification Code Received:</span>
-                                            <button onclick="navigator.clipboard.writeText('${order.smsCode}'); Swal.fire({title: 'OTP Copied!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000, icon: 'success'});" 
-                                                    class="text-xs bg-green-600 text-white px-2.5 py-1 rounded-md font-bold">Copy OTP</button>
-                                        </div>
-                                        <div class="flex gap-1.5 justify-center py-1">
-                                            ${order.smsCode.split('').map(d => `
-                                                <div class="w-10 h-12 bg-green-600 text-white rounded-xl flex items-center justify-center text-xl font-black shadow-md">
-                                                    ${d}
-                                                </div>
-                                            `).join('')}
-                                        </div>
-                                        <p class="text-[10px] text-green-700 italic text-center mt-1">${order.fullMessage || ''}</p>
-                                    </div>
-                                ` : `
-                                    <div class="flex items-center justify-center gap-2 py-2 text-gray-500 text-xs italic">
-                                        <div class="w-4 h-4 border-2 border-brand-blue border-t-transparent rounded-full animate-spin"></div>
-                                        Waiting for OTP code... Keep this modal open.
-                                    </div>
-                                `}
-                            </div>
+            return `
+                <div class="bg-gray-50/70 border border-brand-border p-4 rounded-xl flex flex-col gap-3 shadow-2xs" id="persistent-order-${order.id || order.tzid}">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            ${flagHtml}
+                            <span class="text-xs font-bold text-brand-darkText">${sName} <span class="text-brand-lightText font-normal">(${cName})</span></span>
                         </div>
-                    `;
-                }).join('')}
-            </div>
-        </div>
+                        <span class="text-[10px] px-2 py-0.5 rounded font-bold ${order.smsCode ? 'bg-green-100 text-green-700' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${order.status || 'pending'}</span>
+                    </div>
+
+                    <!-- Number Box -->
+                    <div class="flex items-center justify-between bg-white border border-gray-200 px-3.5 py-2.5 rounded-xl shadow-xs">
+                        <span class="font-mono text-sm sm:text-base font-black text-brand-darkText tracking-wide">${displayNum}</span>
+                        <button onclick="navigator.clipboard.writeText('${displayNum}'); Swal.fire({title: 'Number Copied!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000, icon: 'success'});" 
+                                class="text-xs bg-brand-blue/10 text-brand-blue hover:bg-brand-blue hover:text-white px-3 py-1.5 rounded-lg font-bold transition-all">
+                            Copy Number
+                        </button>
+                    </div>
+
+                    <!-- OTP Box / Status -->
+                    <div>
+                        ${order.smsCode ? `
+                            <div class="bg-green-50 border border-green-200 p-3 rounded-xl flex flex-col gap-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-green-800 uppercase tracking-wide">Verification Code Received:</span>
+                                    <button onclick="navigator.clipboard.writeText('${order.smsCode}'); Swal.fire({title: 'OTP Copied!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000, icon: 'success'});" 
+                                            class="text-xs bg-green-600 text-white px-2.5 py-1 rounded-md font-bold">Copy OTP</button>
+                                </div>
+                                <div class="flex gap-1.5 justify-center py-1">
+                                    ${order.smsCode.split('').map(d => `
+                                        <div class="w-10 h-12 bg-green-600 text-white rounded-xl flex items-center justify-center text-xl font-black shadow-md">
+                                            ${d}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <p class="text-[10px] text-green-700 italic text-center mt-1">${order.fullMessage || ''}</p>
+                            </div>
+                        ` : `
+                            <div class="flex items-center justify-center gap-2 py-2 text-gray-500 text-xs italic">
+                                <div class="w-4 h-4 border-2 border-brand-blue border-t-transparent rounded-full animate-spin"></div>
+                                Waiting for OTP code... Keep this modal open.
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        }).join('')}
+    </div>
+</div>
     `;
 }
 

@@ -1773,19 +1773,21 @@ window.cancelActiveOrder = async function(orderId) {
     try {
         Swal.fire({ title: 'Processing refund...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-        // Retrieve token from localStorage (adjust key name if your app uses a different one)
-        const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+        // Use 'userToken' to match fetchUserProfile()
+        const token = localStorage.getItem('userToken');
 
-        const data = await safeFetch(`/api/cancel-order`, {
+        const { res, data } = await safeFetch(`/api/cancel-order`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}` // 👈 Critical fix for the 401 Unauthorized error
+                'Authorization': `Bearer ${token}` 
             },
             body: JSON.stringify({ id: orderId })
         });
 
         Swal.close();
+
+        if (res.status === 401) return logout();
 
         if (data && data.success) {
             Swal.fire({
@@ -1803,9 +1805,7 @@ window.cancelActiveOrder = async function(orderId) {
             // Refresh UI dashboards & wallet balance
             if (typeof fetchActiveOrders === 'function') fetchActiveOrders();
             if (typeof renderActiveOrdersDashboard === 'function') renderActiveOrdersDashboard();
-            if (typeof updateUserBalanceUI === 'function' && data.newBalance !== undefined) {
-                updateUserBalanceUI(data.newBalance);
-            }
+            if (typeof fetchUserProfile === 'function') fetchUserProfile(); // Refresh wallet balance automatically via profile fetch
         } else {
             Swal.fire({
                 icon: 'error',
@@ -1818,7 +1818,6 @@ window.cancelActiveOrder = async function(orderId) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Network error connecting to server.' });
     }
 };
-
         function copyNumber() {
             const num = document.getElementById('displayPurchasedNumber')?.innerText || '';
             navigator.clipboard.writeText(num);

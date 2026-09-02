@@ -1811,24 +1811,23 @@ window.closeActiveOrdersModal = function() {
     }, 4000);
 }
 
-// Expose it globally so inline onclick handlers can find it
 window.manualRecheckSms = async function(orderId) {
     try {
         Swal.fire({ title: 'Checking with provider...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         
-        const res = await safeFetch(`/api/recheck-sms`, {
+        // safeFetch returns the parsed JSON body directly
+        const data = await safeFetch(`/api/recheck-sms`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: orderId })
         });
         
-        const data = await res.json();
         Swal.close();
 
-        if (data.success && data.code) {
+        if (data && data.success && data.code) {
             Swal.fire({ icon: 'success', title: 'OTP Received!', text: `Code: ${data.code}`, timer: 2000 });
         } else {
-            Swal.fire({ icon: 'info', title: 'Still Waiting', text: data.message || 'No SMS code arrived yet.', timer: 2000 });
+            Swal.fire({ icon: 'info', title: 'Still Waiting', text: (data && data.message) || 'No SMS code arrived yet.', timer: 2000 });
         }
         
         if (typeof fetchActiveOrders === 'function') fetchActiveOrders();

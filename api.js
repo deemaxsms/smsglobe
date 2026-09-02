@@ -3502,7 +3502,6 @@ async function handleGetRdpRequests(req, res) {
         return res.status(500).json({ success: false, message: "Failed to fetch" });
     }
 }
-
 /**
  * 1. PURCHASE / ALLOCATE NUMBER FROM SMSBOWER (Vercel Optimized & Fixed)
  */
@@ -3510,12 +3509,12 @@ async function handlePurchaseNumber(req, res) {
     try {
         await connectDB();
         
-        // Extract planAmount, metadata, AND providerId from the root request body
-        const { planAmount, metadata, providerId } = req.body;
+        const { planAmount, metadata, providerId, serviceCode: bodyServiceCode, countryId: bodyCountryId } = req.body;
         const userId = req.user._id;
 
-        const serviceCode = metadata?.serviceCode || metadata?.serviceName || 'ot';
-        const countryId = metadata?.countryCode || metadata?.countryId || 0;
+        // Fallback robust extraction for serviceCode and countryId
+        const serviceCode = bodyServiceCode || metadata?.serviceCode || metadata?.serviceName;
+        const countryId = bodyCountryId || metadata?.countryCode || metadata?.countryId;
         
         // Extract operator/provider from request body or metadata fallback
         const selectedOperator = providerId || metadata?.providerId || metadata?.operator;
@@ -3524,7 +3523,11 @@ async function handlePurchaseNumber(req, res) {
             return res.status(400).json({ success: false, message: "Invalid plan amount." });
         }
 
-        // 1. ATOMIC BALANCE CHECK & DEDUCTION (Prevents race conditions & double-spending)
+        if (!serviceCode || !countryId) {
+            return res.status(400).json({ success: false, message: "Missing service code or country ID." });
+        }
+
+        // 1. ATOMIC BALANCE CHECK & DEDUCTION
         const updatedUser = await User.findOneAndUpdate(
             { _id: userId, balance: { $gte: planAmount } },
             { $inc: { balance: -planAmount } },
@@ -3536,22 +3539,23 @@ async function handlePurchaseNumber(req, res) {
         }
 
         try {
-            // 2. Build SMSBower Number Allocation Query Parameters
+            // 2. Build SMSBower Number Allocation Query Parameters using v2/standard parameters
             const apiParams = {
-                action: 'getNumber',
-                service: serviceCode,
-                country: countryId
+                action: 'getNumber', // Or 'getNumbersV2' depending on your endpoint handler setup
+                service: String(serviceCode).trim().toLowerCase(),
+                country: String(countryId).trim()
             };
 
             // Only attach operator parameter if a specific provider ID is chosen and valid
-            if (selectedOperator && selectedOperator !== 'undefined' && selectedOperator !== '') {
-                apiParams.operator = selectedOperator;
+            if (selectedOperator && selectedOperator !== 'undefined' && selectedOperator !== '' && selectedOperator !== 'null') {
+                apiParams.operator = String(selectedOperator).trim();
             }
+
+            console.log("Sending allocation query to SMSBower:", apiParams);
 
             // Call SMSBower Number Allocation API
             const response = await smsBowerClient.get('', { params: apiParams });
-
-            const respText = response.data; // e.g., "ACCESS_NUMBER:1:2347012345678:123456" or "NO_NUMBERS"
+            const respText = response.data; // e.g., "ACCESS_NUMBER:1:2347012345678:123456" or error string
 
             if (typeof respText === 'string' && respText.startsWith('ACCESS_NUMBER')) {
                 const parts = respText.split(':');
@@ -3578,7 +3582,6 @@ async function handlePurchaseNumber(req, res) {
                 });
 
             } else {
-                // Refund balance if vendor didn't return an access number
                 await User.findByIdAndUpdate(userId, { $inc: { balance: planAmount } });
 
                 return res.status(400).json({
@@ -3591,7 +3594,7 @@ async function handlePurchaseNumber(req, res) {
             // Refund balance on vendor network error
             await User.findByIdAndUpdate(userId, { $inc: { balance: planAmount } });
             
-            console.error("SMSBower Vendor Request Failed:", vendorErr.message);
+            console.error("SMSBower Vendor Request Failed:", vendorErr.response?.data || vendorErr.message);
             return res.status(502).json({ 
                 success: false, 
                 message: "Vendor API error while allocating number. Your balance has been refunded." 
@@ -3603,6 +3606,7 @@ async function handlePurchaseNumber(req, res) {
         return res.status(500).json({ success: false, message: "Server error processing purchase." });
     }
 }
+
 
 async function handleGetServicesAndPrices(req, res) {
     try {

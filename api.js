@@ -3764,6 +3764,8 @@ async function handleGetCountries(req, res) {
             return res.status(400).json({ success: false, message: "Service code is required." });
         }
 
+        const normalizedServiceCode = String(serviceCode).toLowerCase();
+
         // 0. Fetch System Settings dynamically for markup control with safety fallback
         let markupPercent = 0;
         try {
@@ -3779,7 +3781,7 @@ async function handleGetCountries(req, res) {
         // =========================================================================
         const countrySpecificMarkups = {
             // Core Targets
-            'united states (virtual)': 693.65, 'united states': 40,  'france': 693.60,         'united kingdom': 70,  'india': 50,         'canada': 70,
+            'united states (virtual)': 693.65, 'united states': 40,  'france': 50,         'united kingdom': 50,  'india': 25,         'canada': 50,
 
             // Africa & Middle East
             'tunisia': 693.65,        'ghana': 693.65,          'palestine': 693.65,       'burundi': 693.65,       'cameroon': 693.65,
@@ -3801,7 +3803,7 @@ async function handleGetCountries(req, res) {
             'kazakhstan': 693.65,     'mongolia': 693.65,       'kyrgyzstan': 693.65,      'hong kong': 693.65,     'macau': 693.65,
             'cambodia': 693.65,       'lao people`s': 693.65,   'taiwan': 693.65,          'iran': 693.65,          'bangladesh': 693.65,
             'afghanistan': 693.65,    'papua new gvineya': 693.65, 'nepal': 693.65,        'timor-leste': 693.65,   'brunei darussalam': 693.65,
-            'georgia': 693.65,        'turkmenistan': 693.65,   'tajikistan': 693.65,      'armenia': 693.65,       'bhutan': 693.65,
+            'georgia':  693.65,       'turkmenistan':  693.65,  'tajikistan':  693.65,     'armenia':  693.65,      'bhutan':  693.65,
             'maldives': 693.65,       'azerbaijan': 693.65,
 
             // Europe
@@ -3811,16 +3813,16 @@ async function handleGetCountries(req, res) {
             'latvia': 693.65,         'belarus': 693.65,        'slovenia': 693.65,        'czech republic': 693.65, 'peru': 693.65,
             'venezuela': 693.65,      'cyprus': 693.65,         'belgium': 693.65,         'bulgaria': 693.65,      'hungary': 693.65,
             'italy': 693.65,          'bosnia and herzegovina': 693.65, 'cuba': 693.65,    'greece': 693.65,        'iceland': 693.65,
-            'slovakia': 693.65,       'suriname': 693.65,       'monaco':  693.65,          'albania':  693.65,    'uruguay': 693.65,
+            'slovakia': 693.65,       'suriname': 693.65,       'monaco': 693.65,          'albania': 693.65,       'uruguay': 693.65,
             'turkey': 693.65,         'luxembourg': 693.65,     'montenegro': 693.65,      'norway': 693.65,
 
             // Americas & Caribbean
             'bolivia': 693.65,        'nigeria': 693.65,        'paraguay': 693.65,        'honduras': 693.65,      'nicaragua': 693.65,
             'costa rica': 693.65,     'guatemala': 693.65,      'puerto rico': 693.65,     'el salvador': 693.65,   'jamaica': 693.65,
             'trinidad and tobago': 693.65, 'ecuador': 693.65,   'dominican republic': 693.65, 'panama': 693.65,     'barbados': 693.65,
-            'bahamas': 693.65,        'belize': 693.65,         'dominica':  693.65,        'grenada':  693.65,       'guinea-bissau':  693.65,
-            'guyana':  693.65,         'saint kitts and nevis':  693.65, 'guadeloupe':  693.65, 'french guiana':  693.65, 'saint lucia':  693.65,
-            'saint vincent':  693.65,  'antigua and barbuda':  693.65, 'cayman islands':  693.65, 'aruba':  693.65
+            'bahamas':  693.65,       'belize':  693.65,        'dominica':  693.65,       'grenada':  693.65,      'guinea-bissau':  693.65,
+            'guyana':  693.65,        'saint kitts and nevis':  693.65, 'guadeloupe':  693.65, 'french guiana':  693.65, 'saint lucia':  693.65,
+            'saint vincent':  693.65, 'antigua and barbuda':  693.65, 'cayman islands':  693.65, 'aruba':  693.65
         };
 
         // 1. Fetch official country definitions dictionary directly from SMSBower API
@@ -3836,7 +3838,7 @@ async function handleGetCountries(req, res) {
             params: { 
                 api_key: process.env.SMSBOWER_API_KEY || process.env.SMSBower_API_KEY,
                 action: 'getPricesV3',
-                service: String(serviceCode).toLowerCase(),
+                service: normalizedServiceCode,
             }
         });
 
@@ -3875,7 +3877,7 @@ async function handleGetCountries(req, res) {
                 const countryServices = priceData[countryId];
                 if (!countryServices || typeof countryServices !== 'object') return;
 
-                const serviceData = countryServices[serviceCode] || countryServices[String(serviceCode).toLowerCase()];
+                const serviceData = countryServices[serviceCode] || countryServices[normalizedServiceCode];
                 if (!serviceData || typeof serviceData !== 'object') return;
 
                 // Resolve metadata early
@@ -3917,13 +3919,13 @@ async function handleGetCountries(req, res) {
                     let markedUpAmountNgn = Number((baseAmountNgn * finalMarkupMultiplier).toFixed(2));
                     
                     // =========================================================================
-                    // ABSOLUTE PRICE FLOOR ENFORCEMENT
+                    // SERVICE-SPECIFIC FIXED PRICE LOCK (e.g. Facebook / 'fb' -> exactly ₦2,000)
                     // =========================================================================
-                    // If you want high-demand services (or any service query running through this endpoint) 
-                    // to never fall below ₦2,000 regardless of the calculated country markup:
-                    const minPriceFloor = 2000;
-                    if (markedUpAmountNgn < minPriceFloor) {
-                        markedUpAmountNgn = minPriceFloor;
+                    // Add your target service codes here (e.g., 'fb' for Facebook, 'wa' for WhatsApp, etc.)
+                    const fixedPriceServices = ['fb', 'facebook']; 
+                    
+                    if (fixedPriceServices.includes(normalizedServiceCode)) {
+                        markedUpAmountNgn = 2000;
                     }
                     
                     if (markedUpAmountNgn < lowestAmount) {
@@ -3967,95 +3969,6 @@ async function handleGetCountries(req, res) {
             message: "Failed to fetch country catalog from vendor.",
             error: err.message 
         });
-    }
-}
-/**
- * 3. CHECK ORDER STATUS / SMS CODE POLLING
- */
-async function handleOrderDetails(req, res) {
-    const { id } = req.query; // Local DB Order ID (passed from frontend)
-
-    try {
-        await connectDB();
-
-        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ success: false, message: "Invalid or missing order ID." });
-        }
-
-        // 1. Look up the main Order document first (since frontend polls using Order _id)
-        let order = await Order.findById(id);
-
-        // 2. Fallback: If not found in Order, try finding in SmsNumber collection directly
-        let smsNumberDoc = null;
-        if (!order) {
-            smsNumberDoc = await SmsNumber.findById(id);
-            if (smsNumberDoc) {
-                // If found in SmsNumber, sync/find the matching Order by vendorOrderId
-                order = await Order.findOne({ vendorOrderId: smsNumberDoc.vendorOrderId });
-            }
-        }
-
-        if (!order) {
-            return res.status(404).json({ success: false, message: "Order not found." });
-        }
-
-        // 3. FIXED: Only return early if we actually have the SMS code. 
-        // This ensures orders missing the code will always proceed to poll SMSBower.
-        if (order.smsCode) {
-            return res.json({ 
-                success: true, 
-                order: {
-                    ...order.toObject(),
-                    phoneNumber: order.targetNumber || order.phoneNumber
-                } 
-            });
-        }
-
-        // 4. Poll SMSBower for status if we have a vendorOrderId (tzid)
-        const activeVendorId = order.vendorOrderId || order.metadata?.tzid;
-        if (activeVendorId) {
-            try {
-                const response = await smsBowerClient.get('', {
-                    params: {
-                        action: 'getStatus',
-                        id: activeVendorId
-                    }
-                });
-
-                const respText = response.data; // e.g., "STATUS_OK:1234" or "STATUS_WAIT_CODE"
-
-                if (typeof respText === 'string' && respText.startsWith('STATUS_OK')) {
-                    const code = respText.split(':')[1];
-                    
-                    // Update Central Order
-                    order.smsCode = code;
-                    order.fullMessage = `Verification Code: ${code}`;
-                    order.status = 'completed';
-                    await order.save();
-
-                    // Update corresponding SmsNumber record if it exists
-                    await SmsNumber.findOneAndUpdate(
-                        { vendorOrderId: String(activeVendorId) },
-                        { smsCode: code, fullMessage: order.fullMessage, status: 'completed' }
-                    );
-                }
-            } catch (pollErr) {
-                console.error("SMSBower Active Poll Request Error:", pollErr.message);
-                // Non-blocking: continue to return current order state even if external api hiccups
-            }
-        }
-
-        return res.json({ 
-            success: true, 
-            order: {
-                ...order.toObject(),
-                phoneNumber: order.targetNumber || order.phoneNumber
-            } 
-        });
-
-    } catch (err) {
-        console.error("SMSBower Polling Error:", err.message);
-        return res.status(500).json({ success: false, message: "Failed to read order update." });
     }
 }
 

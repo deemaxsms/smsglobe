@@ -3927,6 +3927,7 @@ const isWhatsAppService = normalizedServiceCode === 'wa' || normalizedServiceCod
 const isTwitterService = normalizedServiceCode === 'tw' || normalizedServiceCode === 'twitter' || normalizedServiceCode === 'x';
 const isSnapchatService = normalizedServiceCode === 'sc' || normalizedServiceCode === 'snapchat';
 const isInstagramService = normalizedServiceCode === 'ig' || normalizedServiceCode === 'instagram';
+const isDiscordService = normalizedServiceCode === 'ds' || normalizedServiceCode === 'discord';
 const isTinderService = normalizedServiceCode === 'td' || normalizedServiceCode === 'tinder';
 
 if (isFacebookService) {
@@ -3939,6 +3940,8 @@ if (isFacebookService) {
     markedUpAmountNgn = 2000.00; // Fixed at 2000 NGN for Snapchat
 } else if (isInstagramService) {
     markedUpAmountNgn = 900.00; // Fixed at 900 NGN for Instagram
+} else if (isDiscordService) {
+    markedUpAmountNgn = 1000.00; // Fixed at 1000 NGN for Discord
 } else if (isTinderService) {
     markedUpAmountNgn = 850.00; // Fixed at 850 NGN for Tinder
 } else if (isWhatsAppService) {

@@ -1685,6 +1685,10 @@ function renderActiveOrdersDashboard() {
                 ? `<img src="${flagUrl}" class="w-5 h-3.5 object-cover rounded-xs shadow-2xs inline-block shrink-0" alt="flag">` 
                 : '';
 
+            // Strict status flags to control cancellation permission
+            const currentStatus = (order.status || 'pending').toLowerCase();
+            const isCompleted = currentStatus === 'completed' || currentStatus === 'successful' || Boolean(order.smsCode);
+
             return `
                 <div class="bg-gray-50/70 border border-brand-border p-4 rounded-xl flex flex-col gap-3 shadow-2xs" id="persistent-order-${order.id || order.tzid}">
                     <div class="flex items-center justify-between">
@@ -1692,7 +1696,7 @@ function renderActiveOrdersDashboard() {
                             ${flagHtml}
                             <span class="text-xs font-bold text-brand-darkText">${sName} <span class="text-brand-lightText font-normal">(${cName})</span></span>
                         </div>
-                        <span class="text-[10px] px-2 py-0.5 rounded font-bold ${order.smsCode ? 'bg-green-100 text-green-700' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${order.status || 'pending'}</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded font-bold ${isCompleted ? 'bg-green-100 text-green-700' : 'bg-amber-50 text-amber-700 border border-amber-200'}">${order.status || 'pending'}</span>
                     </div>
 
                     <!-- Number Box -->
@@ -1704,23 +1708,26 @@ function renderActiveOrdersDashboard() {
                         </button>
                     </div>
 
-                    <!-- OTP Box / Status -->
+                    <!-- OTP Box / Status with Strict Cancellation Blocking -->
                     <div>
-                        ${order.smsCode ? `
+                        ${isCompleted ? `
                             <div class="bg-green-50 border border-green-200 p-3 rounded-xl flex flex-col gap-2">
                                 <div class="flex items-center justify-between">
                                     <span class="text-xs font-bold text-green-800 uppercase tracking-wide">Verification Code Received:</span>
-                                    <button onclick="navigator.clipboard.writeText('${order.smsCode}'); Swal.fire({title: 'OTP Copied!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000, icon: 'success'});" 
+                                    <button onclick="navigator.clipboard.writeText('${order.smsCode || ''}'); Swal.fire({title: 'OTP Copied!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000, icon: 'success'});" 
                                             class="text-xs bg-green-600 text-white px-2.5 py-1 rounded-md font-bold">Copy OTP</button>
                                 </div>
-                                <div class="flex gap-1.5 justify-center py-1">
-                                    ${order.smsCode.split('').map(d => `
-                                        <div class="w-10 h-12 bg-green-600 text-white rounded-xl flex items-center justify-center text-xl font-black shadow-md">
-                                            ${d}
-                                        </div>
-                                    `).join('')}
-                                </div>
+                                ${order.smsCode ? `
+                                    <div class="flex gap-1.5 justify-center py-1">
+                                        ${order.smsCode.split('').map(d => `
+                                            <div class="w-10 h-12 bg-green-600 text-white rounded-xl flex items-center justify-center text-xl font-black shadow-md">
+                                                ${d}
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                ` : `<p class="text-xs text-green-700 font-bold text-center py-1">Order completed successfully!</p>`}
                                 <p class="text-[10px] text-green-700 italic text-center mt-1">${order.fullMessage || ''}</p>
+                                <span class="text-[10px] text-gray-400 text-center uppercase tracking-wider font-semibold mt-1">Cancellation disabled (Code received)</span>
                             </div>
                         ` : `
                            <div class="flex flex-col items-center justify-center gap-2 py-2 text-gray-500 text-xs">

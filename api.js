@@ -3910,18 +3910,30 @@ async function handleGetCountries(req, res) {
                     const tierItem = serviceData[providerKey];
                     if (!tierItem || typeof tierItem !== 'object') return;
 
-                  // Inside Object.keys(serviceData).forEach(providerKey => { ... })
+               // Inside Object.keys(serviceData).forEach(providerKey => { ... })
 
 const rawCostUsd = Number(tierItem.price || tierItem.cost || tierItem.value || 0);
 if (rawCostUsd <= 0) return;
 
 const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
 let markedUpAmountNgn = Number((baseAmountNgn * finalMarkupMultiplier).toFixed(2));
+
 const normalizedServiceCode = String(serviceCode).trim().toLowerCase();
+
+// Check service identifiers
 const isFacebookService = normalizedServiceCode === 'fb' || normalizedServiceCode === 'facebook';
+const isTelegramService = normalizedServiceCode === 'tg' || normalizedServiceCode === 'telegram';
+const isWhatsAppService = normalizedServiceCode === 'wa' || normalizedServiceCode === 'whatsapp';
 
 if (isFacebookService) {
-    markedUpAmountNgn = 2000.00; // Forces the user-facing price to exactly 2000 NGN
+    markedUpAmountNgn = 750.00; // Fixed at 750 NGN for Facebook
+} else if (isTelegramService) {
+    markedUpAmountNgn = 2000.00; // Fixed at 2000 NGN for Telegram
+} else if (isWhatsAppService) {
+    // Minimum floor markup: if calculated price is below 2500 NGN, force it to 2500 NGN
+    if (markedUpAmountNgn < 2500.00) {
+        markedUpAmountNgn = 2500.00;
+    }
 }
 
 if (markedUpAmountNgn < lowestAmount) {

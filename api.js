@@ -3754,17 +3754,24 @@ async function handleProxyServiceImage(req, res) {
 }
 
 async function handleGetCountries(req, res) {
+    // Ensure JSON header is set right away to protect safeFetch clients
+    res.setHeader('Content-Type', 'application/json');
+
     try {
         const serviceCode = req.query.service || req.params.service;
-        res.setHeader('Content-Type', 'application/json');
 
         if (!serviceCode) {
             return res.status(400).json({ success: false, message: "Service code is required." });
         }
 
-        // 0. Fetch System Settings dynamically for markup control
-        const settings = await SystemSettings.findOne().lean();
-        const markupPercent = settings?.smsMarkupPercentage || 0;
+        // 0. Fetch System Settings dynamically for markup control with safety fallback
+        let markupPercent = 0;
+        try {
+            const settings = await SystemSettings.findOne().lean();
+            markupPercent = settings?.smsMarkupPercentage || 0;
+        } catch (dbErr) {
+            console.warn("Database warning: Could not fetch system settings markup, defaulting to 0%", dbErr.message);
+        }
         const globalMarkupMultiplier = 1 + (markupPercent / 100);
 
         // =========================================================================
@@ -3772,12 +3779,12 @@ async function handleGetCountries(req, res) {
         // =========================================================================
         const countrySpecificMarkups = {
             // Core Targets
-            'united states (virtual)': 40, 'united states': 40,  'france': 30,         'united kingdom': 35,  'india': 25,         'canada': 25,
+            'united states (virtual)': 100, 'united states': 40,  'france': 50,         'united kingdom': 50,  'india': 25,         'canada': 50,
 
             // Africa & Middle East
-            'tunisia': 10,        'ghana': 15,          'palestine': 20,       'burundi': 20,       'cameroon': 20,
-            'south africa': 20,   'guinea': 20,         'cote d`ivoire ivory coast': 20, 'togo': 20,  'mauritania': 20,
-            'central african republic': 20, 'burkina faso': 20, 'lebanon': 20,   'south sudan': 20,   'sudan': 20,
+            'tunisia': 100,        'ghana': 100,          'palestine': 100,       'burundi': 100,       'cameroon': 100,
+            'south africa': 100,   'guinea': 100,         'cote d`ivoire ivory coast': 100, 'togo': 100,  'mauritania': 100,
+            'central african republic': 100, 'burkina faso': 100, 'lebanon': 100,   'south sudan': 100,   'sudan': 100,
             'syrian arab republic': 20,     'iraq': 20,     'morocco': 20,         'ethiopia': 20,      'kenya': 20,
             'madagascar': 20,     'mali': 20,           'benin': 20,           'liberia': 20,       'saudi arabia': 20,
             'botswana': 20,       'tanzania': 20,       'israel': 20,          'egypt': 20,         'gambia': 20,
@@ -3819,7 +3826,7 @@ async function handleGetCountries(req, res) {
         // 1. Fetch official country definitions dictionary directly from SMSBower API
         const countriesMetaResponse = await smsBowerClient.get('', {
             params: { 
-                api_key: process.env.SMSBOWER_API_KEY,
+                api_key: process.env.SMSBOWER_API_KEY || process.env.SMSBower_API_KEY,
                 action: 'getCountries'
             }
         });
@@ -3827,22 +3834,22 @@ async function handleGetCountries(req, res) {
         // 2. Fetch prices/inventory using getPricesV3 for multi-provider support
         const pricesResponse = await smsBowerClient.get('', {
             params: { 
-                api_key: process.env.SMSBower_API_KEY || process.env.SMSBOWER_API_KEY,
+                api_key: process.env.SMSBOWER_API_KEY || process.env.SMSBower_API_KEY,
                 action: 'getPricesV3',
                 service: String(serviceCode).toLowerCase(),
             }
         });
 
-        const rawPrices = pricesResponse.data;
-        const rawCountriesMeta = countriesMetaResponse.data;
+        const rawPrices = pricesResponse?.data;
+        const rawCountriesMeta = countriesMetaResponse?.data;
 
-        if (typeof rawPrices === 'string') {
-            return res.status(400).json({ success: false, message: `Vendor error: ${rawPrices}` });
+        if (!rawPrices || typeof rawPrices === 'string') {
+            return res.status(200).json({ success: true, countries: [] }); // Gracefully return empty list instead of crashing sync loops on bad/unsupported service codes
         }
 
         // Build dynamic country mapping dictionary
         let countryMetaMap = {};
-        const metaSource = rawCountriesMeta.countries || rawCountriesMeta.data || rawCountriesMeta;
+        const metaSource = rawCountriesMeta?.countries || rawCountriesMeta?.data || rawCountriesMeta;
         
         if (metaSource) {
             const entries = Array.isArray(metaSource) ? metaSource.map((c, idx) => [c.id || idx, c]) : Object.entries(metaSource);
@@ -3945,7 +3952,6 @@ async function handleGetCountries(req, res) {
         return res.status(200).json({ success: true, countries: formattedCountries });
     } catch (err) {
         console.error("Failed to fetch SMSBower countries from vendor:", err.response?.data || err.message);
-        res.setHeader('Content-Type', 'application/json');
         return res.status(500).json({ 
             success: false, 
             message: "Failed to fetch country catalog from vendor.",
@@ -3953,7 +3959,6 @@ async function handleGetCountries(req, res) {
         });
     }
 }
-
 /**
  * 3. CHECK ORDER STATUS / SMS CODE POLLING
  */

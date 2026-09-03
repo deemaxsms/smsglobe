@@ -1065,7 +1065,7 @@ function renderServiceAccordion(filter = "") {
         `;
     }).join('');
 }
-   function renderCountriesListHtml(serviceCode, countriesList) {
+  function renderCountriesListHtml(serviceCode, countriesList) {
     if (!countriesList || countriesList.length === 0) {
         return `
             <div class="flex flex-col items-center justify-center py-6 bg-white rounded-xl border border-brand-border">
@@ -1240,13 +1240,11 @@ function renderServiceAccordion(filter = "") {
     'papua new guinea': 'pg'
     };
 
-    return countriesList.map(c => {
-        // c.availablePrices now contains the pre-converted NGN amounts from the backend
+   return countriesList.map(c => {
         const options = c.availablePrices || [{ amount: c.priceAmount, rank: c.rank, stock: c.stock, providerId: c.providerId }];
         const selectedIdx = c.selectedPriceIndex || 0;
         const activeTier = options[selectedIdx] || options[0];
 
-        // Since backend already converts USD to NGN, we use activeTier.amount directly multiplied by rent multiplier if applicable
         const finalDisplayPrice = Number(activeTier.amount || 0) * multiplier;
         const formattedPriceString = finalDisplayPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -1255,7 +1253,6 @@ function renderServiceAccordion(filter = "") {
         const countryName = c.countryName || c.name || '';
         const cleanName = countryName.toLowerCase().trim();
 
-        // Resolve the exact 2-letter ISO flag code safely using our dictionary or fallback logic
         let flagCode = 'un';
         if (c.code && c.code.length === 2) {
             flagCode = c.code.toLowerCase();
@@ -1275,50 +1272,47 @@ function renderServiceAccordion(filter = "") {
         const rankBadgeClass = rankLabel.toLowerCase().includes('silver') ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-amber-50 text-amber-700 border-amber-200';
 
         return `
-            <div class="bg-white border border-brand-border p-3 rounded-xl flex items-center justify-between hover:border-brand-blue/50 transition-all">
+            <div class="bg-white border border-brand-border p-2.5 sm:p-3 rounded-xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 hover:border-brand-blue/50 transition-all">
                 <!-- Left Side: Flag & Name -->
-                <div class="flex items-center gap-3">
-                    <img src="https://flagcdn.com/w40/${flagCode}.png" class="w-6 h-auto rounded-sm border border-gray-200" onerror="this.src='https://flagcdn.com/w40/un.png'">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <p class="text-xs font-bold text-brand-darkText">${countryName}</p>
-                            <span class="text-[8px] font-semibold px-1.5 py-0.5 rounded border ${rankBadgeClass} uppercase">${rankLabel}</span>
+                <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                    <img src="https://flagcdn.com/w40/${flagCode}.png" class="w-5 sm:w-6 h-auto rounded-sm border border-gray-200 flex-shrink-0" onerror="this.src='https://flagcdn.com/w40/un.png'">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <p class="text-[11px] sm:text-xs font-bold text-brand-darkText truncate max-w-[110px] sm:max-w-none">${countryName}</p>
+                            <span class="text-[7px] sm:text-[8px] font-semibold px-1 py-0.2 rounded border ${rankBadgeClass} uppercase">${rankLabel}</span>
                         </div>
-                        <span class="text-[9px] text-green-600 font-bold uppercase">● Stock: ${stockStatus}</span>
+                        <span class="text-[8px] text-green-600 font-bold uppercase block">● ${stockStatus}</span>
                     </div>
                 </div>
 
-                <!-- Middle Space: Shuffle / Alternate Tier Button -->
-                <div class="flex items-center">
+                <!-- Right Side Wrapper: Shuffle, Price & Action Stacked Safely -->
+                <div class="flex items-center gap-2 ml-auto sm:ml-0 flex-shrink-0">
                     ${options.length > 1 ? `
                         <button onclick="SMSGlobeApp.shuffleCountryPriceTier('${serviceCode}', '${c.countryId}', this)" 
                                 title="Shuffle / Cycle alternative price tier"
-                                class="p-2 text-gray-400 hover:text-brand-blue bg-gray-50 hover:bg-brand-blue/10 rounded-lg transition-all border border-gray-200 flex items-center justify-center">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                class="p-1.5 text-gray-400 hover:text-brand-blue bg-gray-50 hover:bg-brand-blue/10 rounded-lg transition-all border border-gray-200 flex items-center justify-center">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                             </svg>
                         </button>
                     ` : ''}
-                </div>
 
-                <!-- Right Side: Price & Action -->
-                <div class="flex items-center gap-3">
                     <div class="flex flex-col items-end">
-                        <span class="text-xs font-black text-brand-blue">₦${formattedPriceString}</span>
+                        <span class="text-[11px] sm:text-xs font-black text-brand-blue">₦${formattedPriceString}</span>
                         ${options.length > 1 ? `
-                            <select onchange="SMSGlobeApp.switchCountryPriceTier('${serviceCode}', '${c.countryId}', this.value)" class="text-[9px] text-gray-500 bg-gray-50 border border-gray-200 rounded px-1 py-0.5 mt-0.5 focus:outline-none">
+                            <select onchange="SMSGlobeApp.switchCountryPriceTier('${serviceCode}', '${c.countryId}', this.value)" class="text-[8px] sm:text-[9px] text-gray-500 bg-gray-50 border border-gray-200 rounded px-1 py-0.2 mt-0.5 focus:outline-none max-w-[90px]">
                                 ${options.map((opt, idx) => `
                                     <option value="${idx}" ${idx === selectedIdx ? 'selected' : ''}>
-                                        ${opt.rank || 'Tier'} - ₦${(Number(opt.amount) * multiplier).toLocaleString()} (${opt.stock || 'In Stock'})
+                                        ${opt.rank || 'Tier'} - ₦${(Number(opt.amount) * multiplier).toLocaleString()}
                                     </option>
                                 `).join('')}
                             </select>
                         ` : ''}
                     </div>
-                    <!-- Pass providerId safely into the purchase call -->
+
                     <button onclick="SMSGlobeApp.buyServiceCountry('${serviceCode}', '${c.countryId}', ${finalDisplayPrice}, '${rankLabel}', '${providerId}')" 
-                            class="px-4 py-2 bg-brand-blue text-white rounded-lg text-xs font-bold hover:bg-brand-blue/90 active:scale-95 transition-all">
-                        Buy Number
+                            class="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-brand-blue text-white rounded-lg text-[11px] sm:text-xs font-bold hover:bg-brand-blue/90 active:scale-95 transition-all flex-shrink-0">
+                        Buy
                     </button>
                 </div>
             </div>

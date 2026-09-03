@@ -3945,10 +3945,7 @@ if (isFacebookService) {
 } else if (isTinderService) {
     markedUpAmountNgn = 850.00; // Fixed at 850 NGN for Tinder
 } else if (isWhatsAppService) {
-    // Minimum floor markup: if calculated price is below 2500 NGN, force it to 2500 NGN
-    if (markedUpAmountNgn < 2500.00) {
-        markedUpAmountNgn = 2500.00;
-    }
+    markedUpAmountNgn = 2500.00;
 }
 
 if (markedUpAmountNgn < lowestAmount) {

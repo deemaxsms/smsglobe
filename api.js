@@ -3779,7 +3779,7 @@ async function handleGetCountries(req, res) {
         // =========================================================================
         const countrySpecificMarkups = {
             // Core Targets
-            'united states (virtual)': 693.65, 'united states': 40,  'france': 50,         'united kingdom': 50,  'india': 25,         'canada': 50,
+            'united states (virtual)': 693.65, 'united states': 40,  'france': 693.60,         'united kingdom': 70,  'india': 50,         'canada': 70,
 
             // Africa & Middle East
             'tunisia': 693.65,        'ghana': 693.65,          'palestine': 693.65,       'burundi': 693.65,       'cameroon': 693.65,
@@ -3796,31 +3796,31 @@ async function handleGetCountries(req, res) {
             'equatorial guinea': 693.65, 'djibouti': 693.65,    'eritrea': 693.65,         'sao tome and principe': 693.65, 'reunion': 693.65,
 
             // Asia & Oceania
-            'indonesia': 20,      'myanmar': 20,        'pakistan': 20,        'uzbekistan': 20,    'sri lanka': 20,
-            'zimbabwe': 20,       'kosovo': 20,         'viet nam': 20,        'philippines': 20,   'thailand': 20,
-            'kazakhstan': 20,     'mongolia': 20,       'kyrgyzstan': 20,      'hong kong': 20,     'macau': 20,
-            'cambodia': 20,       'lao people`s': 20,   'taiwan': 20,          'iran': 20,          'bangladesh': 20,
-            'afghanistan': 20,    'papua new gvineya': 20, 'nepal': 20,        'timor-leste': 20,   'brunei darussalam': 20,
-            'georgia': 20,        'turkmenistan': 20,   'tajikistan': 20,      'armenia': 20,       'bhutan': 20,
-            'maldives': 20,       'azerbaijan': 20,
+            'indonesia': 693.65,      'myanmar': 693.65,        'pakistan': 693.65,        'uzbekistan': 693.65,    'sri lanka': 693.65,
+            'zimbabwe': 693.65,       'kosovo': 693.65,         'viet nam': 693.65,        'philippines': 693.65,   'thailand': 693.65,
+            'kazakhstan': 693.65,     'mongolia': 693.65,       'kyrgyzstan': 693.65,      'hong kong': 693.65,     'macau': 693.65,
+            'cambodia': 693.65,       'lao people`s': 693.65,   'taiwan': 693.65,          'iran': 693.65,          'bangladesh': 693.65,
+            'afghanistan': 693.65,    'papua new gvineya': 693.65, 'nepal': 693.65,        'timor-leste': 693.65,   'brunei darussalam': 693.65,
+            'georgia': 693.65,        'turkmenistan': 693.65,   'tajikistan': 693.65,      'armenia': 693.65,       'bhutan': 693.65,
+            'maldives': 693.65,       'azerbaijan': 693.65,
 
             // Europe
-            'ukraine': 20,        'chile': 20,          'colombia': 20,        'argentinas': 20,    'poland': 20,
-            'congo (dem. republic)': 20, 'ireland': 20, 'haiti': 20,           'serbia': 20,        'romania': 20,
-            'estonia': 20,        'chad': 20,           'lithuania': 20,       'croatia': 20,       'netherlands': 20,
-            'latvia': 20,         'belarus': 20,        'slovenia': 20,        'czech republic': 20, 'peru': 20,
-            'venezuela': 20,      'cyprus': 20,         'belgium': 20,         'bulgaria': 20,      'hungary': 20,
-            'italy': 20,          'bosnia and herzegovina': 20, 'cuba': 20,    'greece': 20,        'iceland': 20,
-            'slovakia': 20,       'suriname': 20,       'monaco': 20,          'albania': 20,       'uruguay': 20,
-            'turkey': 20,         'luxembourg': 20,     'montenegro': 20,      'norway': 20,
+            'ukraine': 693.65,        'chile': 693.65,          'colombia': 693.65,        'argentinas': 693.65,    'poland': 693.65,
+            'congo (dem. republic)': 693.65, 'ireland': 693.65, 'haiti': 693.65,           'serbia': 693.65,        'romania': 693.65,
+            'estonia': 693.65,        'chad': 693.65,           'lithuania': 693.65,       'croatia': 693.65,       'netherlands': 693.65,
+            'latvia': 693.65,         'belarus': 693.65,        'slovenia': 693.65,        'czech republic': 693.65, 'peru': 693.65,
+            'venezuela': 693.65,      'cyprus': 693.65,         'belgium': 693.65,         'bulgaria': 693.65,      'hungary': 693.65,
+            'italy': 693.65,          'bosnia and herzegovina': 693.65, 'cuba': 693.65,    'greece': 693.65,        'iceland': 693.65,
+            'slovakia': 693.65,       'suriname': 693.65,       'monaco':  693.65,          'albania':  693.65,    'uruguay': 693.65,
+            'turkey': 693.65,         'luxembourg': 693.65,     'montenegro': 693.65,      'norway': 693.65,
 
             // Americas & Caribbean
-            'bolivia': 20,        'nigeria': 20,        'paraguay': 20,        'honduras': 20,      'nicaragua': 20,
-            'costa rica': 20,     'guatemala': 20,      'puerto rico': 20,     'el salvador': 20,   'jamaica': 20,
-            'trinidad and tobago': 20, 'ecuador': 20,   'dominican republic': 20, 'panama': 20,     'barbados': 20,
-            'bahamas': 20,        'belize': 20,         'dominica': 20,        'grenada': 20,       'guinea-bissau': 20,
-            'guyana': 20,         'saint kitts and nevis': 20, 'guadeloupe': 20, 'french guiana': 20, 'saint lucia': 20,
-            'saint vincent': 20,  'antigua and barbuda': 20, 'cayman islands': 20, 'aruba': 20
+            'bolivia': 693.65,        'nigeria': 693.65,        'paraguay': 693.65,        'honduras': 693.65,      'nicaragua': 693.65,
+            'costa rica': 693.65,     'guatemala': 693.65,      'puerto rico': 693.65,     'el salvador': 693.65,   'jamaica': 693.65,
+            'trinidad and tobago': 693.65, 'ecuador': 693.65,   'dominican republic': 693.65, 'panama': 693.65,     'barbados': 693.65,
+            'bahamas': 693.65,        'belize': 693.65,         'dominica':  693.65,        'grenada':  693.65,       'guinea-bissau':  693.65,
+            'guyana':  693.65,         'saint kitts and nevis':  693.65, 'guadeloupe':  693.65, 'french guiana':  693.65, 'saint lucia':  693.65,
+            'saint vincent':  693.65,  'antigua and barbuda':  693.65, 'cayman islands':  693.65, 'aruba':  693.65
         };
 
         // 1. Fetch official country definitions dictionary directly from SMSBower API
@@ -3844,7 +3844,7 @@ async function handleGetCountries(req, res) {
         const rawCountriesMeta = countriesMetaResponse?.data;
 
         if (!rawPrices || typeof rawPrices === 'string') {
-            return res.status(200).json({ success: true, countries: [] }); // Gracefully return empty list instead of crashing sync loops on bad/unsupported service codes
+            return res.status(200).json({ success: true, countries: [] }); 
         }
 
         // Build dynamic country mapping dictionary
@@ -3881,7 +3881,7 @@ async function handleGetCountries(req, res) {
                 // Resolve metadata early
                 const vendorMeta = countryMetaMap[String(countryId)] || {};
                 const resolvedName = vendorMeta.name || `Country ${countryId}`;
-                const resolvedCode = vendorMeta.code || String(countryId).toLowerCase();
+                const resolvedCode = resolvedMeta.code || String(countryId).toLowerCase();
 
                 // Safe and robust lookup implementation
                 const lookupName = resolvedName.toLowerCase();
@@ -3914,7 +3914,17 @@ async function handleGetCountries(req, res) {
                     if (rawCostUsd <= 0) return;
                     
                     const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
-                    const markedUpAmountNgn = Number((baseAmountNgn * finalMarkupMultiplier).toFixed(2));
+                    let markedUpAmountNgn = Number((baseAmountNgn * finalMarkupMultiplier).toFixed(2));
+                    
+                    // =========================================================================
+                    // ABSOLUTE PRICE FLOOR ENFORCEMENT
+                    // =========================================================================
+                    // If you want high-demand services (or any service query running through this endpoint) 
+                    // to never fall below ₦2,000 regardless of the calculated country markup:
+                    const minPriceFloor = 2000;
+                    if (markedUpAmountNgn < minPriceFloor) {
+                        markedUpAmountNgn = minPriceFloor;
+                    }
                     
                     if (markedUpAmountNgn < lowestAmount) {
                         lowestAmount = markedUpAmountNgn;

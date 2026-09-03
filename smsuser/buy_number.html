@@ -61,7 +61,7 @@
     </style>
 </head>
 <body class="bg-brand-background min-h-screen flex flex-col font-sans text-brand-midText overflow-x-hidden w-full">
-    
+
     <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/40 z-40 hidden lg:hidden"></div>
 
     <aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-white border-r border-brand-border z-50 transform -translate-x-full lg:translate-x-0 sidebar-transition flex flex-col">
@@ -1905,6 +1905,8 @@ function filterServices() {
         fetchUserProfile(),
         syncInventory()
     ]);
+                renderActiveOrdersDashboard();
+
     const activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
     activeOrders.forEach(order => {
         if (!order.smsCode) {

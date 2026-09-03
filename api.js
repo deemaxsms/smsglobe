@@ -3910,20 +3910,28 @@ async function handleGetCountries(req, res) {
                     const tierItem = serviceData[providerKey];
                     if (!tierItem || typeof tierItem !== 'object') return;
 
-                    const rawCostUsd = Number(tierItem.price || tierItem.cost || tierItem.value || 0);
-                    if (rawCostUsd <= 0) return;
-                    
-                    const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
-                    const markedUpAmountNgn = Number((baseAmountNgn * finalMarkupMultiplier).toFixed(2));
-                    
-                    if (markedUpAmountNgn < lowestAmount) {
-                        lowestAmount = markedUpAmountNgn;
-                        lowestVariant = {
-                            providerId: String(tierItem.provider_id || providerKey),
-                            count: tierItem.count || tierItem.stock || 'In Stock',
-                            amount: markedUpAmountNgn
-                        };
-                    }
+                  // Inside Object.keys(serviceData).forEach(providerKey => { ... })
+
+const rawCostUsd = Number(tierItem.price || tierItem.cost || tierItem.value || 0);
+if (rawCostUsd <= 0) return;
+
+const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
+let markedUpAmountNgn = Number((baseAmountNgn * finalMarkupMultiplier).toFixed(2));
+const normalizedServiceCode = String(serviceCode).trim().toLowerCase();
+const isFacebookService = normalizedServiceCode === 'fb' || normalizedServiceCode === 'facebook';
+
+if (isFacebookService) {
+    markedUpAmountNgn = 2000.00; // Forces the user-facing price to exactly 2000 NGN
+}
+
+if (markedUpAmountNgn < lowestAmount) {
+    lowestAmount = markedUpAmountNgn;
+    lowestVariant = {
+        providerId: String(tierItem.provider_id || providerKey),
+        count: tierItem.count || tierItem.stock || 'In Stock',
+        amount: markedUpAmountNgn
+    };
+}
                 });
 
                 if (lowestVariant) {

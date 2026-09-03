@@ -3779,21 +3779,21 @@ async function handleGetCountries(req, res) {
         // =========================================================================
         const countrySpecificMarkups = {
             // Core Targets
-            'united states (virtual)': 100, 'united states': 40,  'france': 50,         'united kingdom': 50,  'india': 25,         'canada': 50,
+            'united states (virtual)': 693.65, 'united states': 40,  'france': 50,         'united kingdom': 50,  'india': 25,         'canada': 50,
 
             // Africa & Middle East
-            'tunisia': 100,        'ghana': 100,          'palestine': 100,       'burundi': 100,       'cameroon': 100,
-            'south africa': 100,   'guinea': 100,         'cote d`ivoire ivory coast': 100, 'togo': 100,  'mauritania': 100,
-            'central african republic': 100, 'burkina faso': 100, 'lebanon': 100,   'south sudan': 100,   'sudan': 100,
-            'syrian arab republic': 20,     'iraq': 20,     'morocco': 20,         'ethiopia': 20,      'kenya': 20,
-            'madagascar': 20,     'mali': 20,           'benin': 20,           'liberia': 20,       'saudi arabia': 20,
-            'botswana': 20,       'tanzania': 20,       'israel': 20,          'egypt': 20,         'gambia': 20,
-            'yemen': 20,          'algeria': 20,        'senegal': 20,         'uganda': 20,        'angola': 20,
-            'mozambique': 20,     'libya': 20,          'swaziland': 20,       'oman': 20,          'qatar': 20,
-            'sierra leone': 20,   'jordan': 20,         'kuwait': 20,          'bahrain': 20,       'comoros': 20,
-            'lesotho': 20,        'malawi': 20,         'namibia': 20,         'niger': 20,         'rwanda': 20,
-            'zambia': 20,         'somalia': 20,        'congo': 20,           'gabon': 20,         'mauritius': 20,
-            'equatorial guinea': 20, 'djibouti': 20,    'eritrea': 20,         'sao tome and principe': 20, 'reunion': 20,
+            'tunisia': 693.65,        'ghana': 693.65,          'palestine': 693.65,       'burundi': 693.65,       'cameroon': 693.65,
+            'south africa': 693.65,   'guinea': 693.65,         'cote d`ivoire ivory coast': 693.65, 'togo': 693.65,  'mauritania': 693.65,
+            'central african republic': 693.65, 'burkina faso': 693.65, 'lebanon': 693.65,   'south sudan': 693.65,   'sudan': 693.65,
+            'syrian arab republic': 693.65,     'iraq': 693.65,     'morocco': 693.65,         'ethiopia': 693.65,      'kenya': 693.65,
+            'madagascar': 693.65,     'mali': 693.65,           'benin': 693.65,           'liberia': 693.65,       'saudi arabia': 693.65,
+            'botswana': 693.65,       'tanzania': 693.65,       'israel': 693.65,          'egypt': 693.65,         'gambia': 693.65,
+            'yemen': 693.65,          'algeria': 693.65,        'senegal': 693.65,         'uganda': 693.65,        'angola': 693.65,
+            'mozambique': 693.65,     'libya': 693.65,          'swaziland': 693.65,       'oman': 693.65,          'qatar': 693.65,
+            'sierra leone': 693.65,   'jordan': 693.65,         'kuwait': 693.65,          'bahrain': 693.65,       'comoros': 693.65,
+            'lesotho': 693.65,        'malawi': 693.65,         'namibia': 693.65,         'niger': 693.65,         'rwanda': 693.65,
+            'zambia': 693.65,         'somalia': 693.65,        'congo': 693.65,           'gabon': 693.65,         'mauritius': 693.65,
+            'equatorial guinea': 693.65, 'djibouti': 693.65,    'eritrea': 693.65,         'sao tome and principe': 693.65, 'reunion': 693.65,
 
             // Asia & Oceania
             'indonesia': 20,      'myanmar': 20,        'pakistan': 20,        'uzbekistan': 20,    'sri lanka': 20,

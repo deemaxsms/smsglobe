@@ -1809,7 +1809,27 @@ window.cancelActiveOrder = async function(orderId) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Network error connecting to server.' });
     }
 };
-        function copyNumber() {
+     
+function toggleSupportMenu() {
+    const menu = document.getElementById('supportMenu');
+    if (!menu) return;
+
+    if (menu.classList.contains('hidden')) {
+        menu.classList.remove('hidden');
+        setTimeout(() => {
+            menu.classList.remove('translate-y-10', 'opacity-0', 'scale-95');
+            menu.classList.add('translate-y-0', 'opacity-100', 'scale-100');
+        }, 10);
+    } else {
+        menu.classList.remove('translate-y-0', 'opacity-100', 'scale-100');
+        menu.classList.add('translate-y-10', 'opacity-0', 'scale-95');
+        setTimeout(() => {
+            menu.classList.add('hidden');
+        }, 300);
+    }
+}
+
+function copyNumber() {
             const num = document.getElementById('displayPurchasedNumber')?.innerText || '';
             navigator.clipboard.writeText(num);
             Swal.fire({ title: 'Copied!', toast: true, position: 'top-end', showConfirmButton: false, timer: 1000, icon: 'success' });

@@ -44,15 +44,10 @@
         "url": "https://smsglobe.net",
         "availability": "https://schema.org/InStock",
         "offerCount": "2",
-        "lowPrice": "5.00",
+        "lowPrice": "50.00",
         "highPrice": "100000.00",
-        "priceCurrency": "USD",
+        "priceCurrency": "NGN",
         "offers": [
-          {
-            "@type": "Offer",
-            "priceCurrency": "USD",
-            "description": "Prices available in USD for international clients."
-          },
           {
             "@type": "Offer",
             "priceCurrency": "NGN",
@@ -157,18 +152,57 @@
             <button class="w-full sm:w-auto bg-white border border-brand-border text-brand-darkText px-10 py-4 rounded-xl font-bold hover:bg-gray-50 transition-all">Buy VPN</button>
         </div>
 
-        <div class="w-full max-w-2xl mx-auto mt-0 mb-10 px-4">
-            <div class="relative group overflow-hidden">
-                <img 
-                    src="/assets/fundwallet.png" 
-                    alt="Fund Your SMSGlobe Wallet" 
-                    class="w-full h-auto max-h-[350px] md:max-h-[450px] object-contain block mx-auto transition-transform duration-500 group-hover:scale-[1.02]"
-                >
-                <div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full border border-brand-border shadow-md">
-                    <p class="text-xs md:text-sm font-bold text-brand-blue flex items-center gap-2 whitespace-nowrap">
+      <!-- Feature Showcase Image Grid -->
+        <div class="w-full max-w-6xl mx-auto mt-0 mb-16 px-4">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl md:text-3xl font-bold text-brand-darkText mb-2">Platform Overview</h2>
+                <p class="text-brand-lightText text-sm md:text-base">A quick look at your dashboard, marketplace, and funding process</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Image 1: Fund Wallet -->
+                <div class="bg-white p-4 rounded-[24px] border border-brand-border shadow-sm hover:shadow-md transition-all group overflow-hidden flex flex-col">
+                    <div class="relative overflow-hidden rounded-xl bg-gray-50 mb-4 h-[220px] flex items-center justify-center">
+                        <img 
+                            src="/assets/fundwallet.png" 
+                            alt="Fund Your SMSGlobe Wallet" 
+                            class="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+                        >
+                    </div>
+                    <div class="mt-auto flex items-center justify-between">
+                        <span class="text-xs md:text-sm font-bold text-brand-darkText">Fast Wallet Funding</span>
                         <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                        Fast Wallet Funding
-                    </p>
+                    </div>
+                </div>
+
+                <!-- Image 2: Marketplace -->
+                <div class="bg-white p-4 rounded-[24px] border border-brand-border shadow-sm hover:shadow-md transition-all group overflow-hidden flex flex-col">
+                    <div class="relative overflow-hidden rounded-xl bg-gray-50 mb-4 h-[220px] flex items-center justify-center">
+                        <img 
+                            src="/assets/Marketplace.png" 
+                            alt="SMSGlobe Marketplace" 
+                            class="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+                        >
+                    </div>
+                    <div class="mt-auto flex items-center justify-between">
+                        <span class="text-xs md:text-sm font-bold text-brand-darkText">Global Marketplace</span>
+                        <span class="w-2 h-2 bg-brand-blue rounded-full animate-pulse"></span>
+                    </div>
+                </div>
+
+                <!-- Image 3: Verification -->
+                <div class="bg-white p-4 rounded-[24px] border border-brand-border shadow-sm hover:shadow-md transition-all group overflow-hidden flex flex-col">
+                    <div class="relative overflow-hidden rounded-xl bg-gray-50 mb-4 h-[220px] flex items-center justify-center">
+                        <img 
+                            src="/assets/Verification.png" 
+                            alt="Instant SMS Verification" 
+                            class="w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
+                        >
+                    </div>
+                    <div class="mt-auto flex items-center justify-between">
+                        <span class="text-xs md:text-sm font-bold text-brand-darkText">Instant Verification</span>
+                        <span class="w-2 h-2 bg-brand-orange rounded-full animate-pulse"></span>
+                    </div>
                 </div>
             </div>
         </div>

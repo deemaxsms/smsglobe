@@ -3910,7 +3910,7 @@ async function handleGetCountries(req, res) {
                     const tierItem = serviceData[providerKey];
                     if (!tierItem || typeof tierItem !== 'object') return;
 
-               // Inside Object.keys(serviceData).forEach(providerKey => { ... })
+              // Inside Object.keys(serviceData).forEach(providerKey => { ... })
 
 const rawCostUsd = Number(tierItem.price || tierItem.cost || tierItem.value || 0);
 if (rawCostUsd <= 0) return;
@@ -3924,11 +3924,26 @@ const normalizedServiceCode = String(serviceCode).trim().toLowerCase();
 const isFacebookService = normalizedServiceCode === 'fb' || normalizedServiceCode === 'facebook';
 const isTelegramService = normalizedServiceCode === 'tg' || normalizedServiceCode === 'telegram';
 const isWhatsAppService = normalizedServiceCode === 'wa' || normalizedServiceCode === 'whatsapp';
+const isTwitterService = normalizedServiceCode === 'tw' || normalizedServiceCode === 'twitter' || normalizedServiceCode === 'x';
+const isSnapchatService = normalizedServiceCode === 'sc' || normalizedServiceCode === 'snapchat';
+const isInstagramService = normalizedServiceCode === 'ig' || normalizedServiceCode === 'instagram';
+const isDiscordService = normalizedServiceCode === 'ds' || normalizedServiceCode === 'discord';
+const isTinderService = normalizedServiceCode === 'td' || normalizedServiceCode === 'tinder';
 
 if (isFacebookService) {
     markedUpAmountNgn = 750.00; // Fixed at 750 NGN for Facebook
 } else if (isTelegramService) {
     markedUpAmountNgn = 2000.00; // Fixed at 2000 NGN for Telegram
+} else if (isTwitterService) {
+    markedUpAmountNgn = 2000.00; // Fixed at 2000 NGN for Twitter/X
+} else if (isSnapchatService) {
+    markedUpAmountNgn = 2000.00; // Fixed at 2000 NGN for Snapchat
+} else if (isInstagramService) {
+    markedUpAmountNgn = 900.00; // Fixed at 900 NGN for Instagram
+} else if (isDiscordService) {
+    markedUpAmountNgn = 700.00; // Fixed at 700 NGN for Discord
+} else if (isTinderService) {
+    markedUpAmountNgn = 850.00; // Fixed at 850 NGN for Tinder
 } else if (isWhatsAppService) {
     // Minimum floor markup: if calculated price is below 2500 NGN, force it to 2500 NGN
     if (markedUpAmountNgn < 2500.00) {

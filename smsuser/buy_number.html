@@ -1907,15 +1907,10 @@ function filterServices() {
     // 1. Setup UI Event Listeners immediately
     document.getElementById('openSidebar')?.addEventListener('click', toggleSidebar);
     document.getElementById('closeSidebar')?.addEventListener('click', toggleSidebar);
-    
-    // 2. Fetch user profile and sync inventory/catalogs in parallel to prevent hanging
-    await Promise.all([
+        await Promise.all([
         fetchUserProfile(),
         syncInventory()
     ]);
-
-    // 3. Render active orders and kick off polling for missing codes
-    renderActiveOrdersDashboard();
     const activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
     activeOrders.forEach(order => {
         if (!order.smsCode) {

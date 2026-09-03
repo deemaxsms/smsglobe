@@ -3828,16 +3828,19 @@ async function handleGetCountries(req, res) {
                     const rawCostUsd = Number(tierItem.price || tierItem.cost || tierItem.value || 0);
                     if (rawCostUsd <= 0) return;
 
-                    // Convert SMSBower USD price directly into NGN using your 1400 conversion rate
-                    const finalAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
+                    // Convert SMSBower USD price into standard base NGN using your 1400 conversion rate
+                    const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
                     
-                    // Track only the lowest priced provider ID/tier based on the resulting NGN amount
-                    if (finalAmountNgn < lowestAmount) {
-                        lowestAmount = finalAmountNgn;
+                    // Apply 50% markup for display/charging on SMSGlobe (1.5 multiplier)
+                    const markedUpAmountNgn = Number((baseAmountNgn * 1.5).toFixed(2));
+                    
+                    // Track only the lowest priced provider ID/tier based on the resulting marked-up amount
+                    if (markedUpAmountNgn < lowestAmount) {
+                        lowestAmount = markedUpAmountNgn;
                         lowestVariant = {
                             providerId: String(tierItem.provider_id || providerKey),
                             count: tierItem.count || tierItem.stock || 'In Stock',
-                            amount: finalAmountNgn
+                            amount: markedUpAmountNgn
                         };
                     }
                 });
@@ -3847,23 +3850,22 @@ async function handleGetCountries(req, res) {
                     const resolvedName = vendorMeta.name || `Country ${countryId}`;
                     const resolvedCode = vendorMeta.code || String(countryId).toLowerCase();
 
-                 // Inside your formattedCountries loop:
-const countryEntry = {
-    countryId: String(countryId),
-    providerId: lowestVariant.providerId,
-    countryName: resolvedName,
-    code: resolvedCode, 
-    flagUrl: resolvedCode && resolvedCode.length === 2 
-        ? `https://flagcdn.com/w40/${resolvedCode.toLowerCase()}.png` 
-        : `https://flagcdn.com/w40/un.png`, // Fallback generic flag if code is missing/invalid
-    stock: lowestVariant.count,
-    rank: 'Best Price', 
-    price: {
-        amount: lowestVariant.amount,
-        currency: 'NGN',
-        symbol: '₦'
-    }
-};
+                    const countryEntry = {
+                        countryId: String(countryId),
+                        providerId: lowestVariant.providerId,
+                        countryName: resolvedName,
+                        code: resolvedCode, 
+                        flagUrl: resolvedCode && resolvedCode.length === 2 
+                            ? `https://flagcdn.com/w40/${resolvedCode.toLowerCase()}.png` 
+                            : `https://flagcdn.com/w40/un.png`, 
+                        stock: lowestVariant.count,
+                        rank: 'Best Price', 
+                        price: {
+                            amount: lowestVariant.amount,
+                            currency: 'NGN',
+                            symbol: '₦'
+                        }
+                    };
 
                     formattedCountries.push(countryEntry);
                 }

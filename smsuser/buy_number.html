@@ -132,9 +132,6 @@
         <button onclick="setMode('activation')" id="btnActivation" class="mode-btn active flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-bold transition-all">
             Direct Activation
         </button>
-        <button onclick="setMode('rent')" id="btnRent" class="mode-btn flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-bold transition-all text-brand-lightText">
-            Rent Number
-        </button>
     </div>
 
     <!-- Header & Search Catalog -->
@@ -144,19 +141,6 @@
           <input type="text" id="serviceSearchInput" oninput="SMSGlobeApp.filterServices()" placeholder="Search services..." 
        class="text-xs bg-white border border-brand-border rounded-lg px-3 py-1.5 focus:outline-none focus:border-brand-blue w-48 shadow-sm">
         </div>
-    </div>
-
-    <!-- Rental Period Section (Appears only when 'rent' mode is active) -->
-    <div id="rentPeriodSection" class="hidden bg-white p-4 rounded-xl border border-brand-border mb-6">
-        <label class="text-[10px] font-bold text-brand-lightText uppercase mb-2 block">Rental Duration</label>
-        <select id="rentalPeriod" onchange="recalculateCurrentServicePrices()" class="w-full bg-brand-background border-none rounded-lg p-3 text-xs font-bold text-brand-darkText focus:ring-2 focus:ring-brand-blue">
-            <option value="5h" data-multi="1">5 Hours (Standard)</option>
-            <option value="1d" data-multi="1.5">1 Day (+50%)</option>
-            <option value="3d" data-multi="2.5">3 Days</option>
-            <option value="1w" data-multi="5">1 Week</option>
-            <option value="2w" data-multi="9">2 Weeks</option>
-            <option value="1m" data-multi="15">1 Month</option>
-        </select>
     </div>
 
     <!-- Accordion Service List Container matching Xentrahub layout -->

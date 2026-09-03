@@ -3765,7 +3765,56 @@ async function handleGetCountries(req, res) {
         // 0. Fetch System Settings dynamically for markup control
         const settings = await SystemSettings.findOne().lean();
         const markupPercent = settings?.smsMarkupPercentage || 0;
-        const markupMultiplier = 1 + (markupPercent / 100);
+        const globalMarkupMultiplier = 1 + (markupPercent / 100);
+
+        // =========================================================================
+        // SPECIFIC COUNTRY EXTRA MARKUPS 
+        // =========================================================================
+        const countrySpecificMarkups = {
+            // Core Targets
+            'united states (virtual)': 40, 'united states': 40,  'france': 30,         'united kingdom': 35,  'india': 25,         'canada': 25,
+
+            // Africa & Middle East
+            'tunisia': 10,        'ghana': 15,          'palestine': 20,       'burundi': 20,       'cameroon': 20,
+            'south africa': 20,   'guinea': 20,         'cote d`ivoire ivory coast': 20, 'togo': 20,  'mauritania': 20,
+            'central african republic': 20, 'burkina faso': 20, 'lebanon': 20,   'south sudan': 20,   'sudan': 20,
+            'syrian arab republic': 20,     'iraq': 20,     'morocco': 20,         'ethiopia': 20,      'kenya': 20,
+            'madagascar': 20,     'mali': 20,           'benin': 20,           'liberia': 20,       'saudi arabia': 20,
+            'botswana': 20,       'tanzania': 20,       'israel': 20,          'egypt': 20,         'gambia': 20,
+            'yemen': 20,          'algeria': 20,        'senegal': 20,         'uganda': 20,        'angola': 20,
+            'mozambique': 20,     'libya': 20,          'swaziland': 20,       'oman': 20,          'qatar': 20,
+            'sierra leone': 20,   'jordan': 20,         'kuwait': 20,          'bahrain': 20,       'comoros': 20,
+            'lesotho': 20,        'malawi': 20,         'namibia': 20,         'niger': 20,         'rwanda': 20,
+            'zambia': 20,         'somalia': 20,        'congo': 20,           'gabon': 20,         'mauritius': 20,
+            'equatorial guinea': 20, 'djibouti': 20,    'eritrea': 20,         'sao tome and principe': 20, 'reunion': 20,
+
+            // Asia & Oceania
+            'indonesia': 20,      'myanmar': 20,        'pakistan': 20,        'uzbekistan': 20,    'sri lanka': 20,
+            'zimbabwe': 20,       'kosovo': 20,         'viet nam': 20,        'philippines': 20,   'thailand': 20,
+            'kazakhstan': 20,     'mongolia': 20,       'kyrgyzstan': 20,      'hong kong': 20,     'macau': 20,
+            'cambodia': 20,       'lao people`s': 20,   'taiwan': 20,          'iran': 20,          'bangladesh': 20,
+            'afghanistan': 20,    'papua new gvineya': 20, 'nepal': 20,        'timor-leste': 20,   'brunei darussalam': 20,
+            'georgia': 20,        'turkmenistan': 20,   'tajikistan': 20,      'armenia': 20,       'bhutan': 20,
+            'maldives': 20,       'azerbaijan': 20,
+
+            // Europe
+            'ukraine': 20,        'chile': 20,          'colombia': 20,        'argentinas': 20,    'poland': 20,
+            'congo (dem. republic)': 20, 'ireland': 20, 'haiti': 20,           'serbia': 20,        'romania': 20,
+            'estonia': 20,        'chad': 20,           'lithuania': 20,       'croatia': 20,       'netherlands': 20,
+            'latvia': 20,         'belarus': 20,        'slovenia': 20,        'czech republic': 20, 'peru': 20,
+            'venezuela': 20,      'cyprus': 20,         'belgium': 20,         'bulgaria': 20,      'hungary': 20,
+            'italy': 20,          'bosnia and herzegovina': 20, 'cuba': 20,    'greece': 20,        'iceland': 20,
+            'slovakia': 20,       'suriname': 20,       'monaco': 20,          'albania': 20,       'uruguay': 20,
+            'turkey': 20,         'luxembourg': 20,     'montenegro': 20,      'norway': 20,
+
+            // Americas & Caribbean
+            'bolivia': 20,        'nigeria': 20,        'paraguay': 20,        'honduras': 20,      'nicaragua': 20,
+            'costa rica': 20,     'guatemala': 20,      'puerto rico': 20,     'el salvador': 20,   'jamaica': 20,
+            'trinidad and tobago': 20, 'ecuador': 20,   'dominican republic': 20, 'panama': 20,     'barbados': 20,
+            'bahamas': 20,        'belize': 20,         'dominica': 20,        'grenada': 20,       'guinea-bissau': 20,
+            'guyana': 20,         'saint kitts and nevis': 20, 'guadeloupe': 20, 'french guiana': 20, 'saint lucia': 20,
+            'saint vincent': 20,  'antigua and barbuda': 20, 'cayman islands': 20, 'aruba': 20
+        };
 
         // 1. Fetch official country definitions dictionary directly from SMSBower API
         const countriesMetaResponse = await smsBowerClient.get('', {
@@ -3822,20 +3871,44 @@ async function handleGetCountries(req, res) {
                 const serviceData = countryServices[serviceCode] || countryServices[String(serviceCode).toLowerCase()];
                 if (!serviceData || typeof serviceData !== 'object') return;
 
+                // Resolve metadata early
+                const vendorMeta = countryMetaMap[String(countryId)] || {};
+                const resolvedName = vendorMeta.name || `Country ${countryId}`;
+                const resolvedCode = vendorMeta.code || String(countryId).toLowerCase();
+
+                // Safe and robust lookup implementation
+                const lookupName = resolvedName.toLowerCase();
+                const lookupCode = resolvedCode.toLowerCase();
+                
+                let extraMarkupPercent = 0;
+                if (countrySpecificMarkups[lookupName] !== undefined) {
+                    extraMarkupPercent = countrySpecificMarkups[lookupName];
+                } else if (countrySpecificMarkups[lookupCode] !== undefined) {
+                    extraMarkupPercent = countrySpecificMarkups[lookupCode];
+                } else {
+                    const matchedKey = Object.keys(countrySpecificMarkups).find(key => lookupName.includes(key));
+                    if (matchedKey) {
+                        extraMarkupPercent = countrySpecificMarkups[matchedKey];
+                    }
+                }
+
+                // Calculate final compounded multiplier
+                const finalMarkupMultiplier = globalMarkupMultiplier * (1 + (extraMarkupPercent / 100));
+
                 let lowestVariant = null;
                 let lowestAmount = Infinity;
 
-                // Iterate through ALL provider IDs / price tiers to find the absolute cheapest USD rate
+                // Iterate through ALL provider IDs / price tiers to find absolute cheapest rate
                 Object.keys(serviceData).forEach(providerKey => {
                     const tierItem = serviceData[providerKey];
                     if (!tierItem || typeof tierItem !== 'object') return;
 
                     const rawCostUsd = Number(tierItem.price || tierItem.cost || tierItem.value || 0);
                     if (rawCostUsd <= 0) return;
-                    const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
-                    const markedUpAmountNgn = Number((baseAmountNgn * markupMultiplier).toFixed(2));
                     
-                    // Track only the lowest priced provider ID/tier based on the resulting marked-up amount
+                    const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
+                    const markedUpAmountNgn = Number((baseAmountNgn * finalMarkupMultiplier).toFixed(2));
+                    
                     if (markedUpAmountNgn < lowestAmount) {
                         lowestAmount = markedUpAmountNgn;
                         lowestVariant = {
@@ -3847,10 +3920,6 @@ async function handleGetCountries(req, res) {
                 });
 
                 if (lowestVariant) {
-                    const vendorMeta = countryMetaMap[String(countryId)] || {};
-                    const resolvedName = vendorMeta.name || `Country ${countryId}`;
-                    const resolvedCode = vendorMeta.code || String(countryId).toLowerCase();
-
                     const countryEntry = {
                         countryId: String(countryId),
                         providerId: lowestVariant.providerId,
@@ -3884,6 +3953,7 @@ async function handleGetCountries(req, res) {
         });
     }
 }
+
 /**
  * 3. CHECK ORDER STATUS / SMS CODE POLLING
  */

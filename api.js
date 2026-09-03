@@ -3762,6 +3762,11 @@ async function handleGetCountries(req, res) {
             return res.status(400).json({ success: false, message: "Service code is required." });
         }
 
+        // 0. Fetch System Settings dynamically for markup control
+        const settings = await SystemSettings.findOne().lean();
+        const markupPercent = settings?.smsMarkupPercentage || 0;
+        const markupMultiplier = 1 + (markupPercent / 100);
+
         // 1. Fetch official country definitions dictionary directly from SMSBower API
         const countriesMetaResponse = await smsBowerClient.get('', {
             params: { 
@@ -3827,12 +3832,8 @@ async function handleGetCountries(req, res) {
 
                     const rawCostUsd = Number(tierItem.price || tierItem.cost || tierItem.value || 0);
                     if (rawCostUsd <= 0) return;
-
-                    // Convert SMSBower USD price into standard base NGN using your 1400 conversion rate
                     const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
-                    
-                    // Apply 50% markup for display/charging on SMSGlobe (1.5 multiplier)
-                    const markedUpAmountNgn = Number((baseAmountNgn * 1.5).toFixed(2));
+                    const markedUpAmountNgn = Number((baseAmountNgn * markupMultiplier).toFixed(2));
                     
                     // Track only the lowest priced provider ID/tier based on the resulting marked-up amount
                     if (markedUpAmountNgn < lowestAmount) {
@@ -3883,7 +3884,6 @@ async function handleGetCountries(req, res) {
         });
     }
 }
-
 /**
  * 3. CHECK ORDER STATUS / SMS CODE POLLING
  */

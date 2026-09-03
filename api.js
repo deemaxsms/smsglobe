@@ -3931,21 +3931,37 @@ const isDiscordService = normalizedServiceCode === 'ds' || normalizedServiceCode
 const isTinderService = normalizedServiceCode === 'td' || normalizedServiceCode === 'tinder';
 
 if (isFacebookService) {
-    markedUpAmountNgn = 750.00; // Fixed at 750 NGN for Facebook
+     if (markedUpAmountNgn < 750.00) {
+        markedUpAmountNgn = 750.00;
+    }
 } else if (isTelegramService) {
-    markedUpAmountNgn = 2000.00; // Fixed at 2000 NGN for Telegram
+     if (markedUpAmountNgn < 2000.00) {
+        markedUpAmountNgn = 2000.00;
+    }
 } else if (isTwitterService) {
-    markedUpAmountNgn = 2000.00; // Fixed at 2000 NGN for Twitter/X
+     if (markedUpAmountNgn < 2000.00) {
+        markedUpAmountNgn = 2000.00;
+    }
 } else if (isSnapchatService) {
-    markedUpAmountNgn = 2000.00; // Fixed at 2000 NGN for Snapchat
+   if (markedUpAmountNgn < 2000.00) {
+        markedUpAmountNgn = 2000.00;
+    }
 } else if (isInstagramService) {
-    markedUpAmountNgn = 900.00; // Fixed at 900 NGN for Instagram
+    if (markedUpAmountNgn < 900.00) {
+        markedUpAmountNgn = 900.00;
+    }
 } else if (isDiscordService) {
-    markedUpAmountNgn = 1000.00; // Fixed at 1000 NGN for Discord
+    if (markedUpAmountNgn < 850.00) {
+        markedUpAmountNgn = 850.00;
+    }
 } else if (isTinderService) {
-    markedUpAmountNgn = 850.00; // Fixed at 850 NGN for Tinder
+    if (markedUpAmountNgn < 850.00) {
+        markedUpAmountNgn = 850.00;
+    }
 } else if (isWhatsAppService) {
-    markedUpAmountNgn = 2500.00;
+    if (markedUpAmountNgn < 2500.00) {
+        markedUpAmountNgn = 2500.00;
+    }
 }
 
 if (markedUpAmountNgn < lowestAmount) {

@@ -4769,7 +4769,7 @@ async function handleUpdateSystemSettings(req, res) {
 async function handleGetSystemStatus(req, res) {
     try {
         // Added .lean() for faster performance on public pings
-        const settings = await SystemSettings.findOne().select('maintenanceMode noticeBar').lean();
+const settings = await SystemSettings.findOne().select('maintenanceMode noticeBarText').lean();
         
         res.json({ 
     success: true, 

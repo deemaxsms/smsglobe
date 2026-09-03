@@ -3820,7 +3820,7 @@ async function handleGetCountries(req, res) {
             'trinidad and tobago': 693.65, 'ecuador': 693.65,   'dominican republic': 693.65, 'panama': 693.65,     'barbados': 693.65,
             'bahamas':  693.65,        'belize':  693.65,         'dominica':  693.65,        'grenada':  693.65,       'guinea-bissau':  693.65,
             'guyana':  693.65,         'saint kitts and nevis':  693.65, 'guadeloupe':  693.65, 'french guiana':  693.65, 'saint lucia':  693.65,
-            'saint vincent':  693.65,  'antigua and barbuda':  693.65, 'cayman islands':  693.65, 'aruba':  693.65, 'portugal':  693.65
+            'saint vincent':  693.65,  'antigua and barbuda':  693.65, 'cayman islands':  693.65, 'aruba':  693.65
         };
 
         // 1. Fetch official country definitions dictionary directly from SMSBower API
@@ -3910,7 +3910,7 @@ async function handleGetCountries(req, res) {
                     const tierItem = serviceData[providerKey];
                     if (!tierItem || typeof tierItem !== 'object') return;
 
-            // Inside Object.keys(serviceData).forEach(providerKey => { ... })
+               // Inside Object.keys(serviceData).forEach(providerKey => { ... })
 
 const rawCostUsd = Number(tierItem.price || tierItem.cost || tierItem.value || 0);
 if (rawCostUsd <= 0) return;
@@ -3924,23 +3924,11 @@ const normalizedServiceCode = String(serviceCode).trim().toLowerCase();
 const isFacebookService = normalizedServiceCode === 'fb' || normalizedServiceCode === 'facebook';
 const isTelegramService = normalizedServiceCode === 'tg' || normalizedServiceCode === 'telegram';
 const isWhatsAppService = normalizedServiceCode === 'wa' || normalizedServiceCode === 'whatsapp';
-const isTwitterService = normalizedServiceCode === 'tw' || normalizedServiceCode === 'twitter' || normalizedServiceCode === 'x';
-const isInstagramService = normalizedServiceCode === 'ig' || normalizedServiceCode === 'instagram';
-const isDiscordService = normalizedServiceCode === 'ds' || normalizedServiceCode === 'discord';
-const isSnapchatService = normalizedServiceCode === 'sc' || normalizedServiceCode === 'snapchat';
 
 if (isFacebookService) {
     markedUpAmountNgn = 750.00; // Fixed at 750 NGN for Facebook
 } else if (isTelegramService) {
     markedUpAmountNgn = 2000.00; // Fixed at 2000 NGN for Telegram
-} else if (isTwitterService) {
-    markedUpAmountNgn = 1000.00; // Fixed at 1000 NGN for Twitter/X
-} else if (isInstagramService) {
-    markedUpAmountNgn = 800.00; // Fixed at 800 NGN for Instagram
-} else if (isDiscordService) {
-    markedUpAmountNgn = 650.00; // Fixed at 650 NGN for Discord
-} else if (isSnapchatService) {
-    markedUpAmountNgn = 700.00; // Fixed at 700 NGN for Snapchat
 } else if (isWhatsAppService) {
     // Minimum floor markup: if calculated price is below 2500 NGN, force it to 2500 NGN
     if (markedUpAmountNgn < 2500.00) {

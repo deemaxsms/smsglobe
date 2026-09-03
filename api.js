@@ -3779,7 +3779,7 @@ async function handleGetCountries(req, res) {
         // =========================================================================
         const countrySpecificMarkups = {
             // Core Targets
-            'united states (virtual)': 693.65, 'united states': 30,  'france': 30,         'united kingdom': 30,  'india': 25,         'canada': 30,
+            'united states (virtual)': 693.65, 'united states': 20,  'france': 20,         'united kingdom': 20,  'india': 25,         'canada': 30,
 
             // Africa & Middle East
             'tunisia': 693.65,        'ghana': 693.65,          'palestine': 693.65,       'burundi': 693.65,       'cameroon': 693.65,
@@ -3810,7 +3810,7 @@ async function handleGetCountries(req, res) {
             'estonia': 693.65,        'chad': 693.65,           'lithuania': 693.65,       'croatia': 693.65,       'netherlands': 693.65,
             'latvia': 693.65,         'belarus': 693.65,        'slovenia': 693.65,        'czech republic': 693.65, 'peru': 693.65,
             'venezuela': 693.65,      'cyprus': 693.65,         'belgium': 693.65,         'bulgaria': 693.65,      'hungary': 693.65,
-            'italy': 693.65,          'bosnia and herzegovina': 693.65, 'cuba': 693.65,    'greece': 693.65,        'iceland': 693.65,
+            'italy':500.65,          'bosnia and herzegovina': 693.65, 'cuba': 693.65,    'greece': 693.65,        'iceland': 693.65,
             'slovakia': 693.65,       'suriname': 693.65,       'monaco': 693.65,          'albania': 693.65,       'uruguay': 693.65,
             'turkey': 693.65,         'luxembourg': 693.65,     'montenegro': 693.65,      'norway': 693.65,
 

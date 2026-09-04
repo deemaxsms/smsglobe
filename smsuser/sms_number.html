@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMSGLOBE</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brandBlue: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+              dashboard: '#0284c7',
+              panel: '#0369a1',
+              bgLight: '#f8fafc'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-[#f8fafc] min-h-screen text-gray-800 font-sans antialiased">
+
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <div class="flex items-center space-x-8">
+          <div class="flex items-center space-x-2">
+            <a href="#" class="flex items-center">
+              <img src="/assets/logo.png" alt="SMSGLOBE Logo" class="h-9 w-auto object-contain">
+            </a>
+          </div>
+          <nav class="hidden md:flex items-center space-x-6 text-sm font-medium text-gray-600">
+            <a href="#" class="hover:text-brandBlue-700 transition">Histories <i class="fa-solid fa-angle-down text-xs"></i></a>
+            <a href="#" class="hover:text-brandBlue-700 transition">Statistic</a>
+            <a href="#" class="hover:text-brandBlue-700 transition">Set up max/min price</a>
+            <a href="#" class="hover:text-brandBlue-700 transition">Purchase of email</a>
+            <a href="#" class="hover:text-brandBlue-700 transition">More</a>
+          </nav>
+        </div>
+
+        <div class="flex items-center space-x-3 sm:space-x-4">
+          <button class="hidden sm:inline-flex items-center px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-md transition">
+            EN <i class="fa-solid fa-chevron-down ml-1 text-[10px]"></i>
+          </button>
+
+          <div class="bg-brandBlue-50 text-brandBlue-800 text-xs sm:text-sm font-semibold px-3 py-2 rounded-lg border border-brandBlue-100 flex items-center space-x-2">
+            <span>Balance: <span id="displayBalance" class="font-bold">Loading...</span></span>
+            <span id="displayBonusContainer" class="hidden text-xs text-emerald-600 font-medium">(Bonus: <span id="displayBonus">₦0</span>)</span>
+          </div>
+
+          <div id="userAvatar" class="w-9 h-9 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-bold cursor-pointer hover:bg-gray-300 transition">
+            <i class="fa-solid fa-user"></i>
+          </div>
+
+          <button id="mobile-menu-btn" class="md:hidden text-gray-600 hover:text-gray-900 focus:outline-none">
+            <i class="fa-solid fa-bars text-xl"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-gray-100 px-4 pt-2 pb-4 space-y-2">
+      <a href="#" class="block py-2 text-gray-600 hover:text-brandBlue-700 font-medium">Histories</a>
+      <a href="#" class="block py-2 text-gray-600 hover:text-brandBlue-700 font-medium">Statistic</a>
+      <a href="#" class="block py-2 text-gray-600 hover:text-brandBlue-700 font-medium">Set up max/min price</a>
+      <a href="#" class="block py-2 text-gray-600 hover:text-brandBlue-700 font-medium">Purchase of email</a>
+      <a href="#" class="block py-2 text-gray-600 hover:text-brandBlue-700 font-medium">More</a>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <div class="lg:col-span-4 space-y-5">
+        
+        <div class="bg-brandBlue-900 p-1.5 rounded-xl flex shadow-sm">
+          <button class="flex-1 bg-brandBlue-700 text-white font-semibold py-2.5 rounded-lg text-sm shadow text-center transition">
+            Numbers
+          </button>
+          <button class="flex-1 text-gray-300 hover:text-white font-medium py-2.5 rounded-lg text-sm text-center transition">
+            HISTORY
+          </button>
+        </div>
+
+        <div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md relative">
+          <div class="flex items-center space-x-3 mb-3">
+            <span class="w-6 h-6 rounded-full bg-brandBlue-600 text-white text-xs font-bold flex items-center justify-center border border-brandBlue-500">1</span>
+            <span class="font-semibold text-sm tracking-wide">Select service</span>
+          </div>
+
+          <div class="relative mb-4">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400">
+              <i class="fa-solid fa-magnifying-glass text-xs"></i>
+            </span>
+            <input type="text" id="service-search-input" placeholder="Select service" class="w-full bg-brandBlue-900/60 text-white placeholder-gray-400 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 border border-brandBlue-700/50">
+          </div>
+
+          <div id="services-grid" class="grid grid-cols-8 gap-2 bg-brandBlue-900/40 p-3 rounded-xl border border-brandBlue-700/30 max-h-48 overflow-y-auto">
+            </div>
+
+          <div class="mt-3 text-center">
+            <a href="#" class="text-xs text-brandBlue-100 hover:underline">Didn't find the right service? Write to <span class="underline font-semibold">support</span></a>
+          </div>
+        </div>
+
+        <div class="bg-brandBlue-900/60 p-1.5 rounded-xl flex space-x-1 border border-brandBlue-700/40">
+          <button class="flex-1 bg-brandBlue-700 text-white text-xs font-bold py-2 rounded-lg shadow text-center rank-filter-btn" data-rank="all">All</button>
+          <button class="flex-1 text-gray-300 hover:text-white text-xs font-medium py-2 rounded-lg text-center transition rank-filter-btn" data-rank="gold">Gold</button>
+          <button class="flex-1 text-gray-300 hover:text-white text-xs font-medium py-2 rounded-lg text-center transition rank-filter-btn" data-rank="silver">Silver</button>
+          <button class="flex-1 text-gray-300 hover:text-white text-xs font-medium py-2 rounded-lg text-center transition rank-filter-btn" data-rank="bronze">Bronze</button>
+        </div>
+
+        <div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md">
+          <div class="flex items-center space-x-3 mb-3">
+            <span class="w-6 h-6 rounded-full bg-brandBlue-600 text-white text-xs font-bold flex items-center justify-center border border-brandBlue-500">3</span>
+            <span class="font-semibold text-sm tracking-wide">Select country</span>
+          </div>
+
+          <div class="relative mb-3">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400">
+              <i class="fa-solid fa-magnifying-glass text-xs"></i>
+            </span>
+            <input type="text" id="country-search-input" placeholder="Find country" class="w-full bg-brandBlue-900/60 text-white placeholder-gray-400 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 border border-brandBlue-700/50">
+          </div>
+
+          <p class="text-[11px] text-brandBlue-200 mb-3 font-medium">Countries are ranked by top performance</p>
+
+          <div id="countries-container" class="space-y-3">
+            </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <div class="fixed bottom-6 right-6 flex items-center space-x-3 z-50">
+    <button class="w-12 h-12 bg-brandBlue-700 hover:bg-brandBlue-800 text-white rounded-full shadow-lg flex items-center justify-center transition transform hover:scale-105">
+      <i class="fa-solid fa-bell text-sm"></i>
+    </button>
+    <button class="w-12 h-12 bg-brandBlue-700 hover:bg-brandBlue-800 text-white rounded-full shadow-lg flex items-center justify-center transition transform hover:scale-105">
+      <i class="fa-solid fa-comment text-sm"></i>
+    </button>
+  </div>
+
+  <script>
+    const btn = document.getElementById('mobile-menu-btn');
+    const menu = document.getElementById('mobile-menu');
+
+    btn.addEventListener('click', () => {
+      menu.classList.toggle('hidden');
+    });
+
+    const SMSGlobeApp = (() => {
+      const API_BASE_URL = '/api';
+
+      let currentMode = 'activation';
+      let services = [];
+      let expandedServiceCode = null;
+      let serviceCountriesCache = {}; 
+      let userBalance = 0;
+      let userBonusBalance = 0;
+      let pollInterval = null;
+      let activePollIntervals = {};
+
+      function logout() {
+        localStorage.removeItem('userToken');
+        localStorage.removeItem('dashboard_cache');
+        localStorage.removeItem('user_balance');
+        window.location.href = 'login.html';
+      }
+
+      async function safeFetch(url, options = {}) {
+        const res = await fetch(url, options);
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("Server returned a non-JSON response or invalid content-type.");
+        }
+        const data = await res.json();
+        return { res, data };
+      }
+
+      async function fetchUserProfile() {
+        const token = localStorage.getItem('userToken');
+        if (!token) return; 
+
+        try {
+            const { res, data } = await safeFetch(`${API_BASE_URL}/user-profile`, {
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Cache-Control': 'no-cache' 
+                }
+            });
+
+            if (res.status === 401) return logout(); 
+
+            if (res.status === 403 && data.isUnverified) {
+                window.location.href = `user_create.html?verify_email=${encodeURIComponent(data.email || '')}`;
+                return;
+            }
+
+            if (data.success) {
+                const userData = data.user || data;
+                
+                userBalance = parseFloat(userData.balance || 0); 
+                const bonusBalance = parseFloat(userData.bonusBalance || 0); 
+                
+                localStorage.setItem('dashboard_cache', JSON.stringify({ user: userData }));
+                localStorage.setItem('user_balance', userBalance);
+
+                const elBal = document.getElementById('displayBalance');
+                const elBonus = document.getElementById('displayBonus');
+                const elBonusContainer = document.getElementById('displayBonusContainer');
+
+                if (elBal) elBal.innerText = `₦${userBalance.toLocaleString()}`;
+                if (elBonus) elBonus.innerText = `₦${bonusBalance.toLocaleString()}`;
+                if (elBonusContainer && bonusBalance > 0) {
+                  elBonusContainer.classList.remove('hidden');
+                }
+
+                const userAvatarEl = document.getElementById('userAvatar');
+                if (userAvatarEl) {
+                    const identifier = userData.name || userData.fullName || userData.username || userData.email || 'U';
+                    userAvatarEl.innerText = identifier.charAt(0).toUpperCase();
+                }
+            }
+        } catch (err) {
+            console.error("Failed to fetch profile details:", err);
+        }
+      }
+
+      // Initialize user profile on load
+      document.addEventListener('DOMContentLoaded', () => {
+        fetchUserProfile();
+      });
+
+      return {
+        fetchUserProfile
+      };
+    })();
+  </script>
+
+</body>
+</html>

@@ -586,6 +586,7 @@ function buyServiceCountry(serviceCode, countryId, price, rank, providerId) {
             renderCountries(serviceCountriesCache[selectedServiceCode]);
         }
       }
+      
 async function buyServiceCountry(serviceCode, countryId, price, rank, providerId = '') {
     const token = localStorage.getItem('userToken');
     if (!token) {
@@ -707,24 +708,24 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
         
         const res = response.data || response;
 
-        if (res && res.success) {
-            const realMobileNumber = res.phoneNumber || res.number || res.targetNumber || res.order?.phoneNumber || res.order?.targetNumber || res.order?.number || res.data?.phoneNumber || 'N/A';
+      if (res && res.success) {
+            const realMobileNumber = res.phoneNumber || res.number || res.targetNumber || res.order?.phoneNumber || res.order?.targetNumber || res.order?.number || res.data?.phoneNumber || '';
             const orderId = res.order?._id || res.order?.id || res.orderId;
             
             let activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
             const newActiveOrder = {
                 id: orderId,
+                _id: orderId,
                 phoneNumber: realMobileNumber,
-                serviceName: serviceObj?.name || serviceCode,
-                countryName: countryObj?.countryName || countryObj?.name || 'Selected Country',
+                serviceName: serviceObj?.name || res.order?.serviceName || serviceCode,
+                countryName: countryObj?.countryName || countryObj?.name || res.order?.countryName || 'Selected Country',
                 countryFlag: countryObj?.flag || countryObj?.flagUrl || countryObj?.icon || '',
-                status: 'Active',
-                smsCode: null,
-                fullMessage: null,
+                status: res.order?.status || 'pending',
+                smsCode: res.order?.smsCode || null,
                 createdAt: Date.now()
             };
 
-            activeOrders = [newActiveOrder, ...activeOrders.filter(o => o.id !== orderId)];
+            activeOrders = [newActiveOrder, ...activeOrders.filter(o => o.id !== orderId && o._id !== orderId)];
             localStorage.setItem('sms_active_orders', JSON.stringify(activeOrders));
 
             if (typeof renderActiveOrdersDashboard === 'function') renderActiveOrdersDashboard();
@@ -741,8 +742,8 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
                 });
             }
 
-            // Automatically switch user over to the HISTORY tab and refresh list
             switchTab('History');
+        
         } else { 
             if (typeof Swal !== 'undefined') {
                 Swal.fire('Order Failed', res?.message || "Could not process purchase from provider.", 'error');
@@ -824,7 +825,7 @@ async function fetchUserHistory() {
         });
 
         historyGrid.innerHTML = sortedHistory.map(item => {
-            const statusLower = String(item.status || 'active').toLowerCase();
+            const statusLower = String(item.status || 'pending').toLowerCase();
             const isActive = statusLower === 'active' || statusLower === 'pending' || statusLower === 'waiting for sms...';
             
             const badgeClass = isActive 
@@ -832,18 +833,28 @@ async function fetchUserHistory() {
                 : 'bg-gray-700/50 text-gray-400 border border-gray-600/30';
             
             const orderId = item.id || item._id;
+            const displayPhoneNumber = item.phoneNumber || item.number || item.targetNumber || 'N/A';
+            const displayServiceName = item.serviceName || item.serviceCode || 'Service';
+            const displayCountryName = item.countryName || 'Selected Country';
 
             return `
                 <div class="bg-brandBlue-900/60 p-4 rounded-xl border border-brandBlue-700/40 space-y-3 transition hover:border-brandBlue-500">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-xs text-brandBlue-200 font-semibold">${item.serviceName || 'Service'}</p>
-                            <p class="text-lg font-bold tracking-wide text-white">${item.phoneNumber}</p>
-                            <p class="text-[11px] text-gray-400">Country: ${item.countryName || 'N/A'}</p>
+                            <p class="text-xs text-brandBlue-200 font-semibold">${displayServiceName}</p>
+                            <div class="flex items-center space-x-2 mt-0.5">
+                                <p class="text-lg font-bold tracking-wide text-white">${displayPhoneNumber}</p>
+                                ${displayPhoneNumber !== 'N/A' ? `
+                                    <button onclick="navigator.clipboard.writeText('${displayPhoneNumber}'); const btn = this; btn.innerHTML = '<i class=\\'fa-solid fa-check text-emerald-400\\'></i>'; setTimeout(() => btn.innerHTML = '<i class=\\'fa-regular fa-copy\\'></i>', 1500);" class="p-1.5 bg-brandBlue-800 hover:bg-brandBlue-700 text-gray-300 hover:text-white rounded-lg text-xs transition border border-brandBlue-700/50" title="Copy Number">
+                                        <i class="fa-regular fa-copy"></i>
+                                    </button>
+                                ` : ''}
+                            </div>
+                            <p class="text-[11px] text-gray-400 mt-1">Country ID / Name: ${displayCountryName}</p>
                         </div>
                         <div>
                             <span class="px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider ${badgeClass}">
-                                ${item.status || 'Active'}
+                                ${item.status || 'pending'}
                             </span>
                         </div>
                     </div>

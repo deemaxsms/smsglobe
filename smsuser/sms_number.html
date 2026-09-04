@@ -115,24 +115,25 @@
           <button class="flex-1 text-gray-300 hover:text-white text-xs font-medium py-2 rounded-lg text-center transition rank-filter-btn" data-rank="bronze">Bronze</button>
         </div>
 
-        <div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md">
-          <div class="flex items-center space-x-3 mb-3">
-            <span class="w-6 h-6 rounded-full bg-brandBlue-600 text-white text-xs font-bold flex items-center justify-center border border-brandBlue-500">3</span>
-            <span class="font-semibold text-sm tracking-wide">Select country</span>
-          </div>
+    <div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md">
+    <div class="flex items-center space-x-3 mb-3">
+        <span class="w-6 h-6 rounded-full bg-brandBlue-600 text-white text-xs font-bold flex items-center justify-center border border-brandBlue-500">3</span>
+        <span class="font-semibold text-sm tracking-wide">Select country</span>
+    </div>
 
-          <div class="relative mb-3">
-            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400">
-              <i class="fa-solid fa-magnifying-glass text-xs"></i>
-            </span>
-            <input type="text" id="country-search-input" placeholder="Find country" class="w-full bg-brandBlue-900/60 text-white placeholder-gray-400 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 border border-brandBlue-700/50">
-          </div>
+    <div class="relative mb-3">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400">
+            <i class="fa-solid fa-magnifying-glass text-xs"></i>
+        </span>
+        <input type="text" id="country-search-input" placeholder="Find country" class="w-full bg-brandBlue-900/60 text-white placeholder-gray-400 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 border border-brandBlue-700/50">
+    </div>
 
-          <p class="text-[11px] text-brandBlue-200 mb-3 font-medium">Countries are ranked by top performance</p>
+    <p class="text-[11px] text-brandBlue-200 mb-3 font-medium">Countries are ranked by top performance</p>
 
-          <div id="countries-grid" class="space-y-3">
-            </div>
-        </div>
+    <!-- Added max-h-[60vh] and overflow-y-auto here -->
+    <div id="countries-grid" class="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+    </div>
+</div>
 
       </div>
 

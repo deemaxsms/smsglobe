@@ -158,8 +158,8 @@
         });
     }
 
-    const SMSGlobeApp = (() => {
-      const API_BASE_URL = '/api';
+        window.SMSGlobeApp = (() => {
+          const API_BASE_URL = '/api';
 
       let currentMode = 'Number';
       let services = [];
@@ -539,7 +539,6 @@
         renderCountries,
         selectCountry,
         switchCountryPriceTier,
-        shuffleCountryPriceTier,
         buyServiceCountry
       };
     })();

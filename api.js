@@ -3790,7 +3790,7 @@ async function handleGetCountries(req, res) {
             }),
             smsBowerClient.get('', { 
                 params: { 
-                    action: 'getPrices', // Kept back to your original working action
+                    action: 'getPrices',
                     service: cleanServiceCode 
                 } 
             })
@@ -3842,23 +3842,26 @@ async function handleGetCountries(req, res) {
                     const variants = Array.isArray(tierItem) ? tierItem : [tierItem];
 
                     variants.forEach(v => {
-                        // Handle cases where v might be a direct primitive number or object
-                        const rawCostUsd = Number(
-                            v?.price || v?.cost || v?.value || 
-                            (typeof v === 'number' ? v : 0)
-                        );
-                        
-                        // Safeguard: Ignore if cost is 0 or if cost looks like a raw stock quantity (> 10000 USD is impossible for an SMS price)
+                        // STRICT CHECK: Only look at actual price/cost keys, or explicit primitive numbers under 10000. 
+                        // This prevents stock fields like `count: 300000` from being parsed as prices.
+                        let rawCostUsd = 0;
+                        if (v && typeof v === 'object') {
+                            rawCostUsd = Number(v.price || v.cost || v.value || 0);
+                        } else if (typeof v === 'number') {
+                            rawCostUsd = v;
+                        }
+
+                        // Safeguard bounds: SMS activation costs are never 0 and never exceed $10,000 USD
                         if (rawCostUsd <= 0 || rawCostUsd > 10000) return;
 
                         const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
-                        const rawRank = v?.rank || v?.tier || providerKey || 'Standard';
+                        const rawRank = (v && typeof v === 'object' && (v.rank || v.tier)) || providerKey || 'Standard';
                         const formattedRank = String(rawRank).charAt(0).toUpperCase() + String(rawRank).slice(1).toLowerCase();
 
-                        const rawCount = Number(v?.count ?? v?.stock ?? v?.qty ?? v?.amountAvailable ?? 0);
+                        const rawCount = Number((v && typeof v === 'object' && (v.count ?? v.stock ?? v.qty ?? v.amountAvailable)) || 0);
 
                         allAvailablePrices.push({
-                            providerId: String(v?.partner_id || v?.provider_id || v?.id || providerKey),
+                            providerId: String((v && typeof v === 'object' && (v.partner_id || v.provider_id || v.id)) || providerKey),
                             count: rawCount,
                             amount: baseAmountNgn,
                             rank: formattedRank
@@ -3867,7 +3870,7 @@ async function handleGetCountries(req, res) {
                 });
 
                 if (allAvailablePrices.length > 0) {
-                    // Sort prices ascending so the cheapest tier/rank is always first
+                    // Sort prices ascending so index 0 is always the cheapest tier option
                     allAvailablePrices.sort((a, b) => a.amount - b.amount);
 
                     formattedCountries.push({
@@ -3879,7 +3882,7 @@ async function handleGetCountries(req, res) {
                             : `https://flagcdn.com/w40/un.png`, 
                         stock: allAvailablePrices[0].count,
                         providerId: allAvailablePrices[0].providerId,
-                        selectedPriceIndex: 0, // Forces frontend to select the lowest price tier by default
+                        selectedPriceIndex: 0, // Forces default UI selection to the lowest tier
                         price: {
                             amount: allAvailablePrices[0].amount,
                             currency: 'NGN',
@@ -3891,6 +3894,7 @@ async function handleGetCountries(req, res) {
             });
         }
 
+        // Sort countries overall by lowest starting price
         formattedCountries.sort((a, b) => a.price.amount - b.price.amount);
 
         return res.status(200).json({ success: true, countries: formattedCountries });

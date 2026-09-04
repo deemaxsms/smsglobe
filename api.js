@@ -3837,32 +3837,29 @@ async function handleGetCountries(req, res) {
 
                 let allAvailablePrices = [];
 
-                // Iterate through all provider options and pricing tiers (Gold, Silver, Bronze, etc.)
-                Object.keys(providersObject).forEach(providerKey => {
-                    const tierItem = providersObject[providerKey];
-                    
-                    // Handle cases where a tierItem itself might contain sub-tiers or direct pricing fields
-                    const variants = Array.isArray(tierItem) ? tierItem : [tierItem];
+Object.keys(providersObject).forEach(providerKey => {
+    const tierItem = providersObject[providerKey];
+    const variants = Array.isArray(tierItem) ? tierItem : [tierItem];
 
-                    variants.forEach(v => {
-                        const rawCostUsd = Number(v?.price || v?.cost || v?.value || (typeof v === 'number' ? v : 0));
-                        if (rawCostUsd <= 0) return;
+    variants.forEach(v => {
+        const rawCostUsd = Number(v?.price || v?.cost || v?.value || (typeof v === 'number' ? v : 0));
+        if (rawCostUsd <= 0) return;
 
-                        const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
-                        const rawRank = v?.rank || v?.tier || providerKey || 'Standard';
-                        
-                        // Capitalize rank cleanly (e.g., gold -> Gold)
-                        const formattedRank = String(rawRank).charAt(0).toUpperCase() + String(rawRank).slice(1).toLowerCase();
+        const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
+        const rawRank = v?.rank || v?.tier || providerKey || 'Standard';
+        const formattedRank = String(rawRank).charAt(0).toUpperCase() + String(rawRank).slice(1).toLowerCase();
 
-                        allAvailablePrices.push({
-                            providerId: String(v?.partner_id || v?.provider_id || providerKey),
-                            count: v?.count || v?.stock || 'In Stock',
-                            amount: baseAmountNgn,
-                            rank: formattedRank
-                        });
-                    });
-                });
+        // Fix count/stock extraction from SMSBower response properties
+        const rawCount = v?.count ?? v?.stock ?? v?.qty ?? v?.amountAvailable ?? 0;
 
+        allAvailablePrices.push({
+            providerId: String(v?.partner_id || v?.provider_id || v?.id || providerKey),
+            count: rawCount,
+            amount: baseAmountNgn,
+            rank: formattedRank
+        });
+    });
+});
                 if (allAvailablePrices.length > 0) {
                     // Sort available prices from lowest to highest
                     allAvailablePrices.sort((a, b) => a.amount - b.amount);

@@ -3719,43 +3719,49 @@ async function handleGetServicesAndPrices(req, res) {
 async function handleProxyServiceImage(req, res) {
     try {
         const serviceId = req.query.id;
-        if (!serviceId) return res.status(400).send("Missing service ID");
-
-        const cleanId = String(serviceId).trim().toLowerCase();
+        const cleanId = serviceId ? String(serviceId).trim().toLowerCase() : '';
         
-        // SMSBower hosts service logos using their service code
-        const targetUrls = [
-            `https://smsbower.app/img/services/${cleanId}.svg`,
-            `https://smsbower.app/img/services/${cleanId}.png`
-        ];
+        if (cleanId) {
+            const targetUrls = [
+                `https://smsbower.app/img/services/${cleanId}.svg`,
+                `https://smsbower.app/img/services/${cleanId}.png`
+            ];
 
-        let imageResponse = null;
-        for (const targetUrl of targetUrls) {
-            try {
-                imageResponse = await axios.get(targetUrl, {
-                    responseType: 'arraybuffer',
-                    headers: {
-                        'Referer': 'https://smsbower.app/',
-                        'User-Agent': 'Mozilla/5.0'
-                    },
-                    timeout: 2500
-                });
-                if (imageResponse && imageResponse.status === 200) break;
-            } catch (e) {
-                // Try next extension option
+            for (const targetUrl of targetUrls) {
+                try {
+                    const imageResponse = await axios.get(targetUrl, {
+                        responseType: 'arraybuffer',
+                        headers: {
+                            'Referer': 'https://smsbower.app/',
+                            'User-Agent': 'Mozilla/5.0'
+                        },
+                        timeout: 2000
+                    });
+
+                    if (imageResponse && imageResponse.status === 200) {
+                        const contentType = imageResponse.headers['content-type'] || 'image/svg+xml';
+                        res.setHeader('Content-Type', contentType);
+                        res.setHeader('Cache-Control', 'public, max-age=604800, s-maxage=604800');
+                        return res.status(200).send(Buffer.from(imageResponse.data));
+                    }
+                } catch (e) {
+                    // Try next URL option
+                }
             }
         }
 
-        if (imageResponse && imageResponse.status === 200) {
-            const contentType = imageResponse.headers['content-type'] || 'image/svg+xml';
-            res.setHeader('Content-Type', contentType);
-            res.setHeader('Cache-Control', 'public, max-age=604800, s-maxage=604800');
-            return res.status(200).send(Buffer.from(imageResponse.data));
-        }
+        // Fallback: Return a clean default SVG placeholder so it never throws 404
+        const defaultSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="10" fill="#0284c7"/><text x="12" y="16" font-size="10" fill="#fff" text-anchor="middle" font-family="sans-serif">SMS</text></svg>`;
+        
+        res.setHeader('Content-Type', 'image/svg+xml');
+        res.setHeader('Cache-Control', 'public, max-age=604800, s-maxage=604800');
+        return res.status(200).send(defaultSvg);
 
-        return res.status(404).send("Image not found");
     } catch (err) {
-        return res.status(404).send("Image proxy error");
+        // Return fallback SVG on error to guarantee 200 OK
+        const fallbackSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="10" fill="#0284c7"/></svg>`;
+        res.setHeader('Content-Type', 'image/svg+xml');
+        return res.status(200).send(fallbackSvg);
     }
 }
 

@@ -167,6 +167,8 @@
       let userBonusBalance = 0;
       let pollInterval = null;
       let activePollIntervals = {};
+      let selectedServiceCode = null;
+      let selectedCountryId = null;
 
   const PRIORITY_ICONS = {
   'wa': 'https://api.iconify.design/logos:whatsapp-icon.svg',
@@ -283,7 +285,6 @@ function renderServices(servicesToRender) {
   grid.innerHTML = servicesToRender.map(service => {
     const code = (service.code || '').toLowerCase();
     
-    // Ensure iconUrl resolves strictly to a string URL (never a function reference)
     const iconUrl = PRIORITY_ICONS[code] || `/api/service-image?id=${encodeURIComponent(code)}`;
     const fallbackLetter = (service.name || code || 'S').charAt(0).toUpperCase();
     const isSelected = expandedServiceCode === code;
@@ -292,17 +293,16 @@ function renderServices(servicesToRender) {
     return `
       <button type="button" 
               onclick="SMSGlobeApp.selectService('${code}')" 
-              class="flex flex-col items-center justify-center p-2 ${borderClass} hover:bg-brandBlue-700 rounded-lg border transition group relative h-16 shadow-sm"
+              class="flex flex-col items-center justify-center p-2 ${borderClass} hover:bg-brandBlue-700 rounded-lg border transition group relative h-14 shadow-sm"
               title="${service.name}">
-        <div class="w-6 h-6 mb-1 flex items-center justify-center relative">
+        <div class="w-9 h-9 flex items-center justify-center relative">
           <img src="${iconUrl}" alt="${service.name}" 
                class="w-full h-full object-contain group-hover:scale-110 transition duration-200"
                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-          <div class="w-6 h-6 rounded bg-brandBlue-600 text-white text-[10px] font-bold items-center justify-center hidden">
+          <div class="w-9 h-9 rounded bg-brandBlue-600 text-white text-xs font-bold items-center justify-center hidden">
             ${fallbackLetter}
           </div>
         </div>
-        <span class="text-[10px] text-gray-200 truncate w-full text-center font-medium">${service.name}</span>
       </button>
     `;
   }).join('');
@@ -317,6 +317,77 @@ function selectService(code) {
   if (typeof fetchCountries === 'function') {
     fetchCountries(code);
   }
+}
+
+async function selectService(serviceCode) {
+  selectedServiceCode = serviceCode;
+  
+  // Highlight the selected service card visually in the grid
+  const buttons = document.querySelectorAll('#services-grid button');
+  buttons.forEach(btn => {
+    if (btn.getAttribute('onclick')?.includes(serviceCode)) {
+      btn.className = btn.className.replace('border-brandBlue-700/50 bg-brandBlue-800/60', 'border-brandBlue-400 bg-brandBlue-700');
+    } else {
+      btn.className = btn.className.replace('border-brandBlue-400 bg-brandBlue-700', 'border-brandBlue-700/50 bg-brandBlue-800/60');
+    }
+  });
+
+  const countryGrid = document.getElementById('countries-grid');
+  if (countryGrid) {
+    countryGrid.innerHTML = '<p class="text-xs text-gray-300 col-span-full text-center py-4">Loading countries and prices...</p>';
+  }
+
+  try {
+    // Call your backend endpoint (adjust the route path if your router maps it differently, e.g., /api/get-countries)
+    const response = await fetch(`/api/countries?service=${encodeURIComponent(serviceCode)}`);
+    const data = await response.json();
+
+    if (data.success && data.countries) {
+      renderCountries(data.countries);
+    } else {
+      if (countryGrid) {
+        countryGrid.innerHTML = '<p class="text-xs text-gray-300 col-span-full text-center py-4">No countries available for this service.</p>';
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load countries:', err);
+    if (countryGrid) {
+      countryGrid.innerHTML = '<p class="text-xs text-red-400 col-span-full text-center py-4">Error loading available countries.</p>';
+    }
+  }
+}
+
+function renderCountries(countriesList) {
+  const grid = document.getElementById('countries-grid');
+  if (!grid) return;
+
+  if (!countriesList || countriesList.length === 0) {
+    grid.innerHTML = '<p class="text-xs text-gray-300 col-span-full text-center py-4">No active stock for this service.</p>';
+    return;
+  }
+
+  grid.innerHTML = countriesList.map(country => {
+    const isSelected = selectedCountryId === country.countryId;
+    const borderClass = isSelected ? 'border-brandBlue-400 bg-brandBlue-700' : 'border-brandBlue-700/50 bg-brandBlue-800/60';
+
+    return `
+      <button type="button" 
+              onclick="selectCountry('${country.countryId}', '${country.providerId}')" 
+              class="flex items-center justify-between p-3 ${borderClass} hover:bg-brandBlue-700 rounded-lg border transition group shadow-sm text-left">
+        <div class="flex items-center space-x-3">
+          <img src="${country.flagUrl}" alt="${country.countryName}" class="w-6 h-4 object-cover rounded shadow-sm">
+          <div>
+            <div class="text-xs font-semibold text-white truncate max-w-[110px]">${country.countryName}</div>
+            <div class="text-[10px] text-gray-300">Stock: ${country.stock}</div>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="text-xs font-bold text-brandBlue-300">${country.price.symbol}${country.price.amount.toLocaleString()}</div>
+          <div class="text-[9px] text-emerald-400 font-medium">${country.rank || 'Best Price'}</div>
+        </div>
+      </button>
+    `;
+  }).join('');
 }
 
 document.addEventListener('DOMContentLoaded', () => {

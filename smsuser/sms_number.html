@@ -167,10 +167,9 @@
       let serviceCountriesCache = {}; 
       let userBalance = 0;
       let userBonusBalance = 0;
-      let pollInterval = null;
-      let activePollIntervals = {};
       let selectedServiceCode = null;
       let selectedCountryId = null;
+      let countrySearchTerm = '';
 
       const PRIORITY_ICONS = {
         'wa': 'https://api.iconify.design/logos:whatsapp-icon.svg',
@@ -309,130 +308,64 @@
       }
 
       async function selectService(serviceCode) {
-        console.log("🔍 [DEBUG] Service selected:", serviceCode);
         expandedServiceCode = serviceCode;
         selectedServiceCode = serviceCode;
+        countrySearchTerm = '';
+        const searchInput = document.getElementById('country-search-input');
+        if (searchInput) searchInput.value = '';
+
         renderServices(services);
 
         const countryGrid = document.getElementById('countries-grid');
         if (countryGrid) {
-          countryGrid.innerHTML = '<p class="text-xs text-gray-300 col-span-full text-center py-4"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading countries and prices for ' + serviceCode + '...</p>';
+          countryGrid.innerHTML = '<p class="text-xs text-gray-300 col-span-full text-center py-4"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading countries for ' + serviceCode + '...</p>';
         }
 
         try {
           if (!serviceCountriesCache[serviceCode]) {
             const targetUrl = `${API_BASE_URL}/countries?service=${encodeURIComponent(serviceCode)}`;
-            console.log("🌐 [DEBUG] Fetching countries from:", targetUrl);
-
             const response = await fetch(targetUrl);
             const contentType = response.headers.get("content-type");
             
             if (!contentType || !contentType.includes("application/json")) {
-              const textSnippet = await response.text();
-              console.error("❌ [DEBUG] Non-JSON response received:", textSnippet);
               throw new Error(`Server returned non-JSON response (Status: ${response.status})`);
             }
 
             const result = await response.json();
-            console.log("📦 [DEBUG] Countries API response data:", result);
-
             if (result.success === false) {
               throw new Error(result.message || "Failed to load countries from provider");
             }
 
             const rawInput = result.countries || result.data || result;
-            let list = [];
+            let list = Array.isArray(rawInput) ? rawInput : Object.entries(rawInput).map(([k, v]) => ({ countryId: k, ...v }));
 
-            if (Array.isArray(rawInput)) {
-              list = rawInput;
-            } else if (typeof rawInput === 'object' && rawInput !== null) {
-              list = Object.entries(rawInput).map(([k, v]) => ({ countryId: k, ...v }));
-            }
-
-            const countryMap = {};
-            list.forEach(item => {
-              const cId = String(item.countryId || item.id || item.code || '');
-              if (!cId) return;
-
-              const cName = item.countryName || item.name || `Country ${cId}`;
-              const cCode = (item.code || (cId.length === 2 ? cId : 'un')).toLowerCase();
-              const rawPrice = item.price?.amount || item.price || item.sellingPrice || 1400;
-              const currencySymbol = item.price?.symbol || '₦';
-              const rank = item.rank || 'Best Price';
-              const stock = item.stock || item.count || 'In Stock';
-              const flagUrl = item.flagUrl || `https://flagcdn.com/w40/${cCode}.png`;
-
-              if (!countryMap[cId]) {
-                countryMap[cId] = {
-                  countryId: cId,
-                  countryName: cName,
-                  code: cCode,
-                  flagUrl: flagUrl,
-                  stock: stock,
-                  rank: rank,
-                  providerId: item.providerId || '',
-                  price: {
-                    amount: Number(rawPrice),
-                    symbol: currencySymbol,
-                    providerId: item.providerId || ''
-                  },
-                  availablePrices: []
-                };
-              }
-
-              countryMap[cId].availablePrices.push({
-                amount: Number(rawPrice),
-                symbol: currencySymbol,
-                rank: rank,
-                stock: stock,
-                providerId: item.providerId || ''
-              });
-            });
-
-            const processedCountries = Object.values(countryMap).map(country => {
-              country.availablePrices.sort((a, b) => a.amount - b.amount);
-              country.price = country.availablePrices[0];
-              return {
-                ...country,
-                selectedPriceIndex: 0
-              };
-            });
-
-            processedCountries.sort((a, b) => {
-              const lowestA = a.availablePrices[0]?.amount || 0;
-              const lowestB = b.availablePrices[0]?.amount || 0;
-              return lowestA - lowestB;
-            });
-
-            serviceCountriesCache[serviceCode] = processedCountries;
+            serviceCountriesCache[serviceCode] = list;
           }
 
           const countriesList = serviceCountriesCache[serviceCode] || [];
-          console.log("🎨 [DEBUG] Rendering processed countries count:", countriesList.length);
-
-          if (countriesList.length > 0) {
-            renderCountries(countriesList);
-          } else {
-            if (countryGrid) {
-              countryGrid.innerHTML = '<p class="text-xs text-gray-300 col-span-full text-center py-4">No countries available for this service.</p>';
-            }
-          }
+          renderCountries(countriesList);
         } catch (err) {
-          console.error('❌ [DEBUG] Failed to load countries:', err);
+          console.error('❌ Failed to load countries:', err);
           if (countryGrid) {
-            countryGrid.innerHTML = `<p class="text-xs text-red-400 col-span-full text-center py-4 px-2">Error: ${err.message}. Check backend terminal logs.</p>`;
+            countryGrid.innerHTML = `<p class="text-xs text-red-400 col-span-full text-center py-4 px-2">Error: ${err.message}</p>`;
           }
         }
       }
 
-    function renderCountriesListHtml(serviceCode, countriesList) {
-        // Ensure we fall back to global selectedServiceCode if serviceCode parameter is missing
-        const activeServiceCode = serviceCode || selectedServiceCode;
+      function renderCountriesListHtml(serviceCode, countriesList) {
+        let filteredList = countriesList || [];
+        if (countrySearchTerm) {
+            filteredList = filteredList.filter(c => {
+                const name = (c.countryName || c.name || '').toLowerCase();
+                const id = String(c.countryId || '').toLowerCase();
+                return name.includes(countrySearchTerm) || id.includes(countrySearchTerm);
+            });
+        }
 
-        if (!countriesList || countriesList.length === 0) {
+        if (!filteredList || filteredList.length === 0) {
             return `
-                <div class="flex flex-col items-center justify-center py-6 bg-white rounded-xl border border-brand-border col-span-full">
-                    <p class="text-[10px] text-brandBlue-300 font-bold uppercase">No countries found.</p>
+                <div class="flex flex-col items-center justify-center py-6 bg-white/5 rounded-xl border border-brandBlue-700/50 col-span-full">
+                    <p class="text-xs text-brandBlue-200 font-medium uppercase tracking-wide">No countries found.</p>
                 </div>
             `;
         }
@@ -475,7 +408,7 @@
             'tonga': 'to', 'marshall islands': 'mh', 'palau': 'pw', 'tuvalu': 'tv', 'nauru': 'nr', 'french guiana': 'gf', 'niue': 'nu'
         };
 
-        return countriesList.map(c => {
+        return filteredList.map(c => {
             const options = c.availablePrices || [{ amount: c.price?.amount, rank: c.rank, stock: c.stock, providerId: c.providerId }];
             const selectedIdx = c.selectedPriceIndex || 0;
             const activeTier = options[selectedIdx] || options[0];
@@ -502,28 +435,24 @@
                 }
             }
 
-            const rankLabel = activeTier.rank || 'Silver';
+            const rankLabel = activeTier.rank || 'Standard';
             const providerId = activeTier.providerId || c.providerId || '';
-            const rankBadgeClass = rankLabel.toLowerCase().includes('silver') ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-amber-50 text-amber-700 border-amber-200';
 
             return `
-                <div class="bg-brandBlue-800/60 border border-brandBlue-700/50 p-2.5 sm:p-3 rounded-xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 hover:border-brandBlue-400 transition-all">
+                <div class="bg-brandBlue-800/60 border border-brandBlue-700/50 p-2.5 sm:p-3 rounded-xl flex items-center justify-between gap-2.5 hover:border-brandBlue-400 transition-all">
                     <!-- Left Side: Flag & Name -->
                     <div class="flex items-center gap-2.5 min-w-0 flex-1">
                         <img src="https://flagcdn.com/w40/${flagCode}.png" class="w-5 sm:w-6 h-auto rounded-sm border border-gray-700 flex-shrink-0" onerror="this.src='https://flagcdn.com/w40/un.png'">
                         <div class="min-w-0">
-                            <div class="flex items-center gap-1.5 flex-wrap">
-                                <p class="text-[11px] sm:text-xs font-bold text-white truncate max-w-[110px] sm:max-w-none">${countryName}</p>
-                                <span class="text-[7px] sm:text-[8px] font-semibold px-1 py-0.2 rounded border ${rankBadgeClass} uppercase">${rankLabel}</span>
-                            </div>
-                            <span class="text-[8px] text-emerald-400 font-bold uppercase block">● ${stockStatus}</span>
+                            <p class="text-[11px] sm:text-xs font-bold text-white truncate max-w-[110px] sm:max-w-none">${countryName}</p>
+                            <span class="text-[8px] text-emerald-400 font-bold uppercase block mt-0.5">● ${stockStatus}</span>
                         </div>
                     </div>
 
                     <!-- Right Side Wrapper -->
                     <div class="flex items-center gap-2 ml-auto sm:ml-0 flex-shrink-0">
                         ${options.length > 1 ? `
-                            <button onclick="SMSGlobeApp.shuffleCountryPriceTier('${activeServiceCode}', '${c.countryId}')" 
+                            <button onclick="SMSGlobeApp.shuffleCountryPriceTier('${serviceCode}', '${c.countryId}')" 
                                     title="Shuffle / Cycle alternative price tier"
                                     class="p-1.5 text-gray-300 hover:text-brandBlue-300 bg-brandBlue-700/50 hover:bg-brandBlue-700 rounded-lg transition-all border border-brandBlue-600 flex items-center justify-center">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -535,17 +464,17 @@
                         <div class="flex flex-col items-end">
                             <span class="text-[11px] sm:text-xs font-black text-brandBlue-300">₦${formattedPriceString}</span>
                             ${options.length > 1 ? `
-                                <select onchange="SMSGlobeApp.switchCountryPriceTier('${activeServiceCode}', '${c.countryId}', this.value)" class="text-[8px] sm:text-[9px] text-gray-300 bg-brandBlue-900 border border-brandBlue-700 rounded px-1 py-0.2 mt-0.5 focus:outline-none max-w-[90px]">
+                                <select onchange="SMSGlobeApp.switchCountryPriceTier('${serviceCode}', '${c.countryId}', this.value)" class="text-[8px] sm:text-[9px] text-gray-300 bg-brandBlue-900 border border-brandBlue-700 rounded px-1 py-0.2 mt-0.5 focus:outline-none max-w-[90px]">
                                     ${options.map((opt, idx) => `
                                         <option value="${idx}" ${idx === selectedIdx ? 'selected' : ''}>
-                                            ${opt.rank || 'Tier'} - ₦${(Number(opt.amount) * multiplier).toLocaleString()}
+                                            ${opt.rank} - ₦${(Number(opt.amount) * multiplier).toLocaleString()}
                                         </option>
                                     `).join('')}
                                 </select>
                             ` : ''}
                         </div>
 
-                        <button onclick="SMSGlobeApp.buyServiceCountry('${activeServiceCode}', '${c.countryId}', ${finalDisplayPrice}, '${rankLabel}', '${providerId}')" 
+                        <button onclick="SMSGlobeApp.buyServiceCountry('${serviceCode}', '${c.countryId}', ${finalDisplayPrice}, '${rankLabel}', '${providerId}')" 
                                 class="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-brandBlue-600 text-white rounded-lg text-[11px] sm:text-xs font-bold hover:bg-brandBlue-500 active:scale-95 transition-all flex-shrink-0">
                             Buy
                         </button>
@@ -553,14 +482,6 @@
                 </div>
             `;
         }).join('');
-      }
-
-      function renderCountries(countriesList) {
-        const grid = document.getElementById('countries-grid');
-        if (!grid) return;
-
-        console.log("🎨 [DEBUG] Rendering advanced countries/tiers list, count:", countriesList.length);
-        grid.innerHTML = renderCountriesListHtml(expandedServiceCode || selectedServiceCode, countriesList);
       }
 
       function switchCountryPriceTier(serviceCode, countryId, newIndex) {
@@ -587,13 +508,18 @@
         console.log("🛒 [DEBUG] Purchasing service:", { serviceCode, countryId, price, rank, providerId });
       }
 
-    function selectCountry(countryId, providerId) {
-  console.log("🎯 [DEBUG] Country clicked/selected:", countryId, "Provider:", providerId);
-  selectedCountryId = countryId;
-  if (serviceCountriesCache[selectedServiceCode]) {
-      renderCountries(serviceCountriesCache[selectedServiceCode]);
-  }
-}
+      function renderCountries(countriesList) {
+        const grid = document.getElementById('countries-grid');
+        if (!grid) return;
+        grid.innerHTML = renderCountriesListHtml(selectedServiceCode, countriesList);
+      }
+
+      function selectCountry(countryId, providerId) {
+        selectedCountryId = countryId;
+        if (serviceCountriesCache[selectedServiceCode]) {
+            renderCountries(serviceCountriesCache[selectedServiceCode]);
+        }
+      }
 
       document.addEventListener('DOMContentLoaded', () => {
         fetchUserProfile();
@@ -612,6 +538,16 @@
               (s.code && s.code.toLowerCase().includes(term))
             );
             renderServices(filtered);
+          });
+        }
+
+        const countrySearchInput = document.getElementById('country-search-input');
+        if (countrySearchInput) {
+          countrySearchInput.addEventListener('input', (e) => {
+            countrySearchTerm = e.target.value.toLowerCase().trim();
+            if (selectedServiceCode && serviceCountriesCache[selectedServiceCode]) {
+              renderCountries(serviceCountriesCache[selectedServiceCode]);
+            }
           });
         }
       });

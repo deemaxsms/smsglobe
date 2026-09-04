@@ -3776,7 +3776,6 @@ async function handleGetCountries(req, res) {
     res.setHeader('Content-Type', 'application/json');
 
     try {
-        // Robustly catch service code from query strings, route params, or body
         const serviceCode = req.query.service || req.params?.service || req.body?.service;
 
         if (!serviceCode) {
@@ -3785,12 +3784,9 @@ async function handleGetCountries(req, res) {
 
         const cleanServiceCode = String(serviceCode).trim().toLowerCase();
 
-        // Fetch country metadata and top countries/prices for the specific service in parallel
         const [countriesMetaResponse, topCountriesResponse] = await Promise.all([
             smsBowerClient.get('', { 
-                params: { 
-                    action: 'getCountries' 
-                } 
+                params: { action: 'getCountries' } 
             }),
             smsBowerClient.get('', { 
                 params: { 
@@ -3803,12 +3799,10 @@ async function handleGetCountries(req, res) {
         const rawCountriesMeta = countriesMetaResponse?.data;
         const rawTopCountries = topCountriesResponse?.data;
 
-        // Fallback check if SMSBower returns string error or empty structure
         if (!rawTopCountries || typeof rawTopCountries === 'string' || rawTopCountries.success === false) {
             return res.status(200).json({ success: true, countries: [] });
         }
 
-        // Build country metadata dictionary lookup map
         let countryMetaMap = {};
         const metaSource = rawCountriesMeta?.countries || rawCountriesMeta?.data || rawCountriesMeta;
         
@@ -3817,14 +3811,12 @@ async function handleGetCountries(req, res) {
             entries.forEach(([id, cInfo]) => {
                 if (!cInfo) return;
                 const cName = cInfo.name || cInfo.countryName || cInfo.til || cInfo.eng || cInfo.rus;
-                // Safely extract country code (handling ISO strings, numbers, etc.)
                 const cCode = (cInfo.iso || cInfo.code || cInfo.eng || cInfo.short || id).toString().toLowerCase();
                 
                 countryMetaMap[String(id)] = {
                     name: cName || `Country ${id}`,
                     code: cCode
                 };
-                // Also map by lowercase name/code keys just in case SMSBower keys them by text
                 if (cCode) countryMetaMap[cCode] = countryMetaMap[String(id)];
             });
         }
@@ -3832,7 +3824,6 @@ async function handleGetCountries(req, res) {
         const exchangeRateToNgn = 1400; 
         let formattedCountries = [];
         
-        // SMSBower response structure handling
         const countryData = rawTopCountries.countries || rawTopCountries.data || rawTopCountries;
 
         if (countryData && typeof countryData === 'object') {
@@ -3840,54 +3831,63 @@ async function handleGetCountries(req, res) {
                 const providersObject = countryData[countryKey];
                 if (!providersObject || typeof providersObject !== 'object') return;
 
-                // Resolve country metadata by ID or ISO code key
                 const vendorMeta = countryMetaMap[String(countryKey).toLowerCase()] || {};
                 const resolvedName = vendorMeta.name || countryKey.toUpperCase();
                 const resolvedCode = (vendorMeta.code || countryKey).toLowerCase();
 
-                let lowestVariant = null;
-                let lowestAmount = Infinity;
+                let allAvailablePrices = [];
 
-                // Iterate through provider options for this country/service combo
+                // Iterate through all provider options and pricing tiers (Gold, Silver, Bronze, etc.)
                 Object.keys(providersObject).forEach(providerKey => {
                     const tierItem = providersObject[providerKey];
-                    const rawCostUsd = Number(tierItem?.price || tierItem?.cost || tierItem?.value || (typeof tierItem === 'number' ? tierItem : 0));
-                    if (rawCostUsd <= 0) return;
+                    
+                    // Handle cases where a tierItem itself might contain sub-tiers or direct pricing fields
+                    const variants = Array.isArray(tierItem) ? tierItem : [tierItem];
 
-                    const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
+                    variants.forEach(v => {
+                        const rawCostUsd = Number(v?.price || v?.cost || v?.value || (typeof v === 'number' ? v : 0));
+                        if (rawCostUsd <= 0) return;
 
-                    if (baseAmountNgn < lowestAmount) {
-                        lowestAmount = baseAmountNgn;
-                        lowestVariant = {
-                            providerId: String(tierItem?.partner_id || tierItem?.provider_id || providerKey),
-                            count: tierItem?.count || tierItem?.stock || 'In Stock',
-                            amount: baseAmountNgn
-                        };
-                    }
+                        const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
+                        const rawRank = v?.rank || v?.tier || providerKey || 'Standard';
+                        
+                        // Capitalize rank cleanly (e.g., gold -> Gold)
+                        const formattedRank = String(rawRank).charAt(0).toUpperCase() + String(rawRank).slice(1).toLowerCase();
+
+                        allAvailablePrices.push({
+                            providerId: String(v?.partner_id || v?.provider_id || providerKey),
+                            count: v?.count || v?.stock || 'In Stock',
+                            amount: baseAmountNgn,
+                            rank: formattedRank
+                        });
+                    });
                 });
 
-                if (lowestVariant) {
+                if (allAvailablePrices.length > 0) {
+                    // Sort available prices from lowest to highest
+                    allAvailablePrices.sort((a, b) => a.amount - b.amount);
+
                     formattedCountries.push({
                         countryId: String(countryKey),
-                        providerId: lowestVariant.providerId,
                         countryName: resolvedName,
                         code: resolvedCode, 
                         flagUrl: resolvedCode && resolvedCode.length === 2 
                             ? `https://flagcdn.com/w40/${resolvedCode.toLowerCase()}.png` 
                             : `https://flagcdn.com/w40/un.png`, 
-                        stock: lowestVariant.count,
-                        rank: 'Best Price', 
+                        stock: allAvailablePrices[0].count,
+                        providerId: allAvailablePrices[0].providerId,
                         price: {
-                            amount: lowestVariant.amount,
+                            amount: allAvailablePrices[0].amount,
                             currency: 'NGN',
                             symbol: '₦'
-                        }
+                        },
+                        availablePrices: allAvailablePrices
                     });
                 }
             });
         }
 
-        // Sort countries from lowest price to highest
+        // Sort countries globally by their lowest available price option
         formattedCountries.sort((a, b) => a.price.amount - b.price.amount);
 
         return res.status(200).json({ success: true, countries: formattedCountries });
@@ -3900,7 +3900,6 @@ async function handleGetCountries(req, res) {
         });
     }
 }
-
 /**
  * 3. CHECK ORDER STATUS / SMS CODE POLLING
  */

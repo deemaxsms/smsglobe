@@ -113,21 +113,23 @@
           <button class="flex-1 text-gray-300 hover:text-white text-xs font-medium py-2 rounded-lg text-center transition rank-filter-btn" data-rank="bronze">Bronze</button>
         </div>
 
-        <!-- Step 3: Select Country -->
-        <div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md">
-          <div class="flex items-center space-x-3 mb-3">
-            <span class="w-6 h-6 rounded-full bg-brandBlue-600 text-white text-xs font-bold flex items-center justify-center border border-brandBlue-500">3</span>
-            <span class="font-semibold text-sm tracking-wide">Select country</span>
-          </div>
-          <div class="relative mb-3">
-            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400">
-              <i class="fa-solid fa-magnifying-glass text-xs"></i>
-            </span>
-            <input type="text" id="country-search-input" placeholder="Find country" class="w-full bg-brandBlue-900/60 text-white placeholder-gray-400 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 border border-brandBlue-700/50">
-          </div>
-          <p class="text-[11px] text-brandBlue-200 mb-3 font-medium">Countries are ranked by top performance</p>
-          <div id="countries-grid" class="space-y-3 pr-1"></div>
-        </div>
+       <!-- Step 3: Select Country -->
+<div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md">
+  <div class="flex items-center space-x-3 mb-3">
+    <span class="w-6 h-6 rounded-full bg-brandBlue-600 text-white text-xs font-bold flex items-center justify-center border border-brandBlue-500">3</span>
+    <span class="font-semibold text-sm tracking-wide">Select country</span>
+  </div>
+  <div class="relative mb-3">
+    <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400">
+      <i class="fa-solid fa-magnifying-glass text-xs"></i>
+    </span>
+    <input type="text" id="country-search-input" placeholder="Find country" class="w-full bg-brandBlue-900/60 text-white placeholder-gray-400 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 border border-brandBlue-700/50">
+  </div>
+  <p class="text-[11px] text-brandBlue-200 mb-3 font-medium">Countries are ranked by top performance</p>
+  
+  <!-- Added max height and vertical scrolling classes here -->
+  <div id="countries-grid" class="max-h-[420px] overflow-y-auto space-y-3 pr-1"></div>
+</div>
 
       </div><!-- End Numbers Section -->
 
@@ -209,7 +211,7 @@
         window.location.href = 'login.html';
       }
 
-      function switchTab(mode) {
+   function switchTab(mode) {
     currentMode = mode;
     const numbersSection = document.getElementById('numbers-section');
     const historySection = document.getElementById('history-section');
@@ -220,18 +222,22 @@
     const inactiveClasses = "flex-1 text-gray-300 hover:text-white font-medium py-2.5 rounded-lg text-sm text-center transition";
 
     if (mode === 'Number') {
-        numbersSection.classList.remove('hidden');
-        historySection.classList.add('hidden');
-        btnNumber.className = activeClasses;
-        btnHistory.className = inactiveClasses;
+        if (numbersSection) numbersSection.classList.remove('hidden');
+        if (historySection) historySection.classList.add('hidden');
+        if (btnNumber) btnNumber.className = activeClasses;
+        if (btnHistory) btnHistory.className = inactiveClasses;
     } else {
-        numbersSection.classList.add('hidden');
-        historySection.classList.remove('hidden');
-        btnHistory.className = activeClasses;
-        btnNumber.className = inactiveClasses;
+        if (numbersSection) numbersSection.classList.add('hidden');
+        if (historySection) historySection.classList.remove('hidden');
+        if (btnHistory) btnHistory.className = activeClasses;
+        if (btnNumber) btnNumber.className = inactiveClasses;
 
-        // Fetch and render purchase history immediately when switching
-        fetchUserHistory();
+        // Safely fetch and render purchase history immediately when switching
+        if (typeof fetchUserHistory === 'function') {
+            fetchUserHistory();
+        } else {
+            console.error("fetchUserHistory function is not defined.");
+        }
     }
 }
 
@@ -393,7 +399,6 @@
           }
         }
       }
-
 function renderCountriesListHtml(serviceCode, countriesList) {
     let filteredList = countriesList || [];
     if (countrySearchTerm) {
@@ -489,7 +494,11 @@ function renderCountriesListHtml(serviceCode, countriesList) {
                         <img src="https://flagcdn.com/w40/${flagCode}.png" class="w-6 h-auto rounded-sm border border-gray-700 flex-shrink-0" onerror="this.src='https://flagcdn.com/w40/un.png'">
                         <div class="min-w-0 flex-1">
                             <p class="text-xs font-bold text-white truncate">${countryName}</p>
-                            <p class="text-[10px] text-gray-300 font-medium mt-0.5">${stockCount} pcs fr. ₦${formattedPriceString}</p>
+                            <!-- Ranking position displayed clearly here -->
+                            <p class="text-[10px] text-gray-300 font-medium mt-0.5">
+                                ${stockCount} pcs fr. ₦${formattedPriceString} 
+                                <span class="ml-1 px-1.5 py-0.2 bg-brandBlue-700/80 text-brandBlue-200 rounded font-bold uppercase tracking-wider text-[9px]">${rankLabel}</span>
+                            </p>
                         </div>
                     </div>
 
@@ -507,7 +516,7 @@ function renderCountriesListHtml(serviceCode, countriesList) {
                                 <i class="fa-solid fa-chevron-${isExpanded ? 'up' : 'down'} text-[9px]"></i>
                             </button>
                         ` : `
-                            <span class="text-[10px] text-gray-500 px-1">Standard</span>
+                            <span class="text-[10px] text-gray-500 px-1">${rankLabel}</span>
                         `}
                     </div>
                 </div>
@@ -741,8 +750,9 @@ function onNumberPurchasedSuccessfully(orderData) {
 
 async function fetchUserHistory() {
     const historyGrid = document.getElementById('history-grid');
+    if (!historyGrid) return;
+
     try {
-        // Use safeFetch helper with your API_BASE_URL pointing to order/history endpoints
         const fetchMethod = typeof safeFetch === 'function' ? safeFetch : async (url, opts) => {
             const token = localStorage.getItem('userToken');
             const r = await fetch(url, {
@@ -753,15 +763,34 @@ async function fetchUserHistory() {
             return { data };
         };
 
-        const response = await fetchMethod(`${API_BASE_URL}/order-details?id=${orderId}`, { 
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
-        });
+        // Gather tracked active/history order IDs from localStorage or fallback
+        let activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
         
-        const res = response.data || response;
-        const historyList = res.history || res.orders || (Array.isArray(res) ? res : []);
+        if (activeOrders.length === 0) {
+            historyGrid.innerHTML = `<p class="text-sm text-gray-300 text-center py-6">No purchased numbers found.</p>`;
+            return;
+        }
 
-        if (!res.success || !historyList || historyList.length === 0) {
+        // Fetch fresh details for each order using the order-details endpoint pattern
+        const orderDetailsPromises = activeOrders.map(async (cachedOrder) => {
+            const orderId = cachedOrder.id || cachedOrder._id;
+            if (!orderId) return null;
+
+            try {
+                const { data } = await fetchMethod(`${API_BASE_URL}/order-details?id=${orderId}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                return data?.success && data?.order ? data.order : cachedOrder;
+            } catch (e) {
+                // Fallback to cached order if network request fails for a specific item
+                return cachedOrder;
+            }
+        });
+
+        const historyList = (await Promise.all(orderDetailsPromises)).filter(Boolean);
+
+        if (historyList.length === 0) {
             historyGrid.innerHTML = `<p class="text-sm text-gray-300 text-center py-6">No purchased numbers found.</p>`;
             return;
         }
@@ -781,11 +810,10 @@ async function fetchUserHistory() {
             const statusLower = String(item.status || 'active').toLowerCase();
             const isActive = statusLower === 'active' || statusLower === 'pending' || statusLower === 'waiting for sms...';
             
-            // Dynamic badge styling based on status
             const badgeClass = isActive 
                 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
                 : 'bg-gray-700/50 text-gray-400 border border-gray-600/30';
-
+            
             const orderId = item.id || item._id;
 
             return `
@@ -803,13 +831,11 @@ async function fetchUserHistory() {
                         </div>
                     </div>
 
-                    <!-- OTP Code Display Box -->
                     <div class="bg-brandBlue-950/60 border border-brandBlue-700/50 p-2.5 rounded-lg flex items-center justify-between">
                         <span class="text-xs text-gray-300 font-medium">OTP Code:</span>
                         <span class="text-sm font-mono font-bold text-emerald-400 tracking-wider">${item.smsCode || 'Waiting for code...'}</span>
                     </div>
 
-                    <!-- Actions Footer (Cancel Button for Active Orders) -->
                     ${isActive ? `
                         <div class="flex justify-end pt-1">
                             <button onclick="cancelOrder('${orderId}')" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-xs font-semibold rounded-lg transition">

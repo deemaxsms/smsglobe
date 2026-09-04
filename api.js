@@ -3797,7 +3797,7 @@ async function handleGetCountries(req, res) {
         ]);
 
         const rawCountriesMeta = countriesMetaResponse?.data;
-        const rawTopCountries = pricesResponse?.data; // ✅ FIXED: Use pricesResponse here
+        const rawTopCountries = pricesResponse?.data;
 
         if (!rawTopCountries || typeof rawTopCountries === 'string' || rawTopCountries.success === false) {
             return res.status(200).json({ success: true, countries: [] });
@@ -3861,6 +3861,7 @@ async function handleGetCountries(req, res) {
                 });
 
                 if (allAvailablePrices.length > 0) {
+                    // Sort prices ascending so the cheapest tier is always first
                     allAvailablePrices.sort((a, b) => a.amount - b.amount);
 
                     formattedCountries.push({
@@ -3872,6 +3873,7 @@ async function handleGetCountries(req, res) {
                             : `https://flagcdn.com/w40/un.png`, 
                         stock: allAvailablePrices[0].count,
                         providerId: allAvailablePrices[0].providerId,
+                        selectedPriceIndex: 0, // 👈 Ensures lowest price tier is selected by default
                         price: {
                             amount: allAvailablePrices[0].amount,
                             currency: 'NGN',

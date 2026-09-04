@@ -168,6 +168,16 @@
       let pollInterval = null;
       let activePollIntervals = {};
 
+      const PRIORITY_SERVICES = [
+    // Core Global Services
+    { code: 'wa', name: 'WhatsApp', iconUrl: 'https://api.iconify.design/logos:whatsapp-icon.svg' },    { code: 'tg', name: 'Telegram', iconUrl: 'https://api.iconify.design/logos:telegram.svg' },
+    { code: 'gg', name: 'Google / Gmail', iconUrl: 'https://api.iconify.design/logos:google-icon.svg' },     { code: 'fb', name: 'Facebook', iconUrl: 'https://api.iconify.design/logos:facebook.svg' },
+    { code: 'ig', name: 'Instagram', iconUrl: 'https://api.iconify.design/logos:instagram-icon.svg' },    { code: 'tw', name: 'Twitter / X', iconUrl: 'https://api.iconify.design/logos:twitter.svg' },
+    { code: 'nf', name: 'Netflix', iconUrl: 'https://api.iconify.design/logos:netflix-icon.svg' },    { code: 'oi', name: 'Tinder', iconUrl: 'https://api.iconify.design/simple-icons:tinder.svg' },
+    { code: 'ub', name: 'Uber', iconUrl: 'https://api.iconify.design/logos:uber.svg' },    { code: 'ms', name: 'NovaPoshta / Microsoft', iconUrl: 'https://api.iconify.design/logos:microsoft-icon.svg' },
+    { code: 'ds', name: 'Discord', iconUrl: 'https://api.iconify.design/logos:discord-icon.svg' },     { code: 'wx', name: 'Apple', iconUrl: 'https://api.iconify.design/logos:apple.svg' },
+];
+    
       function logout() {
         localStorage.removeItem('userToken');
         localStorage.removeItem('dashboard_cache');
@@ -266,19 +276,20 @@ function renderServices(servicesToRender) {
   }
 
   grid.innerHTML = servicesToRender.map(service => {
-    // Route through your backend proxy using the vendor's service code (e.g. 'whatsapp', 'kt')
-    const proxyImageUrl = `/api/service-image?id=${encodeURIComponent(service.code)}`;
-    const fallbackLetter = (service.name || service.code || 'S').charAt(0).toUpperCase();
-    const isSelected = expandedServiceCode === service.code;
+    const code = (service.code || '').toLowerCase();
+    // Use Iconify URL if available, otherwise fallback to your backend proxy route
+    const iconUrl = PRIORITY_ICONS[code] || `${API_BASE_URL}/service-image?id=${encodeURIComponent(code)}`;
+    const fallbackLetter = (service.name || code || 'S').charAt(0).toUpperCase();
+    const isSelected = expandedServiceCode === code;
     const borderClass = isSelected ? 'border-brandBlue-400 bg-brandBlue-700' : 'border-brandBlue-700/50 bg-brandBlue-800/60';
 
     return `
       <button type="button" 
-              onclick="SMSGlobeApp.selectService('${service.code}')" 
+              onclick="SMSGlobeApp.selectService('${code}')" 
               class="flex flex-col items-center justify-center p-2 ${borderClass} hover:bg-brandBlue-700 rounded-lg border transition group relative h-16 shadow-sm"
               title="${service.name}">
         <div class="w-6 h-6 mb-1 flex items-center justify-center relative">
-          <img src="${proxyImageUrl}" alt="${service.name}" 
+          <img src="${iconUrl}" alt="${service.name}" 
                class="w-full h-full object-contain group-hover:scale-110 transition duration-200"
                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
           <div class="w-6 h-6 rounded bg-brandBlue-600 text-white text-[10px] font-bold items-center justify-center hidden">

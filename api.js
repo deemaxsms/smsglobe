@@ -3784,20 +3784,20 @@ async function handleGetCountries(req, res) {
 
         const cleanServiceCode = String(serviceCode).trim().toLowerCase();
 
-      const [countriesMetaResponse, pricesResponse] = await Promise.all([
-    smsBowerClient.get('', { 
-        params: { action: 'getCountries' } 
-    }),
-    smsBowerClient.get('', { 
-        params: { 
-            action: 'getPrices',
-            service: cleanServiceCode 
-        } 
-    })
-]);
+        const [countriesMetaResponse, pricesResponse] = await Promise.all([
+            smsBowerClient.get('', { 
+                params: { action: 'getCountries' } 
+            }),
+            smsBowerClient.get('', { 
+                params: { 
+                    action: 'getPrices',
+                    service: cleanServiceCode 
+                } 
+            })
+        ]);
 
         const rawCountriesMeta = countriesMetaResponse?.data;
-        const rawTopCountries = topCountriesResponse?.data;
+        const rawTopCountries = pricesResponse?.data; // ✅ FIXED: Use pricesResponse here
 
         if (!rawTopCountries || typeof rawTopCountries === 'string' || rawTopCountries.success === false) {
             return res.status(200).json({ success: true, countries: [] });
@@ -3837,31 +3837,30 @@ async function handleGetCountries(req, res) {
 
                 let allAvailablePrices = [];
 
-Object.keys(providersObject).forEach(providerKey => {
-    const tierItem = providersObject[providerKey];
-    const variants = Array.isArray(tierItem) ? tierItem : [tierItem];
+                Object.keys(providersObject).forEach(providerKey => {
+                    const tierItem = providersObject[providerKey];
+                    const variants = Array.isArray(tierItem) ? tierItem : [tierItem];
 
-    variants.forEach(v => {
-        const rawCostUsd = Number(v?.price || v?.cost || v?.value || (typeof v === 'number' ? v : 0));
-        if (rawCostUsd <= 0) return;
+                    variants.forEach(v => {
+                        const rawCostUsd = Number(v?.price || v?.cost || v?.value || (typeof v === 'number' ? v : 0));
+                        if (rawCostUsd <= 0) return;
 
-        const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
-        const rawRank = v?.rank || v?.tier || providerKey || 'Standard';
-        const formattedRank = String(rawRank).charAt(0).toUpperCase() + String(rawRank).slice(1).toLowerCase();
+                        const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
+                        const rawRank = v?.rank || v?.tier || providerKey || 'Standard';
+                        const formattedRank = String(rawRank).charAt(0).toUpperCase() + String(rawRank).slice(1).toLowerCase();
 
-        // Fix count/stock extraction from SMSBower response properties
-        const rawCount = v?.count ?? v?.stock ?? v?.qty ?? v?.amountAvailable ?? 0;
+                        const rawCount = v?.count ?? v?.stock ?? v?.qty ?? v?.amountAvailable ?? 0;
 
-        allAvailablePrices.push({
-            providerId: String(v?.partner_id || v?.provider_id || v?.id || providerKey),
-            count: rawCount,
-            amount: baseAmountNgn,
-            rank: formattedRank
-        });
-    });
-});
+                        allAvailablePrices.push({
+                            providerId: String(v?.partner_id || v?.provider_id || v?.id || providerKey),
+                            count: rawCount,
+                            amount: baseAmountNgn,
+                            rank: formattedRank
+                        });
+                    });
+                });
+
                 if (allAvailablePrices.length > 0) {
-                    // Sort available prices from lowest to highest
                     allAvailablePrices.sort((a, b) => a.amount - b.amount);
 
                     formattedCountries.push({
@@ -3884,7 +3883,6 @@ Object.keys(providersObject).forEach(providerKey => {
             });
         }
 
-        // Sort countries globally by their lowest available price option
         formattedCountries.sort((a, b) => a.price.amount - b.price.amount);
 
         return res.status(200).json({ success: true, countries: formattedCountries });
@@ -3897,6 +3895,7 @@ Object.keys(providersObject).forEach(providerKey => {
         });
     }
 }
+
 /**
  * 3. CHECK ORDER STATUS / SMS CODE POLLING
  */

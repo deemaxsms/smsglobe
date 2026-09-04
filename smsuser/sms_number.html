@@ -350,15 +350,28 @@
         }
     }
 };
-      async function safeFetch(url, options = {}) {
-        const res = await fetch(url, options);
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-            throw new Error("Server returned a non-JSON response or invalid content-type.");
-        }
-        const data = await res.json();
-        return { res, data };
-      }
+     async function safeFetch(url, options = {}) {
+    const token = localStorage.getItem('userToken');
+
+    // Automatically attach Authorization and Content-Type headers if missing
+    const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...(options.headers || {})
+    };
+
+    const res = await fetch(url, {
+        ...options,
+        headers
+    });
+
+    const contentType = res.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Server returned a non-JSON response or invalid content-type.");
+    }
+    const data = await res.json();
+    return { res, data };
+}
 
       async function fetchUserProfile() {
         const token = localStorage.getItem('userToken');

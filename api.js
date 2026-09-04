@@ -3776,24 +3776,39 @@ async function handleGetCountries(req, res) {
     res.setHeader('Content-Type', 'application/json');
 
     try {
-        const serviceCode = req.query.service || req.params.service;
+        // Robustly catch service code from query strings, route params, or body
+        const serviceCode = req.query.service || req.params?.service || req.body?.service;
 
         if (!serviceCode) {
             return res.status(400).json({ success: false, message: "Service code is required." });
         }
 
-        const [countriesMetaResponse, pricesResponse] = await Promise.all([
-            smsBowerClient.get('', { params: { api_key: process.env.SMSBOWER_API_KEY, action: 'getCountries' } }),
-            smsBowerClient.get('', { params: { api_key: process.env.SMSBOWER_API_KEY, action: 'getPricesV3', service: String(serviceCode).toLowerCase() } })
+        const cleanServiceCode = String(serviceCode).trim().toLowerCase();
+
+        // Fetch country metadata and top countries/prices for the specific service in parallel
+        const [countriesMetaResponse, topCountriesResponse] = await Promise.all([
+            smsBowerClient.get('', { 
+                params: { 
+                    action: 'getCountries' 
+                } 
+            }),
+            smsBowerClient.get('', { 
+                params: { 
+                    action: 'getTopCountriesByService', 
+                    service: cleanServiceCode 
+                } 
+            })
         ]);
 
-        const rawPrices = pricesResponse?.data;
         const rawCountriesMeta = countriesMetaResponse?.data;
+        const rawTopCountries = topCountriesResponse?.data;
 
-        if (!rawPrices || typeof rawPrices === 'string') {
+        // Fallback check if SMSBower returns string error or empty structure
+        if (!rawTopCountries || typeof rawTopCountries === 'string' || rawTopCountries.success === false) {
             return res.status(200).json({ success: true, countries: [] });
         }
 
+        // Build country metadata dictionary lookup map
         let countryMetaMap = {};
         const metaSource = rawCountriesMeta?.countries || rawCountriesMeta?.data || rawCountriesMeta;
         
@@ -3801,46 +3816,41 @@ async function handleGetCountries(req, res) {
             const entries = Array.isArray(metaSource) ? metaSource.map((c, idx) => [c.id || idx, c]) : Object.entries(metaSource);
             entries.forEach(([id, cInfo]) => {
                 if (!cInfo) return;
-                const cName = cInfo.name || cInfo.countryName || cInfo.til || cInfo.eng;
+                const cName = cInfo.name || cInfo.countryName || cInfo.til || cInfo.eng || cInfo.rus;
+                // Safely extract country code (handling ISO strings, numbers, etc.)
                 const cCode = (cInfo.iso || cInfo.code || cInfo.eng || cInfo.short || id).toString().toLowerCase();
                 
                 countryMetaMap[String(id)] = {
                     name: cName || `Country ${id}`,
                     code: cCode
                 };
+                // Also map by lowercase name/code keys just in case SMSBower keys them by text
+                if (cCode) countryMetaMap[cCode] = countryMetaMap[String(id)];
             });
         }
 
         const exchangeRateToNgn = 1400; 
         let formattedCountries = [];
-        const priceData = rawPrices.countries || rawPrices.data || rawPrices;
+        
+        // SMSBower response structure handling
+        const countryData = rawTopCountries.countries || rawTopCountries.data || rawTopCountries;
 
-        if (priceData && typeof priceData === 'object') {
-            Object.keys(priceData).forEach(countryId => {
-                const countryServices = priceData[countryId];
-                if (!countryServices || typeof countryServices !== 'object') return;
+        if (countryData && typeof countryData === 'object') {
+            Object.keys(countryData).forEach(countryKey => {
+                const providersObject = countryData[countryKey];
+                if (!providersObject || typeof providersObject !== 'object') return;
 
-                // Find matching service key flexibly (case-insensitive, partial matching)
-                const targetService = String(serviceCode).toLowerCase();
-                let matchedServiceKey = Object.keys(countryServices).find(
-                    k => k.toLowerCase() === targetService || k.toLowerCase().includes(targetService)
-                );
-
-                // Fallback: if getPricesV3 returned a direct flat map for this country
-                const serviceData = matchedServiceKey ? countryServices[matchedServiceKey] : (countryServices.price || countryServices.cost ? countryServices : null);
-                
-                if (!serviceData || typeof serviceData !== 'object') return;
-
-                const vendorMeta = countryMetaMap[String(countryId)] || {};
-                const resolvedName = vendorMeta.name || `Country ${countryId}`;
-                const resolvedCode = resolvedMeta.code || String(countryId).toLowerCase();
+                // Resolve country metadata by ID or ISO code key
+                const vendorMeta = countryMetaMap[String(countryKey).toLowerCase()] || {};
+                const resolvedName = vendorMeta.name || countryKey.toUpperCase();
+                const resolvedCode = (vendorMeta.code || countryKey).toLowerCase();
 
                 let lowestVariant = null;
                 let lowestAmount = Infinity;
 
-                Object.keys(serviceData).forEach(providerKey => {
-                    const tierItem = serviceData[providerKey];
-                    // Handle case where tierItem is directly a number or price object
+                // Iterate through provider options for this country/service combo
+                Object.keys(providersObject).forEach(providerKey => {
+                    const tierItem = providersObject[providerKey];
                     const rawCostUsd = Number(tierItem?.price || tierItem?.cost || tierItem?.value || (typeof tierItem === 'number' ? tierItem : 0));
                     if (rawCostUsd <= 0) return;
 
@@ -3849,7 +3859,7 @@ async function handleGetCountries(req, res) {
                     if (baseAmountNgn < lowestAmount) {
                         lowestAmount = baseAmountNgn;
                         lowestVariant = {
-                            providerId: String(tierItem?.provider_id || providerKey),
+                            providerId: String(tierItem?.partner_id || tierItem?.provider_id || providerKey),
                             count: tierItem?.count || tierItem?.stock || 'In Stock',
                             amount: baseAmountNgn
                         };
@@ -3858,7 +3868,7 @@ async function handleGetCountries(req, res) {
 
                 if (lowestVariant) {
                     formattedCountries.push({
-                        countryId: String(countryId),
+                        countryId: String(countryKey),
                         providerId: lowestVariant.providerId,
                         countryName: resolvedName,
                         code: resolvedCode, 
@@ -3877,7 +3887,7 @@ async function handleGetCountries(req, res) {
             });
         }
 
-        // Sort ascending by price so cheapest show at the top
+        // Sort countries from lowest price to highest
         formattedCountries.sort((a, b) => a.price.amount - b.price.amount);
 
         return res.status(200).json({ success: true, countries: formattedCountries });

@@ -22,14 +22,6 @@
               dashboard: '#0284c7',
               panel: '#0369a1',
               bgLight: '#f8fafc'
-            },
-            brand: {
-              blue: '#0369a1',
-              border: '#e2e8f0',
-              background: '#f8fafc',
-              darkText: '#0f172a',
-              midText: '#334155',
-              lightText: '#64748b'
             }
           }
         }
@@ -84,9 +76,9 @@
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       
-      <div class="lg:col-span-12 space-y-5">
+      <div class="lg:col-span-4 space-y-5">
         
-        <div class="bg-brandBlue-900 p-1.5 rounded-xl flex shadow-sm max-w-sm">
+        <div class="bg-brandBlue-900 p-1.5 rounded-xl flex shadow-sm">
           <button class="flex-1 bg-brandBlue-700 text-white font-semibold py-2.5 rounded-lg text-sm shadow text-center transition">
             Numbers
           </button>
@@ -95,30 +87,51 @@
           </button>
         </div>
 
-        <div class="bg-white rounded-2xl p-5 border border-brand-border shadow-md relative">
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center space-x-3">
-              <span class="w-6 h-6 rounded-full bg-brandBlue-600 text-white text-xs font-bold flex items-center justify-center">1</span>
-              <span class="font-semibold text-sm tracking-wide text-brand-darkText">Select service & live inventory</span>
-            </div>
-            <button onclick="SMSGlobeApp.syncInventory()" class="text-xs text-brandBlue-600 hover:underline font-semibold flex items-center gap-1">
-              <i class="fa-solid fa-rotate"></i> Refresh Inventory
-            </button>
+        <div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md relative">
+          <div class="flex items-center space-x-3 mb-3">
+            <span class="w-6 h-6 rounded-full bg-brandBlue-600 text-white text-xs font-bold flex items-center justify-center border border-brandBlue-500">1</span>
+            <span class="font-semibold text-sm tracking-wide">Select service</span>
           </div>
 
           <div class="relative mb-4">
             <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400">
               <i class="fa-solid fa-magnifying-glass text-xs"></i>
             </span>
-            <input type="text" id="service-search-input" oninput="SMSGlobeApp.filterServices(this.value)" placeholder="Search service name or code..." class="w-full bg-gray-50 text-gray-800 placeholder-gray-400 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 border border-gray-200">
+            <input type="text" id="service-search-input" placeholder="Select service" class="w-full bg-brandBlue-900/60 text-white placeholder-gray-400 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 border border-brandBlue-700/50">
           </div>
 
-          <div id="serviceAccordionList" class="space-y-3">
+          <div id="services-grid" class="grid grid-cols-8 gap-2 bg-brandBlue-900/40 p-3 rounded-xl border border-brandBlue-700/30 max-h-48 overflow-y-auto">
             </div>
 
-          <div class="mt-4 text-center">
-            <a href="#" class="text-xs text-brandBlue-600 hover:underline">Didn't find the right service? Write to <span class="underline font-semibold">support</span></a>
+          <div class="mt-3 text-center">
+            <a href="#" class="text-xs text-brandBlue-100 hover:underline">Didn't find the right service? Write to <span class="underline font-semibold">support</span></a>
           </div>
+        </div>
+
+        <div class="bg-brandBlue-900/60 p-1.5 rounded-xl flex space-x-1 border border-brandBlue-700/40">
+          <button class="flex-1 bg-brandBlue-700 text-white text-xs font-bold py-2 rounded-lg shadow text-center rank-filter-btn" data-rank="all">All</button>
+          <button class="flex-1 text-gray-300 hover:text-white text-xs font-medium py-2 rounded-lg text-center transition rank-filter-btn" data-rank="gold">Gold</button>
+          <button class="flex-1 text-gray-300 hover:text-white text-xs font-medium py-2 rounded-lg text-center transition rank-filter-btn" data-rank="silver">Silver</button>
+          <button class="flex-1 text-gray-300 hover:text-white text-xs font-medium py-2 rounded-lg text-center transition rank-filter-btn" data-rank="bronze">Bronze</button>
+        </div>
+
+        <div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md">
+          <div class="flex items-center space-x-3 mb-3">
+            <span class="w-6 h-6 rounded-full bg-brandBlue-600 text-white text-xs font-bold flex items-center justify-center border border-brandBlue-500">3</span>
+            <span class="font-semibold text-sm tracking-wide">Select country</span>
+          </div>
+
+          <div class="relative mb-3">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400">
+              <i class="fa-solid fa-magnifying-glass text-xs"></i>
+            </span>
+            <input type="text" id="country-search-input" placeholder="Find country" class="w-full bg-brandBlue-900/60 text-white placeholder-gray-400 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 border border-brandBlue-700/50">
+          </div>
+
+          <p class="text-[11px] text-brandBlue-200 mb-3 font-medium">Countries are ranked by top performance</p>
+
+          <div id="countries-container" class="space-y-3">
+            </div>
         </div>
 
       </div>
@@ -136,20 +149,12 @@
   </div>
 
   <script>
-    // Mobile Menu Toggle
     const btn = document.getElementById('mobile-menu-btn');
     const menu = document.getElementById('mobile-menu');
 
     btn.addEventListener('click', () => {
       menu.classList.toggle('hidden');
     });
-
-    const PRIORITY_SERVICES = [
-      { code: 'wa', name: 'WhatsApp' },
-      { code: 'tg', name: 'Telegram' },
-      { code: 'go', name: 'Google' },
-      { code: 'fb', name: 'Facebook' }
-    ];
 
     const SMSGlobeApp = (() => {
       const API_BASE_URL = '/api';
@@ -160,6 +165,8 @@
       let serviceCountriesCache = {}; 
       let userBalance = 0;
       let userBonusBalance = 0;
+      let pollInterval = null;
+      let activePollIntervals = {};
 
       function logout() {
         localStorage.removeItem('userToken');
@@ -180,12 +187,7 @@
 
       async function fetchUserProfile() {
         const token = localStorage.getItem('userToken');
-        if (!token) {
-          // Fallback or demo user state if token doesn't exist yet
-          const elBal = document.getElementById('displayBalance');
-          if (elBal) elBal.innerText = `₦0.00`;
-          return;
-        }
+        if (!token) return; 
 
         try {
             const { res, data } = await safeFetch(`${API_BASE_URL}/user-profile`, {
@@ -229,200 +231,107 @@
             }
         } catch (err) {
             console.error("Failed to fetch profile details:", err);
-            const elBal = document.getElementById('displayBalance');
-            if (elBal) elBal.innerText = `₦10.5440`; // Fallback balance matching your template
         }
       }
 
-      async function syncInventory() {
-        const container = document.getElementById('serviceAccordionList');
-        if (container && services.length === 0) {
-            container.innerHTML = `
-                <div class="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-brand-border">
-                    <div class="w-6 h-6 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mb-3"></div>
-                    <p class="text-[10px] text-brand-blue font-black uppercase tracking-widest">Loading Live SMSGlobe Services...</p>
-                </div>
-            `;
-        }
+      async function fetchServices() {
+  const grid = document.getElementById('services-grid');
+  if (grid) {
+    grid.innerHTML = '<div class="col-span-8 text-center py-4 text-xs text-brandBlue-200"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading services...</div>';
+  }
 
-        try {
-            // If your API endpoint differs, adjust `${API_BASE_URL}/services` accordingly
-            const { data } = await safeFetch(`${API_BASE_URL}/services`).catch(() => ({
-              data: { services: [
-                { code: 'wa', name: 'WhatsApp' },
-                { code: 'tg', name: 'Telegram' },
-                { code: 'go', name: 'Google / Gmail' },
-                { code: 'fb', name: 'Facebook' }
-              ]}
-            }));
-            const serviceList = data.services || data.data || data;
+  try {
+    const { res, data } = await safeFetch(`${API_BASE_URL}/services`);
+    if (data.success && Array.isArray(data.services)) {
+      services = data.services;
+      renderServices(services);
+    } else {
+      throw new Error(data.message || "Invalid services payload format");
+    }
+  } catch (err) {
+    console.error("Failed to load services:", err);
+    if (grid) {
+      grid.innerHTML = '<p class="text-xs text-red-300 col-span-8 text-center py-4">Failed to load services catalog</p>';
+    }
+  }
+}
 
-            if (Array.isArray(serviceList)) {
-                services = serviceList.sort((a, b) => {
-                    const codeA = (a.code || '').toLowerCase();
-                    const codeB = (b.code || '').toLowerCase();
-                    const indexA = PRIORITY_SERVICES.findIndex(p => p.code === codeA);
-                    const indexB = PRIORITY_SERVICES.findIndex(p => p.code === codeB);
+function renderServices(servicesToRender) {
+  const grid = document.getElementById('services-grid');
+  if (!grid) return;
 
-                    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-                    if (indexA !== -1) return -1;
-                    if (indexB !== -1) return 1;
+  if (!servicesToRender || servicesToRender.length === 0) {
+    grid.innerHTML = '<p class="text-xs text-gray-300 col-span-8 text-center py-4">No services found</p>';
+    return;
+  }
 
-                    return (a.name || '').localeCompare(b.name || '');
-                });
+  grid.innerHTML = servicesToRender.map(service => {
+    const proxyImageUrl = `${API_BASE_URL}/service-image?id=${encodeURIComponent(service.code)}`;
+    const fallbackLetter = (service.name || service.code || 'S').charAt(0).toUpperCase();
+    const isSelected = expandedServiceCode === service.code;
+    const borderClass = isSelected ? 'border-brandBlue-400 bg-brandBlue-700' : 'border-brandBlue-700/50 bg-brandBlue-800/60';
 
-                renderServiceAccordion();
-                preFetchAllServiceCountries();
-            }
-        } catch (err) {
-            console.error("Service sync failed", err);
-            if (container) {
-                container.innerHTML = `<p class="text-center text-xs py-10 text-red-500 font-bold uppercase bg-white rounded-2xl border border-brand-border">Failed to load live services from backend</p>`;
-            }
-        }
-      }
-
-      async function fetchCountriesForService(serviceCode, background = false) {
-        try {
-          const { data } = await safeFetch(`${API_BASE_URL}/countries?service=${encodeURIComponent(serviceCode)}`).catch(() => ({
-            data: [{ countryId: '1', name: 'USA [virtual]', count: 5482, price: 0.2 }]
-          }));
-          serviceCountriesCache[serviceCode] = data.countries || data.data || data;
-          if (!background && expandedServiceCode === serviceCode) {
-            renderServiceAccordion(document.getElementById('service-search-input')?.value || '');
-          }
-        } catch (e) {
-          serviceCountriesCache[serviceCode] = [];
-        }
-      }
-
-      async function preFetchAllServiceCountries() {
-        const servicesToFetch = services.filter(s => s.code && !serviceCountriesCache[s.code]);
-        const batchSize = 4;
-        for (let i = 0; i < servicesToFetch.length; i += batchSize) {
-            const batch = servicesToFetch.slice(i, i + batchSize);
-            await Promise.all(
-                batch.map(s => fetchCountriesForService(s.code, true))
-            );
-            await new Promise(resolve => setTimeout(resolve, 50));
-        }
-      }
-
-      function toggleServiceAccordion(code) {
-        expandedServiceCode = expandedServiceCode === code ? null : code;
-        renderServiceAccordion(document.getElementById('service-search-input')?.value || '');
-        if (expandedServiceCode && !serviceCountriesCache[expandedServiceCode]) {
-          fetchCountriesForService(expandedServiceCode);
-        }
-      }
-
-      function filterServices(query) {
-        renderServiceAccordion(query);
-      }
-
-      function filterCountriesForService(serviceCode, query) {
-        const container = document.getElementById(`countriesList_${serviceCode}`);
-        if (!container) return;
-        const countries = serviceCountriesCache[serviceCode] || [];
-        const filtered = countries.filter(c => (c.name || '').toLowerCase().includes(query.toLowerCase()));
-        container.innerHTML = renderCountriesListHtml(serviceCode, filtered);
-      }
-
-      function renderCountriesListHtml(serviceCode, countries) {
-        if (!countries || countries.length === 0) {
-          return `<p class="text-xs text-gray-400 py-3 text-center">No available countries found for this service.</p>`;
-        }
-        return countries.map(c => `
-          <div class="bg-white text-gray-800 border border-brand-border rounded-xl px-3.5 py-2.5 flex items-center justify-between text-xs shadow-2xs hover:border-brandBlue-500 transition">
-            <div class="flex items-center space-x-2.5">
-              <div class="w-6 h-4 rounded overflow-hidden shadow-xs bg-gray-200 flex items-center justify-center font-bold text-[9px]">
-                ${c.code || 'US'}
-              </div>
-              <div>
-                <h4 class="font-bold text-gray-900">${c.name || 'Country'}</h4>
-                <p class="text-[10px] text-gray-500">${c.count || 0} pcs fr. ${c.price || 0} $</p>
-              </div>
-            </div>
-            <button onclick="SMSGlobeApp.buyNumber('${serviceCode}', '${c.countryId || c.id}')" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-1.5 rounded-lg shadow-2xs transition">
-              Buy
-            </button>
+    return `
+      <button type="button" 
+              onclick="SMSGlobeApp.selectService('${service.code}')" 
+              class="flex flex-col items-center justify-center p-2 ${borderClass} hover:bg-brandBlue-700 rounded-lg border transition group relative overflow-h-16 h-16 shadow-sm"
+              title="${service.name}">
+        <div class="w-6 h-6 mb-1 flex items-center justify-center relative">
+          <img src="${proxyImageUrl}" alt="${service.name}" 
+               class="w-full h-full object-contain group-hover:scale-110 transition duration-200"
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+          <div class="w-6 h-6 rounded bg-brandBlue-600 text-white text-[10px] font-bold items-center justify-center hidden">
+            ${fallbackLetter}
           </div>
-        `).join('');
+        </div>
+        <span class="text-[10px] text-gray-200 truncate w-full text-center font-medium">${service.name}</span>
+      </button>
+    `;
+  }).join('');
+}
+
+function selectService(code) {
+  expandedServiceCode = code;
+  // Re-render to update the selection state visual highlight
+  renderServices(services);
+  
+  // Trigger country fetching for this service if function exists
+  if (typeof fetchCountries === 'function') {
+    fetchCountries(code);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Existing initializers
+  fetchUserProfile();
+  fetchServices();
+
+  // Service Live Search Filter
+  const serviceSearchInput = document.getElementById('service-search-input');
+  if (serviceSearchInput) {
+    serviceSearchInput.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase().trim();
+      if (!term) {
+        renderServices(services);
+        return;
       }
-
-      function renderServiceAccordion(filter = "") {
-        const container = document.getElementById('serviceAccordionList');
-        if (!container) return;
-
-        const filtered = services.filter(s => (s.name || '').toLowerCase().includes(filter.toLowerCase()) || (s.code || '').toLowerCase().includes(filter.toLowerCase()));
-        
-        if (filtered.length === 0) {
-            container.innerHTML = `<p class="text-center text-xs text-gray-400 py-10 font-bold bg-white rounded-2xl border border-brand-border">No services match your search</p>`;
-            return;
-        }
-
-        container.innerHTML = filtered.map(s => {
-            const isExpanded = expandedServiceCode === s.code;
-            const countries = serviceCountriesCache[s.code] || [];
-            
-            const priorityMatch = PRIORITY_SERVICES.find(p => p.code === s.code);
-            const serviceImgUrl = priorityMatch ? priorityMatch.iconUrl : `/api/service-image?id=${encodeURIComponent(s.code)}`;
-            const fallbackInitials = (s.name || s.code).substring(0, 2).toUpperCase();
-
-            return `
-                <div class="bg-white border border-brand-border rounded-2xl overflow-hidden transition-all shadow-sm">
-                    <div onclick="SMSGlobeApp.toggleServiceAccordion('${s.code}')" class="px-4 sm:px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-brand-background/50 transition-colors gap-2">
-                        <div class="flex items-center gap-3 min-w-0">
-                           <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gray-50 border border-gray-100 flex-shrink-0 flex items-center justify-center overflow-hidden p-1.5 shadow-2xs">
-                              <img src="${serviceImgUrl}" alt="${s.name || s.code}" loading="lazy" class="w-full h-full object-contain block" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                              <span style="display: none;" class="items-center justify-center w-full h-full text-[10px] font-bold text-brand-darkText bg-brand-blue/10">${fallbackInitials}</span>
-                           </div>
-                           <div class="min-w-0">
-                                <span class="text-xs sm:text-sm font-bold text-brand-darkText block truncate">${s.name || s.code}</span>
-                                <span class="text-[9px] sm:text-[10px] text-brand-lightText uppercase tracking-wider">Code: ${s.code}</span>
-                           </div>
-                        </div>
-                        <button class="text-xs font-bold text-brand-midText flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg border border-brand-border bg-white flex-shrink-0">
-                            <span class="hidden sm:inline">${isExpanded ? 'Collapse' : 'Select Country'}</span>
-                            <span class="sm:hidden">${isExpanded ? 'Close' : 'Select'}</span>
-                            <svg class="w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </button>
-                    </div>
-
-                    ${isExpanded ? `
-                        <div class="border-t border-brand-border bg-brand-background/30 p-3 sm:p-4 space-y-3">
-                            <div class="relative mb-3">
-                                <input type="text" oninput="SMSGlobeApp.filterCountriesForService('${s.code}', this.value)" placeholder="Search country inventory..." 
-                                       class="text-xs bg-white border border-brand-border rounded-lg px-3 py-2 focus:outline-none focus:border-brand-blue w-full shadow-sm">
-                            </div>
-                            <div id="countriesList_${s.code}" class="space-y-2 max-h-56 overflow-y-auto pr-1">
-                                ${renderCountriesListHtml(s.code, countries)}
-                            </div>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        }).join('');
-      }
-
-      function buyNumber(serviceCode, countryId) {
-        alert(`Initiating purchase for Service: ${serviceCode}, Country ID: ${countryId}`);
-        // Implement your buy action handler here
-      }
-
-      // Initialize application on load
+      const filtered = services.filter(s => 
+        (s.name && s.name.toLowerCase().includes(term)) || 
+        (s.code && s.code.toLowerCase().includes(term))
+      );
+      renderServices(filtered);
+    });
+  }
+});
+      // Initialize user profile on load
       document.addEventListener('DOMContentLoaded', () => {
         fetchUserProfile();
-        syncInventory();
       });
 
-      return {
-        fetchUserProfile,
-        syncInventory,
-        toggleServiceAccordion,
-        filterServices,
-        filterCountriesForService,
-        buyNumber
+     return {
+  fetchUserProfile,
+  fetchServices,
+  selectService
       };
     })();
   </script>

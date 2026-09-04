@@ -1113,6 +1113,69 @@ window.manualRecheckSms = async function(orderId) {
 };
 
 
+
+window.cancelOrder = async function(orderId) {
+    const confirmResult = await Swal.fire({
+        title: 'Cancel Number & Get Refund?',
+        text: "If you haven't received your code, cancelling will return your funds back to your wallet instantly.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, Cancel & Refund!'
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    try {
+        Swal.fire({ title: 'Processing refund...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        // Use 'userToken' to match fetchUserProfile()
+        const token = localStorage.getItem('userToken');
+
+        const { res, data } = await safeFetch(`/api/cancel-order`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({ id: orderId })
+        });
+
+        Swal.close();
+
+        if (res.status === 401) return logout();
+
+        if (data && data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Refund Successful!',
+                text: data.message,
+                timer: 2500
+            });
+
+            // Clean up localStorage active orders cache
+            let activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
+            activeOrders = activeOrders.filter(o => (o._id !== orderId && o.id !== orderId && o.tzid !== orderId));
+            localStorage.setItem('sms_active_orders', JSON.stringify(activeOrders));
+
+            // Refresh UI dashboards & wallet balance
+            if (typeof fetchActiveOrders === 'function') fetchActiveOrders();
+            if (typeof renderActiveOrdersDashboard === 'function') renderActiveOrdersDashboard();
+            if (typeof fetchUserProfile === 'function') fetchUserProfile(); // Refresh wallet balance automatically via profile fetch
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Cancellation Failed',
+                text: (data && data.message) || 'Could not cancel the order.'
+            });
+        }
+    } catch (err) {
+        console.error("Cancel order frontend error:", err);
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Network error connecting to server.' });
+    }
+};
+
       document.addEventListener('DOMContentLoaded', () => {
         fetchUserProfile();
         fetchServices();

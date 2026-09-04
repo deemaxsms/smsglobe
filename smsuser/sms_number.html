@@ -567,13 +567,14 @@ function renderCountriesListHtml(serviceCode, countriesList) {
         }
       });
 
-      return {
+     return {
         fetchUserProfile,
         fetchServices,
         selectService,
         renderCountries,
         selectCountry,
-        switchCountryPriceTier,
+        switchCountryPriceTierAndSelect, // <-- Map it or rename it here
+        toggleCountryExpand,                                    // <-- Also make sure this is exposed if called from HTML
         buyServiceCountry
       };
     })();

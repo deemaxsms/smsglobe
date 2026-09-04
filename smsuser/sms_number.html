@@ -266,7 +266,8 @@ function renderServices(servicesToRender) {
   }
 
   grid.innerHTML = servicesToRender.map(service => {
-    const proxyImageUrl = `${API_BASE_URL}/service-image?id=${encodeURIComponent(service.code)}`;
+    // Route through your backend proxy using the vendor's service code (e.g. 'whatsapp', 'kt')
+    const proxyImageUrl = `/api/service-image?id=${encodeURIComponent(service.code)}`;
     const fallbackLetter = (service.name || service.code || 'S').charAt(0).toUpperCase();
     const isSelected = expandedServiceCode === service.code;
     const borderClass = isSelected ? 'border-brandBlue-400 bg-brandBlue-700' : 'border-brandBlue-700/50 bg-brandBlue-800/60';
@@ -274,7 +275,7 @@ function renderServices(servicesToRender) {
     return `
       <button type="button" 
               onclick="SMSGlobeApp.selectService('${service.code}')" 
-              class="flex flex-col items-center justify-center p-2 ${borderClass} hover:bg-brandBlue-700 rounded-lg border transition group relative overflow-h-16 h-16 shadow-sm"
+              class="flex flex-col items-center justify-center p-2 ${borderClass} hover:bg-brandBlue-700 rounded-lg border transition group relative h-16 shadow-sm"
               title="${service.name}">
         <div class="w-6 h-6 mb-1 flex items-center justify-center relative">
           <img src="${proxyImageUrl}" alt="${service.name}" 

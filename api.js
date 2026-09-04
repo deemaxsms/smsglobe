@@ -3719,35 +3719,42 @@ async function handleGetServicesAndPrices(req, res) {
 async function handleProxyServiceImage(req, res) {
     try {
         const serviceId = req.query.id;
-        if (!serviceId) {
-            return res.status(400).send("Missing service ID");
-        }
+        if (!serviceId) return res.status(400).send("Missing service ID");
 
         const cleanId = String(serviceId).trim().toLowerCase();
         
-        // Target the standard primary SVG path first (most activation panels use svg for service logos)
-        const targetUrl = `https://smsbower.app/img/services/${cleanId}.svg`;
+        // SMSBower hosts service logos using their service code
+        const targetUrls = [
+            `https://smsbower.app/img/services/${cleanId}.svg`,
+            `https://smsbower.app/img/services/${cleanId}.png`
+        ];
 
-        const imageResponse = await axios.get(targetUrl, {
-            responseType: 'arraybuffer',
-            headers: {
-                'Referer': 'https://smsbower.app/',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-            },
-            timeout: 3000
-        });
+        let imageResponse = null;
+        for (const targetUrl of targetUrls) {
+            try {
+                imageResponse = await axios.get(targetUrl, {
+                    responseType: 'arraybuffer',
+                    headers: {
+                        'Referer': 'https://smsbower.app/',
+                        'User-Agent': 'Mozilla/5.0'
+                    },
+                    timeout: 2500
+                });
+                if (imageResponse && imageResponse.status === 200) break;
+            } catch (e) {
+                // Try next extension option
+            }
+        }
 
         if (imageResponse && imageResponse.status === 200) {
-            res.setHeader('Content-Type', 'image/svg+xml');
-            // Cache aggressively for 7 days so it never hits the vendor again for the same user
+            const contentType = imageResponse.headers['content-type'] || 'image/svg+xml';
+            res.setHeader('Content-Type', contentType);
             res.setHeader('Cache-Control', 'public, max-age=604800, s-maxage=604800');
             return res.status(200).send(Buffer.from(imageResponse.data));
         }
 
         return res.status(404).send("Image not found");
-
     } catch (err) {
-        // Fallback or graceful 404 so the frontend fallback initials show up instantly without crashing
         return res.status(404).send("Image proxy error");
     }
 }

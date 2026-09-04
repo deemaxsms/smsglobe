@@ -161,11 +161,16 @@
     const SMSGlobeApp = (() => {
       const API_BASE_URL = '/api';
 
-      let currentMode = 'activation';
+      let currentMode = 'Number';
       let services = [];
       let expandedServiceCode = null;
-      let selectedCountryId = null;
+      let serviceCountriesCache = {}; 
       let userBalance = 0;
+      let userBonusBalance = 0;
+      let pollInterval = null;
+      let activePollIntervals = {};
+      let selectedServiceCode = null;
+      let selectedCountryId = null;
 
       const PRIORITY_ICONS = {
         'wa': 'https://api.iconify.design/logos:whatsapp-icon.svg',
@@ -220,6 +225,7 @@
 
             if (data.success) {
                 const userData = data.user || data;
+                
                 userBalance = parseFloat(userData.balance || 0); 
                 const bonusBalance = parseFloat(userData.bonusBalance || 0); 
                 
@@ -282,7 +288,7 @@
           const code = (service.code || '').toLowerCase();
           const iconUrl = PRIORITY_ICONS[code] || `/api/service-image?id=${encodeURIComponent(code)}`;
           const fallbackLetter = (service.name || code || 'S').charAt(0).toUpperCase();
-          const isSelected = expandedServiceCode === code;
+          const isSelected = expandedServiceCode === code || selectedServiceCode === code;
           const borderClass = isSelected ? 'border-brandBlue-400 bg-brandBlue-700' : 'border-brandBlue-700/50 bg-brandBlue-800/60';
 
           return `
@@ -306,7 +312,6 @@
       async function selectService(serviceCode) {
         expandedServiceCode = serviceCode;
         selectedServiceCode = serviceCode;
-        
         renderServices(services);
 
         const countryGrid = document.getElementById('countries-grid');
@@ -368,10 +373,7 @@
 
       function selectCountry(countryId, providerId) {
         selectedCountryId = countryId;
-        // Re-render countries to show active selection highlight
-        if (services.length > 0 && expandedServiceCode) {
-          // Keep current view or trigger next step if needed
-        }
+        // Re-render countries to apply selection styling if needed
       }
 
       document.addEventListener('DOMContentLoaded', () => {

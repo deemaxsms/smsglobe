@@ -4089,152 +4089,196 @@ async function handleRecheckSms(req, res) {
     }
 }
 
-/**
- * 5. CANCEL NUMBER & REFUND USER WALLET (Updated with Atomic Session Support & Unified Balance Fields)
- */
-async function handleCancelOrder(req, res) {
-    const { id } = req.body; 
-
-    // Use a session to ensure Atomic updates (Order, User Balance, and Transaction Record must all succeed together)
-    const session = await mongoose.startSession();
-    session.startTransaction();
+// 3. Main History Rendering Function with Persistent Polling & Mobile Optimization (Database-backed)
+async function fetchUserHistory() {
+    const historyGrid = document.getElementById('history-grid');
+    if (!historyGrid) return;
 
     try {
-        const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(401).json({ success: false, message: "Unauthorized: No token provided." });
-        }
+        const fetchMethod = typeof safeFetch === 'function' ? safeFetch : async (url, opts) => {
+            const token = localStorage.getItem('userToken');
+            const r = await fetch(url, {
+                ...opts,
+                headers: { ...opts?.headers, 'Authorization': `Bearer ${token}` }
+            });
+            const data = await r.json();
+            return { data };
+        };
 
-        const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userEmail = decoded.email;
-        const userId = decoded.userId || decoded._id || decoded.id;
-
-        if (!userEmail && !userId) {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(401).json({ success: false, message: "Invalid session token payload." });
-        }
-
-        if (!id) {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(400).json({ success: false, message: "Missing order identifier." });
-        }
-
-        // Find order matching user via userId or userEmail fallback within session
-        const queryFilter = userId ? { _id: id, userId } : { _id: id, userEmail };
-        let order = await Order.findOne(queryFilter).session(session).catch(() => null);
-        
-        if (!order) {
-            order = await Order.findOne(userId ? { vendorOrderId: id, userId } : { vendorOrderId: id, userEmail }).session(session);
-        }
-        if (!order) {
-            order = await Order.findOne(userId ? { "metadata.tzid": id, userId } : { "metadata.tzid": id, userEmail }).session(session);
-        }
-
-        if (!order) {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(404).json({ success: false, message: "Order not found or unauthorized." });
-        }
-
-        if (order.status === 'completed' || order.status === 'successful') {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(400).json({ success: false, message: "Cannot cancel an order that has already received a code." });
-        }
-
-        if (order.status === 'cancelled' || order.status === 'expired') {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(400).json({ success: false, message: "This order is already cancelled or expired." });
-        }
-
-        const activeVendorId = order.vendorOrderId || order.metadata?.tzid;
-
-        // 1. Call SMSBower API to cancel activation (External call outside DB transaction)
-        if (activeVendorId && typeof smsBowerClient !== 'undefined') {
-            try {
-                await smsBowerClient.get('', {
-                    params: {
-                        action: 'setStatus',
-                        status: 8,
-                        id: activeVendorId
-                    }
-                });
-            } catch (providerErr) {
-                console.error("SMS Provider Cancellation Warning:", providerErr.message);
-            }
-        }
-
-        // 2. Find and Refund User Wallet Balance with unified balance field handling
-        const refundAmount = Number(order.amount) || 0;
-        const user = userId ? await User.findById(userId).session(session) : await User.findOne({ email: userEmail }).session(session);
-
-        if (!user) {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(404).json({ success: false, message: "User account not found." });
-        }
-
-        // Support both walletBalance and balance fields seamlessly
-        const balanceBefore = Number(user.walletBalance !== undefined ? user.walletBalance : (user.balance || 0));
-        const balanceAfter = balanceBefore + refundAmount;
-
-        if (user.walletBalance !== undefined) {
-            user.walletBalance = balanceAfter;
-        } else {
-            user.balance = balanceAfter;
-        }
-        await user.save({ session });
-
-        // 3. Update Order Status locally
-        order.status = 'cancelled';
-        await order.save({ session });
-
-        // 4. Update SmsNumber document if it exists
-        if (activeVendorId) {
-            await SmsNumber.findOneAndUpdate(
-                { vendorOrderId: String(activeVendorId) },
-                { status: 'failed' },
-                { session }
-            ).catch(() => {});
-        }
-
-        // 5. Create a refund transaction record
-        await Transaction.create([{
-            userId: user._id,
-            type: 'credit',
-            purpose: 'refund',
-            amountNGN: refundAmount,
-            status: 'successful',
-            reference: `REFUND-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-            balanceBefore,
-            balanceAfter,
-            metadata: { orderId: order._id, vendorOrderId: activeVendorId, reason: 'User cancelled number activation' }
-        }], { session });
-
-        // Commit all database changes atomically
-        await session.commitTransaction();
-        session.endSession();
-
-        return res.json({
-            success: true,
-            message: `Number cancelled successfully. ₦${refundAmount.toLocaleString()} has been refunded to your wallet.`,
-            newBalance: balanceAfter
+        // Fetch user orders directly from the database API instead of localStorage
+        const listResponse = await fetchMethod(`${API_BASE_URL}/user-orders`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
         });
 
-    } catch (err) {
-        await session.abortTransaction();
-        session.endSession();
-        console.error("Cancel Order Error:", err.message);
-        if (err.name === 'JsonWebTokenError') {
-            return res.status(401).json({ success: false, message: "Invalid Session" });
+        const listResult = listResponse.data || listResponse;
+        const rawOrders = listResult?.orders || listResult?.data || (Array.isArray(listResult) ? listResult : []);
+
+        if (!rawOrders || rawOrders.length === 0) {
+            historyGrid.innerHTML = `<p class="text-xs sm:text-sm text-gray-300 text-center py-6">No purchased numbers found.</p>`;
+            return;
         }
-        return res.status(500).json({ success: false, message: "Failed to process cancellation and refund." });
+
+        // Fetch granular, up-to-date details for each order using your /order-details API
+        const orderDetailsPromises = rawOrders.map(async (orderItem) => {
+            const orderId = orderItem.id || orderItem._id;
+            if (!orderId) return orderItem;
+
+            try {
+                const response = await fetchMethod(`${API_BASE_URL}/order-details?id=${orderId}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = response.data || response;
+                return data?.success && data?.order ? { ...orderItem, ...data.order } : orderItem;
+            } catch (e) {
+                return orderItem;
+            }
+        });
+
+        const historyList = (await Promise.all(orderDetailsPromises)).filter(Boolean);
+
+        if (historyList.length === 0) {
+            historyGrid.innerHTML = `<p class="text-xs sm:text-sm text-gray-300 text-center py-6">No purchased numbers found.</p>`;
+            return;
+        }
+
+        // Automatically fire persistent background polling for any active orders found
+        historyList.forEach(item => {
+            const statusLower = String(item.status || 'pending').toLowerCase();
+            const isActive = statusLower === 'active' || statusLower === 'pending' || statusLower === 'waiting for sms...';
+            const orderId = item.id || item._id;
+            
+            if (isActive && orderId && typeof startPersistentSmsPolling === 'function') {
+                startPersistentSmsPolling(orderId);
+            }
+        });
+
+        const sortedHistory = historyList.sort((a, b) => {
+            const statusA = String(a.status || '').toLowerCase();
+            const statusB = String(b.status || '').toLowerCase();
+
+            const isActiveA = statusA === 'active' || statusA === 'pending' || statusA === 'waiting for sms...' ? 0 : 1;
+            const isActiveB = statusB === 'active' || statusB === 'pending' || statusB === 'waiting for sms...' ? 0 : 1;
+
+            return isActiveA - isActiveB;
+        });
+
+        const getCountryFlagEmoji = (countryCode) => {
+            if (!countryCode || countryCode.length !== 2) return '🌐';
+            return countryCode.toUpperCase().replace(/./g, char => 
+                String.fromCodePoint(127397 + char.charCodeAt(0))
+            );
+        };
+
+        historyGrid.innerHTML = sortedHistory.map(item => {
+            const statusLower = String(item.status || 'pending').toLowerCase();
+            const isActive = statusLower === 'active' || statusLower === 'pending' || statusLower === 'waiting for sms...';
+            
+            const badgeClass = isActive 
+                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                : 'bg-gray-700/50 text-gray-400 border border-gray-600/30';
+            
+            const orderId = item.id || item._id;
+            const displayPhoneNumber = item.phoneNumber || item.number || item.targetNumber || 'N/A';
+            const displayServiceName = item.serviceName || item.serviceCode || 'Service';
+            
+            const displayCountryName = item.countryName || item.country || 'Selected Country';
+            const displayCountryShortCode = (item.countryCode || item.shortCode || '').toUpperCase();
+            
+            // Fixed Flag Resolver
+            const flagUrl = item.countryFlag || item.flag || item.flagUrl || item.icon || '';
+            const flagElement = flagUrl && flagUrl.startsWith('http')
+                ? `<img src="${flagUrl}" class="w-4 h-3 object-cover rounded-2xs inline-block shrink-0 shadow-2xs" alt="flag">`
+                : `<span class="text-xs">${getCountryFlagEmoji(displayCountryShortCode || (displayCountryName.length === 2 ? displayCountryName : ''))}</span>`;
+
+            // Robust Expiry Calculation
+            let expirationTime;
+            const baseCreatedAt = item.createdAt ? new Date(item.createdAt).getTime() : Date.now();
+            
+            if (item.expiresAt) {
+                expirationTime = new Date(item.expiresAt).getTime();
+            } else if (item.expiresIn) {
+                expirationTime = baseCreatedAt + (Number(item.expiresIn) * 1000);
+            } else {
+                expirationTime = baseCreatedAt + (5 * 60 * 1000);
+            }
+
+            const timeLeft = Math.max(0, Math.floor((expirationTime - Date.now()) / 1000));
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            const formattedTimeLeft = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            return `
+                <div class="bg-brandBlue-900/60 p-3.5 sm:p-4 rounded-xl border border-brandBlue-700/40 space-y-2.5 transition hover:border-brandBlue-500" id="persistent-order-${orderId}">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <div class="flex items-center space-x-2">
+                                <p class="text-[11px] sm:text-xs text-brandBlue-200 font-semibold truncate">${displayServiceName}</p>
+                                ${isActive ? `
+                                    <span class="text-[9px] sm:text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-full border border-amber-500/30 font-mono flex items-center shrink-0">
+                                        <i class="fa-regular fa-clock mr-1"></i> <span class="order-timer" data-expiration="${expirationTime}">${formattedTimeLeft}</span>
+                                    </span>
+                                ` : ''}
+                            </div>
+                            <div class="flex items-center space-x-2 mt-0.5">
+                                <p class="text-sm sm:text-lg font-bold tracking-wide text-white truncate">${displayPhoneNumber}</p>
+                                ${displayPhoneNumber !== 'N/A' ? `
+                                    <button onclick="navigator.clipboard.writeText('${displayPhoneNumber}'); const btn = this; btn.innerHTML = '<i class=\\'fa-solid fa-check text-emerald-400\\'></i>'; setTimeout(() => btn.innerHTML = '<i class=\\'fa-regular fa-copy\\'></i>', 1500);" class="p-1.5 bg-brandBlue-800 hover:bg-brandBlue-700 text-gray-300 hover:text-white rounded-lg text-xs transition border border-brandBlue-700/50 shrink-0" title="Copy Number">
+                                        <i class="fa-regular fa-copy"></i>
+                                    </button>
+                                ` : ''}
+                            </div>
+                            <p class="text-[10px] sm:text-[11px] text-gray-300 mt-1 flex items-center space-x-1.5">
+                                ${flagElement}
+                                <span class="font-medium text-white truncate">${displayCountryName}</span>
+                                ${displayCountryShortCode ? `<span class="text-gray-400 font-mono text-[9px] sm:text-[10px] bg-brandBlue-950 px-1 py-0.5 rounded border border-brandBlue-700/40 shrink-0">(${displayCountryShortCode})</span>` : ''}
+                            </p>
+                        </div>
+                        <div class="shrink-0">
+                            <span class="px-2.5 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs font-bold rounded-full uppercase tracking-wider ${badgeClass}">
+                                ${item.status || 'pending'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="bg-brandBlue-950/60 border border-brandBlue-700/50 p-2 sm:p-2.5 rounded-lg flex items-center justify-between">
+                        <span class="text-[11px] sm:text-xs text-gray-300 font-medium">OTP Code:</span>
+                        <span class="text-xs sm:text-sm font-mono font-bold text-emerald-400 tracking-wider">${item.smsCode || 'Waiting for code...'}</span>
+                    </div>
+
+                    ${isActive ? `
+                        <div class="flex items-center justify-end space-x-1.5 pt-1">
+                            <button onclick="manualRecheckSms('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-brandBlue-800 hover:bg-brandBlue-700 text-gray-200 border border-brandBlue-600/40 text-[11px] sm:text-xs font-semibold rounded-lg transition">
+                                <i class="fa-solid fa-rotate mr-1"></i> Check Status
+                            </button>
+                            <button onclick="cancelActiveOrder('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-[11px] sm:text-xs font-semibold rounded-lg transition">
+                                <i class="fa-solid fa-ban mr-1"></i> Cancel
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+
+        if (window.historyTimerInterval) clearInterval(window.historyTimerInterval);
+        window.historyTimerInterval = setInterval(() => {
+            const timerElements = document.querySelectorAll('.order-timer');
+            timerElements.forEach(el => {
+                const expTime = parseInt(el.getAttribute('data-expiration'), 10);
+                const remaining = Math.max(0, Math.floor((expTime - Date.now()) / 1000));
+                const m = Math.floor(remaining / 60);
+                const s = remaining % 60;
+                el.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                if (remaining <= 0) {
+                    el.textContent = "Expired";
+                }
+            });
+        }, 1000);
+
+    } catch (err) {
+        console.error("Failed to load history:", err);
+        historyGrid.innerHTML = `<p class="text-xs sm:text-sm text-red-400 text-center py-6">Failed to load history records.</p>`;
     }
 }
 

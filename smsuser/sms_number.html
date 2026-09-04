@@ -771,7 +771,6 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
         });
         isConfirmed = confirmed.isConfirmed;
     } else {
-        // Native fallback dialog if SweetAlert2 script didn't load
         const serviceName = serviceObj?.name || serviceCode;
         const countryName = countryObj?.countryName || countryObj?.name || 'Selected Country';
         isConfirmed = confirm(`CONFIRM PURCHASE\n\nService: ${serviceName} (${activeRank})\nCountry: ${countryName}\nPrice: ₦${itemPrice.toLocaleString()}\nBalance: ₦${currentBalance.toLocaleString()}`);
@@ -815,34 +814,13 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
         
         const res = response.data || response;
 
-      if (res && res.success) {
-            const realMobileNumber = res.phoneNumber || res.number || res.targetNumber || res.order?.phoneNumber || res.order?.targetNumber || res.order?.number || res.data?.phoneNumber || '';
+        if (res && res.success) {
             const orderId = res.order?._id || res.order?.id || res.orderId;
             
-            let activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
-
-            const orderDurationMs = (res.order?.expiresIn || res.expiresIn || 300) * 1000; // Fallback to 300s (5 mins) if not provided
-            const serverCreatedAt = res.order?.createdAt ? new Date(res.order.createdAt).getTime() : Date.now();
-            const expirationTime = serverCreatedAt + orderDurationMs;
-
-           const newActiveOrder = {
-    id: orderId,
-    _id: orderId,
-    phoneNumber: realMobileNumber,
-    serviceName: serviceObj?.name || res.order?.serviceName || serviceCode,
-    countryName: countryObj?.countryName || countryObj?.name || res.order?.countryName || 'Selected Country',
-    countryFlag: countryObj?.flag || countryObj?.flagUrl || countryObj?.icon || '',
-    status: res.order?.status || 'pending',
-    smsCode: res.order?.smsCode || null,
-    createdAt: serverCreatedAt,
-    expiresAt: expirationTime // Store exact provider expiration timestamp
-};
-
-            activeOrders = [newActiveOrder, ...activeOrders.filter(o => o.id !== orderId && o._id !== orderId)];
-            localStorage.setItem('sms_active_orders', JSON.stringify(activeOrders));
+            // Database handles the active order persistence now. No localStorage caching needed.
 
             if (typeof renderActiveOrdersDashboard === 'function') renderActiveOrdersDashboard();
-            if (typeof startPersistentSmsPolling === 'function') startPersistentSmsPolling(orderId);
+            if (typeof startPersistentSmsPolling === 'function' && orderId) startPersistentSmsPolling(orderId);
             if (typeof fetchUserProfile === 'function') fetchUserProfile();
 
             if (typeof Swal !== 'undefined') {
@@ -855,7 +833,12 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
                 });
             }
 
-            switchTab('History');
+            // Automatically triggers fetchUserHistory() which pulls fresh from MongoDB
+            if (typeof switchTab === 'function') {
+                switchTab('History');
+            } else if (typeof fetchUserHistory === 'function') {
+                fetchUserHistory();
+            }
         
         } else { 
             if (typeof Swal !== 'undefined') {

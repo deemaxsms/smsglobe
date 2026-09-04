@@ -152,9 +152,11 @@
     const btn = document.getElementById('mobile-menu-btn');
     const menu = document.getElementById('mobile-menu');
 
-    btn.addEventListener('click', () => {
-      menu.classList.toggle('hidden');
-    });
+    if (btn && menu) {
+        btn.addEventListener('click', () => {
+          menu.classList.toggle('hidden');
+        });
+    }
 
     const SMSGlobeApp = (() => {
       const API_BASE_URL = '/api';
@@ -162,29 +164,24 @@
       let currentMode = 'activation';
       let services = [];
       let expandedServiceCode = null;
-      let serviceCountriesCache = {}; 
-      let userBalance = 0;
-      let userBonusBalance = 0;
-      let pollInterval = null;
-      let activePollIntervals = {};
-      let selectedServiceCode = null;
       let selectedCountryId = null;
+      let userBalance = 0;
 
-  const PRIORITY_ICONS = {
-  'wa': 'https://api.iconify.design/logos:whatsapp-icon.svg',
-  'tg': 'https://api.iconify.design/logos:telegram.svg',
-  'gg': 'https://api.iconify.design/logos:google-icon.svg',
-  'fb': 'https://api.iconify.design/logos:facebook.svg',
-  'ig': 'https://api.iconify.design/logos:instagram-icon.svg',
-  'tw': 'https://api.iconify.design/logos:twitter.svg',
-  'nf': 'https://api.iconify.design/logos:netflix-icon.svg',
-  'oi': 'https://api.iconify.design/simple-icons:tinder.svg',
-  'ub': 'https://api.iconify.design/logos:uber.svg',
-  'ms': 'https://api.iconify.design/logos:microsoft-icon.svg',
-  'ds': 'https://api.iconify.design/logos:discord-icon.svg',
-  'wx': 'https://api.iconify.design/logos:apple.svg'
-};
-    
+      const PRIORITY_ICONS = {
+        'wa': 'https://api.iconify.design/logos:whatsapp-icon.svg',
+        'tg': 'https://api.iconify.design/logos:telegram.svg',
+        'gg': 'https://api.iconify.design/logos:google-icon.svg',
+        'fb': 'https://api.iconify.design/logos:facebook.svg',
+        'ig': 'https://api.iconify.design/logos:instagram-icon.svg',
+        'tw': 'https://api.iconify.design/logos:twitter.svg',
+        'nf': 'https://api.iconify.design/logos:netflix-icon.svg',
+        'oi': 'https://api.iconify.design/simple-icons:tinder.svg',
+        'ub': 'https://api.iconify.design/logos:uber.svg',
+        'ms': 'https://api.iconify.design/logos:microsoft-icon.svg',
+        'ds': 'https://api.iconify.design/logos:discord-icon.svg',
+        'wx': 'https://api.iconify.design/logos:apple.svg'
+      };
+        
       function logout() {
         localStorage.removeItem('userToken');
         localStorage.removeItem('dashboard_cache');
@@ -223,7 +220,6 @@
 
             if (data.success) {
                 const userData = data.user || data;
-                
                 userBalance = parseFloat(userData.balance || 0); 
                 const bonusBalance = parseFloat(userData.bonusBalance || 0); 
                 
@@ -252,178 +248,160 @@
       }
 
       async function fetchServices() {
-  const grid = document.getElementById('services-grid');
-  if (grid) {
-    grid.innerHTML = '<div class="col-span-8 text-center py-4 text-xs text-brandBlue-200"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading services...</div>';
-  }
+        const grid = document.getElementById('services-grid');
+        if (grid) {
+          grid.innerHTML = '<div class="col-span-8 text-center py-4 text-xs text-brandBlue-200"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading services...</div>';
+        }
 
-  try {
-    const { res, data } = await safeFetch(`${API_BASE_URL}/services`);
-    if (data.success && Array.isArray(data.services)) {
-      services = data.services;
-      renderServices(services);
-    } else {
-      throw new Error(data.message || "Invalid services payload format");
-    }
-  } catch (err) {
-    console.error("Failed to load services:", err);
-    if (grid) {
-      grid.innerHTML = '<p class="text-xs text-red-300 col-span-8 text-center py-4">Failed to load services catalog</p>';
-    }
-  }
-}
-
-function renderServices(servicesToRender) {
-  const grid = document.getElementById('services-grid');
-  if (!grid) return;
-
-  if (!servicesToRender || servicesToRender.length === 0) {
-    grid.innerHTML = '<p class="text-xs text-gray-300 col-span-8 text-center py-4">No services found</p>';
-    return;
-  }
-
-  grid.innerHTML = servicesToRender.map(service => {
-    const code = (service.code || '').toLowerCase();
-    
-    const iconUrl = PRIORITY_ICONS[code] || `/api/service-image?id=${encodeURIComponent(code)}`;
-    const fallbackLetter = (service.name || code || 'S').charAt(0).toUpperCase();
-    const isSelected = expandedServiceCode === code;
-    const borderClass = isSelected ? 'border-brandBlue-400 bg-brandBlue-700' : 'border-brandBlue-700/50 bg-brandBlue-800/60';
-
-    return `
-      <button type="button" 
-              onclick="SMSGlobeApp.selectService('${code}')" 
-              class="flex flex-col items-center justify-center p-2 ${borderClass} hover:bg-brandBlue-700 rounded-lg border transition group relative h-14 shadow-sm"
-              title="${service.name}">
-        <div class="w-9 h-9 flex items-center justify-center relative">
-          <img src="${iconUrl}" alt="${service.name}" 
-               class="w-full h-full object-contain group-hover:scale-110 transition duration-200"
-               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-          <div class="w-9 h-9 rounded bg-brandBlue-600 text-white text-xs font-bold items-center justify-center hidden">
-            ${fallbackLetter}
-          </div>
-        </div>
-      </button>
-    `;
-  }).join('');
-}
-
-function selectService(code) {
-  expandedServiceCode = code;
-  // Re-render to update the selection state visual highlight
-  renderServices(services);
-  
-  // Trigger country fetching for this service if function exists
-  if (typeof fetchCountries === 'function') {
-    fetchCountries(code);
-  }
-}
-
-async function selectService(serviceCode) {
-  selectedServiceCode = serviceCode;
-  
-  // Highlight the selected service card visually in the grid
-  const buttons = document.querySelectorAll('#services-grid button');
-  buttons.forEach(btn => {
-    if (btn.getAttribute('onclick')?.includes(serviceCode)) {
-      btn.className = btn.className.replace('border-brandBlue-700/50 bg-brandBlue-800/60', 'border-brandBlue-400 bg-brandBlue-700');
-    } else {
-      btn.className = btn.className.replace('border-brandBlue-400 bg-brandBlue-700', 'border-brandBlue-700/50 bg-brandBlue-800/60');
-    }
-  });
-
-  const countryGrid = document.getElementById('countries-grid');
-  if (countryGrid) {
-    countryGrid.innerHTML = '<p class="text-xs text-gray-300 col-span-full text-center py-4">Loading countries and prices...</p>';
-  }
-
-  try {
-    // Call your backend endpoint (adjust the route path if your router maps it differently, e.g., /api/get-countries)
-    const response = await fetch(`/api/countries?service=${encodeURIComponent(serviceCode)}`);
-    const data = await response.json();
-
-    if (data.success && data.countries) {
-      renderCountries(data.countries);
-    } else {
-      if (countryGrid) {
-        countryGrid.innerHTML = '<p class="text-xs text-gray-300 col-span-full text-center py-4">No countries available for this service.</p>';
+        try {
+          const { res, data } = await safeFetch(`${API_BASE_URL}/services`);
+          if (data.success && Array.isArray(data.services)) {
+            services = data.services;
+            renderServices(services);
+          } else {
+            throw new Error(data.message || "Invalid services payload format");
+          }
+        } catch (err) {
+          console.error("Failed to load services:", err);
+          if (grid) {
+            grid.innerHTML = '<p class="text-xs text-red-300 col-span-8 text-center py-4">Failed to load services catalog</p>';
+          }
+        }
       }
-    }
-  } catch (err) {
-    console.error('Failed to load countries:', err);
-    if (countryGrid) {
-      countryGrid.innerHTML = '<p class="text-xs text-red-400 col-span-full text-center py-4">Error loading available countries.</p>';
-    }
-  }
-}
 
-function renderCountries(countriesList) {
-  const grid = document.getElementById('countries-grid');
-  if (!grid) return;
+      function renderServices(servicesToRender) {
+        const grid = document.getElementById('services-grid');
+        if (!grid) return;
 
-  if (!countriesList || countriesList.length === 0) {
-    grid.innerHTML = '<p class="text-xs text-gray-300 col-span-full text-center py-4">No active stock for this service.</p>';
-    return;
-  }
+        if (!servicesToRender || servicesToRender.length === 0) {
+          grid.innerHTML = '<p class="text-xs text-gray-300 col-span-8 text-center py-4">No services found</p>';
+          return;
+        }
 
-  grid.innerHTML = countriesList.map(country => {
-    const isSelected = selectedCountryId === country.countryId;
-    const borderClass = isSelected ? 'border-brandBlue-400 bg-brandBlue-700' : 'border-brandBlue-700/50 bg-brandBlue-800/60';
+        grid.innerHTML = servicesToRender.map(service => {
+          const code = (service.code || '').toLowerCase();
+          const iconUrl = PRIORITY_ICONS[code] || `/api/service-image?id=${encodeURIComponent(code)}`;
+          const fallbackLetter = (service.name || code || 'S').charAt(0).toUpperCase();
+          const isSelected = expandedServiceCode === code;
+          const borderClass = isSelected ? 'border-brandBlue-400 bg-brandBlue-700' : 'border-brandBlue-700/50 bg-brandBlue-800/60';
 
-    return `
-      <button type="button" 
-              onclick="selectCountry('${country.countryId}', '${country.providerId}')" 
-              class="flex items-center justify-between p-3 ${borderClass} hover:bg-brandBlue-700 rounded-lg border transition group shadow-sm text-left">
-        <div class="flex items-center space-x-3">
-          <img src="${country.flagUrl}" alt="${country.countryName}" class="w-6 h-4 object-cover rounded shadow-sm">
-          <div>
-            <div class="text-xs font-semibold text-white truncate max-w-[110px]">${country.countryName}</div>
-            <div class="text-[10px] text-gray-300">Stock: ${country.stock}</div>
-          </div>
-        </div>
-        <div class="text-right">
-          <div class="text-xs font-bold text-brandBlue-300">${country.price.symbol}${country.price.amount.toLocaleString()}</div>
-          <div class="text-[9px] text-emerald-400 font-medium">${country.rank || 'Best Price'}</div>
-        </div>
-      </button>
-    `;
-  }).join('');
-}
+          return `
+            <button type="button" 
+                    onclick="SMSGlobeApp.selectService('${code}')" 
+                    class="flex flex-col items-center justify-center p-2 ${borderClass} hover:bg-brandBlue-700 rounded-lg border transition group relative h-14 shadow-sm"
+                    title="${service.name}">
+              <div class="w-9 h-9 flex items-center justify-center relative">
+                <img src="${iconUrl}" alt="${service.name}" 
+                     class="w-full h-full object-contain group-hover:scale-110 transition duration-200"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="w-9 h-9 rounded bg-brandBlue-600 text-white text-xs font-bold items-center justify-center hidden">
+                  ${fallbackLetter}
+                </div>
+              </div>
+            </button>
+          `;
+        }).join('');
+      }
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Existing initializers
-  fetchUserProfile();
-  fetchServices();
-
-  // Service Live Search Filter
-  const serviceSearchInput = document.getElementById('service-search-input');
-  if (serviceSearchInput) {
-    serviceSearchInput.addEventListener('input', (e) => {
-      const term = e.target.value.toLowerCase().trim();
-      if (!term) {
+      async function selectService(serviceCode) {
+        expandedServiceCode = serviceCode;
+        selectedServiceCode = serviceCode;
+        
         renderServices(services);
-        return;
+
+        const countryGrid = document.getElementById('countries-grid');
+        if (countryGrid) {
+          countryGrid.innerHTML = '<p class="text-xs text-gray-300 col-span-full text-center py-4"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading countries and prices...</p>';
+        }
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/countries?service=${encodeURIComponent(serviceCode)}`);
+          const data = await response.json();
+
+          if (data.success && data.countries) {
+            renderCountries(data.countries);
+          } else {
+            if (countryGrid) {
+              countryGrid.innerHTML = '<p class="text-xs text-gray-300 col-span-full text-center py-4">No countries available for this service.</p>';
+            }
+          }
+        } catch (err) {
+          console.error('Failed to load countries:', err);
+          if (countryGrid) {
+            countryGrid.innerHTML = '<p class="text-xs text-red-400 col-span-full text-center py-4">Error loading available countries.</p>';
+          }
+        }
       }
-      const filtered = services.filter(s => 
-        (s.name && s.name.toLowerCase().includes(term)) || 
-        (s.code && s.code.toLowerCase().includes(term))
-      );
-      renderServices(filtered);
-    });
-  }
-});
-      // Initialize user profile on load
+
+      function renderCountries(countriesList) {
+        const grid = document.getElementById('countries-grid');
+        if (!grid) return;
+
+        if (!countriesList || countriesList.length === 0) {
+          grid.innerHTML = '<p class="text-xs text-gray-300 col-span-full text-center py-4">No active stock for this service.</p>';
+          return;
+        }
+
+        grid.innerHTML = countriesList.map(country => {
+          const isSelected = selectedCountryId === country.countryId;
+          const borderClass = isSelected ? 'border-brandBlue-400 bg-brandBlue-700' : 'border-brandBlue-700/50 bg-brandBlue-800/60';
+
+          return `
+            <button type="button" 
+                    onclick="SMSGlobeApp.selectCountry('${country.countryId}', '${country.providerId}')" 
+                    class="flex items-center justify-between p-3 ${borderClass} hover:bg-brandBlue-700 rounded-lg border transition group shadow-sm text-left">
+              <div class="flex items-center space-x-3">
+                <img src="${country.flagUrl}" alt="${country.countryName}" class="w-6 h-4 object-cover rounded shadow-sm">
+                <div>
+                  <div class="text-xs font-semibold text-white truncate max-w-[110px]">${country.countryName}</div>
+                  <div class="text-[10px] text-gray-300">Stock: ${country.stock}</div>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="text-xs font-bold text-brandBlue-300">${country.price.symbol}${country.price.amount.toLocaleString()}</div>
+                <div class="text-[9px] text-emerald-400 font-medium">${country.rank || 'Best Price'}</div>
+              </div>
+            </button>
+          `;
+        }).join('');
+      }
+
+      function selectCountry(countryId, providerId) {
+        selectedCountryId = countryId;
+        // Re-render countries to show active selection highlight
+        if (services.length > 0 && expandedServiceCode) {
+          // Keep current view or trigger next step if needed
+        }
+      }
+
       document.addEventListener('DOMContentLoaded', () => {
         fetchUserProfile();
+        fetchServices();
+
+        const serviceSearchInput = document.getElementById('service-search-input');
+        if (serviceSearchInput) {
+          serviceSearchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase().trim();
+            if (!term) {
+              renderServices(services);
+              return;
+            }
+            const filtered = services.filter(s => 
+              (s.name && s.name.toLowerCase().includes(term)) || 
+              (s.code && s.code.toLowerCase().includes(term))
+            );
+            renderServices(filtered);
+          });
+        }
       });
 
-     return {
-  fetchUserProfile,
-  fetchServices,
-  selectService
+      return {
+        fetchUserProfile,
+        fetchServices,
+        selectService,
+        selectCountry
       };
     })();
   </script>
-
 </body>
 </html>

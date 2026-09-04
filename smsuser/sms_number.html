@@ -66,8 +66,8 @@
     </div>
 
     <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-gray-100 px-4 pt-2 pb-4 space-y-2">
-      <a href="#" class="block py-2 text-gray-600 hover:text-brandBlue-700 font-medium">Histories</a>
-      <a href="#" class="block py-2 text-gray-600 hover:text-brandBlue-700 font-medium">Statistic</a>
+      <a href="user_dashboard.html" class="block py-2 text-gray-600 hover:text-brandBlue-700 font-medium">Dashboard</a>
+      <a href="user_profile.html" class="block py-2 text-gray-600 hover:text-brandBlue-700 font-medium">Profile</a>
       <a href="#" class="block py-2 text-gray-600 hover:text-brandBlue-700 font-medium">Set up max/min price</a>
       <a href="#" class="block py-2 text-gray-600 hover:text-brandBlue-700 font-medium">Purchase of email</a>
       <a href="#" class="block py-2 text-gray-600 hover:text-brandBlue-700 font-medium">More</a>
@@ -865,7 +865,7 @@ window.manualRecheckSms = async function(orderId) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Could not connect to server to recheck SMS.' });
     }
 };
-// 3. Main History Rendering Function with Persistent Polling Support
+// 3. Main History Rendering Function with Persistent Polling & Mobile Optimization
 async function fetchUserHistory() {
     const historyGrid = document.getElementById('history-grid');
     if (!historyGrid) return;
@@ -884,7 +884,7 @@ async function fetchUserHistory() {
         let activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
         
         if (activeOrders.length === 0) {
-            historyGrid.innerHTML = `<p class="text-sm text-gray-300 text-center py-6">No purchased numbers found.</p>`;
+            historyGrid.innerHTML = `<p class="text-xs sm:text-sm text-gray-300 text-center py-6">No purchased numbers found.</p>`;
             return;
         }
 
@@ -907,7 +907,7 @@ async function fetchUserHistory() {
         const historyList = (await Promise.all(orderDetailsPromises)).filter(Boolean);
 
         if (historyList.length === 0) {
-            historyGrid.innerHTML = `<p class="text-sm text-gray-300 text-center py-6">No purchased numbers found.</p>`;
+            historyGrid.innerHTML = `<p class="text-xs sm:text-sm text-gray-300 text-center py-6">No purchased numbers found.</p>`;
             return;
         }
 
@@ -953,7 +953,12 @@ async function fetchUserHistory() {
             
             const displayCountryName = item.countryName || item.country || 'Selected Country';
             const displayCountryShortCode = (item.countryCode || item.shortCode || '').toUpperCase();
-            const flagEmoji = item.countryFlag || getCountryFlagEmoji(displayCountryShortCode || (displayCountryName.length === 2 ? displayCountryName : ''));
+            
+            // Fixed Flag Resolver: Check if flag URL exists and build proper <img> tag, else fallback to Emoji
+            const flagUrl = item.countryFlag || item.flag || item.flagUrl || item.icon || '';
+            const flagElement = flagUrl && flagUrl.startsWith('http')
+                ? `<img src="${flagUrl}" class="w-4 h-3 object-cover rounded-2xs inline-block shrink-0 shadow-2xs" alt="flag">`
+                : `<span class="text-xs">${getCountryFlagEmoji(displayCountryShortCode || (displayCountryName.length === 2 ? displayCountryName : ''))}</span>`;
 
             // Robust Expiry Calculation
             let expirationTime;
@@ -973,50 +978,50 @@ async function fetchUserHistory() {
             const formattedTimeLeft = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
             return `
-                <div class="bg-brandBlue-900/60 p-4 rounded-xl border border-brandBlue-700/40 space-y-3 transition hover:border-brandBlue-500" id="persistent-order-${orderId}">
-                    <div class="flex items-center justify-between">
-                        <div>
+                <div class="bg-brandBlue-900/60 p-3.5 sm:p-4 rounded-xl border border-brandBlue-700/40 space-y-2.5 transition hover:border-brandBlue-500" id="persistent-order-${orderId}">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
                             <div class="flex items-center space-x-2">
-                                <p class="text-xs text-brandBlue-200 font-semibold">${displayServiceName}</p>
+                                <p class-[11px] sm:text-xs text-brandBlue-200 font-semibold truncate">${displayServiceName}</p>
                                 ${isActive ? `
-                                    <span class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30 font-mono flex items-center">
+                                    <span class="text-[9px] sm:text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-full border border-amber-500/30 font-mono flex items-center shrink-0">
                                         <i class="fa-regular fa-clock mr-1"></i> <span class="order-timer" data-expiration="${expirationTime}">${formattedTimeLeft}</span>
                                     </span>
                                 ` : ''}
                             </div>
                             <div class="flex items-center space-x-2 mt-0.5">
-                                <p class="text-lg font-bold tracking-wide text-white">${displayPhoneNumber}</p>
+                                <p class="text-sm sm:text-lg font-bold tracking-wide text-white truncate">${displayPhoneNumber}</p>
                                 ${displayPhoneNumber !== 'N/A' ? `
-                                    <button onclick="navigator.clipboard.writeText('${displayPhoneNumber}'); const btn = this; btn.innerHTML = '<i class=\\'fa-solid fa-check text-emerald-400\\'></i>'; setTimeout(() => btn.innerHTML = '<i class=\\'fa-regular fa-copy\\'></i>', 1500);" class="p-1.5 bg-brandBlue-800 hover:bg-brandBlue-700 text-gray-300 hover:text-white rounded-lg text-xs transition border border-brandBlue-700/50" title="Copy Number">
+                                    <button onclick="navigator.clipboard.writeText('${displayPhoneNumber}'); const btn = this; btn.innerHTML = '<i class=\\'fa-solid fa-check text-emerald-400\\'></i>'; setTimeout(() => btn.innerHTML = '<i class=\\'fa-regular fa-copy\\'></i>', 1500);" class="p-1.5 bg-brandBlue-800 hover:bg-brandBlue-700 text-gray-300 hover:text-white rounded-lg text-xs transition border border-brandBlue-700/50 shrink-0" title="Copy Number">
                                         <i class="fa-regular fa-copy"></i>
                                     </button>
                                 ` : ''}
                             </div>
-                            <p class="text-[11px] text-gray-300 mt-1 flex items-center space-x-1.5">
-                                <span class="text-sm" title="${displayCountryName}">${flagEmoji}</span>
-                                <span class="font-medium text-white">${displayCountryName}</span>
-                                ${displayCountryShortCode ? `<span class="text-gray-400 font-mono text-[10px] bg-brandBlue-950 px-1.5 py-0.5 rounded border border-brandBlue-700/40">(${displayCountryShortCode})</span>` : ''}
+                            <p class-[10px] sm:text-[11px] text-gray-300 mt-1 flex items-center space-x-1.5">
+                                ${flagElement}
+                                <span class="font-medium text-white truncate">${displayCountryName}</span>
+                                ${displayCountryShortCode ? `<span class="text-gray-400 font-mono text-[9px] sm:text-[10px] bg-brandBlue-950 px-1 py-0.5 rounded border border-brandBlue-700/40 shrink-0">(${displayCountryShortCode})</span>` : ''}
                             </p>
                         </div>
-                        <div>
-                            <span class="px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider ${badgeClass}">
+                        <div class="shrink-0">
+                            <span class="px-2.5 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs font-bold rounded-full uppercase tracking-wider ${badgeClass}">
                                 ${item.status || 'pending'}
                             </span>
                         </div>
                     </div>
 
-                    <div class="bg-brandBlue-950/60 border border-brandBlue-700/50 p-2.5 rounded-lg flex items-center justify-between">
-                        <span class="text-xs text-gray-300 font-medium">OTP Code:</span>
-                        <span class="text-sm font-mono font-bold text-emerald-400 tracking-wider">${item.smsCode || 'Waiting for code...'}</span>
+                    <div class="bg-brandBlue-950/60 border border-brandBlue-700/50 p-2 sm:p-2.5 rounded-lg flex items-center justify-between">
+                        <span class="text-[11px] sm:text-xs text-gray-300 font-medium">OTP Code:</span>
+                        <span class="text-xs sm:text-sm font-mono font-bold text-emerald-400 tracking-wider">${item.smsCode || 'Waiting for code...'}</span>
                     </div>
 
                     ${isActive ? `
-                        <div class="flex items-center justify-end space-x-2 pt-1">
-                            <button onclick="manualRecheckSms('${orderId}')" class="px-3 py-1.5 bg-brandBlue-800 hover:bg-brandBlue-700 text-gray-200 border border-brandBlue-600/40 text-xs font-semibold rounded-lg transition">
+                        <div class="flex items-center justify-end space-x-1.5 pt-1">
+                            <button onclick="manualRecheckSms('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-brandBlue-800 hover:bg-brandBlue-700 text-gray-200 border border-brandBlue-600/40 text-[11px] sm:text-xs font-semibold rounded-lg transition">
                                 <i class="fa-solid fa-rotate mr-1"></i> Check Status
                             </button>
-                            <button onclick="cancelActiveOrder('${orderId}')" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-xs font-semibold rounded-lg transition">
-                                <i class="fa-solid fa-ban mr-1"></i> Cancel Order
+                            <button onclick="cancelActiveOrder('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-[11px] sm:text-xs font-semibold rounded-lg transition">
+                                <i class="fa-solid fa-ban mr-1"></i> Cancel
                             </button>
                         </div>
                     ` : ''}
@@ -1041,7 +1046,7 @@ async function fetchUserHistory() {
 
     } catch (err) {
         console.error("Failed to load history:", err);
-        historyGrid.innerHTML = `<p class="text-sm text-red-400 text-center py-6">Failed to load history records.</p>`;
+        historyGrid.innerHTML = `<p class="text-xs sm:text-sm text-red-400 text-center py-6">Failed to load history records.</p>`;
     }
 }
 

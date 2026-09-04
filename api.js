@@ -3887,6 +3887,9 @@ async function handleGetCountries(req, res) {
                         return String(b.providerId).localeCompare(String(a.providerId), undefined, { numeric: true });
                     });
 
+                    // Limit available prices to ONLY the two lowest pricing options
+                    allAvailablePrices = allAvailablePrices.slice(0, 2);
+
                     formattedCountries.push({
                         countryId: String(countryKey),
                         countryName: resolvedName,

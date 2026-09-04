@@ -308,7 +308,7 @@
         }).join('');
       }
 
-      async function selectService(serviceCode) {
+    async function selectService(serviceCode) {
         console.log("🔍 [DEBUG] Service selected:", serviceCode);
         expandedServiceCode = serviceCode;
         selectedServiceCode = serviceCode;
@@ -323,8 +323,7 @@
           const targetUrl = `${API_BASE_URL}/countries?service=${encodeURIComponent(serviceCode)}`;
           console.log("🌐 [DEBUG] Fetching countries from:", targetUrl);
 
-          const response = await fetch(targetUrl);
-          const data = await response.json();
+          const { res, data } = await safeFetch(targetUrl);
           console.log("📦 [DEBUG] Countries API response data:", data);
 
           if (data.success && data.countries && data.countries.length > 0) {
@@ -342,7 +341,7 @@
           }
         }
       }
-
+      
       function renderCountries(countriesList) {
         const grid = document.getElementById('countries-grid');
         if (!grid) return;

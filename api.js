@@ -522,10 +522,16 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-app.all('/api/:action', async (req, res) => {
+app.all(['/api/:action', '/:action'], async (req, res) => {
     await connectDB();
-    const action = (req.params.action || '').toLowerCase().trim();
-    console.log("Incoming Action:", action, "Method:", req.method);
+    let action = req.params.action;
+    if (!action && req.url) {
+        const parts = req.url.split('?')[0].split('/').filter(Boolean);
+        action = parts[0] === 'api' ? parts[1] : parts[0];
+    }
+    
+    action = (action || '').toLowerCase().trim();
+    console.log("Incoming Action:", action, "Method:", req.method, "URL:", req.url);
 
     switch (action) {
         case 'login': return handleLogin(req, res);
@@ -595,16 +601,17 @@ app.all('/api/:action', async (req, res) => {
      case 'rdp-request-complete': // This matches the fetch URL in your HTML file
     if (req.method === 'POST') return handleCompleteRDPOrder(req, res);
     break; 
-   case 'services':
-        if (req.method === 'GET') return handleGetServicesAndPrices(req, res);
-        break;
+      case 'countries': 
+            if (req.method === 'GET') return handleGetCountries(req, res);
+            break;
+case 'services':
+            if (req.method === 'GET') return handleGetServicesAndPrices(req, res);
+            break;
 
     case 'service-image':
         if (req.method === 'GET') return handleProxyServiceImage(req, res);
         break;
-    case 'countries':
-        if (req.method === 'GET') return handleGetCountries(req, res);
-        break;
+ 
     case 'get-numbers': return handleGetNumbers(req, res);
      case 'get-stock':  return handleGetStock(req, res);
      case 'sms-receive':  return handleSmsReceive(req, res);

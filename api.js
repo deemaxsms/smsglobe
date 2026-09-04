@@ -3790,7 +3790,7 @@ async function handleGetCountries(req, res) {
             }),
             smsBowerClient.get('', { 
                 params: { 
-                    action: 'getPrices',
+                    action: 'getPricesv3', // 👈 Updated to v3 for complete provider/tier breakdown
                     service: cleanServiceCode 
                 } 
             })
@@ -3837,31 +3837,47 @@ async function handleGetCountries(req, res) {
 
                 let allAvailablePrices = [];
 
-                Object.keys(providersObject).forEach(providerKey => {
-                    const tierItem = providersObject[providerKey];
-                    const variants = Array.isArray(tierItem) ? tierItem : [tierItem];
+                // Check if this country object is flat (has direct price/cost) vs nested providers
+                const flatCost = Number(providersObject.price || providersObject.cost || providersObject.value);
+                const flatCount = Number(providersObject.count || providersObject.stock || providersObject.qty || 0);
 
-                    variants.forEach(v => {
-                        const rawCostUsd = Number(v?.price || v?.cost || v?.value || (typeof v === 'number' ? v : 0));
-                        if (rawCostUsd <= 0) return;
+                if (flatCost > 0) {
+                    // Handle flat single-price response structure safely
+                    allAvailablePrices.push({
+                        providerId: String(providersObject.provider_id || countryKey),
+                        count: flatCount,
+                        amount: Number((flatCost * exchangeRateToNgn).toFixed(2)),
+                        rank: 'Standard'
+                    });
+                } else {
+                    // Handle nested provider/tier response structure (v3)
+                    Object.keys(providersObject).forEach(providerKey => {
+                        const tierItem = providersObject[providerKey];
+                        const variants = Array.isArray(tierItem) ? tierItem : [tierItem];
 
-                        const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
-                        const rawRank = v?.rank || v?.tier || providerKey || 'Standard';
-                        const formattedRank = String(rawRank).charAt(0).toUpperCase() + String(rawRank).slice(1).toLowerCase();
+                        variants.forEach(v => {
+                            if (!v || typeof v !== 'object') return;
+                            const rawCostUsd = Number(v?.price || v?.cost || v?.value || 0);
+                            if (rawCostUsd <= 0) return;
 
-                        const rawCount = v?.count ?? v?.stock ?? v?.qty ?? v?.amountAvailable ?? 0;
+                            const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
+                            const rawRank = v?.rank || v?.tier || providerKey || 'Standard';
+                            const formattedRank = String(rawRank).charAt(0).toUpperCase() + String(rawRank).slice(1).toLowerCase();
 
-                        allAvailablePrices.push({
-                            providerId: String(v?.partner_id || v?.provider_id || v?.id || providerKey),
-                            count: rawCount,
-                            amount: baseAmountNgn,
-                            rank: formattedRank
+                            const rawCount = Number(v?.count ?? v?.stock ?? v?.qty ?? v?.amountAvailable ?? 0);
+
+                            allAvailablePrices.push({
+                                providerId: String(v?.partner_id || v?.provider_id || v?.id || providerKey),
+                                count: rawCount,
+                                amount: baseAmountNgn,
+                                rank: formattedRank
+                            });
                         });
                     });
-                });
+                }
 
                 if (allAvailablePrices.length > 0) {
-                    // Sort prices ascending so the cheapest tier is always first
+                    // Sort prices ascending so the lowest price/rank is always first
                     allAvailablePrices.sort((a, b) => a.amount - b.amount);
 
                     formattedCountries.push({
@@ -3873,7 +3889,7 @@ async function handleGetCountries(req, res) {
                             : `https://flagcdn.com/w40/un.png`, 
                         stock: allAvailablePrices[0].count,
                         providerId: allAvailablePrices[0].providerId,
-                        selectedPriceIndex: 0, // 👈 Ensures lowest price tier is selected by default
+                        selectedPriceIndex: 0, // Forces frontend to select the lowest price tier by default
                         price: {
                             amount: allAvailablePrices[0].amount,
                             currency: 'NGN',

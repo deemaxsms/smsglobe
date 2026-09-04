@@ -308,7 +308,7 @@
         }).join('');
       }
 
-    async function selectService(serviceCode) {
+async function selectService(serviceCode) {
         console.log("🔍 [DEBUG] Service selected:", serviceCode);
         expandedServiceCode = serviceCode;
         selectedServiceCode = serviceCode;
@@ -320,16 +320,91 @@
         }
 
         try {
-          const targetUrl = `${API_BASE_URL}/countries?service=${encodeURIComponent(serviceCode)}`;
-          console.log("🌐 [DEBUG] Fetching countries from:", targetUrl);
+          // Check cache first or fetch and process using the robust parsing logic
+          if (!serviceCountriesCache[serviceCode]) {
+            const targetUrl = `${API_BASE_URL}/countries?service=${encodeURIComponent(serviceCode)}`;
+            console.log("🌐 [DEBUG] Fetching countries from:", targetUrl);
 
-          const { res, data } = await safeFetch(targetUrl);
-          console.log("📦 [DEBUG] Countries API response data:", data);
+            const { res, data: result } = await safeFetch(targetUrl);
+            console.log("📦 [DEBUG] Countries API response data:", result);
 
-          if (data.success && data.countries && data.countries.length > 0) {
-            renderCountries(data.countries);
+            if (result.success === false) {
+              throw new Error(result.message || "Failed to load countries");
+            }
+
+            const rawInput = result.countries || result.data || result;
+            let list = [];
+
+            if (Array.isArray(rawInput)) {
+              list = rawInput;
+            } else if (typeof rawInput === 'object' && rawInput !== null) {
+              list = Object.entries(rawInput).map(([k, v]) => ({ countryId: k, ...v }));
+            }
+
+            const countryMap = {};
+            list.forEach(item => {
+              const cId = String(item.countryId || item.id || item.code || '');
+              if (!cId) return;
+
+              const cName = item.countryName || item.name || `Country ${cId}`;
+              const cCode = (item.code || (cId.length === 2 ? cId : 'un')).toLowerCase();
+              const rawPrice = item.price?.amount || item.price || item.sellingPrice || 1400;
+              const currencySymbol = item.price?.symbol || '₦';
+              const rank = item.rank || 'Best Price';
+              const stock = item.stock || item.count || 'In Stock';
+              const flagUrl = item.flagUrl || `https://flagcdn.com/w40/${cCode}.png`;
+
+              if (!countryMap[cId]) {
+                countryMap[cId] = {
+                  countryId: cId,
+                  countryName: cName,
+                  code: cCode,
+                  flagUrl: flagUrl,
+                  stock: stock,
+                  rank: rank,
+                  providerId: item.providerId || '',
+                  price: {
+                    amount: Number(rawPrice),
+                    symbol: currencySymbol
+                  },
+                  availablePrices: []
+                };
+              }
+
+              countryMap[cId].availablePrices.push({
+                amount: Number(rawPrice),
+                symbol: currencySymbol,
+                rank: rank,
+                stock: stock,
+                providerId: item.providerId || ''
+              });
+            });
+
+            // Sort available prices and map to processed list
+            const processedCountries = Object.values(countryMap).map(country => {
+              country.availablePrices.sort((a, b) => a.amount - b.amount);
+              // Assign lowest price to top level for renderCountries compatibility
+              country.price = country.availablePrices[0];
+              return country;
+            });
+
+            // Sort countries by lowest price ascending
+            processedCountries.sort((a, b) => {
+              const lowestA = a.availablePrices[0]?.amount || 0;
+              const lowestB = b.availablePrices[0]?.amount || 0;
+              return lowestA - lowestB;
+            });
+
+            serviceCountriesCache[serviceCode] = processedCountries;
+          }
+
+          const countriesList = serviceCountriesCache[serviceCode] || [];
+          console.log("🎨 [DEBUG] Rendering processed countries count:", countriesList.length);
+
+          if (countriesList.length > 0) {
+            renderCountries(countriesList);
           } else {
-            console.warn("⚠️ [DEBUG] No countries returned or success is false for service:", serviceCode);
+            console.warn("⚠️ [DEBUG] No countries available for service:", serviceCode);
             if (countryGrid) {
               countryGrid.innerHTML = '<p class="text-xs text-gray-300 col-span-full text-center py-4">No countries available for this service.</p>';
             }
@@ -341,8 +416,9 @@
           }
         }
       }
-      
-      function renderCountries(countriesList) {
+
+
+   function renderCountries(countriesList) {
         const grid = document.getElementById('countries-grid');
         if (!grid) return;
 
@@ -351,10 +427,13 @@
         grid.innerHTML = countriesList.map(country => {
           const isSelected = selectedCountryId === country.countryId;
           const borderClass = isSelected ? 'border-brandBlue-400 bg-brandBlue-700' : 'border-brandBlue-700/50 bg-brandBlue-800/60';
+          
+          // Ensure we grab the active/cheapest providerId from the price object if top-level is empty
+          const activeProviderId = country.price?.providerId || country.providerId || '';
 
           return `
             <button type="button" 
-                    onclick="SMSGlobeApp.selectCountry('${country.countryId}', '${country.providerId}')" 
+                    onclick="SMSGlobeApp.selectCountry('${country.countryId}', '${activeProviderId}')" 
                     class="flex items-center justify-between p-3 ${borderClass} hover:bg-brandBlue-700 rounded-lg border transition group shadow-sm text-left">
               <div class="flex items-center space-x-3">
                 <img src="${country.flagUrl}" alt="${country.countryName}" class="w-6 h-4 object-cover rounded shadow-sm">
@@ -365,7 +444,7 @@
               </div>
               <div class="text-right">
                 <div class="text-xs font-bold text-brandBlue-300">${country.price.symbol}${country.price.amount.toLocaleString()}</div>
-                <div class="text-[9px] text-emerald-400 font-medium">${country.rank || 'Best Price'}</div>
+                <div class="text-[9px] text-emerald-400 font-medium">${country.price.rank || country.rank || 'Best Price'}</div>
               </div>
             </button>
           `;
@@ -375,6 +454,11 @@
       function selectCountry(countryId, providerId) {
         console.log("🎯 [DEBUG] Country selected:", countryId, "Provider:", providerId);
         selectedCountryId = countryId;
+        
+        // Re-render countries to update active UI selection border state immediately
+        if (serviceCountriesCache[selectedServiceCode]) {
+          renderCountries(serviceCountriesCache[selectedServiceCode]);
+        }
       }
 
       document.addEventListener('DOMContentLoaded', () => {
@@ -402,6 +486,7 @@
         fetchUserProfile,
         fetchServices,
         selectService,
+        renderCountries,
         selectCountry
       };
     })();

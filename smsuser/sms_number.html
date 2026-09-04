@@ -168,15 +168,20 @@
       let pollInterval = null;
       let activePollIntervals = {};
 
-      const PRIORITY_ICONS = [
-    // Core Global Services
-    { code: 'wa', name: 'WhatsApp', iconUrl: 'https://api.iconify.design/logos:whatsapp-icon.svg' },    { code: 'tg', name: 'Telegram', iconUrl: 'https://api.iconify.design/logos:telegram.svg' },
-    { code: 'gg', name: 'Google / Gmail', iconUrl: 'https://api.iconify.design/logos:google-icon.svg' },     { code: 'fb', name: 'Facebook', iconUrl: 'https://api.iconify.design/logos:facebook.svg' },
-    { code: 'ig', name: 'Instagram', iconUrl: 'https://api.iconify.design/logos:instagram-icon.svg' },    { code: 'tw', name: 'Twitter / X', iconUrl: 'https://api.iconify.design/logos:twitter.svg' },
-    { code: 'nf', name: 'Netflix', iconUrl: 'https://api.iconify.design/logos:netflix-icon.svg' },    { code: 'oi', name: 'Tinder', iconUrl: 'https://api.iconify.design/simple-icons:tinder.svg' },
-    { code: 'ub', name: 'Uber', iconUrl: 'https://api.iconify.design/logos:uber.svg' },    { code: 'ms', name: 'NovaPoshta / Microsoft', iconUrl: 'https://api.iconify.design/logos:microsoft-icon.svg' },
-    { code: 'ds', name: 'Discord', iconUrl: 'https://api.iconify.design/logos:discord-icon.svg' },     { code: 'wx', name: 'Apple', iconUrl: 'https://api.iconify.design/logos:apple.svg' },
-];
+  const PRIORITY_ICONS = {
+  'wa': 'https://api.iconify.design/logos:whatsapp-icon.svg',
+  'tg': 'https://api.iconify.design/logos:telegram.svg',
+  'gg': 'https://api.iconify.design/logos:google-icon.svg',
+  'fb': 'https://api.iconify.design/logos:facebook.svg',
+  'ig': 'https://api.iconify.design/logos:instagram-icon.svg',
+  'tw': 'https://api.iconify.design/logos:twitter.svg',
+  'nf': 'https://api.iconify.design/logos:netflix-icon.svg',
+  'oi': 'https://api.iconify.design/simple-icons:tinder.svg',
+  'ub': 'https://api.iconify.design/logos:uber.svg',
+  'ms': 'https://api.iconify.design/logos:microsoft-icon.svg',
+  'ds': 'https://api.iconify.design/logos:discord-icon.svg',
+  'wx': 'https://api.iconify.design/logos:apple.svg'
+};
     
       function logout() {
         localStorage.removeItem('userToken');
@@ -277,8 +282,9 @@ function renderServices(servicesToRender) {
 
   grid.innerHTML = servicesToRender.map(service => {
     const code = (service.code || '').toLowerCase();
-    // Use Iconify URL if available, otherwise fallback to your backend proxy route
-    const iconUrl = PRIORITY_ICONS[code] || `${API_BASE_URL}/service-image?id=${encodeURIComponent(code)}`;
+    
+    // Ensure iconUrl resolves strictly to a string URL (never a function reference)
+    const iconUrl = PRIORITY_ICONS[code] || `/api/service-image?id=${encodeURIComponent(code)}`;
     const fallbackLetter = (service.name || code || 'S').charAt(0).toUpperCase();
     const isSelected = expandedServiceCode === code;
     const borderClass = isSelected ? 'border-brandBlue-400 bg-brandBlue-700' : 'border-brandBlue-700/50 bg-brandBlue-800/60';

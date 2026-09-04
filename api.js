@@ -4661,17 +4661,31 @@ async function handleUpdateSystemSettings(req, res) {
 // 3. PUBLIC status check (For User Frontend / Login Page)
 async function handleGetSystemStatus(req, res) {
     try {
-        // Added .lean() for faster performance on public pings
-const settings = await SystemSettings.findOne().select('maintenanceMode noticeBarText').lean();
+        // Safety check to ensure the model is defined and connected
+        if (typeof SystemSettings === 'undefined' || !SystemSettings.findOne) {
+            return res.json({ 
+                success: true, 
+                maintenanceMode: false, 
+                noticeBar: "" 
+            });
+        }
 
-        res.json({ 
-    success: true, 
-    maintenanceMode: settings?.maintenanceMode || false,
-    noticeBar: settings?.noticeBarText || "" // Ensure this key matches your frontend 'status.noticeBar'
-});
+        // Added .lean() for faster performance on public pings
+        const settings = await SystemSettings.findOne().select('maintenanceMode noticeBarText').lean();
+
+        return res.json({ 
+            success: true, 
+            maintenanceMode: settings?.maintenanceMode || false,
+            noticeBar: settings?.noticeBarText || "" 
+        });
     } catch (err) {
-        // If the DB fails, we default to false so we don't lock everyone out by accident
-        res.json({ success: false, maintenanceMode: false }); 
+        console.error("System Status Error:", err.message);
+        // Always respond with valid JSON so the frontend never crashes with a SyntaxError
+        return res.json({ 
+            success: true, 
+            maintenanceMode: false, 
+            noticeBar: "" 
+        }); 
     }
 }
 

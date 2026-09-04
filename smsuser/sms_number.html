@@ -781,7 +781,6 @@ async function fetchUserHistory() {
             return { data };
         };
 
-        // Gather tracked active/history order IDs from localStorage or fallback
         let activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
         
         if (activeOrders.length === 0) {
@@ -789,7 +788,6 @@ async function fetchUserHistory() {
             return;
         }
 
-        // Fetch fresh details for each order using the order-details endpoint pattern
         const orderDetailsPromises = activeOrders.map(async (cachedOrder) => {
             const orderId = cachedOrder.id || cachedOrder._id;
             if (!orderId) return null;
@@ -799,9 +797,8 @@ async function fetchUserHistory() {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
                 });
-                return data?.success && data?.order ? data.order : cachedOrder;
+                return data?.success && data?.order ? { ...cachedOrder, ...data.order } : cachedOrder;
             } catch (e) {
-                // Fallback to cached order if network request fails for a specific item
                 return cachedOrder;
             }
         });
@@ -813,7 +810,6 @@ async function fetchUserHistory() {
             return;
         }
 
-        // Sort history: Active numbers come first, inactive/others follow
         const sortedHistory = historyList.sort((a, b) => {
             const statusA = String(a.status || '').toLowerCase();
             const statusB = String(b.status || '').toLowerCase();
@@ -823,6 +819,14 @@ async function fetchUserHistory() {
 
             return isActiveA - isActiveB;
         });
+
+        // Helper function to turn a 2-letter country code into an emoji flag
+        const getCountryFlagEmoji = (countryCode) => {
+            if (!countryCode || countryCode.length !== 2) return '🌐';
+            return countryCode.toUpperCase().replace(/./g, char => 
+                String.fromCodePoint(127397 + char.charCodeAt(0))
+            );
+        };
 
         historyGrid.innerHTML = sortedHistory.map(item => {
             const statusLower = String(item.status || 'pending').toLowerCase();
@@ -835,13 +839,32 @@ async function fetchUserHistory() {
             const orderId = item.id || item._id;
             const displayPhoneNumber = item.phoneNumber || item.number || item.targetNumber || 'N/A';
             const displayServiceName = item.serviceName || item.serviceCode || 'Service';
-            const displayCountryName = item.countryName || 'Selected Country';
+            
+            // Extract country details (name, short code, and flag)
+            const displayCountryName = item.countryName || item.country || 'Selected Country';
+            const displayCountryShortCode = (item.countryCode || item.shortCode || '').toUpperCase();
+            const flagEmoji = item.countryFlag || getCountryFlagEmoji(displayCountryShortCode || (displayCountryName.length === 2 ? displayCountryName : ''));
+
+            // Calculate 10-minute expiration from createdAt timestamp
+            const createdAtTime = new Date(item.createdAt || item.expiresAt ? (new Date(item.expiresAt).getTime() - 10 * 60 * 1000) : Date.now()).getTime();
+            const expirationTime = createdAtTime + (10 * 60 * 1000); // 10 minutes window
+            const timeLeft = Math.max(0, Math.floor((expirationTime - Date.now()) / 1000));
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            const formattedTimeLeft = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
             return `
                 <div class="bg-brandBlue-900/60 p-4 rounded-xl border border-brandBlue-700/40 space-y-3 transition hover:border-brandBlue-500">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-xs text-brandBlue-200 font-semibold">${displayServiceName}</p>
+                            <div class="flex items-center space-x-2">
+                                <p class="text-xs text-brandBlue-200 font-semibold">${displayServiceName}</p>
+                                ${isActive ? `
+                                    <span class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30 font-mono flex items-center">
+                                        <i class="fa-regular fa-clock mr-1"></i> <span class="order-timer" data-expiration="${expirationTime}">${formattedTimeLeft}</span>
+                                    </span>
+                                ` : ''}
+                            </div>
                             <div class="flex items-center space-x-2 mt-0.5">
                                 <p class="text-lg font-bold tracking-wide text-white">${displayPhoneNumber}</p>
                                 ${displayPhoneNumber !== 'N/A' ? `
@@ -850,7 +873,11 @@ async function fetchUserHistory() {
                                     </button>
                                 ` : ''}
                             </div>
-                            <p class="text-[11px] text-gray-400 mt-1">Country ID / Name: ${displayCountryName}</p>
+                            <p class="text-[11px] text-gray-300 mt-1 flex items-center space-x-1.5">
+                                <span class="text-sm" title="${displayCountryName}">${flagEmoji}</span>
+                                <span class="font-medium text-white">${displayCountryName}</span>
+                                ${displayCountryShortCode ? `<span class="text-gray-400 font-mono text-[10px] bg-brandBlue-950 px-1.5 py-0.5 rounded border border-brandBlue-700/40">(${displayCountryShortCode})</span>` : ''}
+                            </p>
                         </div>
                         <div>
                             <span class="px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider ${badgeClass}">
@@ -874,11 +901,217 @@ async function fetchUserHistory() {
                 </div>
             `;
         }).join('');
+
+        // Start a lightweight interval loop to update active countdown timers every second
+        if (window.historyTimerInterval) clearInterval(window.historyTimerInterval);
+        window.historyTimerInterval = setInterval(() => {
+            const timerElements = document.querySelectorAll('.order-timer');
+            timerElements.forEach(el => {
+                const expTime = parseInt(el.getAttribute('data-expiration'), 10);
+                const remaining = Math.max(0, Math.floor((expTime - Date.now()) / 1000));
+                const m = Math.floor(remaining / 60);
+                const s = remaining % 60;
+                el.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                if (remaining <= 0) {
+                    el.textContent = "Expired";
+                }
+            });
+        }, 1000);
+
     } catch (err) {
         console.error("Failed to load history:", err);
         historyGrid.innerHTML = `<p class="text-sm text-red-400 text-center py-6">Failed to load history records.</p>`;
     }
 }
+
+async function fetchUserHistory() {
+    const historyGrid = document.getElementById('history-grid');
+    if (!historyGrid) return;
+
+    try {
+        const fetchMethod = typeof safeFetch === 'function' ? safeFetch : async (url, opts) => {
+            const token = localStorage.getItem('userToken');
+            const r = await fetch(url, {
+                ...opts,
+                headers: { ...opts?.headers, 'Authorization': `Bearer ${token}` }
+            });
+            const data = await r.json();
+            return { data };
+        };
+
+        let activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
+        
+        if (activeOrders.length === 0) {
+            historyGrid.innerHTML = `<p class="text-sm text-gray-300 text-center py-6">No purchased numbers found.</p>`;
+            return;
+        }
+
+        const orderDetailsPromises = activeOrders.map(async (cachedOrder) => {
+            const orderId = cachedOrder.id || cachedOrder._id;
+            if (!orderId) return null;
+
+            try {
+                const { data } = await fetchMethod(`${API_BASE_URL}/order-details?id=${orderId}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                return data?.success && data?.order ? { ...cachedOrder, ...data.order } : cachedOrder;
+            } catch (e) {
+                return cachedOrder;
+            }
+        });
+
+        const historyList = (await Promise.all(orderDetailsPromises)).filter(Boolean);
+
+        if (historyList.length === 0) {
+            historyGrid.innerHTML = `<p class="text-sm text-gray-300 text-center py-6">No purchased numbers found.</p>`;
+            return;
+        }
+
+        const sortedHistory = historyList.sort((a, b) => {
+            const statusA = String(a.status || '').toLowerCase();
+            const statusB = String(b.status || '').toLowerCase();
+
+            const isActiveA = statusA === 'active' || statusA === 'pending' || statusA === 'waiting for sms...' ? 0 : 1;
+            const isActiveB = statusB === 'active' || statusB === 'pending' || statusB === 'waiting for sms...' ? 0 : 1;
+
+            return isActiveA - isActiveB;
+        });
+
+        // Helper function to turn a 2-letter country code into an emoji flag
+        const getCountryFlagEmoji = (countryCode) => {
+            if (!countryCode || countryCode.length !== 2) return '🌐';
+            return countryCode.toUpperCase().replace(/./g, char => 
+                String.fromCodePoint(127397 + char.charCodeAt(0))
+            );
+        };
+
+        historyGrid.innerHTML = sortedHistory.map(item => {
+            const statusLower = String(item.status || 'pending').toLowerCase();
+            const isActive = statusLower === 'active' || statusLower === 'pending' || statusLower === 'waiting for sms...';
+            
+            const badgeClass = isActive 
+                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                : 'bg-gray-700/50 text-gray-400 border border-gray-600/30';
+            
+            const orderId = item.id || item._id;
+            const displayPhoneNumber = item.phoneNumber || item.number || item.targetNumber || 'N/A';
+            const displayServiceName = item.serviceName || item.serviceCode || 'Service';
+            
+            // Extract country details (name, short code, and flag)
+            const displayCountryName = item.countryName || item.country || 'Selected Country';
+            const displayCountryShortCode = (item.countryCode || item.shortCode || '').toUpperCase();
+            const flagEmoji = item.countryFlag || getCountryFlagEmoji(displayCountryShortCode || (displayCountryName.length === 2 ? displayCountryName : ''));
+
+            // Calculate 5-minute expiration window from createdAt timestamp
+            const createdAtTime = new Date(item.createdAt || item.expiresAt ? (new Date(item.expiresAt).getTime() - 5 * 60 * 1000) : Date.now()).getTime();
+            const expirationTime = createdAtTime + (5 * 60 * 1000); // 5 minutes window
+            const timeLeft = Math.max(0, Math.floor((expirationTime - Date.now()) / 1000));
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            const formattedTimeLeft = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            return `
+                <div class="bg-brandBlue-900/60 p-4 rounded-xl border border-brandBlue-700/40 space-y-3 transition hover:border-brandBlue-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <p class="text-xs text-brandBlue-200 font-semibold">${displayServiceName}</p>
+                                ${isActive ? `
+                                    <span class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30 font-mono flex items-center">
+                                        <i class="fa-regular fa-clock mr-1"></i> <span class="order-timer" data-expiration="${expirationTime}">${formattedTimeLeft}</span>
+                                    </span>
+                                ` : ''}
+                            </div>
+                            <div class="flex items-center space-x-2 mt-0.5">
+                                <p class="text-lg font-bold tracking-wide text-white">${displayPhoneNumber}</p>
+                                ${displayPhoneNumber !== 'N/A' ? `
+                                    <button onclick="navigator.clipboard.writeText('${displayPhoneNumber}'); const btn = this; btn.innerHTML = '<i class=\\'fa-solid fa-check text-emerald-400\\'></i>'; setTimeout(() => btn.innerHTML = '<i class=\\'fa-regular fa-copy\\'></i>', 1500);" class="p-1.5 bg-brandBlue-800 hover:bg-brandBlue-700 text-gray-300 hover:text-white rounded-lg text-xs transition border border-brandBlue-700/50" title="Copy Number">
+                                        <i class="fa-regular fa-copy"></i>
+                                    </button>
+                                ` : ''}
+                            </div>
+                            <p class="text-[11px] text-gray-300 mt-1 flex items-center space-x-1.5">
+                                <span class="text-sm" title="${displayCountryName}">${flagEmoji}</span>
+                                <span class="font-medium text-white">${displayCountryName}</span>
+                                ${displayCountryShortCode ? `<span class="text-gray-400 font-mono text-[10px] bg-brandBlue-950 px-1.5 py-0.5 rounded border border-brandBlue-700/40">(${displayCountryShortCode})</span>` : ''}
+                            </p>
+                        </div>
+                        <div>
+                            <span class="px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider ${badgeClass}">
+                                ${item.status || 'pending'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="bg-brandBlue-950/60 border border-brandBlue-700/50 p-2.5 rounded-lg flex items-center justify-between">
+                        <span class="text-xs text-gray-300 font-medium">OTP Code:</span>
+                        <span class="text-sm font-mono font-bold text-emerald-400 tracking-wider">${item.smsCode || 'Waiting for code...'}</span>
+                    </div>
+
+                    ${isActive ? `
+                        <div class="flex items-center justify-end space-x-2 pt-1">
+                            <button onclick="manualRecheckSms('${orderId}')" class="px-3 py-1.5 bg-brandBlue-800 hover:bg-brandBlue-700 text-gray-200 border border-brandBlue-600/40 text-xs font-semibold rounded-lg transition">
+                                <i class="fa-solid fa-rotate mr-1"></i> Resend OTP
+                            </button>
+                            <button onclick="cancelActiveOrder('${orderId}')" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-xs font-semibold rounded-lg transition">
+                                <i class="fa-solid fa-ban mr-1"></i> Cancel Order
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+
+        // Start a lightweight interval loop to update active countdown timers every second
+        if (window.historyTimerInterval) clearInterval(window.historyTimerInterval);
+        window.historyTimerInterval = setInterval(() => {
+            const timerElements = document.querySelectorAll('.order-timer');
+            timerElements.forEach(el => {
+                const expTime = parseInt(el.getAttribute('data-expiration'), 10);
+                const remaining = Math.max(0, Math.floor((expTime - Date.now()) / 1000));
+                const m = Math.floor(remaining / 60);
+                const s = remaining % 60;
+                el.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+                if (remaining <= 0) {
+                    el.textContent = "Expired";
+                }
+            });
+        }, 1000);
+
+    } catch (err) {
+        console.error("Failed to load history:", err);
+        historyGrid.innerHTML = `<p class="text-sm text-red-400 text-center py-6">Failed to load history records.</p>`;
+    }
+}
+
+window.manualRecheckSms = async function(orderId) {
+    try {
+        Swal.fire({ title: 'Checking with provider...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        
+        // safeFetch returns the parsed JSON body directly
+        const data = await safeFetch(`/api/recheck-sms`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: orderId })
+        });
+        
+        Swal.close();
+
+        if (data && data.success && data.code) {
+            Swal.fire({ icon: 'success', title: 'OTP Received!', text: `Code: ${data.code}`, timer: 2000 });
+        } else {
+            Swal.fire({ icon: 'info', title: 'Still Waiting', text: (data && data.message) || 'No SMS code arrived yet.', timer: 2000 });
+        }
+        
+        if (typeof fetchActiveOrders === 'function') fetchActiveOrders();
+        if (typeof renderActiveOrdersDashboard === 'function') renderActiveOrdersDashboard();
+    } catch (err) {
+        console.error("Manual recheck error:", err);
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Could not connect to server to recheck SMS.' });
+    }
+};
+
 
       document.addEventListener('DOMContentLoaded', () => {
         fetchUserProfile();

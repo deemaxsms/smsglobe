@@ -972,6 +972,7 @@ window.manualRecheckSms = async function(orderId) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Could not connect to server to recheck SMS.' });
     }
 };
+
 // 3. Main History Rendering Function with Persistent Polling & Mobile Optimization
 async function fetchUserHistory() {
     const historyGrid = document.getElementById('history-grid');
@@ -1089,7 +1090,7 @@ async function fetchUserHistory() {
                     <div class="flex items-center justify-between gap-2">
                         <div class="min-w-0">
                             <div class="flex items-center space-x-2">
-                                <p class="text-[11px] sm:text-xs text-brandBlue-200 font-semibold truncate">${displayServiceName}</p>
+                                <p class-[11px] sm:text-xs text-brandBlue-200 font-semibold truncate">${displayServiceName}</p>
                                 ${isActive ? `
                                     <span class="text-[9px] sm:text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-full border border-amber-500/30 font-mono flex items-center shrink-0">
                                         <i class="fa-regular fa-clock mr-1"></i> <span class="order-timer" data-expiration="${expirationTime}">${formattedTimeLeft}</span>
@@ -1104,7 +1105,7 @@ async function fetchUserHistory() {
                                     </button>
                                 ` : ''}
                             </div>
-                            <p class="text-[10px] sm:text-[11px] text-gray-300 mt-1 flex items-center space-x-1.5">
+                            <p class-[10px] sm:text-[11px] text-gray-300 mt-1 flex items-center space-x-1.5">
                                 ${flagElement}
                                 <span class="font-medium text-white truncate">${displayCountryName}</span>
                                 ${displayCountryShortCode ? `<span class="text-gray-400 font-mono text-[9px] sm:text-[10px] bg-brandBlue-950 px-1 py-0.5 rounded border border-brandBlue-700/40 shrink-0">(${displayCountryShortCode})</span>` : ''}

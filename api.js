@@ -3790,7 +3790,7 @@ async function handleGetCountries(req, res) {
             }),
             smsBowerClient.get('', { 
                 params: { 
-                    action: 'getPricesv3', // 👈 Updated to v3 for complete provider/tier breakdown
+                    action: 'getPrices', // Kept back to your original working action
                     service: cleanServiceCode 
                 } 
             })
@@ -3837,47 +3837,37 @@ async function handleGetCountries(req, res) {
 
                 let allAvailablePrices = [];
 
-                // Check if this country object is flat (has direct price/cost) vs nested providers
-                const flatCost = Number(providersObject.price || providersObject.cost || providersObject.value);
-                const flatCount = Number(providersObject.count || providersObject.stock || providersObject.qty || 0);
+                Object.keys(providersObject).forEach(providerKey => {
+                    const tierItem = providersObject[providerKey];
+                    const variants = Array.isArray(tierItem) ? tierItem : [tierItem];
 
-                if (flatCost > 0) {
-                    // Handle flat single-price response structure safely
-                    allAvailablePrices.push({
-                        providerId: String(providersObject.provider_id || countryKey),
-                        count: flatCount,
-                        amount: Number((flatCost * exchangeRateToNgn).toFixed(2)),
-                        rank: 'Standard'
-                    });
-                } else {
-                    // Handle nested provider/tier response structure (v3)
-                    Object.keys(providersObject).forEach(providerKey => {
-                        const tierItem = providersObject[providerKey];
-                        const variants = Array.isArray(tierItem) ? tierItem : [tierItem];
+                    variants.forEach(v => {
+                        // Handle cases where v might be a direct primitive number or object
+                        const rawCostUsd = Number(
+                            v?.price || v?.cost || v?.value || 
+                            (typeof v === 'number' ? v : 0)
+                        );
+                        
+                        // Safeguard: Ignore if cost is 0 or if cost looks like a raw stock quantity (> 10000 USD is impossible for an SMS price)
+                        if (rawCostUsd <= 0 || rawCostUsd > 10000) return;
 
-                        variants.forEach(v => {
-                            if (!v || typeof v !== 'object') return;
-                            const rawCostUsd = Number(v?.price || v?.cost || v?.value || 0);
-                            if (rawCostUsd <= 0) return;
+                        const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
+                        const rawRank = v?.rank || v?.tier || providerKey || 'Standard';
+                        const formattedRank = String(rawRank).charAt(0).toUpperCase() + String(rawRank).slice(1).toLowerCase();
 
-                            const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
-                            const rawRank = v?.rank || v?.tier || providerKey || 'Standard';
-                            const formattedRank = String(rawRank).charAt(0).toUpperCase() + String(rawRank).slice(1).toLowerCase();
+                        const rawCount = Number(v?.count ?? v?.stock ?? v?.qty ?? v?.amountAvailable ?? 0);
 
-                            const rawCount = Number(v?.count ?? v?.stock ?? v?.qty ?? v?.amountAvailable ?? 0);
-
-                            allAvailablePrices.push({
-                                providerId: String(v?.partner_id || v?.provider_id || v?.id || providerKey),
-                                count: rawCount,
-                                amount: baseAmountNgn,
-                                rank: formattedRank
-                            });
+                        allAvailablePrices.push({
+                            providerId: String(v?.partner_id || v?.provider_id || v?.id || providerKey),
+                            count: rawCount,
+                            amount: baseAmountNgn,
+                            rank: formattedRank
                         });
                     });
-                }
+                });
 
                 if (allAvailablePrices.length > 0) {
-                    // Sort prices ascending so the lowest price/rank is always first
+                    // Sort prices ascending so the cheapest tier/rank is always first
                     allAvailablePrices.sort((a, b) => a.amount - b.amount);
 
                     formattedCountries.push({

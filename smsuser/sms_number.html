@@ -75,21 +75,26 @@
   </header>
 
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+  <div class="space-y-6">
+
+    <!-- Tab Switcher Header -->
+    <div class="bg-brandBlue-900 p-1.5 rounded-xl flex shadow-sm max-w-xs">
+      <button id="btn-tab-number" onclick="switchTab('Number')" class="flex-1 bg-brandBlue-700 text-white font-semibold py-2.5 rounded-lg text-sm shadow text-center transition">
+        Numbers
+      </button>
+      <button id="btn-tab-history" onclick="switchTab('History')" class="flex-1 text-gray-300 hover:text-white font-medium py-2.5 rounded-lg text-sm text-center transition">
+        HISTORY
+      </button>
+    </div>
+
+    <!-- ================= VIEW 1: NUMBERS WORKFLOW SECTION ================= -->
+    <div id="numbers-section" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       
+      <!-- Left Column: Service, Ranks, Country Selection -->
       <div class="lg:col-span-4 space-y-5">
-     <div class="bg-brandBlue-900 p-1.5 rounded-xl flex shadow-sm">
-        <button id="btn-tab-number" onclick="switchTab('Number')" class="flex-1 bg-brandBlue-700 text-white font-semibold py-2.5 rounded-lg text-sm shadow text-center transition">
-            Numbers
-        </button>
-        <button id="btn-tab-history" onclick="switchTab('History')" class="flex-1 text-gray-300 hover:text-white font-medium py-2.5 rounded-lg text-sm text-center transition">
-            HISTORY
-        </button>
-      </div>
-
-      <div id="numbers-section" class="space-y-5"></div>
-
-       <div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md relative">
+        
+        <!-- Step 1: Select service -->
+        <div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md relative">
           <div class="flex items-center space-x-3 mb-3">
             <span class="w-6 h-6 rounded-full bg-brandBlue-600 text-white text-xs font-bold flex items-center justify-center border border-brandBlue-500">1</span>
             <span class="font-semibold text-sm tracking-wide">Select service</span>
@@ -114,54 +119,51 @@
           <button class="flex-1 text-gray-300 hover:text-white text-xs font-medium py-2 rounded-lg text-center transition rank-filter-btn" data-rank="bronze">Bronze</button>
         </div>
 
-       <!-- Step 3: Select Country -->
-<div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md">
-  <div class="flex items-center space-x-3 mb-3">
-    <span class="w-6 h-6 rounded-full bg-brandBlue-600 text-white text-xs font-bold flex items-center justify-center border border-brandBlue-500">3</span>
-    <span class="font-semibold text-sm tracking-wide">Select country</span>
-  </div>
-  <div class="relative mb-3">
-    <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400">
-      <i class="fa-solid fa-magnifying-glass text-xs"></i>
-    </span>
-    <input type="text" id="country-search-input" placeholder="Find country" class="w-full bg-brandBlue-900/60 text-white placeholder-gray-400 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 border border-brandBlue-700/50">
-  </div>
-  <p class="text-[11px] text-brandBlue-200 mb-3 font-medium">Countries are ranked by top performance</p>
-  
-  <!-- Added max height and vertical scrolling classes here -->
-  <div id="countries-grid" class="max-h-[420px] overflow-y-auto space-y-3 pr-1"></div>
-</div>
-
-      </div><!-- End Numbers Section -->
-
-    <!-- ================= SECTION 2: HISTORY VIEW ================= -->
-      <div id="history-section" class="hidden space-y-5">
+        <!-- Step 3: Select Country -->
         <div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="font-semibold text-base tracking-wide">Purchase History</h3>
-            <span class="text-xs text-brandBlue-200">Your activated numbers</span>
+          <div class="flex items-center space-x-3 mb-3">
+            <span class="w-6 h-6 rounded-full bg-brandBlue-600 text-white text-xs font-bold flex items-center justify-center border border-brandBlue-500">3</span>
+            <span class="font-semibold text-sm tracking-wide">Select country</span>
           </div>
-          <!-- History items will be dynamically injected here -->
-          <div id="history-grid" class="space-y-3">
-            <p class="text-sm text-gray-300 text-center py-6">Loading history...</p>
+          <div class="relative mb-3">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400">
+              <i class="fa-solid fa-magnifying-glass text-xs"></i>
+            </span>
+            <input type="text" id="country-search-input" placeholder="Find country" class="w-full bg-brandBlue-900/60 text-white placeholder-gray-400 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 border border-brandBlue-700/50">
           </div>
+          <p class="text-[11px] text-brandBlue-200 mb-3 font-medium">Countries are ranked by top performance</p>
+          <div id="countries-grid" class="max-h-[420px] overflow-y-auto space-y-3 pr-1"></div>
         </div>
-      </div><!-- End History Section -->
 
-    </div><!-- End Left Column -->
+      </div><!-- End Left Column -->
 
-    <!-- Right Column (Optional: e.g., active number monitoring panel, instructions, etc.) -->
-    <div class="lg:col-span-8">
-       <!-- Active number details / instructions panel can go here -->
-    </div>
+      <!-- Right Column (Active monitors / instructions) -->
+      <div class="lg:col-span-8">
+         <!-- Active number details / instructions panel can go here -->
+      </div>
+
+    </div><!-- End Numbers Section -->
+
+
+    <!-- ================= VIEW 2: HISTORY SECTION ================= -->
+    <div id="history-section" class="hidden max-w-4xl space-y-5">
+      <div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-base tracking-wide">Purchase History</h3>
+          <span class="text-xs text-brandBlue-200">Your activated numbers</span>
+        </div>
+        <!-- History items will be dynamically injected here -->
+        <div id="history-grid" class="space-y-3">
+          <p class="text-sm text-gray-300 text-center py-6">Loading history...</p>
+        </div>
+      </div>
+    </div><!-- End History Section -->
 
   </div>
 </main>
 
+
   <div class="fixed bottom-6 right-6 flex items-center space-x-3 z-50">
-    <button class="w-12 h-12 bg-brandBlue-700 hover:bg-brandBlue-800 text-white rounded-full shadow-lg flex items-center justify-center transition transform hover:scale-105">
-      <i class="fa-solid fa-bell text-sm"></i>
-    </button>
     <button class="w-12 h-12 bg-brandBlue-700 hover:bg-brandBlue-800 text-white rounded-full shadow-lg flex items-center justify-center transition transform hover:scale-105">
       <i class="fa-solid fa-comment text-sm"></i>
     </button>
@@ -212,8 +214,7 @@
         window.location.href = 'login.html';
       }
 
- // Expose switchTab globally to prevent ReferenceError from inline HTML onclick handlers
-window.switchTab = function(mode) {
+ window.switchTab = function(mode) {
     currentMode = mode;
     const numbersSection = document.getElementById('numbers-section');
     const historySection = document.getElementById('history-section');
@@ -242,7 +243,6 @@ window.switchTab = function(mode) {
         }
     }
 };
-
       async function safeFetch(url, options = {}) {
         const res = await fetch(url, options);
         const contentType = res.headers.get("content-type");

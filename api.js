@@ -4278,18 +4278,15 @@ async function handleSmsReceive(req, res) {
     }
 }
 
-
-
 async function handleGetUserOrders(req, res) {
     try {
-        // 1. Get the token from headers
+        // 1. Get and verify token from headers
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return res.status(401).json({ success: false, message: "Unauthorized" });
         }
 
         const token = authHeader.split(' ')[1];
-        
         const jwt = require('jsonwebtoken');
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const userEmail = decoded.email;
@@ -4298,13 +4295,52 @@ async function handleGetUserOrders(req, res) {
             return res.status(400).json({ success: false, message: "Invalid token data" });
         }
 
-        // We use the email to find all orders linked to this account
-        const orders = await Order.find({ userEmail: userEmail })
-            .sort({ createdAt: -1 }) // Newest first
-            .lean(); // Faster performance for read-only
+        // 2. Find all orders linked to this user account
+        let orders = await Order.find({ userEmail: userEmail }).sort({ createdAt: -1 });
 
-        // 4. Return the orders
-        return res.json(orders);
+        // 3. Loop through orders and live-poll SMSBower for any active/pending ones
+        const updatedOrdersPromises = orders.map(async (order) => {
+            const currentStatus = String(order.status || '').toLowerCase();
+            const activeVendorId = order.vendorOrderId || order.metadata?.tzid;
+
+            if (activeVendorId && (currentStatus === 'pending' || currentStatus === 'active')) {
+                try {
+                    const smsBowerUrl = `https://smsbower.page/stubs/handler_api.php?api_key=${process.env.SMSBOWER_API_KEY}&action=getStatus&id=${activeVendorId}`;
+                    const providerRes = await fetch(smsBowerUrl);
+                    const rawText = await providerRes.text();
+                    
+                    console.log(`📡 Live background SMSBower check for ${activeVendorId}:`, rawText);
+
+                    if (rawText.startsWith('STATUS_OK:')) {
+                        const code = rawText.split(':')[1];
+                        order.smsCode = code;
+                        order.fullMessage = `Verification code is ${code}`;
+                        order.status = 'completed';
+                        await order.save();
+
+                        // Sync SmsNumber collection if it exists
+                        await SmsNumber.findOneAndUpdate(
+                            { vendorOrderId: String(activeVendorId), status: 'pending' },
+                            { smsCode: code, fullMessage: order.fullMessage, status: 'completed' }
+                        );
+                    } else if (rawText === 'STATUS_CANCEL') {
+                        order.status = 'cancelled';
+                        await order.save();
+                    }
+                } catch (providerErr) {
+                    console.error("SMSBower live polling error for order:", order._id, providerErr.message);
+                }
+            }
+            return order.toObject ? order.toObject() : order;
+        });
+
+        const finalizedOrders = await Promise.all(updatedOrdersPromises);
+
+        // 4. Return all orders (active, completed, cancelled, expired) so history is persistent
+        return res.status(200).json({
+            success: true,
+            orders: finalizedOrders
+        });
 
     } catch (err) {
         console.error("Error fetching user orders:", err);

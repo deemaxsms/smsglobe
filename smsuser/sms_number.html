@@ -147,7 +147,6 @@
       <i class="fa-solid fa-comment text-sm"></i>
     </button>
   </div>
-
 <script>
     const btn = document.getElementById('mobile-menu-btn');
     const menu = document.getElementById('mobile-menu');
@@ -308,7 +307,7 @@
         }).join('');
       }
 
-async function selectService(serviceCode) {
+      async function selectService(serviceCode) {
         console.log("🔍 [DEBUG] Service selected:", serviceCode);
         expandedServiceCode = serviceCode;
         selectedServiceCode = serviceCode;
@@ -320,7 +319,6 @@ async function selectService(serviceCode) {
         }
 
         try {
-          // Check cache first or fetch and process using the robust parsing logic
           if (!serviceCountriesCache[serviceCode]) {
             const targetUrl = `${API_BASE_URL}/countries?service=${encodeURIComponent(serviceCode)}`;
             console.log("🌐 [DEBUG] Fetching countries from:", targetUrl);
@@ -365,7 +363,8 @@ async function selectService(serviceCode) {
                   providerId: item.providerId || '',
                   price: {
                     amount: Number(rawPrice),
-                    symbol: currencySymbol
+                    symbol: currencySymbol,
+                    providerId: item.providerId || ''
                   },
                   availablePrices: []
                 };
@@ -380,15 +379,12 @@ async function selectService(serviceCode) {
               });
             });
 
-            // Sort available prices and map to processed list
             const processedCountries = Object.values(countryMap).map(country => {
               country.availablePrices.sort((a, b) => a.amount - b.amount);
-              // Assign lowest price to top level for renderCountries compatibility
               country.price = country.availablePrices[0];
               return country;
             });
 
-            // Sort countries by lowest price ascending
             processedCountries.sort((a, b) => {
               const lowestA = a.availablePrices[0]?.amount || 0;
               const lowestB = b.availablePrices[0]?.amount || 0;
@@ -417,8 +413,7 @@ async function selectService(serviceCode) {
         }
       }
 
-
-   function renderCountries(countriesList) {
+      function renderCountries(countriesList) {
         const grid = document.getElementById('countries-grid');
         if (!grid) return;
 
@@ -427,8 +422,6 @@ async function selectService(serviceCode) {
         grid.innerHTML = countriesList.map(country => {
           const isSelected = selectedCountryId === country.countryId;
           const borderClass = isSelected ? 'border-brandBlue-400 bg-brandBlue-700' : 'border-brandBlue-700/50 bg-brandBlue-800/60';
-          
-          // Ensure we grab the active/cheapest providerId from the price object if top-level is empty
           const activeProviderId = country.price?.providerId || country.providerId || '';
 
           return `
@@ -455,7 +448,6 @@ async function selectService(serviceCode) {
         console.log("🎯 [DEBUG] Country selected:", countryId, "Provider:", providerId);
         selectedCountryId = countryId;
         
-        // Re-render countries to update active UI selection border state immediately
         if (serviceCountriesCache[selectedServiceCode]) {
           renderCountries(serviceCountriesCache[selectedServiceCode]);
         }

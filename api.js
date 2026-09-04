@@ -3784,17 +3784,17 @@ async function handleGetCountries(req, res) {
 
         const cleanServiceCode = String(serviceCode).trim().toLowerCase();
 
-        const [countriesMetaResponse, topCountriesResponse] = await Promise.all([
-            smsBowerClient.get('', { 
-                params: { action: 'getCountries' } 
-            }),
-            smsBowerClient.get('', { 
-                params: { 
-                    action: 'getTopCountriesByService', 
-                    service: cleanServiceCode 
-                } 
-            })
-        ]);
+      const [countriesMetaResponse, pricesResponse] = await Promise.all([
+    smsBowerClient.get('', { 
+        params: { action: 'getCountries' } 
+    }),
+    smsBowerClient.get('', { 
+        params: { 
+            action: 'getPrices',
+            service: cleanServiceCode 
+        } 
+    })
+]);
 
         const rawCountriesMeta = countriesMetaResponse?.data;
         const rawTopCountries = topCountriesResponse?.data;

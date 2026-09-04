@@ -77,37 +77,35 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       
       <div class="lg:col-span-4 space-y-5">
-        
-        <div class="bg-brandBlue-900 p-1.5 rounded-xl flex shadow-sm">
-          <button class="flex-1 bg-brandBlue-700 text-white font-semibold py-2.5 rounded-lg text-sm shadow text-center transition">
+     <div class="bg-brandBlue-900 p-1.5 rounded-xl flex shadow-sm">
+        <button id="btn-tab-number" onclick="switchTab('Number')" class="flex-1 bg-brandBlue-700 text-white font-semibold py-2.5 rounded-lg text-sm shadow text-center transition">
             Numbers
-          </button>
-          <button class="flex-1 text-gray-300 hover:text-white font-medium py-2.5 rounded-lg text-sm text-center transition">
+        </button>
+        <button id="btn-tab-history" onclick="switchTab('History')" class="flex-1 text-gray-300 hover:text-white font-medium py-2.5 rounded-lg text-sm text-center transition">
             HISTORY
-          </button>
-        </div>
+        </button>
+      </div>
 
-        <div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md relative">
+      <div id="numbers-section" class="space-y-5"></div>
+
+       <div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md relative">
           <div class="flex items-center space-x-3 mb-3">
             <span class="w-6 h-6 rounded-full bg-brandBlue-600 text-white text-xs font-bold flex items-center justify-center border border-brandBlue-500">1</span>
             <span class="font-semibold text-sm tracking-wide">Select service</span>
           </div>
-
           <div class="relative mb-4">
             <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400">
               <i class="fa-solid fa-magnifying-glass text-xs"></i>
             </span>
             <input type="text" id="service-search-input" placeholder="Select service" class="w-full bg-brandBlue-900/60 text-white placeholder-gray-400 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 border border-brandBlue-700/50">
           </div>
-
-          <div id="services-grid" class="grid grid-cols-8 gap-2 bg-brandBlue-900/40 p-3 rounded-xl border border-brandBlue-700/30 max-h-48 overflow-y-auto">
-            </div>
-
+          <div id="services-grid" class="grid grid-cols-8 gap-2 bg-brandBlue-900/40 p-3 rounded-xl border border-brandBlue-700/30 max-h-48 overflow-y-auto"></div>
           <div class="mt-3 text-center">
             <a href="#" class="text-xs text-brandBlue-100 hover:underline">Didn't find the right service? Write to <span class="underline font-semibold">support</span></a>
           </div>
         </div>
 
+        <!-- Rank Filters -->
         <div class="bg-brandBlue-900/60 p-1.5 rounded-xl flex space-x-1 border border-brandBlue-700/40">
           <button class="flex-1 bg-brandBlue-700 text-white text-xs font-bold py-2 rounded-lg shadow text-center rank-filter-btn" data-rank="all">All</button>
           <button class="flex-1 text-gray-300 hover:text-white text-xs font-medium py-2 rounded-lg text-center transition rank-filter-btn" data-rank="gold">Gold</button>
@@ -115,30 +113,47 @@
           <button class="flex-1 text-gray-300 hover:text-white text-xs font-medium py-2 rounded-lg text-center transition rank-filter-btn" data-rank="bronze">Bronze</button>
         </div>
 
-    <div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md">
-    <div class="flex items-center space-x-3 mb-3">
-        <span class="w-6 h-6 rounded-full bg-brandBlue-600 text-white text-xs font-bold flex items-center justify-center border border-brandBlue-500">3</span>
-        <span class="font-semibold text-sm tracking-wide">Select country</span>
+        <!-- Step 3: Select Country -->
+        <div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md">
+          <div class="flex items-center space-x-3 mb-3">
+            <span class="w-6 h-6 rounded-full bg-brandBlue-600 text-white text-xs font-bold flex items-center justify-center border border-brandBlue-500">3</span>
+            <span class="font-semibold text-sm tracking-wide">Select country</span>
+          </div>
+          <div class="relative mb-3">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400">
+              <i class="fa-solid fa-magnifying-glass text-xs"></i>
+            </span>
+            <input type="text" id="country-search-input" placeholder="Find country" class="w-full bg-brandBlue-900/60 text-white placeholder-gray-400 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 border border-brandBlue-700/50">
+          </div>
+          <p class="text-[11px] text-brandBlue-200 mb-3 font-medium">Countries are ranked by top performance</p>
+          <div id="countries-grid" class="space-y-3 pr-1"></div>
+        </div>
+
+      </div><!-- End Numbers Section -->
+
+    <!-- ================= SECTION 2: HISTORY VIEW ================= -->
+      <div id="history-section" class="hidden space-y-5">
+        <div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-base tracking-wide">Purchase History</h3>
+            <span class="text-xs text-brandBlue-200">Your activated numbers</span>
+          </div>
+          <!-- History items will be dynamically injected here -->
+          <div id="history-grid" class="space-y-3">
+            <p class="text-sm text-gray-300 text-center py-6">Loading history...</p>
+          </div>
+        </div>
+      </div><!-- End History Section -->
+
+    </div><!-- End Left Column -->
+
+    <!-- Right Column (Optional: e.g., active number monitoring panel, instructions, etc.) -->
+    <div class="lg:col-span-8">
+       <!-- Active number details / instructions panel can go here -->
     </div>
 
-    <div class="relative mb-3">
-        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400">
-            <i class="fa-solid fa-magnifying-glass text-xs"></i>
-        </span>
-        <input type="text" id="country-search-input" placeholder="Find country" class="w-full bg-brandBlue-900/60 text-white placeholder-gray-400 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 border border-brandBlue-700/50">
-    </div>
-
-    <p class="text-[11px] text-brandBlue-200 mb-3 font-medium">Countries are ranked by top performance</p>
-
-    <!-- Added max-h-[60vh] and overflow-y-auto here -->
-    <div id="countries-grid" class="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-    </div>
-</div>
-
-      </div>
-
-    </div>
-  </main>
+  </div>
+</main>
 
   <div class="fixed bottom-6 right-6 flex items-center space-x-3 z-50">
     <button class="w-12 h-12 bg-brandBlue-700 hover:bg-brandBlue-800 text-white rounded-full shadow-lg flex items-center justify-center transition transform hover:scale-105">
@@ -193,6 +208,32 @@
         localStorage.removeItem('user_balance');
         window.location.href = 'login.html';
       }
+
+      function switchTab(mode) {
+    currentMode = mode;
+    const numbersSection = document.getElementById('numbers-section');
+    const historySection = document.getElementById('history-section');
+    const btnNumber = document.getElementById('btn-tab-number');
+    const btnHistory = document.getElementById('btn-tab-history');
+
+    const activeClasses = "flex-1 bg-brandBlue-700 text-white font-semibold py-2.5 rounded-lg text-sm shadow text-center transition";
+    const inactiveClasses = "flex-1 text-gray-300 hover:text-white font-medium py-2.5 rounded-lg text-sm text-center transition";
+
+    if (mode === 'Number') {
+        numbersSection.classList.remove('hidden');
+        historySection.classList.add('hidden');
+        btnNumber.className = activeClasses;
+        btnHistory.className = inactiveClasses;
+    } else {
+        numbersSection.classList.add('hidden');
+        historySection.classList.remove('hidden');
+        btnHistory.className = activeClasses;
+        btnNumber.className = inactiveClasses;
+
+        // Fetch and render purchase history immediately when switching
+        fetchUserHistory();
+    }
+}
 
       async function safeFetch(url, options = {}) {
         const res = await fetch(url, options);
@@ -538,7 +579,7 @@ function renderCountriesListHtml(serviceCode, countriesList) {
         }
       }
 
-      async function buyServiceCountry(serviceCode, countryId, price, rank, providerId = '') {
+async function buyServiceCountry(serviceCode, countryId, price, rank, providerId = '') {
     const token = localStorage.getItem('userToken');
     if (!token) {
         if (typeof Swal !== 'undefined') {
@@ -661,7 +702,7 @@ function renderCountriesListHtml(serviceCode, countriesList) {
                 serviceName: serviceObj?.name || serviceCode,
                 countryName: countryObj?.countryName || countryObj?.name || 'Selected Country',
                 countryFlag: countryObj?.flag || countryObj?.flagUrl || countryObj?.icon || '',
-                status: 'Waiting for SMS...',
+                status: 'Active',
                 smsCode: null,
                 fullMessage: null,
                 createdAt: Date.now()
@@ -676,17 +717,112 @@ function renderCountriesListHtml(serviceCode, countriesList) {
 
             Swal.fire({
                 title: 'Order Dispatched!',
-                text: 'Your number is ready. Waiting for live SMS verification code...',
+                text: 'Your number is ready. Redirecting to history...',
                 icon: 'success',
-                timer: 2000,
+                timer: 1500,
                 showConfirmButton: false
             });
+
+            // Automatically switch user over to the HISTORY tab and refresh list
+            switchTab('History');
         } else { 
             Swal.fire('Order Failed', res?.message || "Could not process purchase from provider.", 'error');
         }
     } catch (err) { 
         console.error("Purchase Error:", err);
         Swal.fire('Network Error', 'Check your connection and try again.', 'error');
+    }
+}
+
+function onNumberPurchasedSuccessfully(orderData) {
+    console.log("Number purchased:", orderData);
+    switchTab('History');
+}
+
+async function fetchUserHistory() {
+    const historyGrid = document.getElementById('history-grid');
+    try {
+        // Use safeFetch helper with your API_BASE_URL pointing to order/history endpoints
+        const fetchMethod = typeof safeFetch === 'function' ? safeFetch : async (url, opts) => {
+            const token = localStorage.getItem('userToken');
+            const r = await fetch(url, {
+                ...opts,
+                headers: { ...opts?.headers, 'Authorization': `Bearer ${token}` }
+            });
+            const data = await r.json();
+            return { data };
+        };
+
+        const response = await fetchMethod(`${API_BASE_URL}/order-details?id=${orderId}`, { 
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const res = response.data || response;
+        const historyList = res.history || res.orders || (Array.isArray(res) ? res : []);
+
+        if (!res.success || !historyList || historyList.length === 0) {
+            historyGrid.innerHTML = `<p class="text-sm text-gray-300 text-center py-6">No purchased numbers found.</p>`;
+            return;
+        }
+
+        // Sort history: Active numbers come first, inactive/others follow
+        const sortedHistory = historyList.sort((a, b) => {
+            const statusA = String(a.status || '').toLowerCase();
+            const statusB = String(b.status || '').toLowerCase();
+
+            const isActiveA = statusA === 'active' || statusA === 'pending' || statusA === 'waiting for sms...' ? 0 : 1;
+            const isActiveB = statusB === 'active' || statusB === 'pending' || statusB === 'waiting for sms...' ? 0 : 1;
+
+            return isActiveA - isActiveB;
+        });
+
+        historyGrid.innerHTML = sortedHistory.map(item => {
+            const statusLower = String(item.status || 'active').toLowerCase();
+            const isActive = statusLower === 'active' || statusLower === 'pending' || statusLower === 'waiting for sms...';
+            
+            // Dynamic badge styling based on status
+            const badgeClass = isActive 
+                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                : 'bg-gray-700/50 text-gray-400 border border-gray-600/30';
+
+            const orderId = item.id || item._id;
+
+            return `
+                <div class="bg-brandBlue-900/60 p-4 rounded-xl border border-brandBlue-700/40 space-y-3 transition hover:border-brandBlue-500">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-brandBlue-200 font-semibold">${item.serviceName || 'Service'}</p>
+                            <p class="text-lg font-bold tracking-wide text-white">${item.phoneNumber}</p>
+                            <p class="text-[11px] text-gray-400">Country: ${item.countryName || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <span class="px-3 py-1 text-xs font-bold rounded-full uppercase tracking-wider ${badgeClass}">
+                                ${item.status || 'Active'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- OTP Code Display Box -->
+                    <div class="bg-brandBlue-950/60 border border-brandBlue-700/50 p-2.5 rounded-lg flex items-center justify-between">
+                        <span class="text-xs text-gray-300 font-medium">OTP Code:</span>
+                        <span class="text-sm font-mono font-bold text-emerald-400 tracking-wider">${item.smsCode || 'Waiting for code...'}</span>
+                    </div>
+
+                    <!-- Actions Footer (Cancel Button for Active Orders) -->
+                    ${isActive ? `
+                        <div class="flex justify-end pt-1">
+                            <button onclick="cancelOrder('${orderId}')" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-xs font-semibold rounded-lg transition">
+                                <i class="fa-solid fa-ban mr-1"></i> Cancel Order
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error("Failed to load history:", err);
+        historyGrid.innerHTML = `<p class="text-sm text-red-400 text-center py-6">Failed to load history records.</p>`;
     }
 }
 

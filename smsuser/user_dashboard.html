@@ -947,12 +947,29 @@ async function initDashboard() {
         window.location.href = 'user_login.html'; 
         return; 
     }
+
     const urlParams = new URLSearchParams(window.location.search);
     const isPostTopup = urlParams.get('status') === 'successful' || urlParams.has('transaction_id');
+
+    // --- INSTANT RENDER FROM LOGIN OR DASHBOARD CACHE ---
+    // Check both the dedicated 'userData' payload from login and the 'dashboard_cache'
+    const cachedUserLogin = localStorage.getItem('userData');
     const cachedData = JSON.parse(localStorage.getItem('dashboard_cache'));
-    if (cachedData && cachedData.user && !isPostTopup) {
-        updateDashboardUI(cachedData.user);
+
+    if (!isPostTopup) {
+        if (cachedUserLogin) {
+            try {
+                const parsedUser = JSON.parse(cachedUserLogin);
+                updateDashboardUI(parsedUser); // Paint UI instantly using login payload (0ms wait)
+            } catch (e) {
+                console.error("Failed to parse cached user login data", e);
+            }
+        } else if (cachedData && cachedData.user) {
+            updateDashboardUI(cachedData.user);
+        }
     }
+
+    // --- BACKGROUND FETCH FOR FRESH DATA ---
     try {
         const profileRes = await fetch(`${API_BASE_URL}/user-profile`, {
             headers: { 
@@ -962,20 +979,24 @@ async function initDashboard() {
         });
         if (profileRes.status === 401) return logout();
         const userData = await profileRes.json();
+        
         if (profileRes.status === 403 && userData.isUnverified) {
             alert("Verification required. Redirecting...");
             window.location.href = `user_create.html?verify_email=${encodeURIComponent(userData.email || '')}`;
             return;
         }        
+       
         const user = userData.user || userData;
         if (user.status === 'suspended') {
             showSuspendedNotice();
             return;
         }
+
+        // Update UI with latest server data and refresh caches
         updateDashboardUI(user);
-        localStorage.setItem('dashboard_cache', JSON.stringify({
-            user: user
-        }));
+        
+        localStorage.setItem('dashboard_cache', JSON.stringify({ user: user }));
+        localStorage.setItem('userData', JSON.stringify(user)); // Keep login cache in sync
 
         if (isPostTopup) {
             window.history.replaceState({}, document.title, window.location.pathname);

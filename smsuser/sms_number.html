@@ -972,7 +972,7 @@ window.manualRecheckSms = async function(orderId) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Could not connect to server to recheck SMS.' });
     }
 };
-// 3. Main History Rendering Function with Persistent Polling & Mobile Optimization
+// 3. Main History Rendering Function with Backend DB Sync & Persistent Polling
 async function fetchUserHistory() {
     const historyGrid = document.getElementById('history-grid');
     if (!historyGrid) return;
@@ -988,37 +988,39 @@ async function fetchUserHistory() {
             return { data };
         };
 
-        let activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
-        
-        if (activeOrders.length === 0) {
-            historyGrid.innerHTML = `<p class="text-xs sm:text-sm text-gray-300 text-center py-6">No purchased numbers found.</p>`;
-            return;
-        }
-
-        const orderDetailsPromises = activeOrders.map(async (cachedOrder) => {
-            const orderId = cachedOrder.id || cachedOrder._id;
-            if (!orderId) return null;
-
-            try {
-                const response = await fetchMethod(`${API_BASE_URL}/order-details?id=${orderId}`, {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                const data = response.data || response;
-                return data?.success && data?.order ? { ...cachedOrder, ...data.order } : cachedOrder;
-            } catch (e) {
-                return cachedOrder;
+        // 1. Fetch complete order history directly from MongoDB backend API
+        let historyList = [];
+        try {
+            const response = await fetchMethod(`${API_BASE_URL}/user-orders`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const rawData = response.data || response;
+            if (Array.isArray(rawData)) {
+                historyList = rawData;
+            } else if (rawData && Array.isArray(rawData.orders)) {
+                historyList = rawData.orders;
             }
-        });
 
-        const historyList = (await Promise.all(orderDetailsPromises)).filter(Boolean);
+            // Sync active subset to localStorage for background processes/polling reference
+            const activeOnes = historyList.filter(item => {
+                const status = String(item.status || '').toLowerCase();
+                return status === 'active' || status === 'pending' || status === 'waiting for sms...';
+            });
+            localStorage.setItem('sms_active_orders', JSON.stringify(activeOnes));
 
-        if (historyList.length === 0) {
+        } catch (apiErr) {
+            console.warn("Could not fetch from backend history API, falling back to local cache:", apiErr);
+            historyList = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
+        }
+
+        if (!historyList || historyList.length === 0) {
             historyGrid.innerHTML = `<p class="text-xs sm:text-sm text-gray-300 text-center py-6">No purchased numbers found.</p>`;
             return;
         }
 
-        // Automatically fire persistent background polling for any active orders found
+        // 2. Automatically fire persistent background polling for any active orders found
         historyList.forEach(item => {
             const statusLower = String(item.status || 'pending').toLowerCase();
             const isActive = statusLower === 'active' || statusLower === 'pending' || statusLower === 'waiting for sms...';
@@ -1029,6 +1031,7 @@ async function fetchUserHistory() {
             }
         });
 
+        // 3. Sort orders: Active/Pending first, followed by completed/expired
         const sortedHistory = historyList.sort((a, b) => {
             const statusA = String(a.status || '').toLowerCase();
             const statusB = String(b.status || '').toLowerCase();
@@ -1046,6 +1049,7 @@ async function fetchUserHistory() {
             );
         };
 
+        // 4. Render UI
         historyGrid.innerHTML = sortedHistory.map(item => {
             const statusLower = String(item.status || 'pending').toLowerCase();
             const isActive = statusLower === 'active' || statusLower === 'pending' || statusLower === 'waiting for sms...';
@@ -1061,13 +1065,11 @@ async function fetchUserHistory() {
             const displayCountryName = item.countryName || item.country || 'Selected Country';
             const displayCountryShortCode = (item.countryCode || item.shortCode || '').toUpperCase();
             
-            // Fixed Flag Resolver: Check if flag URL exists and build proper <img> tag, else fallback to Emoji
             const flagUrl = item.countryFlag || item.flag || item.flagUrl || item.icon || '';
             const flagElement = flagUrl && flagUrl.startsWith('http')
                 ? `<img src="${flagUrl}" class="w-4 h-3 object-cover rounded-2xs inline-block shrink-0 shadow-2xs" alt="flag">`
                 : `<span class="text-xs">${getCountryFlagEmoji(displayCountryShortCode || (displayCountryName.length === 2 ? displayCountryName : ''))}</span>`;
 
-            // Robust Expiry Calculation
             let expirationTime;
             const baseCreatedAt = item.createdAt ? new Date(item.createdAt).getTime() : Date.now();
             
@@ -1089,7 +1091,7 @@ async function fetchUserHistory() {
                     <div class="flex items-center justify-between gap-2">
                         <div class="min-w-0">
                             <div class="flex items-center space-x-2">
-                                <p class-[11px] sm:text-xs text-brandBlue-200 font-semibold truncate">${displayServiceName}</p>
+                                <p class="text-[11px] sm:text-xs text-brandBlue-200 font-semibold truncate">${displayServiceName}</p>
                                 ${isActive ? `
                                     <span class="text-[9px] sm:text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-full border border-amber-500/30 font-mono flex items-center shrink-0">
                                         <i class="fa-regular fa-clock mr-1"></i> <span class="order-timer" data-expiration="${expirationTime}">${formattedTimeLeft}</span>
@@ -1104,7 +1106,7 @@ async function fetchUserHistory() {
                                     </button>
                                 ` : ''}
                             </div>
-                            <p class-[10px] sm:text-[11px] text-gray-300 mt-1 flex items-center space-x-1.5">
+                            <p class="text-[10px] sm:text-[11px] text-gray-300 mt-1 flex items-center space-x-1.5">
                                 ${flagElement}
                                 <span class="font-medium text-white truncate">${displayCountryName}</span>
                                 ${displayCountryShortCode ? `<span class="text-gray-400 font-mono text-[9px] sm:text-[10px] bg-brandBlue-950 px-1 py-0.5 rounded border border-brandBlue-700/40 shrink-0">(${displayCountryShortCode})</span>` : ''}

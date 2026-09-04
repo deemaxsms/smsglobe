@@ -111,7 +111,7 @@
         </div>
     </main>
 
- <script>
+<script>
     // --- Global Selectors ---
     const loginForm = document.getElementById('loginForm');
     const loginBtn = document.getElementById('loginBtn');
@@ -199,12 +199,14 @@
                 const data = await response.json();
 
                 if (data.success) {
+                    // Save Token and User Data Payload for instant dashboard rendering
                     localStorage.setItem('userToken', data.token);
+                    if (data.user) {
+                        localStorage.setItem('userData', JSON.stringify(data.user));
+                    }
                     window.location.href = '/smsuser/user_dashboard';
                 } else if (data.isUnverified) {
-                    // USER NOT VERIFIED: Redirect to verification page with email
                     alert("Account not verified. Redirecting you to verify your email...");
-                    // Assuming your signup file is named create_account.html or signup.html
                     window.location.href = `signup.html?verify_email=${encodeURIComponent(email)}`;
                 } else {
                     alert(data.message || "Invalid credentials.");
@@ -230,7 +232,11 @@
             });
             const data = await res.json();
             if (data.success) {
+                // Save Token and User Data Payload for instant dashboard rendering
                 localStorage.setItem('userToken', data.token);
+                if (data.user) {
+                    localStorage.setItem('userData', JSON.stringify(data.user));
+                }
                 window.location.href = '/smsuser/user_dashboard';
             } else {
                 alert(data.message || "Google Login Failed");

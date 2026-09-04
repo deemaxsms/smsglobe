@@ -148,7 +148,7 @@
     </button>
   </div>
 
-  <script>
+<script>
     const btn = document.getElementById('mobile-menu-btn');
     const menu = document.getElementById('mobile-menu');
 
@@ -225,7 +225,6 @@
 
             if (data.success) {
                 const userData = data.user || data;
-                
                 userBalance = parseFloat(userData.balance || 0); 
                 const bonusBalance = parseFloat(userData.bonusBalance || 0); 
                 
@@ -310,30 +309,36 @@
       }
 
       async function selectService(serviceCode) {
+        console.log("🔍 [DEBUG] Service selected:", serviceCode);
         expandedServiceCode = serviceCode;
         selectedServiceCode = serviceCode;
         renderServices(services);
 
         const countryGrid = document.getElementById('countries-grid');
         if (countryGrid) {
-          countryGrid.innerHTML = '<p class="text-xs text-gray-300 col-span-full text-center py-4"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading countries and prices...</p>';
+          countryGrid.innerHTML = '<p class="text-xs text-gray-300 col-span-full text-center py-4"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading countries and prices for ' + serviceCode + '...</p>';
         }
 
         try {
-          const response = await fetch(`${API_BASE_URL}/countries?service=${encodeURIComponent(serviceCode)}`);
-          const data = await response.json();
+          const targetUrl = `${API_BASE_URL}/countries?service=${encodeURIComponent(serviceCode)}`;
+          console.log("🌐 [DEBUG] Fetching countries from:", targetUrl);
 
-          if (data.success && data.countries) {
+          const response = await fetch(targetUrl);
+          const data = await response.json();
+          console.log("📦 [DEBUG] Countries API response data:", data);
+
+          if (data.success && data.countries && data.countries.length > 0) {
             renderCountries(data.countries);
           } else {
+            console.warn("⚠️ [DEBUG] No countries returned or success is false for service:", serviceCode);
             if (countryGrid) {
               countryGrid.innerHTML = '<p class="text-xs text-gray-300 col-span-full text-center py-4">No countries available for this service.</p>';
             }
           }
         } catch (err) {
-          console.error('Failed to load countries:', err);
+          console.error('❌ [DEBUG] Failed to load countries:', err);
           if (countryGrid) {
-            countryGrid.innerHTML = '<p class="text-xs text-red-400 col-span-full text-center py-4">Error loading available countries.</p>';
+            countryGrid.innerHTML = '<p class="text-xs text-red-400 col-span-full text-center py-4">Error loading available countries: ' + err.message + '</p>';
           }
         }
       }
@@ -342,10 +347,7 @@
         const grid = document.getElementById('countries-grid');
         if (!grid) return;
 
-        if (!countriesList || countriesList.length === 0) {
-          grid.innerHTML = '<p class="text-xs text-gray-300 col-span-full text-center py-4">No active stock for this service.</p>';
-          return;
-        }
+        console.log("🎨 [DEBUG] Rendering countries list, count:", countriesList.length);
 
         grid.innerHTML = countriesList.map(country => {
           const isSelected = selectedCountryId === country.countryId;
@@ -372,8 +374,8 @@
       }
 
       function selectCountry(countryId, providerId) {
+        console.log("🎯 [DEBUG] Country selected:", countryId, "Provider:", providerId);
         selectedCountryId = countryId;
-        // Re-render countries to apply selection styling if needed
       }
 
       document.addEventListener('DOMContentLoaded', () => {

@@ -3823,13 +3823,16 @@ async function handleGetCountries(req, res) {
         let formattedCountries = [];
         const priceData = rawPrices.countries || rawPrices.data || rawPrices;
 
-        if (priceData && typeof priceData === 'object') {
-            Object.keys(priceData).forEach(countryId => {
-                const countryServices = priceData[countryId];
-                if (!countryServices || typeof countryServices !== 'object') return;
+      if (priceData && typeof priceData === 'object') {
+    Object.keys(priceData).forEach(countryId => {
+        const countryServices = priceData[countryId];
+        if (!countryServices || typeof countryServices !== 'object') return;
+        let matchedServiceKey = Object.keys(countryServices).find(
+            k => k.toLowerCase() === String(serviceCode).toLowerCase()
+        );
 
-                const serviceData = countryServices[serviceCode] || countryServices[String(serviceCode).toLowerCase()];
-                if (!serviceData || typeof serviceData !== 'object') return;
+        const serviceData = matchedServiceKey ? countryServices[matchedServiceKey] : null;
+        if (!serviceData || typeof serviceData !== 'object') return;
 
                 // Resolve metadata early
                 const vendorMeta = countryMetaMap[String(countryId)] || {};

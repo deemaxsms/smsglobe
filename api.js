@@ -1693,14 +1693,14 @@ else if (metadata?.serviceType === 'virtual_number') {
 
     costNGN = Math.round(baseAmount * (1 + smsMarkup / 100));
 
-    productDetails.name = `SMSBower Global Provision (${metadata.countryCode || 'NG'})`;
+    productDetails.name = `SMSGlobe Global Provision (${metadata.countryCode || 'NG'})`;
     productDetails.plan = metadata.serviceName || "SMS Verification";
     isOnlineSimFlow = true; 
 
     // 2. Check SMSBower balance and convert USD to NGN at 1400 rate
     try {
-        const smsBowerBaseUrl = process.env.SMSBOWER_BASE_URL || 'https://smsbower.page/stubs/handler_api.php';
-        const smsBowerApiKey = process.env.SMSBOWER_API_KEY || 'ak9jLLeJY3suV0B3HEglObnLKFfPAfxN';
+        const smsBowerBaseUrl = process.env.SMSBOWER_BASE_URL;
+        const smsBowerApiKey = process.env.SMSBOWER_API_KEY;
 
         const balanceUrl = `${smsBowerBaseUrl}?api_key=${smsBowerApiKey}&action=getBalance`;
         const balanceRes = await axios.get(balanceUrl, { timeout: 15000 });
@@ -1714,7 +1714,6 @@ else if (metadata?.serviceType === 'virtual_number') {
             providerBalanceUSD = balanceRes.data.balance;
         }
 
-        // Convert USD balance to NGN using the 1400 rate
         const exchangeRate = 1400;
         const providerBalanceNGN = providerBalanceUSD * exchangeRate;
 
@@ -1722,11 +1721,11 @@ else if (metadata?.serviceType === 'virtual_number') {
         if (providerBalanceNGN < baseAmount) {
             return res.status(400).json({ 
                 success: false, 
-                message: "System provider balance is currently low. Please top up your SMSBower account." 
+                message: "System provider balance is currently low. Please top up your account." 
             });
         }
     } catch (err) {
-        console.error("SMSBower Balance Verification Error:", err.response?.data || err.message);
+        console.error("SMS Balance Verification Error:", err.response?.data || err.message);
         return res.status(500).json({ 
             success: false, 
             message: "Failed to communicate with SMS provider gateway." 
@@ -1736,10 +1735,10 @@ else if (metadata?.serviceType === 'virtual_number') {
     orderSpecifics = {
         serviceName: metadata.serviceName,
         status: 'pending', 
-        instructions: "Allocating lease from SMSBower gateway... Please stand by.",
+        instructions: "Allocating lease from gateway... Please stand by.",
         metadata: { 
             ...metadata, 
-            provider: 'smsbower',
+            provider: 'smsglobe',
             markupApplied: smsMarkup
         }
     };
@@ -1881,7 +1880,7 @@ if (isOnlineSimFlow) {
             getNumUrl += `&providerIds=${encodeURIComponent(String(selectedOperator).trim())}`;
         }
 
-        console.log("Dispatching V2 URL to SMSBower:", getNumUrl);
+        console.log("Dispatching V2 URL to SMS:", getNumUrl);
 
         const sbResponse = await axios.get(getNumUrl, { timeout: 15000 });
         const data = sbResponse.data;
@@ -1962,7 +1961,7 @@ const createdOrder = await Order.create({
             });
         }
     } catch (apiErr) {
-        console.error("Critical SMSBower API connection error:", apiErr.message);
+        console.error("Critical SMS API connection error:", apiErr.message);
         await User.findByIdAndUpdate(user._id, { 
             $inc: { balance: mainDeduction, bonusBalance: bonusDeduction } 
         });
@@ -3608,7 +3607,7 @@ async function handlePurchaseNumber(req, res) {
                 apiParams.providerIds = String(selectedOperator).trim();
             }
 
-            console.log("Sending clean allocation query to SMSBower:", apiParams);
+            console.log("Sending clean allocation query to SMS:", apiParams);
 
             // Call SMSBower Number Allocation API
             const response = await smsBowerClient.get('', { params: apiParams });
@@ -3652,7 +3651,7 @@ async function handlePurchaseNumber(req, res) {
             // Refund balance on vendor network error
             await User.findByIdAndUpdate(userId, { $inc: { balance: planAmount } });
             
-            console.error("SMSBower Vendor Request Failed:", vendorErr.response?.data || vendorErr.message);
+            console.error("SMS Vendor Request Failed:", vendorErr.response?.data || vendorErr.message);
             return res.status(502).json({ 
                 success: false, 
                 message: "Vendor API error while allocating number. Your balance has been refunded." 
@@ -3660,7 +3659,7 @@ async function handlePurchaseNumber(req, res) {
         }
 
     } catch (err) {
-        console.error("SMSBower Purchase System Error:", err.message);
+        console.error("SMS Purchase System Error:", err.message);
         return res.status(500).json({ success: false, message: "Server error processing purchase." });
     }
 }
@@ -3683,7 +3682,7 @@ async function handleGetServicesAndPrices(req, res) {
         const rawData = response.data;
 
         if (typeof rawData === 'string') {
-            console.error("SMSBower returned string error:", rawData);
+            console.error("SMS returned string error:", rawData);
             return res.status(400).json({ success: false, message: `Vendor error: ${rawData}` });
         }
 
@@ -3708,7 +3707,7 @@ async function handleGetServicesAndPrices(req, res) {
         });
 
     } catch (err) {
-        console.error("Failed to fetch SMSBower services:", err.response?.data || err.message);
+        console.error("Failed to fetch SMS services:", err.response?.data || err.message);
         return res.status(500).json({ 
             success: false, 
             message: "Failed to fetch services catalog from vendor.",
@@ -3763,65 +3762,6 @@ async function handleGetCountries(req, res) {
         if (!serviceCode) {
             return res.status(400).json({ success: false, message: "Service code is required." });
         }
-
-        // 0. Fetch System Settings dynamically for markup control with safety fallback
-        let markupPercent = 0;
-        try {
-            const settings = await SystemSettings.findOne().lean();
-            markupPercent = settings?.smsMarkupPercentage || 0;
-        } catch (dbErr) {
-            console.warn("Database warning: Could not fetch system settings markup, defaulting to 0%", dbErr.message);
-        }
-        const globalMarkupMultiplier = 1 + (markupPercent / 100);
-
-        // =========================================================================
-        // SPECIFIC COUNTRY EXTRA MARKUPS 
-        // =========================================================================
-        const countrySpecificMarkups = {
-            // Core Targets
-            'united states (virtual)': 693.65, 'united states': 20,  'france': 20,         'united kingdom': 20,  'india': 25,         'canada': 30,
-
-            // Africa & Middle East
-            'tunisia': 693.65,        'ghana': 693.65,          'palestine': 693.65,       'burundi': 693.65,       'cameroon': 693.65,
-            'south africa': 693.65,   'guinea': 693.65,         'cote d`ivoire ivory coast': 693.65, 'togo': 693.65,  'mauritania': 693.65,
-            'central african republic': 693.65, 'burkina faso': 693.65, 'lebanon': 693.65,   'south sudan': 693.65,   'sudan': 693.65,
-            'syrian arab republic': 693.65,     'iraq': 693.65,     'morocco': 693.65,         'ethiopia': 693.65,      'kenya': 693.65,
-            'madagascar': 693.65,     'mali': 693.65,           'benin': 693.65,           'liberia': 693.65,       'saudi arabia': 693.65,
-            'botswana': 693.65,       'tanzania': 693.65,       'israel': 693.65,          'egypt': 693.65,         'gambia': 693.65,
-            'yemen': 693.65,          'algeria': 693.65,        'senegal': 693.65,         'uganda': 693.65,        'angola': 693.65,
-            'mozambique': 693.65,     'libya': 693.65,          'swaziland': 693.65,       'oman': 693.65,          'qatar': 693.65,
-            'sierra leone': 693.65,   'jordan': 693.65,         'kuwait': 693.65,          'bahrain': 693.65,       'comoros': 693.65,
-            'lesotho': 693.65,        'malawi': 693.65,         'namibia': 693.65,         'niger': 693.65,         'rwanda': 693.65,
-            'zambia': 693.65,         'somalia': 693.65,        'congo': 693.65,           'gabon': 693.65,         'mauritius': 693.65,
-            'equatorial guinea': 693.65, 'djibouti': 693.65,    'eritrea': 693.65,         'sao tome and principe': 693.65, 'reunion': 693.65,
-
-            // Asia & Oceania
-            'indonesia': 693.65,      'myanmar': 693.65,        'pakistan': 693.65,        'uzbekistan': 693.65,    'sri lanka': 693.65,
-            'zimbabwe': 693.65,       'kosovo': 693.65,         'viet nam': 693.65,        'philippines': 693.65,   'thailand': 693.65,
-            'kazakhstan': 693.65,     'mongolia': 693.65,       'kyrgyzstan': 693.65,      'hong kong': 693.65,     'macau': 693.65,
-            'cambodia': 693.65,       'lao people`s': 693.65,   'taiwan': 693.65,          'iran': 693.65,          'bangladesh': 693.65,
-            'afghanistan': 693.65,    'papua new gvineya': 693.65, 'nepal': 693.65,        'timor-leste': 693.65,   'brunei darussalam': 693.65,
-            'georgia':  693.65,        'turkmenistan':  693.65,   'tajikistan':  693.65,      'armenia':  693.65,       'bhutan':  693.65,
-            'maldives': 693.65,       'azerbaijan': 693.65,
-
-            // Europe
-            'ukraine': 693.65,        'chile': 693.65,          'colombia': 693.65,        'argentinas': 693.65,    'poland': 693.65,
-            'congo (dem. republic)': 693.65, 'ireland': 693.65, 'haiti': 693.65,           'serbia': 693.65,        'romania': 693.65,
-            'estonia': 693.65,        'chad': 693.65,           'lithuania': 693.65,       'croatia': 693.65,       'netherlands': 693.65,
-            'latvia': 693.65,         'belarus': 693.65,        'slovenia': 693.65,        'czech republic': 693.65, 'peru': 693.65,
-            'venezuela': 693.65,      'cyprus': 693.65,         'belgium': 693.65,         'bulgaria': 693.65,      'hungary': 693.65,
-            'italy':500.65,          'bosnia and herzegovina': 693.65, 'cuba': 693.65,    'greece': 693.65,        'iceland': 693.65,
-            'slovakia': 693.65,       'suriname': 693.65,       'monaco': 693.65,          'albania': 693.65,       'uruguay': 693.65,
-            'turkey': 693.65,         'luxembourg': 693.65,     'montenegro': 693.65,      'norway': 693.65,
-
-            // Americas & Caribbean
-            'bolivia': 693.65,        'nigeria': 693.65,        'paraguay': 693.65,        'honduras': 693.65,      'nicaragua': 693.65,
-            'costa rica': 693.65,     'guatemala': 693.65,      'puerto rico': 693.65,     'el salvador': 693.65,   'jamaica': 693.65,
-            'trinidad and tobago': 693.65, 'ecuador': 693.65,   'dominican republic': 693.65, 'panama': 693.65,     'barbados': 693.65,
-            'bahamas':  693.65,        'belize':  693.65,         'dominica':  693.65,        'grenada':  693.65,       'guinea-bissau':  693.65,
-            'guyana':  693.65,         'saint kitts and nevis':  693.65, 'guadeloupe':  693.65, 'french guiana':  693.65, 'saint lucia':  693.65,
-            'saint vincent':  693.65,  'antigua and barbuda':  693.65, 'cayman islands':  693.65, 'aruba':  693.65
-        };
 
         // 1. Fetch official country definitions dictionary directly from SMSBower API
         const countriesMetaResponse = await smsBowerClient.get('', {
@@ -3883,25 +3823,6 @@ async function handleGetCountries(req, res) {
                 const resolvedName = vendorMeta.name || `Country ${countryId}`;
                 const resolvedCode = vendorMeta.code || String(countryId).toLowerCase();
 
-                // Safe and robust lookup implementation
-                const lookupName = resolvedName.toLowerCase();
-                const lookupCode = resolvedCode.toLowerCase();
-                
-                let extraMarkupPercent = 0;
-                if (countrySpecificMarkups[lookupName] !== undefined) {
-                    extraMarkupPercent = countrySpecificMarkups[lookupName];
-                } else if (countrySpecificMarkups[lookupCode] !== undefined) {
-                    extraMarkupPercent = countrySpecificMarkups[lookupCode];
-                } else {
-                    const matchedKey = Object.keys(countrySpecificMarkups).find(key => lookupName.includes(key));
-                    if (matchedKey) {
-                        extraMarkupPercent = countrySpecificMarkups[matchedKey];
-                    }
-                }
-
-                // Calculate final compounded multiplier
-                const finalMarkupMultiplier = globalMarkupMultiplier * (1 + (extraMarkupPercent / 100));
-
                 let lowestVariant = null;
                 let lowestAmount = Infinity;
 
@@ -3910,68 +3831,20 @@ async function handleGetCountries(req, res) {
                     const tierItem = serviceData[providerKey];
                     if (!tierItem || typeof tierItem !== 'object') return;
 
-              // Inside Object.keys(serviceData).forEach(providerKey => { ... })
+                    const rawCostUsd = Number(tierItem.price || tierItem.cost || tierItem.value || 0);
+                    if (rawCostUsd <= 0) return;
 
-const rawCostUsd = Number(tierItem.price || tierItem.cost || tierItem.value || 0);
-if (rawCostUsd <= 0) return;
+                    // Calculate straight conversion without any markups or price floors
+                    const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
 
-const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
-let markedUpAmountNgn = Number((baseAmountNgn * finalMarkupMultiplier).toFixed(2));
-
-const normalizedServiceCode = String(serviceCode).trim().toLowerCase();
-
-// Check service identifiers
-const isFacebookService = normalizedServiceCode === 'fb' || normalizedServiceCode === 'facebook';
-const isTelegramService = normalizedServiceCode === 'tg' || normalizedServiceCode === 'telegram';
-const isWhatsAppService = normalizedServiceCode === 'wa' || normalizedServiceCode === 'whatsapp';
-const isTwitterService = normalizedServiceCode === 'tw' || normalizedServiceCode === 'twitter' || normalizedServiceCode === 'x';
-const isSnapchatService = normalizedServiceCode === 'sc' || normalizedServiceCode === 'snapchat';
-const isInstagramService = normalizedServiceCode === 'ig' || normalizedServiceCode === 'instagram';
-const isDiscordService = normalizedServiceCode === 'ds' || normalizedServiceCode === 'discord';
-const isTinderService = normalizedServiceCode === 'td' || normalizedServiceCode === 'tinder';
-
-if (isFacebookService) {
-     if (markedUpAmountNgn < 750.00) {
-        markedUpAmountNgn = 750.00;
-    }
-} else if (isTelegramService) {
-     if (markedUpAmountNgn < 2000.00) {
-        markedUpAmountNgn = 2000.00;
-    }
-} else if (isTwitterService) {
-     if (markedUpAmountNgn < 2000.00) {
-        markedUpAmountNgn = 2000.00;
-    }
-} else if (isSnapchatService) {
-   if (markedUpAmountNgn < 2000.00) {
-        markedUpAmountNgn = 2000.00;
-    }
-} else if (isInstagramService) {
-    if (markedUpAmountNgn < 900.00) {
-        markedUpAmountNgn = 900.00;
-    }
-} else if (isDiscordService) {
-    if (markedUpAmountNgn < 850.00) {
-        markedUpAmountNgn = 850.00;
-    }
-} else if (isTinderService) {
-    if (markedUpAmountNgn < 850.00) {
-        markedUpAmountNgn = 850.00;
-    }
-} else if (isWhatsAppService) {
-    if (markedUpAmountNgn < 2500.00) {
-        markedUpAmountNgn = 2500.00;
-    }
-}
-
-if (markedUpAmountNgn < lowestAmount) {
-    lowestAmount = markedUpAmountNgn;
-    lowestVariant = {
-        providerId: String(tierItem.provider_id || providerKey),
-        count: tierItem.count || tierItem.stock || 'In Stock',
-        amount: markedUpAmountNgn
-    };
-}
+                    if (baseAmountNgn < lowestAmount) {
+                        lowestAmount = baseAmountNgn;
+                        lowestVariant = {
+                            providerId: String(tierItem.provider_id || providerKey),
+                            count: tierItem.count || tierItem.stock || 'In Stock',
+                            amount: baseAmountNgn
+                        };
+                    }
                 });
 
                 if (lowestVariant) {
@@ -3999,7 +3872,7 @@ if (markedUpAmountNgn < lowestAmount) {
 
         return res.status(200).json({ success: true, countries: formattedCountries });
     } catch (err) {
-        console.error("Failed to fetch SMSBower countries from vendor:", err.response?.data || err.message);
+        console.error("Failed to fetch SMS countries from vendor:", err.response?.data || err.message);
         return res.status(500).json({ 
             success: false, 
             message: "Failed to fetch country catalog from vendor.",
@@ -4007,6 +3880,7 @@ if (markedUpAmountNgn < lowestAmount) {
         });
     }
 }
+
 /**
  * 3. CHECK ORDER STATUS / SMS CODE POLLING
  */
@@ -4078,7 +3952,7 @@ async function handleOrderDetails(req, res) {
                     );
                 }
             } catch (pollErr) {
-                console.error("SMSBower Active Poll Request Error:", pollErr.message);
+                console.error("SMS Active Poll Request Error:", pollErr.message);
                 // Non-blocking: continue to return current order state even if external api hiccups
             }
         }
@@ -4092,7 +3966,7 @@ async function handleOrderDetails(req, res) {
         });
 
     } catch (err) {
-        console.error("SMSBower Polling Error:", err.message);
+        console.error("SMS Polling Error:", err.message);
         return res.status(500).json({ success: false, message: "Failed to read order update." });
     }
 }
@@ -4248,7 +4122,7 @@ async function handleCancelOrder(req, res) {
                     }
                 });
             } catch (providerErr) {
-                console.error("SMSBower Provider Cancellation Warning:", providerErr.message);
+                console.error("SMS Provider Cancellation Warning:", providerErr.message);
             }
         }
 
@@ -4431,7 +4305,7 @@ async function handleSmsBowerWebhook(req, res) {
     try {
         const { activationId, code, text } = req.body;
         
-        console.log(`📩 SMSBower Webhook received for Activation ID: ${activationId}, Code: ${code}`);
+        console.log(`📩 SMS Webhook received for Activation ID: ${activationId}, Code: ${code}`);
 
         if (!activationId || !code) {
             return res.status(200).json({ success: false, message: 'Missing activationId or code' });
@@ -4444,7 +4318,7 @@ async function handleSmsBowerWebhook(req, res) {
         });
 
         if (!order) {
-            console.warn(`⚠️ No pending order found for SMSBower activationId: ${activationId}`);
+            console.warn(`⚠️ No pending order found for SMS activationId: ${activationId}`);
             return res.status(200).json({ success: true, message: 'Order not found or already processed' });
         }
 
@@ -4464,7 +4338,7 @@ async function handleSmsBowerWebhook(req, res) {
         return res.status(200).json({ success: true });
 
     } catch (err) {
-        console.error("SMSBower Webhook Error:", err.message);
+        console.error("SMS Webhook Error:", err.message);
         return res.status(200).json({ success: false, error: err.message });
     }
 }
@@ -4770,7 +4644,7 @@ async function handleGetSystemStatus(req, res) {
     try {
         // Added .lean() for faster performance on public pings
 const settings = await SystemSettings.findOne().select('maintenanceMode noticeBarText').lean();
-        
+
         res.json({ 
     success: true, 
     maintenanceMode: settings?.maintenanceMode || false,

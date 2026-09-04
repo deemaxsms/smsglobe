@@ -4295,13 +4295,13 @@ async function handleGetUserOrders(req, res) {
             return res.status(400).json({ success: false, message: "Invalid token data" });
         }
 
-        // 2. Find all orders linked to this user account
-        let orders = await Order.find({ userEmail: userEmail }).sort({ createdAt: -1 });
+        // 2. Query the SmsNumber collection instead of Order
+        let smsOrders = await SmsNumber.find({ userEmail: userEmail }).sort({ createdAt: -1 });
 
-        // 3. Loop through orders and live-poll SMSBower for any active/pending ones
-        const updatedOrdersPromises = orders.map(async (order) => {
+        // 3. Loop through and live-poll SMSBower for any active/pending numbers
+        const updatedOrdersPromises = smsOrders.map(async (order) => {
             const currentStatus = String(order.status || '').toLowerCase();
-            const activeVendorId = order.vendorOrderId || order.metadata?.tzid;
+            const activeVendorId = order.vendorOrderId;
 
             if (activeVendorId && (currentStatus === 'pending' || currentStatus === 'active')) {
                 try {
@@ -4317,12 +4317,6 @@ async function handleGetUserOrders(req, res) {
                         order.fullMessage = `Verification code is ${code}`;
                         order.status = 'completed';
                         await order.save();
-
-                        // Sync SmsNumber collection if it exists
-                        await SmsNumber.findOneAndUpdate(
-                            { vendorOrderId: String(activeVendorId), status: 'pending' },
-                            { smsCode: code, fullMessage: order.fullMessage, status: 'completed' }
-                        );
                     } else if (rawText === 'STATUS_CANCEL') {
                         order.status = 'cancelled';
                         await order.save();
@@ -4336,14 +4330,14 @@ async function handleGetUserOrders(req, res) {
 
         const finalizedOrders = await Promise.all(updatedOrdersPromises);
 
-        // 4. Return all orders (active, completed, cancelled, expired) so history is persistent
+        // 4. Return the list of SMS numbers to the frontend history grid
         return res.status(200).json({
             success: true,
             orders: finalizedOrders
         });
 
     } catch (err) {
-        console.error("Error fetching user orders:", err);
+        console.error("Error fetching user SMS orders:", err);
         
         if (err.name === 'JsonWebTokenError') {
             return res.status(401).json({ success: false, message: "Invalid Session" });

@@ -353,150 +353,151 @@
       }
 
 function renderCountriesListHtml(serviceCode, countriesList) {
-        let filteredList = countriesList || [];
-        if (countrySearchTerm) {
-            filteredList = filteredList.filter(c => {
-                const name = (c.countryName || c.name || '').toLowerCase();
-                const id = String(c.countryId || '').toLowerCase();
-                return name.includes(countrySearchTerm) || id.includes(countrySearchTerm);
-            });
-        }
+    let filteredList = countriesList || [];
+    if (countrySearchTerm) {
+        filteredList = filteredList.filter(c => {
+            const name = (c.countryName || c.name || '').toLowerCase();
+            const id = String(c.countryId || '').toLowerCase();
+            return name.includes(countrySearchTerm) || id.includes(countrySearchTerm);
+        });
+    }
 
-        if (!filteredList || filteredList.length === 0) {
-            return `
-                <div class="flex flex-col items-center justify-center py-6 bg-white/5 rounded-xl border border-brandBlue-700/50 col-span-full">
-                    <p class="text-xs text-brandBlue-200 font-medium uppercase tracking-wide">No countries found.</p>
-                </div>
-            `;
-        }
+    if (!filteredList || filteredList.length === 0) {
+        return `
+            <div class="flex flex-col items-center justify-center py-6 bg-white/5 rounded-xl border border-brandBlue-700/50 col-span-full">
+                <p class="text-xs text-brandBlue-200 font-medium uppercase tracking-wide">No countries found.</p>
+            </div>
+        `;
+    }
 
-        let multiplier = 1;
-        if (currentMode === 'rent') {
-            const select = document.getElementById('rentalPeriod');
-            if (select) {
-                multiplier = parseFloat(select.options[select.selectedIndex]?.getAttribute('data-multi')) || 1;
+    let multiplier = 1;
+    if (currentMode === 'rent') {
+        const select = document.getElementById('rentalPeriod');
+        if (select) {
+            multiplier = parseFloat(select.options[select.selectedIndex]?.getAttribute('data-multi')) || 1;
+        }
+    }
+
+    const countryCodeMap = {
+        'united states': 'us', 'usa': 'us', 'united states (virtual)': 'us', 'america': 'us', 'canada': 'ca', 'mexico': 'mx', 'brazil': 'br', 'argentina': 'ar',
+        'colombia': 'co', 'chile': 'cl', 'peru': 'pe', 'venezuela': 've', 'ecuador': 'ec', 'bolivia': 'bo', 'paraguay': 'py', 'uruguay': 'uy', 'costa rica': 'cr',
+        'panama': 'pa', 'cuba': 'cu', 'dominican republic': 'do', 'puerto rico': 'pr', 'guatemala': 'gt', 'honduras': 'hn', 'el salvador': 'sv', 'nicaragua': 'ni', 'haiti': 'ht',
+        'jamaica': 'jm', 'trinidad and tobago': 'tt', 'bahamas': 'bs', 'barbados': 'bb',
+        'united kingdom': 'gb', 'uk': 'gb', 'great britain': 'gb', 'england': 'gb', 'germany': 'de', 'france': 'fr', 'italy': 'it', 'spain': 'es', 'ukraine': 'ua',
+        'russia': 'ru', 'poland': 'pl', 'romania': 'ro', 'netherlands': 'nl', 'holland': 'nl', 'belgium': 'be', 'greece': 'gr', 'czech republic': 'cz', 'czechia': 'cz', 'portugal': 'pt', 'sweden': 'se',
+        'hungary': 'hu', 'belarus': 'by', 'austria': 'at', 'switzerland': 'ch', 'bulgaria': 'bg', 'serbia': 'rs', 'denmark': 'dk', 'finland': 'fi', 'slovakia': 'sk', 'norway': 'no',
+        'ireland': 'ie', 'croatia': 'hr', 'moldova': 'md', 'bosnia and herzegovina': 'ba', 'albania': 'al', 'lithuania': 'lt', 'north macedonia': 'mk', 'slovenia': 'si', 'latvia': 'lv',
+        'estonia': 'ee', 'montenegro': 'me', 'luxembourg': 'lu', 'malta': 'mt', 'iceland': 'is', 'andorra': 'ad', 'monaco': 'mc', 'liechtenstein': 'li', 'san marino': 'sm', 'vatican city': 'va',
+        'cyprus': 'cy',
+        'nigeria': 'ng', 'egypt': 'eg', 'south africa': 'za', 'kenya': 'ke', 'ghana': 'gh', 'cameroon': 'cm', 'guinea': 'gn', 'ethiopia': 'et', 'tanzania': 'tz', 'algeria': 'dz', 'morocco': 'ma',
+        'uganda': 'ug', 'sudan': 'sd', 'angola': 'ao', 'mozambique': 'mz', 'ivory coast': 'ci', 'cote d ivoire': 'ci', 'madagascar': 'mg', 'zambia': 'zm', 'zimbabwe': 'zw', 'senegal': 'sn', 'mali': 'ml',
+        'rwanda': 'rw', 'somalia': 'so', 'tunisia': 'tn', 'chad': 'td', 'benin': 'bj', 'burundi': 'bi', 'south sudan': 'ss', 'eritrea': 'er', 'namibia': 'na', 'gambia': 'gm',
+        'botswana': 'bw', 'gabon': 'ga', 'lesotho': 'ls', 'guinea-bissau': 'gw', 'equatorial guinea': 'gq', 'mauritius': 'mu', 'eswatini': 'sz', 'djibouti': 'dj', 'comoros': 'km',
+        'cape verde': 'cv', 'sao tome and principe': 'st', 'seychelles': 'sc', 'togo': 'tg', 'mauritania': 'mr', 'central african republic': 'cf', 'burkina faso': 'bf', 'kosovo': 'xk',
+        'liberia': 'lr', 'congo (dem. republic)': 'cd', 'democratic republic of the congo': 'cd', 'macau': 'mo', 'lao people`s': 'la', 'laos': 'la', 'taiwan': 'tw', 'papua new guinea': 'pg', 'libya': 'ly', 'swaziland': 'sz', 'sierra leone': 'sl', 'belize': 'bz', 'dominica': 'dm', 'grenada': 'gd',
+        'guyana': 'gy', 'saint kitts and nevis': 'kn', 'malawi': 'mw', 'niger': 'ne', 'suriname': 'sr', 'reunion': 're', 'congo': 'cg', 'guadeloupe': 'gp', 'saint lucia': 'lc',
+        'saint vincent': 'vc', 'antigua and barbuda': 'ag', 'cayman islands': 'ky', 'aruba': 'aw', 'montserrat': 'ms', 'anguilla': 'ai',
+        'macedonia': 'mk', 'new caledonia': 'nc', 'bermuda': 'bm', 'sint maarten': 'sx', 'martinique': 'mq', 'faroe islands': 'fo', 'gibraltar': 'gi',
+        'china': 'cn', 'india': 'in', 'vietnam': 'vn', 'indonesia': 'id', 'pakistan': 'pk', 'bangladesh': 'bd', 'japan': 'jp', 'hong kong': 'hk',
+        'philippines': 'ph', 'turkey': 'tr', 'turkiye': 'tr', 'iran': 'ir', 'thailand': 'th', 'myanmar': 'mm', 'south korea': 'kr', 'korea': 'kr', 'iraq': 'iq',
+        'afghanistan': 'af', 'saudi arabia': 'sa', 'uzbekistan': 'uz', 'yemen': 'ye', 'malaysia': 'my', 'nepal': 'np', 'north korea': 'kp', 'sri lanka': 'lk',
+        'kazakhstan': 'kz', 'syria': 'sy', 'cambodia': 'kh', 'jordan': 'jo', 'azerbaijan': 'az', 'united arab emirates': 'ae', 'uae': 'ae', 'tajikistan': 'tj',
+        'israel': 'il', 'lebanon': 'lb', 'kyrgyzstan': 'kg', 'turkmenistan': 'tm', 'singapore': 'sg', 'palestine': 'ps', 'oman': 'om', 'kuwait': 'kw', 'georgia': 'ge',
+        'mongolia': 'mn', 'armenia': 'am', 'qatar': 'qa', 'bahrain': 'bh', 'timor-leste': 'tl', 'bhutan': 'bt', 'maldives': 'mv', 'brunei': 'bn',
+        'australia': 'au', 'new zealand': 'nz', 'fiji': 'fj', 'solomon islands': 'sb', 'vanuatu': 'vu', 'samoa': 'ws', 'kiribati': 'ki', 'micronesia': 'fm',
+        'tonga': 'to', 'marshall islands': 'mh', 'palau': 'pw', 'tuvalu': 'tv', 'nauru': 'nr', 'french guiana': 'gf', 'niue': 'nu'
+    };
+
+    return filteredList.map(c => {
+        const options = c.availablePrices || [{ amount: c.price?.amount, rank: c.rank, count: c.count || c.stock, providerId: c.providerId }];
+        const selectedIdx = c.selectedPriceIndex || 0;
+        const activeTier = options[selectedIdx] || options[0];
+
+        const finalDisplayPrice = Number(activeTier.amount || 0) * multiplier;
+        const formattedPriceString = finalDisplayPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        const stockCount = activeTier.count ?? activeTier.stock ?? c.count ?? c.stock ?? '0';
+        const countryId = String(c.countryId || '').toLowerCase();
+        const countryName = c.countryName || c.name || '';
+        const cleanName = countryName.toLowerCase().trim();
+
+        let flagCode = 'un';
+        if (c.code && c.code.length === 2) {
+            flagCode = c.code.toLowerCase();
+        } else if (countryCodeMap[cleanName]) {
+            flagCode = countryCodeMap[cleanName];
+        } else {
+            const matchedKey = Object.keys(countryCodeMap).find(key => cleanName.includes(key));
+            if (matchedKey) {
+                flagCode = countryCodeMap[matchedKey];
+            } else if (countryId.length === 2) {
+                flagCode = countryId;
             }
         }
 
-        const countryCodeMap = {
-            'united states': 'us', 'usa': 'us', 'united states (virtual)': 'us', 'america': 'us', 'canada': 'ca', 'mexico': 'mx', 'brazil': 'br', 'argentina': 'ar',
-            'colombia': 'co', 'chile': 'cl', 'peru': 'pe', 'venezuela': 've', 'ecuador': 'ec', 'bolivia': 'bo', 'paraguay': 'py', 'uruguay': 'uy', 'costa rica': 'cr',
-            'panama': 'pa', 'cuba': 'cu', 'dominican republic': 'do', 'puerto rico': 'pr', 'guatemala': 'gt', 'honduras': 'hn', 'el salvador': 'sv', 'nicaragua': 'ni', 'haiti': 'ht',
-            'jamaica': 'jm', 'trinidad and tobago': 'tt', 'bahamas': 'bs', 'barbados': 'bb',
-            'united kingdom': 'gb', 'uk': 'gb', 'great britain': 'gb', 'england': 'gb', 'germany': 'de', 'france': 'fr', 'italy': 'it', 'spain': 'es', 'ukraine': 'ua',
-            'russia': 'ru', 'poland': 'pl', 'romania': 'ro', 'netherlands': 'nl', 'holland': 'nl', 'belgium': 'be', 'greece': 'gr', 'czech republic': 'cz', 'czechia': 'cz', 'portugal': 'pt', 'sweden': 'se',
-            'hungary': 'hu', 'belarus': 'by', 'austria': 'at', 'switzerland': 'ch', 'bulgaria': 'bg', 'serbia': 'rs', 'denmark': 'dk', 'finland': 'fi', 'slovakia': 'sk', 'norway': 'no',
-            'ireland': 'ie', 'croatia': 'hr', 'moldova': 'md', 'bosnia and herzegovina': 'ba', 'albania': 'al', 'lithuania': 'lt', 'north macedonia': 'mk', 'slovenia': 'si', 'latvia': 'lv',
-            'estonia': 'ee', 'montenegro': 'me', 'luxembourg': 'lu', 'malta': 'mt', 'iceland': 'is', 'andorra': 'ad', 'monaco': 'mc', 'liechtenstein': 'li', 'san marino': 'sm', 'vatican city': 'va',
-            'cyprus': 'cy',
-            'nigeria': 'ng', 'egypt': 'eg', 'south africa': 'za', 'kenya': 'ke', 'ghana': 'gh', 'cameroon': 'cm', 'guinea': 'gn', 'ethiopia': 'et', 'tanzania': 'tz', 'algeria': 'dz', 'morocco': 'ma',
-            'uganda': 'ug', 'sudan': 'sd', 'angola': 'ao', 'mozambique': 'mz', 'ivory coast': 'ci', 'cote d ivoire': 'ci', 'madagascar': 'mg', 'zambia': 'zm', 'zimbabwe': 'zw', 'senegal': 'sn', 'mali': 'ml',
-            'rwanda': 'rw', 'somalia': 'so', 'tunisia': 'tn', 'chad': 'td', 'benin': 'bj', 'burundi': 'bi', 'south sudan': 'ss', 'eritrea': 'er', 'namibia': 'na', 'gambia': 'gm',
-            'botswana': 'bw', 'gabon': 'ga', 'lesotho': 'ls', 'guinea-bissau': 'gw', 'equatorial guinea': 'gq', 'mauritius': 'mu', 'eswatini': 'sz', 'djibouti': 'dj', 'comoros': 'km',
-            'cape verde': 'cv', 'sao tome and principe': 'st', 'seychelles': 'sc', 'togo': 'tg', 'mauritania': 'mr', 'central african republic': 'cf', 'burkina faso': 'bf', 'kosovo': 'xk',
-            'liberia': 'lr', 'congo (dem. republic)': 'cd', 'democratic republic of the congo': 'cd', 'macau': 'mo', 'lao people`s': 'la', 'laos': 'la', 'taiwan': 'tw', 'papua new guinea': 'pg', 'libya': 'ly', 'swaziland': 'sz', 'sierra leone': 'sl', 'belize': 'bz', 'dominica': 'dm', 'grenada': 'gd',
-            'guyana': 'gy', 'saint kitts and nevis': 'kn', 'malawi': 'mw', 'niger': 'ne', 'suriname': 'sr', 'reunion': 're', 'congo': 'cg', 'guadeloupe': 'gp', 'saint lucia': 'lc',
-            'saint vincent': 'vc', 'antigua and barbuda': 'ag', 'cayman islands': 'ky', 'aruba': 'aw', 'montserrat': 'ms', 'anguilla': 'ai',
-            'macedonia': 'mk', 'new caledonia': 'nc', 'bermuda': 'bm', 'sint maarten': 'sx', 'martinique': 'mq', 'faroe islands': 'fo', 'gibraltar': 'gi',
-            'china': 'cn', 'india': 'in', 'vietnam': 'vn', 'indonesia': 'id', 'pakistan': 'pk', 'bangladesh': 'bd', 'japan': 'jp', 'hong kong': 'hk',
-            'philippines': 'ph', 'turkey': 'tr', 'turkiye': 'tr', 'iran': 'ir', 'thailand': 'th', 'myanmar': 'mm', 'south korea': 'kr', 'korea': 'kr', 'iraq': 'iq',
-            'afghanistan': 'af', 'saudi arabia': 'sa', 'uzbekistan': 'uz', 'yemen': 'ye', 'malaysia': 'my', 'nepal': 'np', 'north korea': 'kp', 'sri lanka': 'lk',
-            'kazakhstan': 'kz', 'syria': 'sy', 'cambodia': 'kh', 'jordan': 'jo', 'azerbaijan': 'az', 'united arab emirates': 'ae', 'uae': 'ae', 'tajikistan': 'tj',
-            'israel': 'il', 'lebanon': 'lb', 'kyrgyzstan': 'kg', 'turkmenistan': 'tm', 'singapore': 'sg', 'palestine': 'ps', 'oman': 'om', 'kuwait': 'kw', 'georgia': 'ge',
-            'mongolia': 'mn', 'armenia': 'am', 'qatar': 'qa', 'bahrain': 'bh', 'timor-leste': 'tl', 'bhutan': 'bt', 'maldives': 'mv', 'brunei': 'bn',
-            'australia': 'au', 'new zealand': 'nz', 'fiji': 'fj', 'solomon islands': 'sb', 'vanuatu': 'vu', 'samoa': 'ws', 'kiribati': 'ki', 'micronesia': 'fm',
-            'tonga': 'to', 'marshall islands': 'mh', 'palau': 'pw', 'tuvalu': 'tv', 'nauru': 'nr', 'french guiana': 'gf', 'niue': 'nu'
-        };
+        const rankLabel = activeTier.rank || 'Standard';
+        const providerId = activeTier.providerId || c.providerId || '';
+        const isExpanded = !!c.isExpanded;
 
-        return filteredList.map(c => {
-            const options = c.availablePrices || [{ amount: c.price?.amount, rank: c.rank, stock: c.stock, providerId: c.providerId }];
-            const selectedIdx = c.selectedPriceIndex || 0;
-            const activeTier = options[selectedIdx] || options[0];
-
-            const finalDisplayPrice = Number(activeTier.amount || 0) * multiplier;
-            const formattedPriceString = finalDisplayPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-            const stockCount = activeTier.stock || c.stock || '0';
-            const countryId = String(c.countryId || '').toLowerCase();
-            const countryName = c.countryName || c.name || '';
-            const cleanName = countryName.toLowerCase().trim();
-
-            let flagCode = 'un';
-            if (c.code && c.code.length === 2) {
-                flagCode = c.code.toLowerCase();
-            } else if (countryCodeMap[cleanName]) {
-                flagCode = countryCodeMap[cleanName];
-            } else {
-                const matchedKey = Object.keys(countryCodeMap).find(key => cleanName.includes(key));
-                if (matchedKey) {
-                    flagCode = countryCodeMap[matchedKey];
-                } else if (countryId.length === 2) {
-                    flagCode = countryId;
-                }
-            }
-
-            const rankLabel = activeTier.rank || 'Standard';
-            const providerId = activeTier.providerId || c.providerId || '';
-            const isExpanded = !!c.isExpanded;
-
-            return `
-                <div class="bg-brandBlue-800/60 border border-brandBlue-700/50 p-2.5 sm:p-3 rounded-xl transition-all">
-                    <div class="flex items-center justify-between gap-2">
-                        <!-- Left Side: Flag, Name & Stock Subtext -->
-                        <div class="flex items-center gap-2.5 min-w-0 flex-1">
-                            <img src="https://flagcdn.com/w40/${flagCode}.png" class="w-6 h-auto rounded-sm border border-gray-700 flex-shrink-0" onerror="this.src='https://flagcdn.com/w40/un.png'">
-                            <div class="min-w-0 flex-1">
-                                <p class="text-xs font-bold text-white truncate">${countryName}</p>
-                                <p class="text-[10px] text-gray-300 font-medium mt-0.5">${stockCount} pcs fr. ₦${formattedPriceString}</p>
-                            </div>
-                        </div>
-
-                        <!-- Right Side: Buy Button & Expand Toggle -->
-                        <div class="flex flex-col items-end gap-1 flex-shrink-0">
-                            <button onclick="SMSGlobeApp.buyServiceCountry('${serviceCode}', '${c.countryId}', ${finalDisplayPrice}, '${rankLabel}', '${providerId}')" 
-                                    class="px-4 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm">
-                                Buy
-                            </button>
-                            ${options.length > 1 ? `
-                                <button onclick="SMSGlobeApp.toggleCountryExpand('${serviceCode}', '${c.countryId}')" 
-                                        class="text-[10px] text-gray-300 hover:text-white px-1 py-0.5 flex items-center gap-1 cursor-pointer">
-                                    <span>${isExpanded ? 'Hide' : 'Select'}</span>
-                                    <i class="fa-solid fa-chevron-${isExpanded ? 'up' : 'down'} text-[9px]"></i>
-                                </button>
-                            ` : `
-                                <span class="text-[10px] text-gray-500 px-1">Standard</span>
-                            `}
+        return `
+            <div class="bg-brandBlue-800/60 border border-brandBlue-700/50 p-2.5 sm:p-3 rounded-xl transition-all">
+                <div class="flex items-center justify-between gap-2">
+                    <!-- Left Side: Flag, Name & Stock Subtext -->
+                    <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                        <img src="https://flagcdn.com/w40/${flagCode}.png" class="w-6 h-auto rounded-sm border border-gray-700 flex-shrink-0" onerror="this.src='https://flagcdn.com/w40/un.png'">
+                        <div class="min-w-0 flex-1">
+                            <p class="text-xs font-bold text-white truncate">${countryName}</p>
+                            <p class="text-[10px] text-gray-300 font-medium mt-0.5">${stockCount} pcs fr. ₦${formattedPriceString}</p>
                         </div>
                     </div>
 
-                    <!-- Expanded Multi-tier Breakdown Table (matches SMSBower) -->
-                    ${isExpanded && options.length > 1 ? `
-                        <div class="mt-3 pt-2.5 border-t border-brandBlue-700/40 space-y-1.5">
-                            <div class="grid grid-cols-4 text-[10px] text-gray-400 font-semibold px-1">
-                                <span>Rank</span>
-                                <span>ID</span>
-                                <span>Count</span>
-                                <span class="text-right">Cost</span>
-                            </div>
-                            ${options.map((opt, idx) => {
-                                const tierPrice = Number(opt.amount || 0) * multiplier;
-                                const isSelectedTier = idx === selectedIdx;
-                                return `
-                                    <div onclick="SMSGlobeApp.switchCountryPriceTierAndSelect('${serviceCode}', '${c.countryId}', ${idx})" 
-                                         class="grid grid-cols-4 text-[11px] items-center px-1 py-1 rounded cursor-pointer transition-colors ${isSelectedTier ? 'bg-brandBlue-700/80 text-white font-bold' : 'text-gray-300 hover:bg-brandBlue-700/40'}">
-                                        <span class="capitalize">${opt.rank || 'Standard'}</span>
-                                        <span class="text-gray-400">${opt.providerId || c.countryId}</span>
-                                        <span>${opt.stock || '0'} pcs</span>
-                                        <span class="text-right font-medium text-emerald-400">₦${tierPrice.toLocaleString()}</span>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    ` : ''}
+                    <!-- Right Side: Dynamic Buy Button & Expand Toggle -->
+                    <div class="flex flex-col items-end gap-1 flex-shrink-0">
+                        <button onclick="SMSGlobeApp.buyServiceCountry('${serviceCode}', '${c.countryId}', ${finalDisplayPrice}, '${rankLabel}', '${providerId}')" 
+                                class="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5">
+                            <span>Buy</span>
+                            <span class="text-[11px] font-extrabold text-emerald-100">₦${formattedPriceString}</span>
+                        </button>
+                        ${options.length > 1 ? `
+                            <button onclick="SMSGlobeApp.toggleCountryExpand('${serviceCode}', '${c.countryId}')" 
+                                    class="text-[10px] text-gray-300 hover:text-white px-1 py-0.5 flex items-center gap-1 cursor-pointer">
+                                <span>${isExpanded ? 'Hide' : 'Select'}</span>
+                                <i class="fa-solid fa-chevron-${isExpanded ? 'up' : 'down'} text-[9px]"></i>
+                            </button>
+                        ` : `
+                            <span class="text-[10px] text-gray-500 px-1">Standard</span>
+                        `}
+                    </div>
                 </div>
-            `;
-        }).join('');
-      }
+
+                <!-- Expanded Multi-tier Breakdown Table -->
+                ${isExpanded && options.length > 1 ? `
+                    <div class="mt-3 pt-2.5 border-t border-brandBlue-700/40 space-y-1.5">
+                        <div class="grid grid-cols-4 text-[10px] text-gray-400 font-semibold px-1">
+                            <span>Rank</span>
+                            <span>ID</span>
+                            <span>Count</span>
+                            <span class="text-right">Cost</span>
+                        </div>
+                        ${options.map((opt, idx) => {
+                            const tierPrice = Number(opt.amount || 0) * multiplier;
+                            const isSelectedTier = idx === selectedIdx;
+                            return `
+                                <div onclick="SMSGlobeApp.switchCountryPriceTierAndSelect('${serviceCode}', '${c.countryId}', ${idx})" 
+                                     class="grid grid-cols-4 text-[11px] items-center px-1 py-1 rounded cursor-pointer transition-colors ${isSelectedTier ? 'bg-brandBlue-700/80 text-white font-bold' : 'text-gray-300 hover:bg-brandBlue-700/40'}">
+                                    <span class="capitalize">${opt.rank || 'Standard'}</span>
+                                    <span class="text-gray-400">${opt.providerId || c.countryId}</span>
+                                    <span>${opt.count ?? opt.stock ?? '0'} pcs</span>
+                                    <span class="text-right font-medium text-emerald-400">₦${tierPrice.toLocaleString()}</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+}
 
      function toggleCountryExpand(serviceCode, countryId) {
         const list = serviceCountriesCache[serviceCode];
@@ -535,6 +536,158 @@ function renderCountriesListHtml(serviceCode, countriesList) {
             renderCountries(serviceCountriesCache[selectedServiceCode]);
         }
       }
+
+      async function buyServiceCountry(serviceCode, countryId, price, rank, providerId = '') {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ title: 'Login Required', icon: 'warning', text: 'Please log in to purchase numbers.' });
+        } else {
+            alert('Please log in to purchase numbers.');
+        }
+        return;
+    }
+
+    // Fetch live user balance and bonus info safely from window scope or storage
+    const currentBalance = parseFloat(window.userBalance ?? userBalance ?? localStorage.getItem('user_balance') ?? 0);
+    const userBonus = parseFloat(window.userBonus ?? window.bonusBalance ?? 0);
+    const itemPrice = parseFloat(price);
+    
+    // Resolve service and country details from cache/state
+    const serviceObj = typeof services !== 'undefined' ? services.find(s => s.code === serviceCode) : null;
+    const countriesList = (typeof serviceCountriesCache !== 'undefined' && serviceCountriesCache[serviceCode]) || [];
+    const countryObj = countriesList.find(c => String(c.countryId) === String(countryId));
+
+    // If a tier/provider wasn't passed directly, look it up from the currently selected tier
+    let activeProviderId = providerId;
+    let activeRank = rank;
+    if (countryObj && countryObj.availablePrices) {
+        const selectedIdx = countryObj.selectedPriceIndex || 0;
+        const activeTier = countryObj.availablePrices[selectedIdx] || countryObj.availablePrices[0];
+        if (activeTier) {
+            activeProviderId = activeProviderId || activeTier.providerId || countryObj.providerId || '';
+            activeRank = activeRank || activeTier.rank || 'Standard';
+        }
+    }
+
+    // Custom HTML modal matching your design
+    const confirmed = await Swal.fire({
+        title: '<div class="text-lg font-bold text-gray-800">CONFIRM PURCHASE</div>',
+        html: `
+            <div class="text-left space-y-3 pt-2">
+                <div class="bg-gray-50 border border-gray-200 p-3 rounded-xl">
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Service & Location</label>
+                    <p class="text-sm font-semibold text-gray-800">${serviceObj?.name || serviceCode} (${activeRank} Tier)</p>
+                    <p class="text-xs text-gray-500">${countryObj?.countryName || countryObj?.name || 'Selected Country'}</p>
+                </div>
+
+                <div class="bg-gray-50 border border-gray-200 p-3 rounded-xl flex justify-between items-center">
+                    <div>
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-400">Main Wallet</label>
+                        <span class="text-sm font-bold text-brand-blue">₦${currentBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    </div>
+                    ${userBonus > 0 ? `
+                    <div class="text-right">
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-400">Bonus Wallet</label>
+                        <span class="text-sm font-bold text-emerald-600">₦${userBonus.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    </div>` : ''}
+                </div>
+
+                <div class="bg-blue-50/50 border border-blue-100 p-3 rounded-xl">
+                    <label class="block text-[10px] font-bold uppercase tracking-wider text-blue-500">Total Price</label>
+                    <span class="text-base font-black text-gray-900">₦${itemPrice.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: currentBalance >= itemPrice ? 'Proceed Order' : 'Topup Wallet',
+        confirmButtonColor: currentBalance >= itemPrice ? '#0F54C6' : '#047857',
+        cancelButtonText: 'Cancel',
+        customClass: {
+            popup: 'rounded-2xl p-5',
+            confirmButton: 'rounded-xl px-5 py-2.5 font-bold',
+            cancelButton: 'rounded-xl px-5 py-2.5 font-bold'
+        }
+    });
+
+    if (!confirmed.isConfirmed) return;
+
+    // Handle low balance redirect to funding page
+    if (currentBalance < itemPrice) {
+        window.location.href = 'topup.html';
+        return;
+    }
+
+    const payload = {
+        serviceCode: serviceCode,
+        countryId: countryId,
+        providerId: activeProviderId,
+        planAmount: itemPrice,
+        rank: (activeRank || 'standard').toLowerCase(),
+        metadata: {
+            serviceType: 'virtual_number',
+            serviceCode: serviceCode,
+            serviceName: serviceObj?.name || serviceCode,
+            countryCode: countryId,
+            provider: 'smsbower'
+        }
+    };
+
+    try {
+        // Use safeFetch or standard fetch based on your helper functions
+        const fetchMethod = typeof safeFetch === 'function' ? safeFetch : async (url, opts) => {
+            const r = await fetch(url, opts);
+            const data = await r.json();
+            return { data };
+        };
+
+        const response = await fetchMethod(`${API_BASE_URL}/purchase-with-wallet`, { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(payload)
+        });
+        
+        const res = response.data || response;
+
+        if (res && res.success) {
+            const realMobileNumber = res.phoneNumber || res.number || res.targetNumber || res.order?.phoneNumber || res.order?.targetNumber || res.order?.number || res.data?.phoneNumber || 'N/A';
+            const orderId = res.order?._id || res.order?.id || res.orderId;
+            
+            let activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
+            const newActiveOrder = {
+                id: orderId,
+                phoneNumber: realMobileNumber,
+                serviceName: serviceObj?.name || serviceCode,
+                countryName: countryObj?.countryName || countryObj?.name || 'Selected Country',
+                countryFlag: countryObj?.flag || countryObj?.flagUrl || countryObj?.icon || '',
+                status: 'Waiting for SMS...',
+                smsCode: null,
+                fullMessage: null,
+                createdAt: Date.now()
+            };
+
+            activeOrders = [newActiveOrder, ...activeOrders.filter(o => o.id !== orderId)];
+            localStorage.setItem('sms_active_orders', JSON.stringify(activeOrders));
+
+            if (typeof renderActiveOrdersDashboard === 'function') renderActiveOrdersDashboard();
+            if (typeof startPersistentSmsPolling === 'function') startPersistentSmsPolling(orderId);
+            if (typeof fetchUserProfile === 'function') fetchUserProfile();
+
+            Swal.fire({
+                title: 'Order Dispatched!',
+                text: 'Your number is ready. Waiting for live SMS verification code...',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        } else { 
+            Swal.fire('Order Failed', res?.message || "Could not process purchase from provider.", 'error');
+        }
+    } catch (err) { 
+        console.error("Purchase Error:", err);
+        Swal.fire('Network Error', 'Check your connection and try again.', 'error');
+    }
+}
 
       document.addEventListener('DOMContentLoaded', () => {
         fetchUserProfile();

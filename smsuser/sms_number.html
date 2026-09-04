@@ -147,6 +147,7 @@
       <i class="fa-solid fa-comment text-sm"></i>
     </button>
   </div>
+
 <script>
     const btn = document.getElementById('mobile-menu-btn');
     const menu = document.getElementById('mobile-menu');
@@ -428,8 +429,7 @@
         if (!countriesList || countriesList.length === 0) {
             return `
                 <div class="flex flex-col items-center justify-center py-6 bg-white rounded-xl border border-brand-border col-span-full">
-                    <div class="w-5 h-5 border-2 border-brandBlue-400 border-t-transparent rounded-full animate-spin mb-2"></div>
-                    <p class="text-[10px] text-brandBlue-300 font-bold uppercase">Fetching Live Country Tiers & Pricing...</p>
+                    <p class="text-[10px] text-brandBlue-300 font-bold uppercase">No countries found.</p>
                 </div>
             `;
         }
@@ -442,45 +442,38 @@
             }
         }
 
-        // Comprehensive mapping dictionary for provider country names/IDs to ISO 2-letter codes
         const countryCodeMap = {
-            // --- AMERICAS ---
             'united states': 'us', 'usa': 'us', 'united states (virtual)': 'us', 'america': 'us', 'canada': 'ca', 'mexico': 'mx', 'brazil': 'br', 'argentina': 'ar',
             'colombia': 'co', 'chile': 'cl', 'peru': 'pe', 'venezuela': 've', 'ecuador': 'ec', 'bolivia': 'bo', 'paraguay': 'py', 'uruguay': 'uy', 'costa rica': 'cr',
             'panama': 'pa', 'cuba': 'cu', 'dominican republic': 'do', 'puerto rico': 'pr', 'guatemala': 'gt', 'honduras': 'hn', 'el salvador': 'sv', 'nicaragua': 'ni', 'haiti': 'ht',
             'jamaica': 'jm', 'trinidad and tobago': 'tt', 'bahamas': 'bs', 'barbados': 'bb',
-            // --- EUROPE ---
             'united kingdom': 'gb', 'uk': 'gb', 'great britain': 'gb', 'england': 'gb', 'germany': 'de', 'france': 'fr', 'italy': 'it', 'spain': 'es', 'ukraine': 'ua',
-            'russia': 'ru', 'poland': 'pl', 'romania': 'ro', 'netherlands': 'nl', 'holland': 'nl', 'belgium': 'be', 'greece': 'gr', 'czech republic': 'cz', 'czechia': 'cz', 'PORTUGAL': 'pt', 'portugal': 'pt', 'sweden': 'se',
+            'russia': 'ru', 'poland': 'pl', 'romania': 'ro', 'netherlands': 'nl', 'holland': 'nl', 'belgium': 'be', 'greece': 'gr', 'czech republic': 'cz', 'czechia': 'cz', 'portugal': 'pt', 'sweden': 'se',
             'hungary': 'hu', 'belarus': 'by', 'austria': 'at', 'switzerland': 'ch', 'bulgaria': 'bg', 'serbia': 'rs', 'denmark': 'dk', 'finland': 'fi', 'slovakia': 'sk', 'norway': 'no',
             'ireland': 'ie', 'croatia': 'hr', 'moldova': 'md', 'bosnia and herzegovina': 'ba', 'albania': 'al', 'lithuania': 'lt', 'north macedonia': 'mk', 'slovenia': 'si', 'latvia': 'lv',
             'estonia': 'ee', 'montenegro': 'me', 'luxembourg': 'lu', 'malta': 'mt', 'iceland': 'is', 'andorra': 'ad', 'monaco': 'mc', 'liechtenstein': 'li', 'san marino': 'sm', 'vatican city': 'va',
             'cyprus': 'cy',
-            // --- AFRICA ---
             'nigeria': 'ng', 'egypt': 'eg', 'south africa': 'za', 'kenya': 'ke', 'ghana': 'gh', 'cameroon': 'cm', 'guinea': 'gn', 'ethiopia': 'et', 'tanzania': 'tz', 'algeria': 'dz', 'morocco': 'ma',
             'uganda': 'ug', 'sudan': 'sd', 'angola': 'ao', 'mozambique': 'mz', 'ivory coast': 'ci', 'cote d ivoire': 'ci', 'madagascar': 'mg', 'zambia': 'zm', 'zimbabwe': 'zw', 'senegal': 'sn', 'mali': 'ml',
             'rwanda': 'rw', 'somalia': 'so', 'tunisia': 'tn', 'chad': 'td', 'benin': 'bj', 'burundi': 'bi', 'south sudan': 'ss', 'eritrea': 'er', 'namibia': 'na', 'gambia': 'gm',
             'botswana': 'bw', 'gabon': 'ga', 'lesotho': 'ls', 'guinea-bissau': 'gw', 'equatorial guinea': 'gq', 'mauritius': 'mu', 'eswatini': 'sz', 'djibouti': 'dj', 'comoros': 'km',
             'cape verde': 'cv', 'sao tome and principe': 'st', 'seychelles': 'sc', 'togo': 'tg', 'mauritania': 'mr', 'central african republic': 'cf', 'burkina faso': 'bf', 'kosovo': 'xk',
-            'liberia': 'lr', 'congo (dem. republic)': 'cd', 'democratic republic of the congo': 'cd', 'macau': 'mo', 'lao people`s': 'la', 'lao people\'s democratic republic': 'la',
-            'laos': 'la', 'taiwan': 'tw', 'papua new guinea': 'pg', 'libya': 'ly', 'swaziland': 'sz', 'sierra leone': 'sl', 'belize': 'bz', 'dominica': 'dm', 'grenada': 'gd',
+            'liberia': 'lr', 'congo (dem. republic)': 'cd', 'democratic republic of the congo': 'cd', 'macau': 'mo', 'lao people`s': 'la', 'laos': 'la', 'taiwan': 'tw', 'papua new guinea': 'pg', 'libya': 'ly', 'swaziland': 'sz', 'sierra leone': 'sl', 'belize': 'bz', 'dominica': 'dm', 'grenada': 'gd',
             'guyana': 'gy', 'saint kitts and nevis': 'kn', 'malawi': 'mw', 'niger': 'ne', 'suriname': 'sr', 'reunion': 're', 'congo': 'cg', 'guadeloupe': 'gp', 'saint lucia': 'lc',
-            'saint vincent': 'vc', 'saint vincent and the grenadines': 'vc', 'antigua and barbuda': 'ag', 'cayman islands': 'ky', 'aruba': 'aw', 'montserrat': 'ms', 'anguilla': 'ai',
+            'saint vincent': 'vc', 'antigua and barbuda': 'ag', 'cayman islands': 'ky', 'aruba': 'aw', 'montserrat': 'ms', 'anguilla': 'ai',
             'macedonia': 'mk', 'new caledonia': 'nc', 'bermuda': 'bm', 'sint maarten': 'sx', 'martinique': 'mq', 'faroe islands': 'fo', 'gibraltar': 'gi',
-            // --- ASIA ---
-            'china': 'cn', 'india': 'in', 'viet nam': 'vn', 'vietnam': 'vn', 'indonesia': 'id', 'pakistan': 'pk', 'bangladesh': 'bd', 'japan': 'jp', 'hong kong': 'hk',
+            'china': 'cn', 'india': 'in', 'vietnam': 'vn', 'indonesia': 'id', 'pakistan': 'pk', 'bangladesh': 'bd', 'japan': 'jp', 'hong kong': 'hk',
             'philippines': 'ph', 'turkey': 'tr', 'turkiye': 'tr', 'iran': 'ir', 'thailand': 'th', 'myanmar': 'mm', 'south korea': 'kr', 'korea': 'kr', 'iraq': 'iq',
             'afghanistan': 'af', 'saudi arabia': 'sa', 'uzbekistan': 'uz', 'yemen': 'ye', 'malaysia': 'my', 'nepal': 'np', 'north korea': 'kp', 'sri lanka': 'lk',
             'kazakhstan': 'kz', 'syria': 'sy', 'cambodia': 'kh', 'jordan': 'jo', 'azerbaijan': 'az', 'united arab emirates': 'ae', 'uae': 'ae', 'tajikistan': 'tj',
             'israel': 'il', 'lebanon': 'lb', 'kyrgyzstan': 'kg', 'turkmenistan': 'tm', 'singapore': 'sg', 'palestine': 'ps', 'oman': 'om', 'kuwait': 'kw', 'georgia': 'ge',
             'mongolia': 'mn', 'armenia': 'am', 'qatar': 'qa', 'bahrain': 'bh', 'timor-leste': 'tl', 'bhutan': 'bt', 'maldives': 'mv', 'brunei': 'bn',
-            // --- OCEANIA ---
             'australia': 'au', 'new zealand': 'nz', 'fiji': 'fj', 'solomon islands': 'sb', 'vanuatu': 'vu', 'samoa': 'ws', 'kiribati': 'ki', 'micronesia': 'fm',
             'tonga': 'to', 'marshall islands': 'mh', 'palau': 'pw', 'tuvalu': 'tv', 'nauru': 'nr', 'french guiana': 'gf', 'niue': 'nu'
         };
 
         return countriesList.map(c => {
-            const options = c.availablePrices || [{ amount: c.priceAmount, rank: c.rank, stock: c.stock, providerId: c.providerId }];
+            const options = c.availablePrices || [{ amount: c.price?.amount, rank: c.rank, stock: c.stock, providerId: c.providerId }];
             const selectedIdx = c.selectedPriceIndex || 0;
             const activeTier = options[selectedIdx] || options[0];
 
@@ -581,11 +574,9 @@
 
       function buyServiceCountry(serviceCode, countryId, price, rank, providerId) {
         console.log("🛒 [DEBUG] Purchasing service:", { serviceCode, countryId, price, rank, providerId });
-        // Add your checkout or order API call logic here
       }
 
-
-     function renderCountries(countriesList) {
+      function renderCountries(countriesList) {
         const grid = document.getElementById('countries-grid');
         if (!grid) return;
 
@@ -596,11 +587,10 @@
       function selectCountry(countryId, providerId) {
         console.log("🎯 [DEBUG] Country clicked/selected:", countryId, "Provider:", providerId);
         selectedCountryId = countryId;
-                if (serviceCountriesCache[selectedServiceCode]) {
+        if (serviceCountriesCache[selectedServiceCode]) {
             renderCountries(serviceCountriesCache[selectedServiceCode]);
         }
       }
-
 
       document.addEventListener('DOMContentLoaded', () => {
         fetchUserProfile();
@@ -628,7 +618,10 @@
         fetchServices,
         selectService,
         renderCountries,
-        selectCountry
+        selectCountry,
+        switchCountryPriceTier,
+        shuffleCountryPriceTier,
+        buyServiceCountry
       };
     })();
   </script>

@@ -865,7 +865,7 @@ window.manualRecheckSms = async function(orderId) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Could not connect to server to recheck SMS.' });
     }
 };
-// 3. Main History Rendering Function
+// 3. Main History Rendering Function with Persistent Polling Support
 async function fetchUserHistory() {
     const historyGrid = document.getElementById('history-grid');
     if (!historyGrid) return;
@@ -911,6 +911,17 @@ async function fetchUserHistory() {
             return;
         }
 
+        // Automatically fire persistent background polling for any active orders found
+        historyList.forEach(item => {
+            const statusLower = String(item.status || 'pending').toLowerCase();
+            const isActive = statusLower === 'active' || statusLower === 'pending' || statusLower === 'waiting for sms...';
+            const orderId = item.id || item._id;
+            
+            if (isActive && orderId && typeof startPersistentSmsPolling === 'function') {
+                startPersistentSmsPolling(orderId);
+            }
+        });
+
         const sortedHistory = historyList.sort((a, b) => {
             const statusA = String(a.status || '').toLowerCase();
             const statusB = String(b.status || '').toLowerCase();
@@ -953,7 +964,6 @@ async function fetchUserHistory() {
             } else if (item.expiresIn) {
                 expirationTime = baseCreatedAt + (Number(item.expiresIn) * 1000);
             } else {
-                // Fallback to standard 5 minutes if no provider timeframe exists
                 expirationTime = baseCreatedAt + (5 * 60 * 1000);
             }
 
@@ -963,7 +973,7 @@ async function fetchUserHistory() {
             const formattedTimeLeft = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
             return `
-                <div class="bg-brandBlue-900/60 p-4 rounded-xl border border-brandBlue-700/40 space-y-3 transition hover:border-brandBlue-500">
+                <div class="bg-brandBlue-900/60 p-4 rounded-xl border border-brandBlue-700/40 space-y-3 transition hover:border-brandBlue-500" id="persistent-order-${orderId}">
                     <div class="flex items-center justify-between">
                         <div>
                             <div class="flex items-center space-x-2">
@@ -1003,7 +1013,7 @@ async function fetchUserHistory() {
                     ${isActive ? `
                         <div class="flex items-center justify-end space-x-2 pt-1">
                             <button onclick="manualRecheckSms('${orderId}')" class="px-3 py-1.5 bg-brandBlue-800 hover:bg-brandBlue-700 text-gray-200 border border-brandBlue-600/40 text-xs font-semibold rounded-lg transition">
-                                <i class="fa-solid fa-rotate mr-1"></i> Resend OTP
+                                <i class="fa-solid fa-rotate mr-1"></i> Check Status
                             </button>
                             <button onclick="cancelActiveOrder('${orderId}')" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-xs font-semibold rounded-lg transition">
                                 <i class="fa-solid fa-ban mr-1"></i> Cancel Order

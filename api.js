@@ -4316,9 +4316,9 @@ async function handleGetUserOrders(req, res) {
         });
     }
 }
+
 async function handleGetOrderDetails(req, res) {
     try {
-        // Extract the order ID from the query string (e.g., /api/order-details?id=...)
         const urlParams = new URL(req.url, `http://${req.headers.host}`).searchParams;
         const orderId = urlParams.get('id');
 
@@ -4326,10 +4326,53 @@ async function handleGetOrderDetails(req, res) {
             return res.status(400).json({ success: false, message: "Order ID required" });
         }
 
-        // Ensure your Mongoose Order model is imported or available in api.js
-        const order = await Order.findById(orderId);
+        // 1. Find order flexibly supporting MongoDB _id, vendorOrderId, or tzid/metadata
+        const isMongoId = /^[0-9a-fA-F]{24}$/.test(orderId);
+        const order = await Order.findOne({
+            $or: [
+                isMongoId ? { _id: orderId } : null,
+                { vendorOrderId: String(orderId) },
+                { "metadata.tzid": String(orderId) },
+                { id: String(orderId) }
+            ].filter(Boolean)
+        });
+
         if (!order) {
             return res.status(404).json({ success: false, message: "Order not found" });
+        }
+
+        const activeVendorId = order.vendorOrderId || order.metadata?.tzid;
+
+        // 2. If status is pending/active and we have a vendor ID, query SMSBower live!
+        const currentStatus = String(order.status || '').toLowerCase();
+        if (activeVendorId && (currentStatus === 'pending' || currentStatus === 'active')) {
+            try {
+                // Using global fetch or axios pointing to SMSBower API
+                const smsBowerUrl = `https://smsbower.page/stubs/handler_api.php?api_key=${process.env.SMSBOWER_API_KEY}&action=getStatus&id=${activeVendorId}`;
+                const providerRes = await fetch(smsBowerUrl);
+                const rawText = await providerRes.text();
+                
+                console.log(`📡 Live SMSBower check for ${activeVendorId}:`, rawText);
+
+                if (rawText.startsWith('STATUS_OK:')) {
+                    const code = rawText.split(':')[1];
+                    order.smsCode = code;
+                    order.fullMessage = `Verification code is ${code}`;
+                    order.status = 'completed';
+                    await order.save();
+
+                    // Also sync SmsNumber collection if it exists
+                    await SmsNumber.findOneAndUpdate(
+                        { vendorOrderId: String(activeVendorId), status: 'pending' },
+                        { smsCode: code, fullMessage: order.fullMessage, status: 'completed' }
+                    );
+                } else if (rawText === 'STATUS_CANCEL') {
+                    order.status = 'cancelled';
+                    await order.save();
+                }
+            } catch (providerErr) {
+                console.error("SMSBower live polling error:", providerErr.message);
+            }
         }
 
         return res.status(200).json({ success: true, order });

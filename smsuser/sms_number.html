@@ -713,17 +713,23 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
             const orderId = res.order?._id || res.order?.id || res.orderId;
             
             let activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
-            const newActiveOrder = {
-                id: orderId,
-                _id: orderId,
-                phoneNumber: realMobileNumber,
-                serviceName: serviceObj?.name || res.order?.serviceName || serviceCode,
-                countryName: countryObj?.countryName || countryObj?.name || res.order?.countryName || 'Selected Country',
-                countryFlag: countryObj?.flag || countryObj?.flagUrl || countryObj?.icon || '',
-                status: res.order?.status || 'pending',
-                smsCode: res.order?.smsCode || null,
-                createdAt: Date.now()
-            };
+
+            const orderDurationMs = (res.order?.expiresIn || res.expiresIn || 300) * 1000; // Fallback to 300s (5 mins) if not provided
+            const serverCreatedAt = res.order?.createdAt ? new Date(res.order.createdAt).getTime() : Date.now();
+            const expirationTime = serverCreatedAt + orderDurationMs;
+
+           const newActiveOrder = {
+    id: orderId,
+    _id: orderId,
+    phoneNumber: realMobileNumber,
+    serviceName: serviceObj?.name || res.order?.serviceName || serviceCode,
+    countryName: countryObj?.countryName || countryObj?.name || res.order?.countryName || 'Selected Country',
+    countryFlag: countryObj?.flag || countryObj?.flagUrl || countryObj?.icon || '',
+    status: res.order?.status || 'pending',
+    smsCode: res.order?.smsCode || null,
+    createdAt: serverCreatedAt,
+    expiresAt: expirationTime // Store exact provider expiration timestamp
+};
 
             activeOrders = [newActiveOrder, ...activeOrders.filter(o => o.id !== orderId && o._id !== orderId)];
             localStorage.setItem('sms_active_orders', JSON.stringify(activeOrders));
@@ -859,7 +865,6 @@ window.manualRecheckSms = async function(orderId) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Could not connect to server to recheck SMS.' });
     }
 };
-
 // 3. Main History Rendering Function
 async function fetchUserHistory() {
     const historyGrid = document.getElementById('history-grid');
@@ -939,8 +944,19 @@ async function fetchUserHistory() {
             const displayCountryShortCode = (item.countryCode || item.shortCode || '').toUpperCase();
             const flagEmoji = item.countryFlag || getCountryFlagEmoji(displayCountryShortCode || (displayCountryName.length === 2 ? displayCountryName : ''));
 
-            const createdAtTime = new Date(item.createdAt || item.expiresAt ? (new Date(item.expiresAt).getTime() - 5 * 60 * 1000) : Date.now()).getTime();
-            const expirationTime = createdAtTime + (5 * 60 * 1000); 
+            // Robust Expiry Calculation
+            let expirationTime;
+            const baseCreatedAt = item.createdAt ? new Date(item.createdAt).getTime() : Date.now();
+            
+            if (item.expiresAt) {
+                expirationTime = new Date(item.expiresAt).getTime();
+            } else if (item.expiresIn) {
+                expirationTime = baseCreatedAt + (Number(item.expiresIn) * 1000);
+            } else {
+                // Fallback to standard 5 minutes if no provider timeframe exists
+                expirationTime = baseCreatedAt + (5 * 60 * 1000);
+            }
+
             const timeLeft = Math.max(0, Math.floor((expirationTime - Date.now()) / 1000));
             const minutes = Math.floor(timeLeft / 60);
             const seconds = timeLeft % 60;

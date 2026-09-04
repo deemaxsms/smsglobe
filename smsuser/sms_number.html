@@ -28,6 +28,7 @@
       }
     }
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="bg-[#f8fafc] min-h-screen text-gray-800 font-sans antialiased">
 
@@ -211,7 +212,8 @@
         window.location.href = 'login.html';
       }
 
-   function switchTab(mode) {
+ // Expose switchTab globally to prevent ReferenceError from inline HTML onclick handlers
+window.switchTab = function(mode) {
     currentMode = mode;
     const numbersSection = document.getElementById('numbers-section');
     const historySection = document.getElementById('history-section');
@@ -239,7 +241,7 @@
             console.error("fetchUserHistory function is not defined.");
         }
     }
-}
+};
 
       async function safeFetch(url, options = {}) {
         const res = await fetch(url, options);
@@ -584,7 +586,6 @@ function buyServiceCountry(serviceCode, countryId, price, rank, providerId) {
             renderCountries(serviceCountriesCache[selectedServiceCode]);
         }
       }
-
 async function buyServiceCountry(serviceCode, countryId, price, rank, providerId = '') {
     const token = localStorage.getItem('userToken');
     if (!token) {
@@ -618,47 +619,57 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
         }
     }
 
-    // Custom HTML modal matching your design
-    const confirmed = await Swal.fire({
-        title: '<div class="text-lg font-bold text-gray-800">CONFIRM PURCHASE</div>',
-        html: `
-            <div class="text-left space-y-3 pt-2">
-                <div class="bg-gray-50 border border-gray-200 p-3 rounded-xl">
-                    <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Service & Location</label>
-                    <p class="text-sm font-semibold text-gray-800">${serviceObj?.name || serviceCode} (${activeRank} Tier)</p>
-                    <p class="text-xs text-gray-500">${countryObj?.countryName || countryObj?.name || 'Selected Country'}</p>
-                </div>
+    let isConfirmed = false;
 
-                <div class="bg-gray-50 border border-gray-200 p-3 rounded-xl flex justify-between items-center">
-                    <div>
-                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-400">Main Wallet</label>
-                        <span class="text-sm font-bold text-brand-blue">₦${currentBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+    // Check if Swal is available, otherwise use native browser dialog fallbacks
+    if (typeof Swal !== 'undefined') {
+        const confirmed = await Swal.fire({
+            title: '<div class="text-lg font-bold text-gray-800">CONFIRM PURCHASE</div>',
+            html: `
+                <div class="text-left space-y-3 pt-2">
+                    <div class="bg-gray-50 border border-gray-200 p-3 rounded-xl">
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Service & Location</label>
+                        <p class="text-sm font-semibold text-gray-800">${serviceObj?.name || serviceCode} (${activeRank} Tier)</p>
+                        <p class="text-xs text-gray-500">${countryObj?.countryName || countryObj?.name || 'Selected Country'}</p>
                     </div>
-                    ${userBonus > 0 ? `
-                    <div class="text-right">
-                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-400">Bonus Wallet</label>
-                        <span class="text-sm font-bold text-emerald-600">₦${userBonus.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                    </div>` : ''}
-                </div>
 
-                <div class="bg-blue-50/50 border border-blue-100 p-3 rounded-xl">
-                    <label class="block text-[10px] font-bold uppercase tracking-wider text-blue-500">Total Price</label>
-                    <span class="text-base font-black text-gray-900">₦${itemPrice.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                </div>
-            </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: currentBalance >= itemPrice ? 'Proceed Order' : 'Topup Wallet',
-        confirmButtonColor: currentBalance >= itemPrice ? '#0F54C6' : '#047857',
-        cancelButtonText: 'Cancel',
-        customClass: {
-            popup: 'rounded-2xl p-5',
-            confirmButton: 'rounded-xl px-5 py-2.5 font-bold',
-            cancelButton: 'rounded-xl px-5 py-2.5 font-bold'
-        }
-    });
+                    <div class="bg-gray-50 border border-gray-200 p-3 rounded-xl flex justify-between items-center">
+                        <div>
+                            <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-400">Main Wallet</label>
+                            <span class="text-sm font-bold text-brand-blue">₦${currentBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                        </div>
+                        ${userBonus > 0 ? `
+                        <div class="text-right">
+                            <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-400">Bonus Wallet</label>
+                            <span class="text-sm font-bold text-emerald-600">₦${userBonus.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                        </div>` : ''}
+                    </div>
 
-    if (!confirmed.isConfirmed) return;
+                    <div class="bg-blue-50/50 border border-blue-100 p-3 rounded-xl">
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-blue-500">Total Price</label>
+                        <span class="text-base font-black text-gray-900">₦${itemPrice.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    </div>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: currentBalance >= itemPrice ? 'Proceed Order' : 'Topup Wallet',
+            confirmButtonColor: currentBalance >= itemPrice ? '#0F54C6' : '#047857',
+            cancelButtonText: 'Cancel',
+            customClass: {
+                popup: 'rounded-2xl p-5',
+                confirmButton: 'rounded-xl px-5 py-2.5 font-bold',
+                cancelButton: 'rounded-xl px-5 py-2.5 font-bold'
+            }
+        });
+        isConfirmed = confirmed.isConfirmed;
+    } else {
+        // Native fallback dialog if SweetAlert2 script didn't load
+        const serviceName = serviceObj?.name || serviceCode;
+        const countryName = countryObj?.countryName || countryObj?.name || 'Selected Country';
+        isConfirmed = confirm(`CONFIRM PURCHASE\n\nService: ${serviceName} (${activeRank})\nCountry: ${countryName}\nPrice: ₦${itemPrice.toLocaleString()}\nBalance: ₦${currentBalance.toLocaleString()}`);
+    }
+
+    if (!isConfirmed) return;
 
     // Handle low balance redirect to funding page
     if (currentBalance < itemPrice) {
@@ -682,7 +693,6 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
     };
 
     try {
-        // Use safeFetch or standard fetch based on your helper functions
         const fetchMethod = typeof safeFetch === 'function' ? safeFetch : async (url, opts) => {
             const r = await fetch(url, opts);
             const data = await r.json();
@@ -721,22 +731,32 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
             if (typeof startPersistentSmsPolling === 'function') startPersistentSmsPolling(orderId);
             if (typeof fetchUserProfile === 'function') fetchUserProfile();
 
-            Swal.fire({
-                title: 'Order Dispatched!',
-                text: 'Your number is ready. Redirecting to history...',
-                icon: 'success',
-                timer: 1500,
-                showConfirmButton: false
-            });
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Order Dispatched!',
+                    text: 'Your number is ready. Redirecting to history...',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            }
 
             // Automatically switch user over to the HISTORY tab and refresh list
             switchTab('History');
         } else { 
-            Swal.fire('Order Failed', res?.message || "Could not process purchase from provider.", 'error');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire('Order Failed', res?.message || "Could not process purchase from provider.", 'error');
+            } else {
+                alert('Order Failed: ' + (res?.message || "Could not process purchase from provider."));
+            }
         }
     } catch (err) { 
         console.error("Purchase Error:", err);
-        Swal.fire('Network Error', 'Check your connection and try again.', 'error');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('Network Error', 'Check your connection and try again.', 'error');
+        } else {
+            alert('Network Error: Check your connection and try again.');
+        }
     }
 }
 

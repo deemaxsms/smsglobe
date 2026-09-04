@@ -3790,7 +3790,7 @@ async function handleGetCountries(req, res) {
             }),
             smsBowerClient.get('', { 
                 params: { 
-                    action: 'getPrices',
+                    action: 'getPricesV3', // Using Get full prices list v3
                     service: cleanServiceCode 
                 } 
             })
@@ -3824,12 +3824,12 @@ async function handleGetCountries(req, res) {
         const exchangeRateToNgn = 1400; 
         let formattedCountries = [];
         
-        const countryData = rawTopCountries.countries || rawTopCountries.data || rawTopCountries;
+        const countryData = rawTopCountries.country || rawTopCountries.countries || rawTopCountries.data || rawTopCountries;
 
         if (countryData && typeof countryData === 'object') {
             Object.keys(countryData).forEach(countryKey => {
-                const providersObject = countryData[countryKey];
-                if (!providersObject || typeof providersObject !== 'object') return;
+                const countryVal = countryData[countryKey];
+                if (!countryVal || typeof countryVal !== 'object') return;
 
                 const vendorMeta = countryMetaMap[String(countryKey).toLowerCase()] || {};
                 const resolvedName = vendorMeta.name || countryKey.toUpperCase();
@@ -3837,41 +3837,55 @@ async function handleGetCountries(req, res) {
 
                 let allAvailablePrices = [];
 
-                Object.keys(providersObject).forEach(providerKey => {
-                    const tierItem = providersObject[providerKey];
-                    const variants = Array.isArray(tierItem) ? tierItem : [tierItem];
+                // v3 structure: countryKey -> serviceKey -> providerKey -> price details
+                Object.keys(countryVal).forEach(innerKey => {
+                    const innerVal = countryVal[innerKey];
+                    if (!innerVal || typeof innerVal !== 'object') return;
 
-                    variants.forEach(v => {
-                        // STRICT CHECK: Only look at actual price/cost keys, or explicit primitive numbers under 10000. 
-                        // This prevents stock fields like `count: 300000` from being parsed as prices.
-                        let rawCostUsd = 0;
-                        if (v && typeof v === 'object') {
-                            rawCostUsd = Number(v.price || v.cost || v.value || 0);
-                        } else if (typeof v === 'number') {
-                            rawCostUsd = v;
-                        }
+                    const isProviderNode = 'price' in innerVal || 'cost' in innerVal || 'count' in innerVal;
+                    const providersObject = isProviderNode ? { [innerKey]: innerVal } : innerVal;
 
-                        // Safeguard bounds: SMS activation costs are never 0 and never exceed $10,000 USD
-                        if (rawCostUsd <= 0 || rawCostUsd > 10000) return;
+                    if (!providersObject || typeof providersObject !== 'object') return;
 
-                        const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
-                        const rawRank = (v && typeof v === 'object' && (v.rank || v.tier)) || providerKey || 'Standard';
-                        const formattedRank = String(rawRank).charAt(0).toUpperCase() + String(rawRank).slice(1).toLowerCase();
+                    Object.keys(providersObject).forEach(providerKey => {
+                        const tierItem = providersObject[providerKey];
+                        const variants = Array.isArray(tierItem) ? tierItem : [tierItem];
 
-                        const rawCount = Number((v && typeof v === 'object' && (v.count ?? v.stock ?? v.qty ?? v.amountAvailable)) || 0);
+                        variants.forEach(v => {
+                            let rawCostUsd = 0;
+                            if (v && typeof v === 'object') {
+                                rawCostUsd = Number(v.price || v.cost || v.value || 0);
+                            } else if (typeof v === 'number') {
+                                rawCostUsd = v;
+                            }
 
-                        allAvailablePrices.push({
-                            providerId: String((v && typeof v === 'object' && (v.partner_id || v.provider_id || v.id)) || providerKey),
-                            count: rawCount,
-                            amount: baseAmountNgn,
-                            rank: formattedRank
+                            if (rawCostUsd <= 0 || rawCostUsd > 10000) return;
+
+                            const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
+                            const rawRank = (v && typeof v === 'object' && (v.rank || v.tier)) || providerKey || 'Standard';
+                            const formattedRank = String(rawRank).charAt(0).toUpperCase() + String(rawRank).slice(1).toLowerCase();
+
+                            const rawCount = Number((v && typeof v === 'object' && (v.count ?? v.stock ?? v.qty ?? v.amountAvailable)) || 0);
+                            const currentProviderId = String((v && typeof v === 'object' && (v.partner_id || v.provider_id || v.id)) || providerKey);
+
+                            allAvailablePrices.push({
+                                providerId: currentProviderId,
+                                count: rawCount,
+                                amount: baseAmountNgn,
+                                rank: formattedRank
+                            });
                         });
                     });
                 });
 
                 if (allAvailablePrices.length > 0) {
-                    // Sort prices ascending so index 0 is always the cheapest tier option
-                    allAvailablePrices.sort((a, b) => a.amount - b.amount);
+                    // Sort ascending by price. If prices match, pick from the last ID (higher provider ID / descending ID tie-breaker)
+                    allAvailablePrices.sort((a, b) => {
+                        if (a.amount !== b.amount) {
+                            return a.amount - b.amount;
+                        }
+                        return String(b.providerId).localeCompare(String(a.providerId), undefined, { numeric: true });
+                    });
 
                     formattedCountries.push({
                         countryId: String(countryKey),
@@ -3882,7 +3896,7 @@ async function handleGetCountries(req, res) {
                             : `https://flagcdn.com/w40/un.png`, 
                         stock: allAvailablePrices[0].count,
                         providerId: allAvailablePrices[0].providerId,
-                        selectedPriceIndex: 0, // Forces default UI selection to the lowest tier
+                        selectedPriceIndex: 0, // Forces default UI selection to the lowest price tier
                         price: {
                             amount: allAvailablePrices[0].amount,
                             currency: 'NGN',

@@ -469,11 +469,16 @@
           `;
         }).join('');
       }
-
 async function selectService(serviceCode) {
     expandedServiceCode = serviceCode;
     selectedServiceCode = serviceCode;
     countrySearchTerm = '';
+    
+    // CLEAR THE CACHE FOR THIS SERVICE SO IT CALLS THE BACKEND FRESH
+    if (serviceCountriesCache && serviceCountriesCache[serviceCode]) {
+        delete serviceCountriesCache[serviceCode];
+    }
+
     const searchInput = document.getElementById('country-search-input');
     if (searchInput) searchInput.value = '';
 
@@ -515,8 +520,19 @@ async function selectService(serviceCode) {
     }
 }
 
+
 function renderCountriesListHtml(serviceCode, countriesList) {
     let filteredList = countriesList || [];
+
+    if (String(serviceCode).trim().toLowerCase() === 'whatsapp') {
+        filteredList = filteredList.filter(c => {
+            const name = (c.countryName || c.name || '').toLowerCase();
+            const id = String(c.countryId || '').trim();
+            const isUsVirtual = id === '12' || (name.includes('virtual') && (name.includes('usa') || name.includes('united states')));
+            return !isUsVirtual; // Drops it from rendering
+        });
+    }
+    
     if (countrySearchTerm) {
         filteredList = filteredList.filter(c => {
             const name = (c.countryName || c.name || '').toLowerCase();

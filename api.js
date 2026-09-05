@@ -3840,14 +3840,19 @@ async function handleGetCountries(req, res) {
                 const resolvedCode = (vendorMeta.code || countryKey).toLowerCase();
 
 if (cleanServiceCode === 'whatsapp') {
-    const keyString = String(countryKey).trim();
+    const keyString = String(countryKey).trim().toLowerCase();
     const nameLower = resolvedName.toLowerCase();
+    const codeLower = resolvedCode.toLowerCase();
 
-    // Skip if country ID is 12 (USA Virtual) or matches name-based fallback
-    const isUsVirtual = (keyString === '12') || (nameLower.includes('virtual') && (nameLower.includes('usa') || nameLower.includes('united states')));
+    // Catch all possible ways SMSBower labels USA Virtual (ID '12', key 'usa (virtual)', or text containing usa + virtual)
+    const isUsVirtual = 
+        keyString === '12' || 
+        keyString.includes('virtual') || 
+        codeLower.includes('virtual') ||
+        (nameLower.includes('virtual') && (nameLower.includes('usa') || nameLower.includes('united states') || keyString === 'usa' || keyString === 'us'));
     
     if (isUsVirtual) {
-        return; // Skips USA (virtual) specifically for WhatsApp
+        return; // Skips United States (virtual) for WhatsApp completely
     }
 }
                 let allAvailablePrices = [];

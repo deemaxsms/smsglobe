@@ -3839,17 +3839,19 @@ async function handleGetCountries(req, res) {
                 const resolvedName = vendorMeta.name || countryKey.toUpperCase();
                 const resolvedCode = (vendorMeta.code || countryKey).toLowerCase();
 
-                // EXCLUSION CHECK: If service is whatsapp, skip specifically "United States Virtual" / "United States (Virtual)"
-                if (cleanServiceCode === 'whatsapp') {
-                    const nameLower = resolvedName.toLowerCase();
-                    const isUsVirtual = 
-                        (nameLower.includes('united states') || resolvedCode === 'us' || String(countryKey) === '18') && 
-                        (nameLower.includes('virtual') || nameLower.includes('(v)')); // matches virtual labels
-                    
-                    if (isUsVirtual) {
-                        return; // Skips only US Virtual for WhatsApp
-                    }
-                }
+if (cleanServiceCode === 'whatsapp') {
+    const nameLower = resolvedName.toLowerCase();
+    const codeLower = resolvedCode.toLowerCase();
+    const keyLower = String(countryKey).toLowerCase();
+
+    const isUsVirtual = 
+        (nameLower.includes('usa') || nameLower.includes('united states') || codeLower === 'us' || keyLower === 'us') && 
+        nameLower.includes('virtual');
+    
+    if (isUsVirtual) {
+        return; // Skips only USA/United States Virtual for WhatsApp
+    }
+}
 
                 let allAvailablePrices = [];
 

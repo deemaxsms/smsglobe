@@ -3728,6 +3728,11 @@ async function handleProxyServiceImage(req, res) {
         const serviceId = req.query.id;
         const cleanId = serviceId ? String(serviceId).trim().toLowerCase() : '';
         
+        // Generate a clean short label from the service ID
+        const rawLabel = cleanId ? cleanId.replace(/[^a-z0-9]/gi, '').toUpperCase() : 'APP';
+        const displayLabel = rawLabel.length > 4 ? rawLabel.substring(0, 4) : rawLabel;
+        const fontSize = displayLabel.length > 3 ? '7' : '9';
+
         if (cleanId) {
             const targetUrls = [
                 `https://smsbower.app/img/services/${cleanId}.svg`,
@@ -3757,16 +3762,16 @@ async function handleProxyServiceImage(req, res) {
             }
         }
 
-        // Fallback: Return a clean default SVG placeholder so it never throws 404
-        const defaultSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="10" fill="#0284c7"/><text x="12" y="16" font-size="10" fill="#fff" text-anchor="middle" font-family="sans-serif">SMS</text></svg>`;
+        // Fallback SVG showing the service's short name inside the badge
+        const defaultSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="10" fill="#0284c7"/><text x="12" y="14.5" font-size="${fontSize}" fill="#fff" text-anchor="middle" font-family="sans-serif" font-weight="bold">${displayLabel}</text></svg>`;
         
         res.setHeader('Content-Type', 'image/svg+xml');
         res.setHeader('Cache-Control', 'public, max-age=604800, s-maxage=604800');
         return res.status(200).send(defaultSvg);
 
     } catch (err) {
-        // Return fallback SVG on error to guarantee 200 OK
-        const fallbackSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="10" fill="#0284c7"/></svg>`;
+        // Return clean fallback SVG on error to guarantee 200 OK
+        const fallbackSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="10" fill="#0284c7"/><text x="12" y="14.5" font-size="7" fill="#fff" text-anchor="middle" font-family="sans-serif">APP</text></svg>`;
         res.setHeader('Content-Type', 'image/svg+xml');
         return res.status(200).send(fallbackSvg);
     }
@@ -3881,16 +3886,35 @@ async function handleGetCountries(req, res) {
                             // Base price calculation using exchange rate and general markup
                             const rawPriceInNgn = rawCostUsd * exchangeRateToNgn;
                             let baseAmountNgn = Number((rawPriceInNgn * (1 + smsMarkup / 100)).toFixed(2));
-
+// 2. Custom Service Pricing Rules
 if (cleanServiceCode === 'whatsapp' || cleanServiceCode === 'wa') {
     if (baseAmountNgn <= 2000) {
         baseAmountNgn = 3000; 
     } else {
         baseAmountNgn = baseAmountNgn + 1000; 
     }
+} else if (cleanServiceCode === 'telegram' || cleanServiceCode === 'tg') {
+    if (baseAmountNgn <= 2000) {
+        baseAmountNgn = 3000; 
+    } else {
+        baseAmountNgn = baseAmountNgn + 1000; 
+    }
 } else if (cleanServiceCode === 'facebook' || cleanServiceCode === 'fb') {
-    if (baseAmountNgn <= 300) {
-        baseAmountNgn = 850; 
+    baseAmountNgn = 850; 
+} else if (cleanServiceCode === 'instagram' || cleanServiceCode === 'ig') {
+    baseAmountNgn = 850; 
+} else if (cleanServiceCode === 'tinder') {
+    baseAmountNgn = 1050; 
+} else if (cleanServiceCode === 'snapchat' || cleanServiceCode === 'snap') {
+    baseAmountNgn = 1100; 
+} else if (cleanServiceCode === 'discord' || cleanServiceCode === 'dc') {
+    baseAmountNgn = 700; 
+} else {
+    // Catch-all rule for all other services
+    if (baseAmountNgn <= 500) {
+        baseAmountNgn = 900; 
+    } else {
+        baseAmountNgn = baseAmountNgn + 450; 
     }
 }
 

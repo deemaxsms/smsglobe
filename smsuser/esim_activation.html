@@ -78,11 +78,11 @@
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
                 <span>Send Gifts</span>
             </a>
-             <a href="buy_number.html" class="flex items-center gap-3 px-4 py-3 text-brand-midText hover:bg-gray-50 rounded-xl text-[13px] font-semibold transition-all">
+             <a href="sms_number.html" class="flex items-center gap-3 px-4 py-3 text-brand-midText hover:bg-gray-50 rounded-xl text-[13px] font-semibold transition-all">
             <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
             </svg>
-            <span>Buy Number</span>
+            <span>SMS Number</span>
         </a>
 
             <a href="user_vpn.html" class="flex items-center space-x-2 px-3 py-1.5 text-brand-midText hover:bg-gray-50 rounded-lg text-[11px] font-medium">
@@ -505,11 +505,20 @@
     let userBalance = 0;
     let userBonusBalance = 0;
 const carriers = [
+    // --- T-Mobile Plans ---
     { id: 'tmobile', name: 'T-Mobile (Prepaid)', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Carrier', p: 45000, usd: "15.00", lbl: 'One Month' },
+    { id: 'tmobile_3months', name: 'T-Mobile 3 Months (Prepaid)', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Carrier', p: 120000, usd: "45.00", lbl: '3 Months' },
+    { id: 'tmobile_6months', name: 'T-Mobile 6 Months (Prepaid)', image: 'https://i.imgur.com/pyDMW1t.png', type: 'Carrier', p: 220000, usd: "90.00", lbl: '6 Months' },
+
+    // --- AT&T Plans ---
     { id: 'att', name: 'AT&T (Prepaid)', image: 'https://i.imgur.com/WDCo1gM.png', type: 'Carrier', p: 75000, usd: "35.00", lbl: 'One Month' },
-    { id: '1month', name: 'One Month Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan', p: 25000, lbl: 'One Month' },
-    { id: '3months', name: '3 Months Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan', p: 60000, lbl: 'One Month' },
-    { id: '1year', name: 'One Year Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan', p: 100000, lbl: 'One Year' }
+    { id: 'att_3months', name: 'AT&T 3 Months (Prepaid)', image: 'https://i.imgur.com/WDCo1gM.png', type: 'Carrier', p: 200000, usd: "105.00", lbl: '3 Months' },
+    { id: 'att_6months', name: 'AT&T 6 Months (Prepaid)', image: 'https://i.imgur.com/WDCo1gM.png', type: 'Carrier', p: 380000, usd: "210.00", lbl: '6 Months' },
+
+    // --- General Term Plans ---
+    { id: '1month', name: 'One Month Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan', p: 25000, usd: "8.00", lbl: 'One Month' },
+    { id: '3months', name: '3 Months Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan', p: 60000, usd: "24.00", lbl: '3 Months' },
+    { id: '1year', name: 'One Year Carrier eSIM', image: 'https://i.imgur.com/syKFaNI.png', type: 'Term Plan', p: 100000, usd: "40.00", lbl: 'One Year' }
 ];
 
     function toggleSidebar() {

@@ -211,13 +211,6 @@
             </div>
           </div>
 
-          <!-- Rank Filters -->
-          <div class="bg-brandBlue-900/60 p-1.5 rounded-xl flex space-x-1 border border-brandBlue-700/40">
-            <button class="flex-1 bg-brandBlue-700 text-white text-xs font-bold py-2 rounded-lg shadow text-center rank-filter-btn" data-rank="all">All</button>
-            <button class="flex-1 text-gray-300 hover:text-white text-xs font-medium py-2 rounded-lg text-center transition rank-filter-btn" data-rank="gold">Gold</button>
-            <button class="flex-1 text-gray-300 hover:text-white text-xs font-medium py-2 rounded-lg text-center transition rank-filter-btn" data-rank="silver">Silver</button>
-            <button class="flex-1 text-gray-300 hover:text-white text-xs font-medium py-2 rounded-lg text-center transition rank-filter-btn" data-rank="bronze">Bronze</button>
-          </div>
 
           <!-- Step 3: Select Country -->
           <div class="bg-brandBlue-800 rounded-2xl p-5 text-white shadow-md">
@@ -1130,7 +1123,7 @@ async function fetchUserHistory() {
                     ${isActive ? `
                         <div class="flex items-center justify-end space-x-1.5 pt-1">
                             <button onclick="manualRecheckSms('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-brandBlue-800 hover:bg-brandBlue-700 text-gray-200 border border-brandBlue-600/40 text-[11px] sm:text-xs font-semibold rounded-lg transition">
-                                <i class="fa-solid fa-rotate mr-1"></i> Check Status
+                                <i class="fa-solid fa-rotate mr-1"></i>Resend Sms
                             </button>
                             <button onclick="cancelActiveOrder('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-[11px] sm:text-xs font-semibold rounded-lg transition">
                                 <i class="fa-solid fa-ban mr-1"></i> Cancel

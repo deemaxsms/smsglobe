@@ -3821,7 +3821,11 @@ async function handleGetCountries(req, res) {
             });
         }
 
+        // Fetch system settings markup so catalog matches checkout pricing
+        const settings = await SystemSettings.findOne();
+        const smsMarkup = settings?.smsMarkupPercentage || 0; 
         const exchangeRateToNgn = 1400; 
+
         let formattedCountries = [];
         
         const countryData = rawTopCountries.country || rawTopCountries.countries || rawTopCountries.data || rawTopCountries;
@@ -3834,6 +3838,18 @@ async function handleGetCountries(req, res) {
                 const vendorMeta = countryMetaMap[String(countryKey).toLowerCase()] || {};
                 const resolvedName = vendorMeta.name || countryKey.toUpperCase();
                 const resolvedCode = (vendorMeta.code || countryKey).toLowerCase();
+
+                // EXCLUSION CHECK: If service is whatsapp, skip specifically "United States Virtual" / "United States (Virtual)"
+                if (cleanServiceCode === 'whatsapp') {
+                    const nameLower = resolvedName.toLowerCase();
+                    const isUsVirtual = 
+                        (nameLower.includes('united states') || resolvedCode === 'us' || String(countryKey) === '18') && 
+                        (nameLower.includes('virtual') || nameLower.includes('(v)')); // matches virtual labels
+                    
+                    if (isUsVirtual) {
+                        return; // Skips only US Virtual for WhatsApp
+                    }
+                }
 
                 let allAvailablePrices = [];
 
@@ -3861,7 +3877,10 @@ async function handleGetCountries(req, res) {
 
                             if (rawCostUsd <= 0 || rawCostUsd > 10000) return;
 
-                            const baseAmountNgn = Number((rawCostUsd * exchangeRateToNgn).toFixed(2));
+                            // Apply exchange rate AND system markup percentage
+                            const rawPriceInNgn = rawCostUsd * exchangeRateToNgn;
+                            const baseAmountNgn = Number((rawPriceInNgn * (1 + smsMarkup / 100)).toFixed(2));
+
                             const rawRank = (v && typeof v === 'object' && (v.rank || v.tier)) || providerKey || 'Standard';
                             const formattedRank = String(rawRank).charAt(0).toUpperCase() + String(rawRank).slice(1).toLowerCase();
 
@@ -3879,7 +3898,7 @@ async function handleGetCountries(req, res) {
                 });
 
                 if (allAvailablePrices.length > 0) {
-                    // Sort ascending by price. If prices match, pick from the last ID (higher provider ID / descending ID tie-breaker)
+                    // Sort ascending by price. If prices match, pick from the last ID
                     allAvailablePrices.sort((a, b) => {
                         if (a.amount !== b.amount) {
                             return a.amount - b.amount;

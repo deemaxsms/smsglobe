@@ -3839,7 +3839,9 @@ async function handleGetCountries(req, res) {
                 const resolvedName = vendorMeta.name || countryKey.toUpperCase();
                 const resolvedCode = (vendorMeta.code || countryKey).toLowerCase();
 
-if (cleanServiceCode === 'whatsapp') {
+const cleanServiceCode = String(serviceCode).trim().toLowerCase();
+
+if (cleanServiceCode === 'whatsapp' || cleanServiceCode === 'wa') {
     const keyString = String(countryKey).trim().toLowerCase();
     const nameLower = resolvedName.toLowerCase();
     const codeLower = resolvedCode.toLowerCase();
@@ -3856,8 +3858,6 @@ if (cleanServiceCode === 'whatsapp') {
     }
 }
                 let allAvailablePrices = [];
-
-                // v3 structure: countryKey -> serviceKey -> providerKey -> price details
                 Object.keys(countryVal).forEach(innerKey => {
                     const innerVal = countryVal[innerKey];
                     if (!innerVal || typeof innerVal !== 'object') return;

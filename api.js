@@ -3840,19 +3840,16 @@ async function handleGetCountries(req, res) {
                 const resolvedCode = (vendorMeta.code || countryKey).toLowerCase();
 
 if (cleanServiceCode === 'whatsapp') {
+    const keyString = String(countryKey).trim();
     const nameLower = resolvedName.toLowerCase();
-    const codeLower = resolvedCode.toLowerCase();
-    const keyLower = String(countryKey).toLowerCase();
 
-    const isUsVirtual = 
-        (nameLower.includes('usa') || nameLower.includes('united states') || codeLower === 'us' || keyLower === 'us') && 
-        nameLower.includes('virtual');
+    // Skip if country ID is 12 (USA Virtual) or matches name-based fallback
+    const isUsVirtual = (keyString === '12') || (nameLower.includes('virtual') && (nameLower.includes('usa') || nameLower.includes('united states')));
     
     if (isUsVirtual) {
-        return; // Skips only USA/United States Virtual for WhatsApp
+        return; // Skips USA (virtual) specifically for WhatsApp
     }
 }
-
                 let allAvailablePrices = [];
 
                 // v3 structure: countryKey -> serviceKey -> providerKey -> price details

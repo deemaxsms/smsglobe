@@ -3790,7 +3790,7 @@ async function handleGetCountries(req, res) {
             }),
             smsBowerClient.get('', { 
                 params: { 
-                    action: 'getPricesV3', // Using Get full prices list v3
+                    action: 'getPricesV3', 
                     service: cleanServiceCode 
                 } 
             })
@@ -3821,13 +3821,11 @@ async function handleGetCountries(req, res) {
             });
         }
 
-        // Fetch system settings markup so catalog matches checkout pricing
         const settings = await SystemSettings.findOne();
         const smsMarkup = settings?.smsMarkupPercentage || 0; 
         const exchangeRateToNgn = 1400; 
 
         let formattedCountries = [];
-        
         const countryData = rawTopCountries.country || rawTopCountries.countries || rawTopCountries.data || rawTopCountries;
 
         if (countryData && typeof countryData === 'object') {
@@ -3839,24 +3837,23 @@ async function handleGetCountries(req, res) {
                 const resolvedName = vendorMeta.name || countryKey.toUpperCase();
                 const resolvedCode = (vendorMeta.code || countryKey).toLowerCase();
 
-const cleanServiceCode = String(serviceCode).trim().toLowerCase();
+                // 1. Skip US Virtual for WhatsApp / wa
+                if (cleanServiceCode === 'whatsapp' || cleanServiceCode === 'wa') {
+                    const keyString = String(countryKey).trim().toLowerCase();
+                    const nameLower = resolvedName.toLowerCase();
+                    const codeLower = resolvedCode.toLowerCase();
 
-if (cleanServiceCode === 'whatsapp' || cleanServiceCode === 'wa') {
-    const keyString = String(countryKey).trim().toLowerCase();
-    const nameLower = resolvedName.toLowerCase();
-    const codeLower = resolvedCode.toLowerCase();
+                    const isUsVirtual = 
+                        keyString === '12' || 
+                        keyString.includes('virtual') || 
+                        codeLower.includes('virtual') ||
+                        (nameLower.includes('virtual') && (nameLower.includes('usa') || nameLower.includes('united states') || keyString === 'usa' || keyString === 'us'));
+                    
+                    if (isUsVirtual) {
+                        return; // Skips United States (virtual) for WhatsApp completely
+                    }
+                }
 
-    // Catch all possible ways SMSBower labels USA Virtual (ID '12', key 'usa (virtual)', or text containing usa + virtual)
-    const isUsVirtual = 
-        keyString === '12' || 
-        keyString.includes('virtual') || 
-        codeLower.includes('virtual') ||
-        (nameLower.includes('virtual') && (nameLower.includes('usa') || nameLower.includes('united states') || keyString === 'usa' || keyString === 'us'));
-    
-    if (isUsVirtual) {
-        return; // Skips United States (virtual) for WhatsApp completely
-    }
-}
                 let allAvailablePrices = [];
                 Object.keys(countryVal).forEach(innerKey => {
                     const innerVal = countryVal[innerKey];
@@ -3881,9 +3878,21 @@ if (cleanServiceCode === 'whatsapp' || cleanServiceCode === 'wa') {
 
                             if (rawCostUsd <= 0 || rawCostUsd > 10000) return;
 
-                            // Apply exchange rate AND system markup percentage
+                            // Base price calculation using exchange rate and general markup
                             const rawPriceInNgn = rawCostUsd * exchangeRateToNgn;
-                            const baseAmountNgn = Number((rawPriceInNgn * (1 + smsMarkup / 100)).toFixed(2));
+                            let baseAmountNgn = Number((rawPriceInNgn * (1 + smsMarkup / 100)).toFixed(2));
+
+if (cleanServiceCode === 'whatsapp' || cleanServiceCode === 'wa') {
+    if (baseAmountNgn <= 2000) {
+        baseAmountNgn = 3000; 
+    } else {
+        baseAmountNgn = baseAmountNgn + 1000; 
+    }
+} else if (cleanServiceCode === 'facebook' || cleanServiceCode === 'fb') {
+    if (baseAmountNgn <= 300) {
+        baseAmountNgn = 850; 
+    }
+}
 
                             const rawRank = (v && typeof v === 'object' && (v.rank || v.tier)) || providerKey || 'Standard';
                             const formattedRank = String(rawRank).charAt(0).toUpperCase() + String(rawRank).slice(1).toLowerCase();
@@ -3902,7 +3911,6 @@ if (cleanServiceCode === 'whatsapp' || cleanServiceCode === 'wa') {
                 });
 
                 if (allAvailablePrices.length > 0) {
-                    // Sort ascending by price. If prices match, pick from the last ID
                     allAvailablePrices.sort((a, b) => {
                         if (a.amount !== b.amount) {
                             return a.amount - b.amount;
@@ -3910,7 +3918,6 @@ if (cleanServiceCode === 'whatsapp' || cleanServiceCode === 'wa') {
                         return String(b.providerId).localeCompare(String(a.providerId), undefined, { numeric: true });
                     });
 
-                    // Limit available prices to ONLY the two lowest pricing options
                     allAvailablePrices = allAvailablePrices.slice(0, 2);
 
                     formattedCountries.push({
@@ -3922,7 +3929,7 @@ if (cleanServiceCode === 'whatsapp' || cleanServiceCode === 'wa') {
                             : `https://flagcdn.com/w40/un.png`, 
                         stock: allAvailablePrices[0].count,
                         providerId: allAvailablePrices[0].providerId,
-                        selectedPriceIndex: 0, // Forces default UI selection to the lowest price tier
+                        selectedPriceIndex: 0, 
                         price: {
                             amount: allAvailablePrices[0].amount,
                             currency: 'NGN',
@@ -3934,7 +3941,6 @@ if (cleanServiceCode === 'whatsapp' || cleanServiceCode === 'wa') {
             });
         }
 
-        // Sort countries overall by lowest starting price
         formattedCountries.sort((a, b) => a.price.amount - b.price.amount);
 
         return res.status(200).json({ success: true, countries: formattedCountries });

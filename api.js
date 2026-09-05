@@ -4225,6 +4225,10 @@ async function handleCancelOrder(req, res) {
 
         // 2. Find and Refund User Wallet Balance with unified balance field handling
         const refundAmount = Number(order.amount) || 0;
+        
+        const mainBalanceRefund = Number(order.mainBalanceUsed) || refundAmount;
+        const bonusBalanceRefund = Number(order.bonusBalanceUsed) || 0;
+
         const user = userId ? await User.findById(userId).session(session) : await User.findOne({ email: userEmail }).session(session);
 
         if (!user) {
@@ -4233,15 +4237,23 @@ async function handleCancelOrder(req, res) {
             return res.status(404).json({ success: false, message: "User account not found." });
         }
 
-        // Support both walletBalance and balance fields seamlessly
         const balanceBefore = Number(user.walletBalance !== undefined ? user.walletBalance : (user.balance || 0));
-        const balanceAfter = balanceBefore + refundAmount;
+        const bonusBefore = Number(user.bonusBalance || 0);
 
+        const balanceAfter = balanceBefore + mainBalanceRefund;
+        const bonusAfter = bonusBefore + bonusBalanceRefund;
+
+        // Apply updates
         if (user.walletBalance !== undefined) {
             user.walletBalance = balanceAfter;
         } else {
             user.balance = balanceAfter;
         }
+        
+        if (bonusBalanceRefund > 0 && user.bonusBalance !== undefined) {
+            user.bonusBalance = bonusAfter;
+        }
+
         await user.save({ session });
 
         // 3. Update Order Status locally

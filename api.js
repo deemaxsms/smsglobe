@@ -3933,8 +3933,6 @@ if (cleanServiceCode === 'whatsapp' || cleanServiceCode === 'wa') {
     } else {
         baseAmountNgn = baseAmountNgn + 1000; 
     }
-} else if (cleanServiceCode === 'facebook' || cleanServiceCode === 'fb') {
-    baseAmountNgn = 0; 
 } else if (cleanServiceCode === 'instagram' || cleanServiceCode === 'ig') {
     baseAmountNgn = 850; 
 } else if (cleanServiceCode === 'tinder') {

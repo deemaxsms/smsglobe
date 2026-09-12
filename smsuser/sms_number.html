@@ -1425,11 +1425,51 @@ window.manualRecheckSms = async function(orderId) {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Could not connect to server to recheck SMS.' });
     }
 };
-
 // 3. Main History Rendering Function with Persistent Polling & Mobile Optimization (Database-backed)
 async function fetchUserHistory() {
     const historyGrid = document.getElementById('history-grid');
     if (!historyGrid) return;
+
+    // Mapping table for common SMS provider service codes to readable names
+    const serviceNameMap = {
+        wa: 'WhatsApp',
+        tg: 'Telegram',
+        go: 'Google / Gmail / YouTube',
+        ig: 'Instagram',
+        fb: 'Facebook',
+        tk: 'TikTok',
+        mm: 'Microsoft / Outlook / Hotmail',
+        tw: 'X / Twitter',
+        vx: 'Viber',
+        nf: 'Netflix',
+        am: 'Amazon',
+        ap: 'Apple',
+        pp: 'PayPal',
+        ub: 'Uber',
+        tn: 'Telegram',
+        ot: 'Other / Any Service'
+    };
+
+    // Service Name Resolver
+    const getFormattedServiceName = (item) => {
+        // 1. Check for explicit full service name properties returned by backend/API
+        const rawName = item.serviceName || item.service_name || item.name || item.title;
+        if (rawName && rawName.toLowerCase() !== 'service' && !serviceNameMap[rawName.toLowerCase()]) {
+            return rawName;
+        }
+
+        // 2. Resolve short code aliases if present
+        const code = String(item.serviceCode || item.service || item.code || '').toLowerCase().trim();
+        if (serviceNameMap[code]) {
+            return serviceNameMap[code];
+        }
+
+        // 3. Fallback: Clean up raw codes/names (capitalize first letter) or default gracefully
+        if (rawName) return rawName;
+        if (code) return code.length <= 3 ? code.toUpperCase() : (code.charAt(0).toUpperCase() + code.slice(1));
+
+        return 'SMS Verification';
+    };
 
     try {
         const fetchMethod = typeof safeFetch === 'function' ? safeFetch : async (url, opts) => {
@@ -1508,7 +1548,7 @@ async function fetchUserHistory() {
             );
         };
 
-       historyGrid.innerHTML = sortedHistory.map(item => {
+        historyGrid.innerHTML = sortedHistory.map(item => {
             const statusLower = String(item.status || 'pending').toLowerCase();
             const isCancelled = statusLower === 'cancelled' || statusLower === 'canceled';
             const isExpired = statusLower === 'expired';
@@ -1522,7 +1562,9 @@ async function fetchUserHistory() {
             
             const orderId = item.id || item._id;
             const displayPhoneNumber = item.phoneNumber || item.number || item.targetNumber || 'N/A';
-            const displayServiceName = item.serviceName || item.serviceCode || 'Service';
+            
+            // Uses the dynamic service name resolver
+            const displayServiceName = getFormattedServiceName(item);
             
             const displayCountryName = item.countryName || item.country || 'Selected Country';
             const displayCountryShortCode = (item.countryCode || item.shortCode || '').toUpperCase();

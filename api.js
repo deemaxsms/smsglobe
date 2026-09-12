@@ -337,7 +337,6 @@ const transactionSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const Transaction = mongoose.models.Transaction || mongoose.model('Transaction', transactionSchema);
-
 const orderSchema = new mongoose.Schema({
     userEmail: { type: String, required: true, index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -348,13 +347,19 @@ const orderSchema = new mongoose.Schema({
         required: true 
     },
     vendorOrderId: { type: String, index: true },
+    
+    // --- ADD SERVICE NAME & CODE FIELDS HERE ---
+    serviceName: { type: String }, // e.g., 'WhatsApp', 'Telegram'
+    serviceCode: { type: String }, // e.g., 'wa', 'tg'
+    // -------------------------------------------
+
     planName: String, 
     nodeName: String, 
     amount: { type: Number, required: true },
     currency: { type: String, default: 'NGN' },        
     mainBalanceUsed: { type: Number, default: 0 }, 
     bonusBalanceUsed: { type: Number, default: 0 }, 
-   status: { 
+    status: { 
         type: String, 
         enum: ['pending', 'processing', 'successful', 'failed', 'completed', 'cancelled'], 
         default: 'pending' 
@@ -363,10 +368,8 @@ const orderSchema = new mongoose.Schema({
     targetNumber: String, 
     country: String,
     
-    // --- ADD THESE TWO FIELDS HERE ---
     smsCode: { type: String },
     fullMessage: { type: String },
-    // ---------------------------------
 
     target: {
         number: String,
@@ -402,7 +405,6 @@ const orderSchema = new mongoose.Schema({
     
 }, { timestamps: true });
 
-// Optimize for dashboard performance
 orderSchema.index({ createdAt: -1 });
 
 const Order = mongoose.models.Order || mongoose.model('Order', orderSchema);
@@ -1880,6 +1882,33 @@ if (isOnlineSimFlow) {
         const reqService = String(metadata.serviceCode || metadata.serviceName || 'wa').trim().toLowerCase();
         const selectedOperator = metadata.providerId || metadata.operator;
 
+        // -------------------------------------------------------------
+        // Service Name Resolver Map
+        // Maps short provider codes to human-readable names
+        // -------------------------------------------------------------
+        const serviceMap = {
+            wa: 'WhatsApp',
+            tg: 'Telegram',
+            go: 'Google / Gmail / YouTube',
+            ig: 'Instagram',
+            fb: 'Facebook',
+            tk: 'TikTok',
+            mm: 'Microsoft / Outlook / Hotmail',
+            tw: 'X / Twitter',
+            vx: 'Viber',
+            nf: 'Netflix',
+            am: 'Amazon',
+            ap: 'Apple',
+            pp: 'PayPal',
+            ub: 'Uber',
+            tn: 'Telegram',
+            ot: 'Other / Any Service'
+        };
+
+        const resolvedServiceName = metadata.serviceName && !serviceMap[metadata.serviceName.toLowerCase()] 
+            ? metadata.serviceName 
+            : (serviceMap[reqService] || reqService.toUpperCase());
+
         // Switched action to getNumberV2 for structured JSON response
         let getNumUrl = `${smsBowerBaseUrl}?api_key=${smsBowerApiKey}&action=getNumberV2&service=${encodeURIComponent(reqService)}&country=${encodeURIComponent(reqCountry)}`;
 
@@ -1897,52 +1926,56 @@ if (isOnlineSimFlow) {
             const trackingTzid = data.activationId;
             const allocatedNumber = data.phoneNumber;
 
-            // 1. Create SmsNumber record for polling incoming SMS codes
+            // 1. Create SmsNumber record with resolved serviceName
             await SmsNumber.create({
                 userId: user._id,
                 userEmail: user.email,
                 vendorOrderId: trackingTzid,
                 countryId: reqCountry,
                 phoneNumber: allocatedNumber,
-                serviceName: reqService,
+                serviceName: resolvedServiceName, // <-- FIXED: Saves 'WhatsApp' instead of 'wa'
                 amount: costNGN,
                 status: 'pending'
             });
 
-          // 2. Create the central dashboard Order record
-const createdOrder = await Order.create({
-    userId: user._id,
-    userEmail: user.email,
-    fullName: user.fullName || user.name || 'User',
-    productType: 'SmsNumber',
-    vendorOrderId: trackingTzid, // <-- CORRECTED: Use trackingTzid instead of res.vendorOrderId
-    planName: metadata.planName || `${reqService.toUpperCase()} Virtual Number`,
-    amount: costNGN,
-    currency: 'NGN',
-    mainBalanceUsed: mainDeduction,
-    bonusBalanceUsed: bonusDeduction,
-    status: 'pending',
-    paymentReference: `SMS_${trackingTzid}_${Date.now()}`,
-    targetNumber: allocatedNumber,
-    country: reqCountry,
-    instructions: "Line allocated successfully. Waiting for SMS code...",
-    metadata: {
-        tzid: trackingTzid,
-        serviceCode: reqService,
-        countryCode: reqCountry,
-        operator: selectedOperator || null
-    },
-    deliveredAt: new Date()
-});
+            // 2. Create the central dashboard Order record with serviceName & serviceCode
+            const createdOrder = await Order.create({
+                userId: user._id,
+                userEmail: user.email,
+                fullName: user.fullName || user.name || 'User',
+                productType: 'SmsNumber',
+                vendorOrderId: trackingTzid,
+                serviceName: resolvedServiceName, // <-- FIXED: Added serviceName field
+                serviceCode: reqService,          // <-- FIXED: Added serviceCode field
+                planName: metadata.planName || `${resolvedServiceName} Virtual Number`,
+                amount: costNGN,
+                currency: 'NGN',
+                mainBalanceUsed: mainDeduction,
+                bonusBalanceUsed: bonusDeduction,
+                status: 'pending',
+                paymentReference: `SMS_${trackingTzid}_${Date.now()}`,
+                targetNumber: allocatedNumber,
+                country: reqCountry,
+                instructions: "Line allocated successfully. Waiting for SMS code...",
+                metadata: {
+                    tzid: trackingTzid,
+                    serviceCode: reqService,
+                    serviceName: resolvedServiceName,
+                    countryCode: reqCountry,
+                    operator: selectedOperator || null
+                },
+                deliveredAt: new Date()
+            });
 
-          // 3. Return a fully populated payload matching what frontend state checks
+            // 3. Return a fully populated payload matching what frontend state checks
             return res.status(200).json({
                 success: true,
                 message: "Virtual number purchased successfully",
                 order: {
                     ...createdOrder.toObject(),
-                    phoneNumber: allocatedNumber,  // <-- Ensures order.phoneNumber exists
-                    targetNumber: allocatedNumber  // <-- Alias support
+                    serviceName: resolvedServiceName, // <-- Ensures frontend gets clean name immediately
+                    phoneNumber: allocatedNumber,
+                    targetNumber: allocatedNumber
                 },
                 phoneNumber: allocatedNumber,
                 number: allocatedNumber,
@@ -1952,7 +1985,8 @@ const createdOrder = await Order.create({
                     number: allocatedNumber,
                     targetNumber: allocatedNumber,
                     tzid: trackingTzid,
-                    service: reqService
+                    service: reqService,
+                    serviceName: resolvedServiceName
                 }
             });
 
@@ -3900,7 +3934,7 @@ if (cleanServiceCode === 'whatsapp' || cleanServiceCode === 'wa') {
         baseAmountNgn = baseAmountNgn + 1000; 
     }
 } else if (cleanServiceCode === 'facebook' || cleanServiceCode === 'fb') {
-    baseAmountNgn = 850; 
+    baseAmountNgn = 0; 
 } else if (cleanServiceCode === 'instagram' || cleanServiceCode === 'ig') {
     baseAmountNgn = 850; 
 } else if (cleanServiceCode === 'tinder') {
@@ -4410,46 +4444,79 @@ async function handleGetOrderDetails(req, res) {
         }
 
         const activeVendorId = order.vendorOrderId || order.metadata?.tzid;
+        const currentStatus = String(order.status || '').toLowerCase();
 
         // 2. If status is pending/active and we have a vendor ID, query SMSBower live!
-        const currentStatus = String(order.status || '').toLowerCase();
         if (activeVendorId && (currentStatus === 'pending' || currentStatus === 'active')) {
             try {
-                // Using global fetch or axios pointing to SMSBower API
                 const smsBowerUrl = `https://smsbower.page/stubs/handler_api.php?api_key=${process.env.SMSBOWER_API_KEY}&action=getStatus&id=${activeVendorId}`;
                 const providerRes = await fetch(smsBowerUrl);
-                const rawText = await providerRes.text();
+                const rawText = (await providerRes.text()).trim();
                 
                 console.log(`📡 Live SMSBower check for ${activeVendorId}:`, rawText);
 
                 if (rawText.startsWith('STATUS_OK:')) {
-                    const code = rawText.split(':')[1];
+                    const code = rawText.split(':')[1] || rawText;
                     order.smsCode = code;
-                    order.fullMessage = `Verification code is ${code}`;
+                    order.fullMessage = `Your verification code is: ${code}`;
                     order.status = 'completed';
                     await order.save();
 
-                    // Also sync SmsNumber collection if it exists
+                    // Sync corresponding SmsNumber collection document
                     await SmsNumber.findOneAndUpdate(
-                        { vendorOrderId: String(activeVendorId), status: 'pending' },
-                        { smsCode: code, fullMessage: order.fullMessage, status: 'completed' }
+                        { vendorOrderId: String(activeVendorId) },
+                        { 
+                            smsCode: code, 
+                            fullMessage: order.fullMessage, 
+                            status: 'completed' 
+                        }
                     );
                 } else if (rawText === 'STATUS_CANCEL') {
                     order.status = 'cancelled';
                     await order.save();
+
+                    // Sync corresponding SmsNumber collection document on cancellation
+                    await SmsNumber.findOneAndUpdate(
+                        { vendorOrderId: String(activeVendorId) },
+                        { status: 'cancelled' }
+                    );
                 }
             } catch (providerErr) {
                 console.error("SMSBower live polling error:", providerErr.message);
             }
         }
 
-        return res.status(200).json({ success: true, order });
+        // 3. Normalized Service Map Fallback (for older orders missing serviceName)
+        const serviceMap = {
+            wa: 'WhatsApp', tg: 'Telegram', go: 'Google / Gmail',
+            ig: 'Instagram', fb: 'Facebook', tk: 'TikTok',
+            tw: 'X / Twitter', vx: 'Viber', nf: 'Netflix',
+            am: 'Amazon', ap: 'Apple', pp: 'PayPal', ub: 'Uber'
+        };
+
+        const rawCode = (order.serviceCode || order.metadata?.serviceCode || '').toLowerCase();
+        const displayServiceName = order.serviceName 
+            || serviceMap[rawCode] 
+            || (rawCode ? rawCode.toUpperCase() : 'Virtual SMS');
+
+        // 4. Return normalized response payload matching frontend component props
+        const orderObj = order.toObject();
+        
+        return res.status(200).json({ 
+            success: true, 
+            order: {
+                ...orderObj,
+                serviceName: displayServiceName,
+                phoneNumber: orderObj.targetNumber || orderObj.phoneNumber,
+                targetNumber: orderObj.targetNumber || orderObj.phoneNumber
+            } 
+        });
+
     } catch (err) {
         console.error("Order Details Error:", err);
         return res.status(500).json({ success: false, message: err.message });
     }
 }
-
 /**
  * 6. SMSBOWER WEBHOOK HANDLER
  */

@@ -189,7 +189,7 @@
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:ml-64 transition-all">
     <div class="space-y-6">
 
-      <!-- Tab Switcher Header (Light Blue Redesign) -->
+      <!-- Tab Switcher Header -->
       <div class="bg-sky-200/80 p-1.5 rounded-xl flex shadow-xs max-w-xs border border-sky-300/60">
         <button id="btn-tab-number" onclick="switchTab('Number')" class="flex-1 bg-white text-sky-900 font-bold py-2 rounded-lg text-xs shadow-xs text-center transition">
           Numbers
@@ -199,59 +199,67 @@
         </button>
       </div>
 
-      <!-- ================= VIEW 1: NUMBERS WORKFLOW SECTION ================= -->
-      <div id="numbers-section" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- ================= VIEW 1: SPREADSHEET ROW TABLE SECTION ================= -->
+      <div id="numbers-section" class="space-y-4">
         
-        <!-- Left Column: Service, Ranks, Country Selection -->
-        <div class="lg:col-span-4 space-y-5">
+        <div class="bg-white border border-sky-200 rounded-2xl p-5 shadow-xs space-y-4">
           
-          <!-- Step 1: Select service (Light Blue Styling) -->
-          <div class="bg-white border border-sky-200 rounded-2xl p-5 shadow-xs relative">
-            <div class="flex items-center space-x-3 mb-3">
-              <span class="w-6 h-6 rounded-full bg-sky-600 text-white text-xs font-bold flex items-center justify-center shadow-xs">1</span>
-              <span class="font-bold text-sm tracking-wide text-sky-950">Select service</span>
-            </div>
-            <div class="relative mb-4">
+          <!-- Filter & Search Toolbar -->
+          <div class="flex flex-col md:flex-row gap-3 justify-between items-center pb-2">
+            <!-- Search Service Input -->
+            <div class="relative w-full md:w-80">
               <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-sky-400">
                 <i class="fa-solid fa-magnifying-glass text-xs"></i>
               </span>
-              <input type="text" id="service-search-input" placeholder="Search service..." class="w-full bg-sky-50 text-sky-900 placeholder-sky-400 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500 border border-sky-200">
+              <input type="text" id="service-search-input" placeholder="Search service..." class="w-full bg-sky-50 text-sky-900 placeholder-sky-400 text-sm rounded-xl pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 border border-sky-200">
             </div>
-            <div id="services-grid" class="grid grid-cols-8 gap-2 bg-sky-50/60 p-3 rounded-xl border border-sky-200/70 max-h-48 overflow-y-auto"></div>
-            <div class="mt-3 text-center">
-              <a href="#" class="text-xs text-sky-600 hover:underline">Didn't find the right service? Write to <span class="underline font-semibold">support</span></a>
-            </div>
-          </div>
 
-
-          <!-- Step 3: Select Country (Light Blue Styling) -->
-          <div class="bg-white border border-sky-200 rounded-2xl p-5 shadow-xs">
-            <div class="flex items-center space-x-3 mb-3">
-              <span class="w-6 h-6 rounded-full bg-sky-600 text-white text-xs font-bold flex items-center justify-center shadow-xs">3</span>
-              <span class="font-bold text-sm tracking-wide text-sky-950">Select country</span>
-            </div>
-            <div class="relative mb-3">
-              <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-sky-400">
-                <i class="fa-solid fa-magnifying-glass text-xs"></i>
+            <!-- Country Filter Dropdown -->
+            <div class="relative w-full md:w-64">
+              <select id="country-select-filter" class="w-full bg-sky-50 text-sky-900 text-sm rounded-xl pl-4 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 border border-sky-200 appearance-none font-medium">
+                <option value="">All Countries</option>
+                <!-- Populated dynamically via JS -->
+              </select>
+              <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-sky-400">
+                <i class="fa-solid fa-chevron-down text-xs"></i>
               </span>
-              <input type="text" id="country-search-input" placeholder="Find country" class="w-full bg-sky-50 text-sky-900 placeholder-sky-400 text-sm rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500 border border-sky-200">
             </div>
-            <p class="text-[11px] text-sky-600 mb-3 font-medium">Countries are ranked by top performance</p>
-            <div id="countries-grid" class="max-h-[420px] overflow-y-auto space-y-3 pr-1"></div>
           </div>
 
-        </div><!-- End Left Column -->
+          <!-- Unified Row Table Container -->
+          <div class="overflow-x-auto rounded-xl border border-sky-200 bg-sky-50/20">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-sky-100/70 border-b border-sky-200 text-sky-950 text-xs font-bold uppercase tracking-wider">
+                  <th class="p-3.5">Service</th>
+                  <th class="p-3.5">Country</th>
+                  <th class="p-3.5">Price</th>
+                  <th class="p-3.5">Stock</th>
+                  <th class="p-3.5 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="services-table-body" class="divide-y divide-sky-100 text-sm text-gray-700">
+                <!-- Rendered dynamically by JavaScript -->
+                <tr>
+                  <td colspan="5" class="text-center py-12 text-sky-600 font-medium">
+                    <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Loading available services & rates...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-        <!-- Right Column -->
-        <div class="lg:col-span-8">
-           <!-- Active monitor / details panel can go here -->
+          <div class="text-center pt-2">
+            <a href="#" class="text-xs text-sky-600 hover:underline">Didn't find the right service or country? Write to <span class="underline font-semibold">support</span></a>
+          </div>
+
         </div>
 
       </div><!-- End Numbers Section -->
 
 
-      <!-- ================= VIEW 2: HISTORY SECTION (Light Blue Redesign + Table Layout) ================= -->
-      <div id="history-section" class="hidden max-w-5xl space-y-5">
+      <!-- ================= VIEW 2: HISTORY SECTION ================= -->
+      <div id="history-section" class="hidden space-y-5">
         <div class="bg-white border border-sky-200 rounded-2xl p-5 sm:p-6 shadow-xs">
           
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5 pb-4 border-b border-sky-100">
@@ -765,6 +773,38 @@
 'wnd': 'https://api.iconify.design/simple-icons:windsurf.svg'
     };
          
+
+      const countryCodeMap = {
+        'united states': 'us', 'usa': 'us', 'united states (virtual)': 'us', 'america': 'us', 'canada': 'ca', 'mexico': 'mx', 'brazil': 'br', 'argentina': 'ar',
+        'colombia': 'co', 'chile': 'cl', 'peru': 'pe', 'venezuela': 've', 'ecuador': 'ec', 'bolivia': 'bo', 'paraguay': 'py', 'uruguay': 'uy', 'costa rica': 'cr',
+        'panama': 'pa', 'cuba': 'cu', 'dominican republic': 'do', 'puerto rico': 'pr', 'guatemala': 'gt', 'honduras': 'hn', 'el salvador': 'sv', 'nicaragua': 'ni', 'haiti': 'ht',
+        'jamaica': 'jm', 'trinidad and tobago': 'tt', 'bahamas': 'bs', 'barbados': 'bb',
+        'united kingdom': 'gb', 'uk': 'gb', 'great britain': 'gb', 'england': 'gb', 'germany': 'de', 'france': 'fr', 'italy': 'it', 'spain': 'es', 'ukraine': 'ua',
+        'russia': 'ru', 'poland': 'pl', 'romania': 'ro', 'netherlands': 'nl', 'holland': 'nl', 'belgium': 'be', 'greece': 'gr', 'czech republic': 'cz', 'czechia': 'cz', 'portugal': 'pt', 'sweden': 'se',
+        'hungary': 'hu', 'belarus': 'by', 'austria': 'at', 'switzerland': 'ch', 'bulgaria': 'bg', 'serbia': 'rs', 'denmark': 'dk', 'finland': 'fi', 'slovakia': 'sk', 'norway': 'no',
+        'ireland': 'ie', 'croatia': 'hr', 'moldova': 'md', 'bosnia and herzegovina': 'ba', 'albania': 'al', 'lithuania': 'lt', 'north macedonia': 'mk', 'slovenia': 'si', 'latvia': 'lv',
+        'estonia': 'ee', 'montenegro': 'me', 'luxembourg': 'lu', 'malta': 'mt', 'iceland': 'is', 'andorra': 'ad', 'monaco': 'mc', 'liechtenstein': 'li', 'san marino': 'sm', 'vatican city': 'va',
+        'cyprus': 'cy',
+        'nigeria': 'ng', 'egypt': 'eg', 'south africa': 'za', 'kenya': 'ke', 'ghana': 'gh', 'cameroon': 'cm', 'guinea': 'gn', 'ethiopia': 'et', 'tanzania': 'tz', 'algeria': 'dz', 'morocco': 'ma',
+        'uganda': 'ug', 'sudan': 'sd', 'angola': 'ao', 'mozambique': 'mz', 'ivory coast': 'ci', 'cote d ivoire': 'ci', 'madagascar': 'mg', 'zambia': 'zm', 'zimbabwe': 'zw', 'senegal': 'sn', 'mali': 'ml',
+        'rwanda': 'rw', 'somalia': 'so', 'tunisia': 'tn', 'chad': 'td', 'benin': 'bj', 'burundi': 'bi', 'south sudan': 'ss', 'eritrea': 'er', 'namibia': 'na', 'gambia': 'gm',
+        'botswana': 'bw', 'gabon': 'ga', 'lesotho': 'ls', 'guinea-bissau': 'gw', 'equatorial guinea': 'gq', 'mauritius': 'mu', 'eswatini': 'sz', 'djibouti': 'dj', 'comoros': 'km',
+        'cape verde': 'cv', 'sao tome and principe': 'st', 'seychelles': 'sc', 'togo': 'tg', 'mauritania': 'mr', 'central african republic': 'cf', 'burkina faso': 'bf', 'kosovo': 'xk',
+        'liberia': 'lr', 'congo (dem. republic)': 'cd', 'democratic republic of the congo': 'cd', 'macau': 'mo', 'lao people`s': 'la', 'laos': 'la', 'taiwan': 'tw', 'papua new guinea': 'pg', 'libya': 'ly', 'swaziland': 'sz', 'sierra leone': 'sl', 'belize': 'bz', 'dominica': 'dm', 'grenada': 'gd',
+        'guyana': 'gy', 'saint kitts and nevis': 'kn', 'malawi': 'mw', 'niger': 'ne', 'suriname': 'sr', 'reunion': 're', 'congo': 'cg', 'guadeloupe': 'gp', 'saint lucia': 'lc',
+        'saint vincent': 'vc', 'antigua and barbuda': 'ag', 'cayman islands': 'ky', 'aruba': 'aw', 'montserrat': 'ms', 'anguilla': 'ai',
+        'macedonia': 'mk', 'new caledonia': 'nc', 'bermuda': 'bm', 'sint maarten': 'sx', 'martinique': 'mq', 'faroe islands': 'fo', 'gibraltar': 'gi',
+        'china': 'cn', 'india': 'in', 'vietnam': 'vn', 'indonesia': 'id', 'pakistan': 'pk', 'bangladesh': 'bd', 'japan': 'jp', 'hong kong': 'hk',
+        'philippines': 'ph', 'turkey': 'tr', 'turkiye': 'tr', 'iran': 'ir', 'thailand': 'th', 'myanmar': 'mm', 'south korea': 'kr', 'korea': 'kr', 'iraq': 'iq',
+        'afghanistan': 'af', 'saudi arabia': 'sa', 'uzbekistan': 'uz', 'yemen': 'ye', 'malaysia': 'my', 'nepal': 'np', 'north korea': 'kp', 'sri lanka': 'lk',
+        'kazakhstan': 'kz', 'syria': 'sy', 'cambodia': 'kh', 'jordan': 'jo', 'azerbaijan': 'az', 'united arab emirates': 'ae', 'uae': 'ae', 'tajikistan': 'tj',
+        'israel': 'il', 'lebanon': 'lb', 'kyrgyzstan': 'kg', 'turkmenistan': 'tm', 'singapore': 'sg', 'palestine': 'ps', 'oman': 'om', 'kuwait': 'kw', 'georgia': 'ge',
+        'mongolia': 'mn', 'armenia': 'am', 'qatar': 'qa', 'bahrain': 'bh', 'timor-leste': 'tl', 'bhutan': 'bt', 'maldives': 'mv', 'brunei': 'bn',
+        'australia': 'au', 'new zealand': 'nz', 'fiji': 'fj', 'solomon islands': 'sb', 'vanuatu': 'vu', 'samoa': 'ws', 'kiribati': 'ki', 'micronesia': 'fm',
+        'tonga': 'to', 'marshall islands': 'mh', 'palau': 'pw', 'tuvalu': 'tv', 'nauru': 'nr', 'french guiana': 'gf', 'niue': 'nu'
+    };
+
+
       function logout() {
         localStorage.removeItem('userToken');
         localStorage.removeItem('dashboard_cache');
@@ -803,8 +843,6 @@
 };
      async function safeFetch(url, options = {}) {
     const token = localStorage.getItem('userToken');
-
-    // Automatically attach Authorization and Content-Type headers if missing
     const headers = {
         'Content-Type': 'application/json',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -872,67 +910,70 @@
         }
       }
 
-      async function fetchServices() {
+     // Integrated Services Fetching Pipeline
+    async function fetchServices() {
         const grid = document.getElementById('services-grid');
         if (grid) {
-          grid.innerHTML = '<div class="col-span-8 text-center py-4 text-xs text-brandBlue-200"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading services...</div>';
+            grid.innerHTML = '<div class="col-span-8 text-center py-4 text-xs text-brandBlue-200"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading services...</div>';
         }
 
         try {
-          const { res, data } = await safeFetch(`${API_BASE_URL}/services`);
-          if (data.success && Array.isArray(data.services)) {
-            services = data.services;
-            renderServices(services);
-          } else {
-            throw new Error(data.message || "Invalid services payload format");
-          }
+            const { res, data } = await safeFetch(`${API_BASE_URL}/services`);
+            if (data.success && Array.isArray(data.services)) {
+                services = data.services;
+                renderServices(services);
+            } else {
+                throw new Error(data.message || "Invalid services payload format");
+            }
         } catch (err) {
-          console.error("Failed to load services:", err);
-          if (grid) {
-            grid.innerHTML = '<p class="text-xs text-red-300 col-span-8 text-center py-4">Failed to load services catalog</p>';
-          }
+            console.error("Failed to load services:", err);
+            if (grid) {
+                grid.innerHTML = '<p class="text-xs text-red-300 col-span-8 text-center py-4">Failed to load services catalog</p>';
+            }
         }
-      }
+    }
 
-      function renderServices(servicesToRender) {
+    // Integrated Services UI Rendering Engine
+    function renderServices(servicesToRender) {
         const grid = document.getElementById('services-grid');
         if (!grid) return;
 
         if (!servicesToRender || servicesToRender.length === 0) {
-          grid.innerHTML = '<p class="text-xs text-gray-300 col-span-8 text-center py-4">No services found</p>';
-          return;
+            grid.innerHTML = '<p class="text-xs text-gray-300 col-span-8 text-center py-4">No services found</p>';
+            return;
         }
 
         grid.innerHTML = servicesToRender.map(service => {
-          const code = (service.code || '').toLowerCase();
-          const iconUrl = PRIORITY_ICONS[code] || `/api/service-image?id=${encodeURIComponent(code)}`;
-          const fallbackLetter = (service.name || code || 'S').charAt(0).toUpperCase();
-          const isSelected = expandedServiceCode === code || selectedServiceCode === code;
-          const borderClass = isSelected ? 'border-brandBlue-400 bg-brandBlue-700' : 'border-brandBlue-700/50 bg-brandBlue-800/60';
+            const code = (service.code || '').toLowerCase();
+            const iconUrl = PRIORITY_ICONS[code] || `/api/service-image?id=${encodeURIComponent(code)}`;
+            const fallbackLetter = (service.name || code || 'S').charAt(0).toUpperCase();
+            const isSelected = expandedServiceCode === code || selectedServiceCode === code;
+            const borderClass = isSelected ? 'border-brandBlue-400 bg-brandBlue-700' : 'border-brandBlue-700/50 bg-brandBlue-800/60';
 
-          return `
-            <button type="button" 
-                    onclick="SMSGlobeApp.selectService('${code}')" 
-                    class="flex flex-col items-center justify-center p-2 ${borderClass} hover:bg-brandBlue-700 rounded-lg border transition group relative h-14 shadow-sm"
-                    title="${service.name}">
-              <div class="w-9 h-9 flex items-center justify-center relative">
-                <img src="${iconUrl}" alt="${service.name}" 
-                     class="w-full h-full object-contain group-hover:scale-110 transition duration-200"
-                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                <div class="w-9 h-9 rounded bg-brandBlue-600 text-white text-xs font-bold items-center justify-center hidden">
-                  ${fallbackLetter}
-                </div>
-              </div>
-            </button>
-          `;
+            return `
+                <button type="button" 
+                        onclick="SMSGlobeApp.selectService('${code}')" 
+                        class="flex flex-col items-center justify-center p-2 ${borderClass} hover:bg-brandBlue-700 rounded-lg border transition group relative h-14 shadow-sm"
+                        title="${service.name}">
+                  <div class="w-9 h-9 flex items-center justify-center relative">
+                    <img src="${iconUrl}" alt="${service.name}" 
+                         class="w-full h-full object-contain group-hover:scale-110 transition duration-200"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="w-9 h-9 rounded bg-brandBlue-600 text-white text-xs font-bold items-center justify-center hidden">
+                      ${fallbackLetter}
+                    </div>
+                  </div>
+                </button>
+            `;
         }).join('');
-      }
+    }
+
 async function selectService(serviceCode) {
     expandedServiceCode = serviceCode;
     selectedServiceCode = serviceCode;
     countrySearchTerm = '';
     
-    // CLEAR THE CACHE FOR THIS SERVICE SO IT CALLS THE BACKEND FRESH
+    // Purge specific cache entry to ensure real-time rate fetching
     if (serviceCountriesCache && serviceCountriesCache[serviceCode]) {
         delete serviceCountriesCache[serviceCode];
     }
@@ -944,40 +985,48 @@ async function selectService(serviceCode) {
 
     const countryGrid = document.getElementById('countries-grid');
     if (countryGrid) {
-      countryGrid.innerHTML = '<p class="text-xs text-gray-300 col-span-full text-center py-4"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading countries for ' + serviceCode + '...</p>';
+        countryGrid.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-8 text-xs text-brandBlue-200 col-span-full">
+                <i class="fa-solid fa-spinner fa-spin text-lg mb-2"></i>
+                <span>Loading availability for <strong>${serviceCode.toUpperCase()}</strong>...</span>
+            </div>
+        `;
     }
 
     try {
-      if (!serviceCountriesCache[serviceCode]) {
-        const targetUrl = `${API_BASE_URL}/countries?service=${encodeURIComponent(serviceCode)}`;
-        const response = await fetch(targetUrl);
-        const contentType = response.headers.get("content-type");
-        
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error(`Server returned non-JSON response (Status: ${response.status})`);
+        if (!serviceCountriesCache[serviceCode]) {
+            const targetUrl = `${API_BASE_URL}/service-countries?service=${encodeURIComponent(serviceCode)}`;
+            const response = await fetch(targetUrl);
+            const contentType = response.headers.get("content-type");
+            
+            if (!contentType || !contentType.includes("application/json")) {
+                throw new Error(`Server returned invalid response structure (Status: ${response.status})`);
+            }
+
+            const result = await response.json();
+            if (result.success === false) {
+                throw new Error(result.message || "Unable to retrieve availability data from provider.");
+            }
+
+            const rawInput = result.countries || result.data || result;
+            let list = Array.isArray(rawInput) ? rawInput : Object.entries(rawInput).map(([k, v]) => ({ countryId: k, ...v }));
+
+            serviceCountriesCache[serviceCode] = list;
         }
 
-        const result = await response.json();
-        if (result.success === false) {
-          throw new Error(result.message || "Failed to load countries from provider");
-        }
-
-        const rawInput = result.countries || result.data || result;
-        let list = Array.isArray(rawInput) ? rawInput : Object.entries(rawInput).map(([k, v]) => ({ countryId: k, ...v }));
-
-        serviceCountriesCache[serviceCode] = list;
-      }
-
-      const countriesList = serviceCountriesCache[serviceCode] || [];
-      renderCountries(countriesList);
+        const countriesList = serviceCountriesCache[serviceCode] || [];
+        renderCountries(countriesList);
     } catch (err) {
-      console.error('❌ Failed to load countries:', err);
-      if (countryGrid) {
-        countryGrid.innerHTML = `<p class="text-xs text-red-400 col-span-full text-center py-4 px-2">Error: ${err.message}</p>`;
-      }
+        console.error('❌ Service selection fetch failure:', err);
+        if (countryGrid) {
+            countryGrid.innerHTML = `
+                <div class="col-span-full p-4 bg-red-950/40 border border-red-500/30 rounded-xl text-center">
+                    <p class="text-xs text-red-400 font-semibold">Error: ${err.message}</p>
+                </div>
+            `;
+        }
     }
 }
-
 
 function renderCountriesListHtml(serviceCode, countriesList) {
     let filteredList = countriesList || [];
@@ -991,8 +1040,9 @@ function renderCountriesListHtml(serviceCode, countriesList) {
 
     if (!filteredList || filteredList.length === 0) {
         return `
-            <div class="flex flex-col items-center justify-center py-6 bg-white/5 rounded-xl border border-brandBlue-700/50 col-span-full">
-                <p class="text-xs text-brandBlue-200 font-medium uppercase tracking-wide">No countries found.</p>
+            <div class="flex flex-col items-center justify-center py-8 bg-brandBlue-900/30 rounded-xl border border-brandBlue-700/40 col-span-full">
+                <i class="fa-solid fa-earth-americas text-brandBlue-400 text-xl mb-2 opacity-60"></i>
+                <p class="text-xs text-brandBlue-200 font-medium tracking-wide">No countries available matching search criteria.</p>
             </div>
         `;
     }
@@ -1005,36 +1055,6 @@ function renderCountriesListHtml(serviceCode, countriesList) {
         }
     }
 
-       const countryCodeMap = {
-        'united states': 'us', 'usa': 'us', 'united states (virtual)': 'us', 'america': 'us', 'canada': 'ca', 'mexico': 'mx', 'brazil': 'br', 'argentina': 'ar',
-        'colombia': 'co', 'chile': 'cl', 'peru': 'pe', 'venezuela': 've', 'ecuador': 'ec', 'bolivia': 'bo', 'paraguay': 'py', 'uruguay': 'uy', 'costa rica': 'cr',
-        'panama': 'pa', 'cuba': 'cu', 'dominican republic': 'do', 'puerto rico': 'pr', 'guatemala': 'gt', 'honduras': 'hn', 'el salvador': 'sv', 'nicaragua': 'ni', 'haiti': 'ht',
-        'jamaica': 'jm', 'trinidad and tobago': 'tt', 'bahamas': 'bs', 'barbados': 'bb',
-        'united kingdom': 'gb', 'uk': 'gb', 'great britain': 'gb', 'england': 'gb', 'germany': 'de', 'france': 'fr', 'italy': 'it', 'spain': 'es', 'ukraine': 'ua',
-        'russia': 'ru', 'poland': 'pl', 'romania': 'ro', 'netherlands': 'nl', 'holland': 'nl', 'belgium': 'be', 'greece': 'gr', 'czech republic': 'cz', 'czechia': 'cz', 'portugal': 'pt', 'sweden': 'se',
-        'hungary': 'hu', 'belarus': 'by', 'austria': 'at', 'switzerland': 'ch', 'bulgaria': 'bg', 'serbia': 'rs', 'denmark': 'dk', 'finland': 'fi', 'slovakia': 'sk', 'norway': 'no',
-        'ireland': 'ie', 'croatia': 'hr', 'moldova': 'md', 'bosnia and herzegovina': 'ba', 'albania': 'al', 'lithuania': 'lt', 'north macedonia': 'mk', 'slovenia': 'si', 'latvia': 'lv',
-        'estonia': 'ee', 'montenegro': 'me', 'luxembourg': 'lu', 'malta': 'mt', 'iceland': 'is', 'andorra': 'ad', 'monaco': 'mc', 'liechtenstein': 'li', 'san marino': 'sm', 'vatican city': 'va',
-        'cyprus': 'cy',
-        'nigeria': 'ng', 'egypt': 'eg', 'south africa': 'za', 'kenya': 'ke', 'ghana': 'gh', 'cameroon': 'cm', 'guinea': 'gn', 'ethiopia': 'et', 'tanzania': 'tz', 'algeria': 'dz', 'morocco': 'ma',
-        'uganda': 'ug', 'sudan': 'sd', 'angola': 'ao', 'mozambique': 'mz', 'ivory coast': 'ci', 'cote d ivoire': 'ci', 'madagascar': 'mg', 'zambia': 'zm', 'zimbabwe': 'zw', 'senegal': 'sn', 'mali': 'ml',
-        'rwanda': 'rw', 'somalia': 'so', 'tunisia': 'tn', 'chad': 'td', 'benin': 'bj', 'burundi': 'bi', 'south sudan': 'ss', 'eritrea': 'er', 'namibia': 'na', 'gambia': 'gm',
-        'botswana': 'bw', 'gabon': 'ga', 'lesotho': 'ls', 'guinea-bissau': 'gw', 'equatorial guinea': 'gq', 'mauritius': 'mu', 'eswatini': 'sz', 'djibouti': 'dj', 'comoros': 'km',
-        'cape verde': 'cv', 'sao tome and principe': 'st', 'seychelles': 'sc', 'togo': 'tg', 'mauritania': 'mr', 'central african republic': 'cf', 'burkina faso': 'bf', 'kosovo': 'xk',
-        'liberia': 'lr', 'congo (dem. republic)': 'cd', 'democratic republic of the congo': 'cd', 'macau': 'mo', 'lao people`s': 'la', 'laos': 'la', 'taiwan': 'tw', 'papua new guinea': 'pg', 'libya': 'ly', 'swaziland': 'sz', 'sierra leone': 'sl', 'belize': 'bz', 'dominica': 'dm', 'grenada': 'gd',
-        'guyana': 'gy', 'saint kitts and nevis': 'kn', 'malawi': 'mw', 'niger': 'ne', 'suriname': 'sr', 'reunion': 're', 'congo': 'cg', 'guadeloupe': 'gp', 'saint lucia': 'lc',
-        'saint vincent': 'vc', 'antigua and barbuda': 'ag', 'cayman islands': 'ky', 'aruba': 'aw', 'montserrat': 'ms', 'anguilla': 'ai',
-        'macedonia': 'mk', 'new caledonia': 'nc', 'bermuda': 'bm', 'sint maarten': 'sx', 'martinique': 'mq', 'faroe islands': 'fo', 'gibraltar': 'gi',
-        'china': 'cn', 'india': 'in', 'vietnam': 'vn', 'indonesia': 'id', 'pakistan': 'pk', 'bangladesh': 'bd', 'japan': 'jp', 'hong kong': 'hk',
-        'philippines': 'ph', 'turkey': 'tr', 'turkiye': 'tr', 'iran': 'ir', 'thailand': 'th', 'myanmar': 'mm', 'south korea': 'kr', 'korea': 'kr', 'iraq': 'iq',
-        'afghanistan': 'af', 'saudi arabia': 'sa', 'uzbekistan': 'uz', 'yemen': 'ye', 'malaysia': 'my', 'nepal': 'np', 'north korea': 'kp', 'sri lanka': 'lk',
-        'kazakhstan': 'kz', 'syria': 'sy', 'cambodia': 'kh', 'jordan': 'jo', 'azerbaijan': 'az', 'united arab emirates': 'ae', 'uae': 'ae', 'tajikistan': 'tj',
-        'israel': 'il', 'lebanon': 'lb', 'kyrgyzstan': 'kg', 'turkmenistan': 'tm', 'singapore': 'sg', 'palestine': 'ps', 'oman': 'om', 'kuwait': 'kw', 'georgia': 'ge',
-        'mongolia': 'mn', 'armenia': 'am', 'qatar': 'qa', 'bahrain': 'bh', 'timor-leste': 'tl', 'bhutan': 'bt', 'maldives': 'mv', 'brunei': 'bn',
-        'australia': 'au', 'new zealand': 'nz', 'fiji': 'fj', 'solomon islands': 'sb', 'vanuatu': 'vu', 'samoa': 'ws', 'kiribati': 'ki', 'micronesia': 'fm',
-        'tonga': 'to', 'marshall islands': 'mh', 'palau': 'pw', 'tuvalu': 'tv', 'nauru': 'nr', 'french guiana': 'gf', 'niue': 'nu'
-    };
-
     return filteredList.map(c => {
         const options = c.availablePrices || [{ amount: c.price?.amount, rank: c.rank, count: c.count || c.stock, providerId: c.providerId }];
         const selectedIdx = c.selectedPriceIndex || 0;
@@ -1044,78 +1064,65 @@ function renderCountriesListHtml(serviceCode, countriesList) {
         const formattedPriceString = finalDisplayPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
         const stockCount = activeTier.count ?? activeTier.stock ?? c.count ?? c.stock ?? '0';
-        const countryId = String(c.countryId || '').toLowerCase();
-        const countryName = c.countryName || c.name || '';
-        const cleanName = countryName.toLowerCase().trim();
-
-        let flagCode = 'un';
-        if (c.code && c.code.length === 2) {
-            flagCode = c.code.toLowerCase();
-        } else if (countryCodeMap[cleanName]) {
-            flagCode = countryCodeMap[cleanName];
-        } else {
-            const matchedKey = Object.keys(countryCodeMap).find(key => cleanName.includes(key));
-            if (matchedKey) {
-                flagCode = countryCodeMap[matchedKey];
-            } else if (countryId.length === 2) {
-                flagCode = countryId;
-            }
-        }
+        const countryName = c.countryName || c.name || 'Unknown Location';
+        const flagCode = getCountryFlagCode(c);
 
         const rankLabel = activeTier.rank || 'Standard';
         const providerId = activeTier.providerId || c.providerId || '';
         const isExpanded = !!c.isExpanded;
 
         return `
-            <div class="bg-brandBlue-800/60 border border-brandBlue-700/50 p-2.5 sm:p-3 rounded-xl transition-all">
+            <div class="bg-brandBlue-800/60 border border-brandBlue-700/50 p-3 rounded-xl hover:border-brandBlue-500/50 transition-all flex flex-col justify-between shadow-sm gap-2">
                 <div class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-2.5 min-w-0 flex-1">
-                        <img src="https://flagcdn.com/w40/${flagCode}.png" class="w-6 h-auto rounded-sm border border-gray-700 flex-shrink-0" onerror="this.src='https://flagcdn.com/w40/un.png'">
+                        <img src="https://flagcdn.com/w40/${flagCode}.png" 
+                             class="w-6 h-auto rounded-sm border border-brandBlue-900 shrink-0 object-cover" 
+                             alt="${countryName}" 
+                             onerror="this.src='https://flagcdn.com/w40/un.png'">
                         <div class="min-w-0 flex-1">
                             <p class="text-xs font-bold text-white truncate">${countryName}</p>
                             <p class="text-[10px] text-gray-300 font-medium mt-0.5">
-                                ${stockCount} pcs fr. ₦${formattedPriceString} 
-                                <span class="ml-1 px-1.5 py-0.2 bg-brandBlue-700/80 text-brandBlue-200 rounded font-bold uppercase tracking-wider text-[9px]">${rankLabel}</span>
+                                ${stockCount} pcs fr. <span class="text-emerald-400 font-semibold">₦${formattedPriceString}</span>
                             </p>
                         </div>
                     </div>
 
-                    <div class="flex flex-col items-end gap-1 flex-shrink-0">
+                    <div class="flex flex-col items-end gap-1 shrink-0">
                         <button onclick="SMSGlobeApp.buyServiceCountry('${serviceCode}', '${c.countryId}', ${finalDisplayPrice}, '${rankLabel}', '${providerId}')" 
-                                class="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5">
+                                class="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5">
                             <span>Buy</span>
                             <span class="text-[11px] font-extrabold text-emerald-100">₦${formattedPriceString}</span>
                         </button>
                         ${options.length > 1 ? `
                             <button onclick="SMSGlobeApp.toggleCountryExpand('${serviceCode}', '${c.countryId}')" 
                                     class="text-[10px] text-gray-300 hover:text-white px-1 py-0.5 flex items-center gap-1 cursor-pointer">
-                                <span>${isExpanded ? 'Hide' : 'Select'}</span>
+                                <span>${isExpanded ? 'Hide Tiers' : 'Select Tier'}</span>
                                 <i class="fa-solid fa-chevron-${isExpanded ? 'up' : 'down'} text-[9px]"></i>
                             </button>
                         ` : `
-                            <span class="text-[10px] text-gray-500 px-1">${rankLabel}</span>
+                            <span class="text-[9px] uppercase tracking-wider text-brandBlue-200 bg-brandBlue-700/50 px-1.5 py-0.5 rounded font-bold">${rankLabel}</span>
                         `}
                     </div>
                 </div>
 
                 ${isExpanded && options.length > 1 ? `
-                    <div class="mt-3 pt-2.5 border-t border-brandBlue-700/40 space-y-1.5">
-                        <div class="grid grid-cols-4 text-[10px] text-gray-400 font-semibold px-1">
+                    <div class="mt-2 pt-2 border-t border-brandBlue-700/40 space-y-1">
+                        <div class="grid grid-cols-4 text-[9px] text-gray-400 font-bold uppercase tracking-wider px-1">
                             <span>Rank</span>
-                            <span>ID</span>
-                            <span>Count</span>
-                            <span class="text-right">Cost</span>
+                            <span>Provider</span>
+                            <span>Stock</span>
+                            <span class="text-right">Price</span>
                         </div>
                         ${options.map((opt, idx) => {
                             const tierPrice = Number(opt.amount || 0) * multiplier;
                             const isSelectedTier = idx === selectedIdx;
                             return `
                                 <div onclick="SMSGlobeApp.switchCountryPriceTierAndSelect('${serviceCode}', '${c.countryId}', ${idx})" 
-                                     class="grid grid-cols-4 text-[11px] items-center px-1 py-1 rounded cursor-pointer transition-colors ${isSelectedTier ? 'bg-brandBlue-700/80 text-white font-bold' : 'text-gray-300 hover:bg-brandBlue-700/40'}">
+                                     class="grid grid-cols-4 text-[11px] items-center px-1 py-1 rounded cursor-pointer transition ${isSelectedTier ? 'bg-brandBlue-700 text-white font-bold' : 'text-gray-300 hover:bg-brandBlue-700/40'}">
                                     <span class="capitalize">${opt.rank || 'Standard'}</span>
-                                    <span class="text-gray-400">${opt.providerId || c.countryId}</span>
+                                    <span class="text-gray-400 font-mono text-[10px]">${opt.providerId || c.countryId}</span>
                                     <span>${opt.count ?? opt.stock ?? '0'} pcs</span>
-                                    <span class="text-right font-medium text-emerald-400">₦${tierPrice.toLocaleString()}</span>
+                                    <span class="text-right font-medium text-emerald-400">₦${tierPrice.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                                 </div>
                             `;
                         }).join('')}
@@ -1124,6 +1131,28 @@ function renderCountriesListHtml(serviceCode, countriesList) {
             </div>
         `;
     }).join('');
+}
+
+/**
+ * Helper to determine flag ISO code from country data
+ */
+function getCountryFlagCode(countryData) {
+    if (countryData.code && countryData.code.length === 2) {
+        return countryData.code.toLowerCase();
+    }
+    const countryId = String(countryData.countryId || '').toLowerCase();
+    const cleanName = (countryData.countryName || countryData.name || '').toLowerCase().trim();
+
+    if (COUNTRY_FLAG_MAP[cleanName]) {
+        return COUNTRY_FLAG_MAP[cleanName];
+    }
+    
+    const matchedKey = Object.keys(COUNTRY_FLAG_MAP).find(key => cleanName.includes(key));
+    if (matchedKey) {
+        return COUNTRY_FLAG_MAP[matchedKey];
+    }
+    
+    return countryId.length === 2 ? countryId : 'un';
 }
 
 function toggleCountryExpand(serviceCode, countryId) {
@@ -1168,24 +1197,30 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
     const token = localStorage.getItem('userToken');
     if (!token) {
         if (typeof Swal !== 'undefined') {
-            Swal.fire({ title: 'Login Required', icon: 'warning', text: 'Please log in to purchase numbers.' });
+            Swal.fire({
+                title: 'Login Required',
+                text: 'Please log in to purchase virtual numbers.',
+                icon: 'warning',
+                background: '#0F172A',
+                color: '#F8FAFC',
+                confirmButtonColor: '#0F54C6'
+            });
         } else {
             alert('Please log in to purchase numbers.');
         }
         return;
     }
 
-    // Fetch live user balance and bonus info safely from window scope or storage
+    // Resolve state properties safely from module scope or window
     const currentBalance = parseFloat(window.userBalance ?? userBalance ?? localStorage.getItem('user_balance') ?? 0);
     const userBonus = parseFloat(window.userBonus ?? window.bonusBalance ?? 0);
     const itemPrice = parseFloat(price);
-    
-    // Resolve service and country details from cache/state
-    const serviceObj = typeof services !== 'undefined' ? services.find(s => s.code === serviceCode) : null;
+
+    const serviceObj = (typeof services !== 'undefined' ? services : []).find(s => (s.code || '').toLowerCase() === serviceCode.toLowerCase());
     const countriesList = (typeof serviceCountriesCache !== 'undefined' && serviceCountriesCache[serviceCode]) || [];
     const countryObj = countriesList.find(c => String(c.countryId) === String(countryId));
 
-    // If a tier/provider wasn't passed directly, look it up from the currently selected tier
+    // Resolve active provider tier
     let activeProviderId = providerId;
     let activeRank = rank;
     if (countryObj && countryObj.availablePrices) {
@@ -1198,57 +1233,58 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
     }
 
     let isConfirmed = false;
+    const serviceName = serviceObj?.name || serviceCode.toUpperCase();
+    const countryName = countryObj?.countryName || countryObj?.name || 'Selected Country';
 
-    // Check if Swal is available, otherwise use native browser dialog fallbacks
+    // Dark-theme confirmation modal matching application styles
     if (typeof Swal !== 'undefined') {
         const confirmed = await Swal.fire({
-            title: '<div class="text-lg font-bold text-gray-800">CONFIRM PURCHASE</div>',
+            title: '<span class="text-base font-bold text-white tracking-wide uppercase">Confirm Purchase</span>',
             html: `
-                <div class="text-left space-y-3 pt-2">
-                    <div class="bg-gray-50 border border-gray-200 p-3 rounded-xl">
-                        <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Service & Location</label>
-                        <p class="text-sm font-semibold text-gray-800">${serviceObj?.name || serviceCode} (${activeRank} Tier)</p>
-                        <p class="text-xs text-gray-500">${countryObj?.countryName || countryObj?.name || 'Selected Country'}</p>
+                <div class="text-left space-y-3 pt-2 text-xs">
+                    <div class="bg-brandBlue-900/80 border border-brandBlue-700/60 p-3 rounded-xl">
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-brandBlue-200 mb-0.5">Service & Location</label>
+                        <p class="text-sm font-semibold text-white">${serviceName} <span class="text-brandBlue-300">(${activeRank})</span></p>
+                        <p class="text-xs text-gray-300 mt-0.5">${countryName}</p>
                     </div>
 
-                    <div class="bg-gray-50 border border-gray-200 p-3 rounded-xl flex justify-between items-center">
+                    <div class="bg-brandBlue-900/80 border border-brandBlue-700/60 p-3 rounded-xl flex justify-between items-center">
                         <div>
-                            <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-400">Main Wallet</label>
-                            <span class="text-sm font-bold text-brand-blue">₦${currentBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                            <label class="block text-[10px] font-bold uppercase tracking-wider text-brandBlue-200">Main Wallet</label>
+                            <span class="text-sm font-bold text-white">₦${currentBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                         </div>
                         ${userBonus > 0 ? `
                         <div class="text-right">
-                            <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-400">Bonus Wallet</label>
-                            <span class="text-sm font-bold text-emerald-600">₦${userBonus.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                            <label class="block text-[10px] font-bold uppercase tracking-wider text-brandBlue-200">Bonus Wallet</label>
+                            <span class="text-sm font-bold text-emerald-400">₦${userBonus.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                         </div>` : ''}
                     </div>
 
-                    <div class="bg-blue-50/50 border border-blue-100 p-3 rounded-xl">
-                        <label class="block text-[10px] font-bold uppercase tracking-wider text-blue-500">Total Price</label>
-                        <span class="text-base font-black text-gray-900">₦${itemPrice.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                    <div class="bg-emerald-950/40 border border-emerald-500/30 p-3 rounded-xl flex justify-between items-center">
+                        <label class="block text-[10px] font-bold uppercase tracking-wider text-emerald-400">Total Deduction</label>
+                        <span class="text-base font-black text-emerald-300">₦${itemPrice.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                     </div>
                 </div>
             `,
+            background: '#0B132B',
             showCancelButton: true,
-            confirmButtonText: currentBalance >= itemPrice ? 'Proceed Order' : 'Topup Wallet',
-            confirmButtonColor: currentBalance >= itemPrice ? '#0F54C6' : '#047857',
+            confirmButtonText: currentBalance >= itemPrice ? 'Proceed Order' : 'Top Up Wallet',
+            confirmButtonColor: currentBalance >= itemPrice ? '#10B981' : '#0F54C6',
             cancelButtonText: 'Cancel',
+            cancelButtonColor: '#334155',
             customClass: {
-                popup: 'rounded-2xl p-5',
-                confirmButton: 'rounded-xl px-5 py-2.5 font-bold',
-                cancelButton: 'rounded-xl px-5 py-2.5 font-bold'
+                popup: 'rounded-2xl border border-brandBlue-700/60 p-5',
+                confirmButton: 'rounded-xl px-5 py-2.5 font-bold text-xs',
+                cancelButton: 'rounded-xl px-5 py-2.5 font-bold text-xs'
             }
         });
         isConfirmed = confirmed.isConfirmed;
     } else {
-        const serviceName = serviceObj?.name || serviceCode;
-        const countryName = countryObj?.countryName || countryObj?.name || 'Selected Country';
         isConfirmed = confirm(`CONFIRM PURCHASE\n\nService: ${serviceName} (${activeRank})\nCountry: ${countryName}\nPrice: ₦${itemPrice.toLocaleString()}\nBalance: ₦${currentBalance.toLocaleString()}`);
     }
 
     if (!isConfirmed) return;
 
-    // Handle low balance redirect to funding page
     if (currentBalance < itemPrice) {
         window.location.href = 'topup.html';
         return;
@@ -1263,31 +1299,40 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
         metadata: {
             serviceType: 'virtual_number',
             serviceCode: serviceCode,
-            serviceName: serviceObj?.name || serviceCode,
+            serviceName: serviceName,
             countryCode: countryId,
             provider: 'smsbower'
         }
     };
 
     try {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Dispatched Order...',
+                text: 'Allocating phone number from carrier grid.',
+                background: '#0B132B',
+                color: '#F8FAFC',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+        }
+
         const fetchMethod = typeof safeFetch === 'function' ? safeFetch : async (url, opts) => {
             const r = await fetch(url, opts);
             const data = await r.json();
             return { data };
         };
 
-        const response = await fetchMethod(`${API_BASE_URL}/purchase-with-wallet`, { 
+        const response = await fetchMethod(`${API_BASE_URL}/purchase-with-wallet`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(payload)
         });
-        
+
         const res = response.data || response;
 
         if (res && res.success) {
             const orderId = res.order?._id || res.order?.id || res.orderId;
-            
-            // Database handles the active order persistence now. No localStorage caching needed.
 
             if (typeof renderActiveOrdersDashboard === 'function') renderActiveOrdersDashboard();
             if (typeof startPersistentSmsPolling === 'function' && orderId) startPersistentSmsPolling(orderId);
@@ -1295,37 +1340,50 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
 
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
-                    title: 'Order Dispatched!',
-                    text: 'Your number is ready. Redirecting to history...',
+                    title: 'Number Provisioned!',
+                    text: 'Redirecting to your active history grid...',
                     icon: 'success',
+                    background: '#0B132B',
+                    color: '#F8FAFC',
                     timer: 1500,
                     showConfirmButton: false
                 });
             }
 
-            // Automatically triggers fetchUserHistory() which pulls fresh from MongoDB
             if (typeof switchTab === 'function') {
                 switchTab('History');
             } else if (typeof fetchUserHistory === 'function') {
                 fetchUserHistory();
             }
-        
-        } else { 
+        } else {
             if (typeof Swal !== 'undefined') {
-                Swal.fire('Order Failed', res?.message || "Could not process purchase from provider.", 'error');
+                Swal.fire({
+                    title: 'Order Failed',
+                    text: res?.message || "Could not process purchase from provider.",
+                    icon: 'error',
+                    background: '#0B132B',
+                    color: '#F8FAFC'
+                });
             } else {
                 alert('Order Failed: ' + (res?.message || "Could not process purchase from provider."));
             }
         }
-    } catch (err) { 
+    } catch (err) {
         console.error("Purchase Error:", err);
         if (typeof Swal !== 'undefined') {
-            Swal.fire('Network Error', 'Check your connection and try again.', 'error');
+            Swal.fire({
+                title: 'Network Error',
+                text: 'Check your internet connection and try again.',
+                icon: 'error',
+                background: '#0B132B',
+                color: '#F8FAFC'
+            });
         } else {
             alert('Network Error: Check your connection and try again.');
         }
     }
 }
+
 
 function onNumberPurchasedSuccessfully(orderData) {
     console.log("Number purchased:", orderData);

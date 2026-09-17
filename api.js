@@ -12,6 +12,7 @@ const crypto = require('crypto');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
+const cron = require('node-cron');
 
 dotenv.config();
 const app = express();
@@ -40,6 +41,28 @@ const smsBowerClient = axios.create({
         api_key: process.env.SMSBOWER_API_KEY
     },
     timeout: 15000
+});
+
+cron.schedule('* * * * *', async () => {
+    try {
+        if (mongoose.connection.readyState !== 1) return;
+
+        const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+
+        // Find pending orders older than 15 minutes without an SMS code
+        const expiredOrders = await Order.find({
+            productType: 'SmsNumber',
+            status: 'pending',
+            createdAt: { $lte: fifteenMinutesAgo },
+            $or: [{ smsCode: { $exists: false } }, { smsCode: null }, { smsCode: '' }]
+        }).limit(20);
+
+        for (const order of expiredOrders) {
+            await autoCancelAndRefundOrder(order._id, 'Time limit exceeded (15 min) without SMS');
+        }
+    } catch (err) {
+        console.error('Cron auto-expiration error:', err.message);
+    }
 });
 
 app.use(cors());
@@ -4144,164 +4167,147 @@ async function handleRecheckSms(req, res) {
     }
 }
 
-/**
- * 5. CANCEL NUMBER & REFUND USER WALLET (Updated with Atomic Session Support & Unified Balance Fields)
- */
 async function handleCancelOrder(req, res) {
-    const { id } = req.body; 
-
-    // Use a session to ensure Atomic updates (Order, User Balance, and Transaction Record must all succeed together)
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            await session.abortTransaction();
-            session.endSession();
             return res.status(401).json({ success: false, message: "Unauthorized: No token provided." });
         }
 
         const token = authHeader.split(' ')[1];
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userEmail = decoded.email;
         const userId = decoded.userId || decoded._id || decoded.id;
-
-        if (!userEmail && !userId) {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(401).json({ success: false, message: "Invalid session token payload." });
-        }
+        const { id } = req.body;
 
         if (!id) {
-            await session.abortTransaction();
-            session.endSession();
             return res.status(400).json({ success: false, message: "Missing order identifier." });
         }
 
-        // Find order matching user via userId or userEmail fallback within session
-        const queryFilter = userId ? { _id: id, userId } : { _id: id, userEmail };
-        let order = await Order.findOne(queryFilter).session(session).catch(() => null);
-        
-        if (!order) {
-            order = await Order.findOne(userId ? { vendorOrderId: id, userId } : { vendorOrderId: id, userEmail }).session(session);
-        }
-        if (!order) {
-            order = await Order.findOne(userId ? { "metadata.tzid": id, userId } : { "metadata.tzid": id, userEmail }).session(session);
-        }
+        // Find the matching order
+        const order = await Order.findOne({
+            $or: [{ _id: id }, { vendorOrderId: id }, { "metadata.tzid": id }],
+            userId: userId
+        });
 
         if (!order) {
-            await session.abortTransaction();
-            session.endSession();
             return res.status(404).json({ success: false, message: "Order not found or unauthorized." });
         }
 
-        if (order.status === 'completed' || order.status === 'successful') {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(400).json({ success: false, message: "Cannot cancel an order that has already received a code." });
+        // Delegate to the atomic cancellation helper
+        const result = await autoCancelAndRefundOrder(order._id, 'User cancelled number activation');
+
+        if (!result.success) {
+            return res.status(400).json({ success: false, message: result.reason });
         }
 
-        if (order.status === 'cancelled' || order.status === 'expired') {
+        return res.json({
+            success: true,
+            message: `Number cancelled successfully. ₦${result.refundAmount.toLocaleString()} has been refunded to your wallet.`
+        });
+
+    } catch (err) {
+        console.error("Cancel Order Error:", err.message);
+        return res.status(500).json({ success: false, message: "Failed to process cancellation and refund." });
+    }
+}
+
+async function autoCancelAndRefundOrder(orderId, reason = 'auto_expired_no_sms') {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const order = await Order.findById(orderId).session(session);
+        if (!order || order.status !== 'pending' || order.smsCode) {
             await session.abortTransaction();
             session.endSession();
-            return res.status(400).json({ success: false, message: "This order is already cancelled or expired." });
+            return { success: false, reason: 'Order not eligible for refund' };
         }
 
         const activeVendorId = order.vendorOrderId || order.metadata?.tzid;
 
-        // 1. Call SMSBower API to cancel activation (External call outside DB transaction)
+        // 1. Notify Provider API (Status 8 = Cancel Order)
         if (activeVendorId && typeof smsBowerClient !== 'undefined') {
             try {
                 await smsBowerClient.get('', {
-                    params: {
-                        action: 'setStatus',
-                        status: 8,
-                        id: activeVendorId
-                    }
+                    params: { action: 'setStatus', status: 8, id: activeVendorId }
                 });
-            } catch (providerErr) {
-                console.error("SMS Provider Cancellation Warning:", providerErr.message);
+            } catch (apiErr) {
+                console.warn(`SMS Provider cancellation warning for ${activeVendorId}:`, apiErr.message);
             }
         }
 
-        // 2. Find and Refund User Wallet Balance with unified balance field handling
-        const refundAmount = Number(order.amount) || 0;
-        
-        const mainBalanceRefund = Number(order.mainBalanceUsed) || refundAmount;
-        const bonusBalanceRefund = Number(order.bonusBalanceUsed) || 0;
-
-        const user = userId ? await User.findById(userId).session(session) : await User.findOne({ email: userEmail }).session(session);
-
+        // 2. Fetch User and Compute Refund
+        const user = await User.findById(order.userId).session(session);
         if (!user) {
             await session.abortTransaction();
             session.endSession();
-            return res.status(404).json({ success: false, message: "User account not found." });
+            return { success: false, reason: 'User account not found' };
         }
 
+        const refundAmount = Number(order.amount) || 0;
+        const mainBalanceRefund = Number(order.mainBalanceUsed) || refundAmount;
+        const bonusBalanceRefund = Number(order.bonusBalanceUsed) || 0;
+
+        // Match your handleCancelOrder balance field check
         const balanceBefore = Number(user.walletBalance !== undefined ? user.walletBalance : (user.balance || 0));
         const bonusBefore = Number(user.bonusBalance || 0);
 
         const balanceAfter = balanceBefore + mainBalanceRefund;
         const bonusAfter = bonusBefore + bonusBalanceRefund;
 
-        // Apply updates
         if (user.walletBalance !== undefined) {
             user.walletBalance = balanceAfter;
         } else {
             user.balance = balanceAfter;
         }
-        
+
         if (bonusBalanceRefund > 0 && user.bonusBalance !== undefined) {
             user.bonusBalance = bonusAfter;
         }
 
         await user.save({ session });
 
-        // 3. Update Order Status locally
+        // 3. Update Order Status
         order.status = 'cancelled';
+        order.adminNote = `Auto-refunded: ${reason}`;
         await order.save({ session });
 
-        // 4. Update SmsNumber document if it exists
+        // 4. Update SmsNumber document
         if (activeVendorId) {
             await SmsNumber.findOneAndUpdate(
                 { vendorOrderId: String(activeVendorId) },
-                { status: 'failed' },
+                { status: 'expired' },
                 { session }
             ).catch(() => {});
         }
 
-        // 5. Create a refund transaction record
+        // 5. Audit Transaction Record
+        const refundRef = `REFUND-AUTO-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         await Transaction.create([{
             userId: user._id,
             type: 'credit',
             purpose: 'refund',
             amountNGN: refundAmount,
             status: 'successful',
-            reference: `REFUND-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            reference: refundRef,
             balanceBefore,
             balanceAfter,
-            metadata: { orderId: order._id, vendorOrderId: activeVendorId, reason: 'User cancelled number activation' }
+            metadata: {
+                orderId: order._id,
+                vendorOrderId: activeVendorId,
+                reason: reason
+            }
         }], { session });
 
-        // Commit all database changes atomically
         await session.commitTransaction();
         session.endSession();
+        return { success: true, refundAmount };
 
-        return res.json({
-            success: true,
-            message: `Number cancelled successfully. ₦${refundAmount.toLocaleString()} has been refunded to your wallet.`,
-            newBalance: balanceAfter
-        });
-
-    } catch (err) {
+    } catch (error) {
         await session.abortTransaction();
         session.endSession();
-        console.error("Cancel Order Error:", err.message);
-        if (err.name === 'JsonWebTokenError') {
-            return res.status(401).json({ success: false, message: "Invalid Session" });
-        }
-        return res.status(500).json({ success: false, message: "Failed to process cancellation and refund." });
+        console.error(`Failed auto-refund for order ${orderId}:`, error.message);
+        throw error;
     }
 }
 

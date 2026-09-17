@@ -1,0 +1,176 @@
+<!DOCTYPEhtml>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Get a Virtual SMS Number</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 font-sans p-4 md:p-8">
+
+  <main class="max-w-4xl mx-auto space-y-6">
+    
+    <!-- Header -->
+    <header class="text-center py-4">
+      <h1 class="text-3xl font-bold text-slate-900">Get an SMS Verification Number</h1>
+      <p class="text-slate-500 mt-1">Select your service, choose a country, and get instant access.</p>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+      <!-- Step 1: Select Service -->
+      <section class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col">
+        <div class="flex items-center space-x-2 mb-4">
+          <span class="w-7 h-7 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-sm">1</span>
+          <h2 class="font-semibold text-slate-800 text-lg">Select Service</h2>
+        </div>
+
+        <input type="text" placeholder="Search service..." class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+
+        <div class="space-y-2 overflow-y-auto max-h-72 pr-1">
+          <label class="flex items-center justify-between p-3 border border-indigo-600 bg-indigo-50/40 rounded-xl cursor-pointer transition">
+            <div class="flex items-center space-x-3">
+              <input type="radio" name="service" checked class="accent-indigo-600">
+              <span class="text-sm font-medium">WhatsApp</span>
+            </div>
+            <span class="text-xs text-slate-500">From $0.50</span>
+          </label>
+
+          <label class="flex items-center justify-between p-3 border border-slate-200 rounded-xl hover:border-slate-300 cursor-pointer transition">
+            <div class="flex items-center space-x-3">
+              <input type="radio" name="service" class="accent-indigo-600">
+              <span class="text-sm font-medium">Telegram</span>
+            </div>
+            <span class="text-xs text-slate-500">From $0.40</span>
+          </label>
+
+          <label class="flex items-center justify-between p-3 border border-slate-200 rounded-xl hover:border-slate-300 cursor-pointer transition">
+            <div class="flex items-center space-x-3">
+              <input type="radio" name="service" class="accent-indigo-600">
+              <span class="text-sm font-medium">Google / Gmail</span>
+            </div>
+            <span class="text-xs text-slate-500">From $0.60</span>
+          </label>
+
+          <label class="flex items-center justify-between p-3 border border-slate-200 rounded-xl hover:border-slate-300 cursor-pointer transition">
+            <div class="flex items-center space-x-3">
+              <input type="radio" name="service" class="accent-indigo-600">
+              <span class="text-sm font-medium">OpenAI / ChatGPT</span>
+            </div>
+            <span class="text-xs text-slate-500">From $0.80</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Step 2: Select Country -->
+      <section class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col">
+        <div class="flex items-center space-x-2 mb-4">
+          <span class="w-7 h-7 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-sm">2</span>
+          <h2 class="font-semibold text-slate-800 text-lg">Choose Country</h2>
+        </div>
+
+        <input type="text" placeholder="Search country..." class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+
+        <div class="space-y-2 overflow-y-auto max-h-72 pr-1">
+          <label class="flex items-center justify-between p-3 border border-indigo-600 bg-indigo-50/40 rounded-xl cursor-pointer transition">
+            <div class="flex items-center space-x-3">
+              <input type="radio" name="country" checked class="accent-indigo-600">
+              <span class="text-sm font-medium">🇺🇸 United States</span>
+            </div>
+            <span class="text-xs text-emerald-600 font-semibold">120 Avail.</span>
+          </label>
+
+          <label class="flex items-center justify-between p-3 border border-slate-200 rounded-xl hover:border-slate-300 cursor-pointer transition">
+            <div class="flex items-center space-x-3">
+              <input type="radio" name="country" class="accent-indigo-600">
+              <span class="text-sm font-medium">🇬🇧 United Kingdom</span>
+            </div>
+            <span class="text-xs text-emerald-600 font-semibold">85 Avail.</span>
+          </label>
+
+          <label class="flex items-center justify-between p-3 border border-slate-200 rounded-xl hover:border-slate-300 cursor-pointer transition">
+            <div class="flex items-center space-x-3">
+              <input type="radio" name="country" class="accent-indigo-600">
+              <span class="text-sm font-medium">🇨🇦 Canada</span>
+            </div>
+            <span class="text-xs text-emerald-600 font-semibold">42 Avail.</span>
+          </label>
+
+          <label class="flex items-center justify-between p-3 border border-slate-200 rounded-xl hover:border-slate-300 cursor-pointer transition">
+            <div class="flex items-center space-x-3">
+              <input type="radio" name="country" class="accent-indigo-600">
+              <span class="text-sm font-medium">🇫🇷 France</span>
+            </div>
+            <span class="text-xs text-amber-600 font-semibold">12 Avail.</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Step 3: Order Summary -->
+      <section class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center space-x-2 mb-4">
+            <span class="w-7 h-7 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-sm">3</span>
+            <h2 class="font-semibold text-slate-800 text-lg">Checkout</h2>
+          </div>
+
+          <div class="bg-slate-50 p-4 rounded-xl space-y-3 mb-4">
+            <div class="flex justify-between text-sm">
+              <span class="text-slate-500">Service:</span>
+              <span class="font-medium">WhatsApp</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-slate-500">Country:</span>
+              <span class="font-medium">United States 🇺🇸</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-slate-500">Validity:</span>
+              <span class="font-medium">20 Minutes</span>
+            </div>
+            <hr class="border-slate-200 my-2">
+            <div class="flex justify-between text-base font-bold">
+              <span>Total Price:</span>
+              <span class="text-indigo-600">$0.50</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <button class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 rounded-xl shadow-md transition duration-200">
+            Get Number Now
+          </button>
+          <p class="text-xs text-slate-400 text-center mt-2">Balance deducted automatically upon delivery.</p>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Active Numbers / Live SMS Inbox Section -->
+    <section class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 mt-8">
+      <h3 class="font-semibold text-slate-800 text-lg mb-4">Your Purchased Numbers</h3>
+
+      <div class="border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="space-y-1">
+          <div class="flex items-center space-x-2">
+            <span class="font-mono text-lg font-bold text-slate-900">+1 (555) 234-5678</span>
+            <span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">Active</span>
+          </div>
+          <p class="text-xs text-slate-500">Service: <span class="font-medium text-slate-700">WhatsApp</span> | Country: <span class="font-medium text-slate-700">US</span></p>
+        </div>
+
+        <!-- Simulated SMS Reception Block -->
+        <div class="flex-1 max-w-xs bg-slate-50 border border-slate-200 rounded-lg p-2 text-center">
+          <span class="text-xs text-slate-400 block mb-1">Waiting for incoming SMS...</span>
+          <span class="font-mono text-xl font-bold text-indigo-600 tracking-wider">482-910</span>
+        </div>
+
+        <button class="px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition border border-red-200">
+          Cancel / Refund
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+</body>
+</html>

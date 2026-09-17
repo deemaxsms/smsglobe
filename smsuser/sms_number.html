@@ -1332,7 +1332,6 @@ function onNumberPurchasedSuccessfully(orderData) {
     switchTab('History');
 }
 
-// 1. Ensure the global cancel function matches the button onclick attribute
 window.cancelActiveOrder = async function(orderId) {
     const confirmResult = await Swal.fire({
         title: 'Cancel Number & Get Refund?',
@@ -1395,20 +1394,22 @@ window.cancelActiveOrder = async function(orderId) {
     }
 };
 
-// 2. Manual Recheck SMS Function
 window.manualRecheckSms = async function(orderId) {
     try {
         Swal.fire({ title: 'Checking with provider...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         
+        const token = localStorage.getItem('userToken');
+
         const response = await safeFetch(`/api/recheck-sms`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify({ id: orderId })
         });
         
-        // Handle safeFetch return structures gracefully (whether it returns {data} or direct data)
         const data = response.data || response;
-        
         Swal.close();
 
         if (data && data.success && data.code) {
@@ -1426,10 +1427,12 @@ window.manualRecheckSms = async function(orderId) {
     }
 };
 
-// 3. Main History Rendering Function with Persistent Polling & Mobile Optimization (Database-backed)
 async function fetchUserHistory() {
     const historyGrid = document.getElementById('history-grid');
     if (!historyGrid) return;
+
+    // Reset interval timer prior to execution
+    if (window.historyTimerInterval) clearInterval(window.historyTimerInterval);
 
     try {
         const fetchMethod = typeof safeFetch === 'function' ? safeFetch : async (url, opts) => {
@@ -1442,7 +1445,6 @@ async function fetchUserHistory() {
             return { data };
         };
 
-        // Fetch user orders directly from the database API instead of localStorage
         const listResponse = await fetchMethod(`${API_BASE_URL}/user-orders`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' }
@@ -1456,7 +1458,6 @@ async function fetchUserHistory() {
             return;
         }
 
-        // Fetch granular, up-to-date details for each order using your /order-details API
         const orderDetailsPromises = rawOrders.map(async (orderItem) => {
             const orderId = orderItem.id || orderItem._id;
             if (!orderId) return orderItem;
@@ -1480,7 +1481,6 @@ async function fetchUserHistory() {
             return;
         }
 
-        // Automatically fire persistent background polling for any active orders found
         historyList.forEach(item => {
             const statusLower = String(item.status || 'pending').toLowerCase();
             const isActive = statusLower === 'active' || statusLower === 'pending' || statusLower === 'waiting for sms...';
@@ -1508,7 +1508,7 @@ async function fetchUserHistory() {
             );
         };
 
-       historyGrid.innerHTML = sortedHistory.map(item => {
+        historyGrid.innerHTML = sortedHistory.map(item => {
             const statusLower = String(item.status || 'pending').toLowerCase();
             const isCancelled = statusLower === 'cancelled' || statusLower === 'canceled';
             const isExpired = statusLower === 'expired';
@@ -1527,13 +1527,11 @@ async function fetchUserHistory() {
             const displayCountryName = item.countryName || item.country || 'Selected Country';
             const displayCountryShortCode = (item.countryCode || item.shortCode || '').toUpperCase();
             
-            // Fixed Flag Resolver
             const flagUrl = item.countryFlag || item.flag || item.flagUrl || item.icon || '';
             const flagElement = flagUrl && flagUrl.startsWith('http')
                 ? `<img src="${flagUrl}" class="w-4 h-3 object-cover rounded-2xs inline-block shrink-0 shadow-2xs" alt="flag">`
                 : `<span class="text-xs">${getCountryFlagEmoji(displayCountryShortCode || (displayCountryName.length === 2 ? displayCountryName : ''))}</span>`;
 
-            // Robust Expiry Calculation
             let expirationTime;
             const baseCreatedAt = item.createdAt ? new Date(item.createdAt).getTime() : Date.now();
             
@@ -1550,7 +1548,6 @@ async function fetchUserHistory() {
             const seconds = timeLeft % 60;
             const formattedTimeLeft = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
-            // Determine OTP box message based on order status
             let otpDisplayHtml = '';
             if (isCancelled) {
                 otpDisplayHtml = `<span class="text-xs sm:text-sm font-medium text-red-400 tracking-wider">Number Cancelled</span>`;
@@ -1614,7 +1611,6 @@ async function fetchUserHistory() {
             `;
         }).join('');
 
-        if (window.historyTimerInterval) clearInterval(window.historyTimerInterval);
         window.historyTimerInterval = setInterval(() => {
             const timerElements = document.querySelectorAll('.order-timer');
             timerElements.forEach(el => {

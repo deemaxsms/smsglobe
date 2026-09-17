@@ -774,7 +774,7 @@
     };
          
 
-      const countryCodeMap = {
+      const COUNTRY_FLAG_MAP = {
         'united states': 'us', 'usa': 'us', 'united states (virtual)': 'us', 'america': 'us', 'canada': 'ca', 'mexico': 'mx', 'brazil': 'br', 'argentina': 'ar',
         'colombia': 'co', 'chile': 'cl', 'peru': 'pe', 'venezuela': 've', 'ecuador': 'ec', 'bolivia': 'bo', 'paraguay': 'py', 'uruguay': 'uy', 'costa rica': 'cr',
         'panama': 'pa', 'cuba': 'cu', 'dominican republic': 'do', 'puerto rico': 'pr', 'guatemala': 'gt', 'honduras': 'hn', 'el salvador': 'sv', 'nicaragua': 'ni', 'haiti': 'ht',
@@ -1030,25 +1030,29 @@ async function selectService(serviceCode) {
 
 function renderCountriesListHtml(serviceCode, countriesList) {
     let filteredList = countriesList || [];
-    if (countrySearchTerm) {
+    
+    // Check search term safely
+    const searchTerm = typeof countrySearchTerm !== 'undefined' ? countrySearchTerm.toLowerCase().trim() : '';
+    if (searchTerm) {
         filteredList = filteredList.filter(c => {
             const name = (c.countryName || c.name || '').toLowerCase();
             const id = String(c.countryId || '').toLowerCase();
-            return name.includes(countrySearchTerm) || id.includes(countrySearchTerm);
+            return name.includes(searchTerm) || id.includes(searchTerm);
         });
     }
 
     if (!filteredList || filteredList.length === 0) {
         return `
-            <div class="flex flex-col items-center justify-center py-8 bg-brandBlue-900/30 rounded-xl border border-brandBlue-700/40 col-span-full">
-                <i class="fa-solid fa-earth-americas text-brandBlue-400 text-xl mb-2 opacity-60"></i>
-                <p class="text-xs text-brandBlue-200 font-medium tracking-wide">No countries available matching search criteria.</p>
-            </div>
+            <tr>
+                <td colspan="5" class="py-8 text-center text-xs text-sky-600 font-medium">
+                    No services or countries available matching criteria.
+                </td>
+            </tr>
         `;
     }
 
     let multiplier = 1;
-    if (currentMode === 'rent') {
+    if (typeof currentMode !== 'undefined' && currentMode === 'rent') {
         const select = document.getElementById('rentalPeriod');
         if (select) {
             multiplier = parseFloat(select.options[select.selectedIndex]?.getAttribute('data-multi')) || 1;
@@ -1072,71 +1076,48 @@ function renderCountriesListHtml(serviceCode, countriesList) {
         const isExpanded = !!c.isExpanded;
 
         return `
-            <div class="bg-brandBlue-800/60 border border-brandBlue-700/50 p-3 rounded-xl hover:border-brandBlue-500/50 transition-all flex flex-col justify-between shadow-sm gap-2">
-                <div class="flex items-center justify-between gap-2">
-                    <div class="flex items-center gap-2.5 min-w-0 flex-1">
+            <tr class="border-b border-sky-100 hover:bg-sky-50/50 transition-colors text-xs text-gray-700">
+                <td class="py-3 px-4 font-bold text-sky-900 uppercase">
+                    ${serviceCode || 'Service'}
+                </td>
+                <td class="py-3 px-4">
+                    <div class="flex items-center gap-2">
                         <img src="https://flagcdn.com/w40/${flagCode}.png" 
-                             class="w-6 h-auto rounded-sm border border-brandBlue-900 shrink-0 object-cover" 
+                             class="w-5 h-auto rounded-sm border border-sky-200 shrink-0 object-cover" 
                              alt="${countryName}" 
                              onerror="this.src='https://flagcdn.com/w40/un.png'">
-                        <div class="min-w-0 flex-1">
-                            <p class="text-xs font-bold text-white truncate">${countryName}</p>
-                            <p class="text-[10px] text-gray-300 font-medium mt-0.5">
-                                ${stockCount} pcs fr. <span class="text-emerald-400 font-semibold">₦${formattedPriceString}</span>
-                            </p>
-                        </div>
+                        <span class="font-semibold text-gray-800">${countryName}</span>
                     </div>
-
-                    <div class="flex flex-col items-end gap-1 shrink-0">
-                        <button onclick="SMSGlobeApp.buyServiceCountry('${serviceCode}', '${c.countryId}', ${finalDisplayPrice}, '${rankLabel}', '${providerId}')" 
-                                class="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5">
-                            <span>Buy</span>
-                            <span class="text-[11px] font-extrabold text-emerald-100">₦${formattedPriceString}</span>
-                        </button>
-                        ${options.length > 1 ? `
-                            <button onclick="SMSGlobeApp.toggleCountryExpand('${serviceCode}', '${c.countryId}')" 
-                                    class="text-[10px] text-gray-300 hover:text-white px-1 py-0.5 flex items-center gap-1 cursor-pointer">
-                                <span>${isExpanded ? 'Hide Tiers' : 'Select Tier'}</span>
-                                <i class="fa-solid fa-chevron-${isExpanded ? 'up' : 'down'} text-[9px]"></i>
-                            </button>
-                        ` : `
-                            <span class="text-[9px] uppercase tracking-wider text-brandBlue-200 bg-brandBlue-700/50 px-1.5 py-0.5 rounded font-bold">${rankLabel}</span>
-                        `}
-                    </div>
-                </div>
-
-                ${isExpanded && options.length > 1 ? `
-                    <div class="mt-2 pt-2 border-t border-brandBlue-700/40 space-y-1">
-                        <div class="grid grid-cols-4 text-[9px] text-gray-400 font-bold uppercase tracking-wider px-1">
-                            <span>Rank</span>
-                            <span>Provider</span>
-                            <span>Stock</span>
-                            <span class="text-right">Price</span>
-                        </div>
-                        ${options.map((opt, idx) => {
-                            const tierPrice = Number(opt.amount || 0) * multiplier;
-                            const isSelectedTier = idx === selectedIdx;
-                            return `
-                                <div onclick="SMSGlobeApp.switchCountryPriceTierAndSelect('${serviceCode}', '${c.countryId}', ${idx})" 
-                                     class="grid grid-cols-4 text-[11px] items-center px-1 py-1 rounded cursor-pointer transition ${isSelectedTier ? 'bg-brandBlue-700 text-white font-bold' : 'text-gray-300 hover:bg-brandBlue-700/40'}">
-                                    <span class="capitalize">${opt.rank || 'Standard'}</span>
-                                    <span class="text-gray-400 font-mono text-[10px]">${opt.providerId || c.countryId}</span>
-                                    <span>${opt.count ?? opt.stock ?? '0'} pcs</span>
-                                    <span class="text-right font-medium text-emerald-400">₦${tierPrice.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                ` : ''}
-            </div>
+                </td>
+                <td class="py-3 px-4 font-black text-sky-700">
+                    ₦${formattedPriceString}
+                </td>
+                <td class="py-3 px-4 font-medium text-sky-600">
+                    ${stockCount} pcs
+                </td>
+                <td class="py-3 px-4">
+                    <button onclick="buyServiceCountry('${serviceCode}', '${c.countryId}', ${finalDisplayPrice}, '${rankLabel}', '${providerId}')" 
+                            class="px-4 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-lg text-xs font-bold transition shadow-sm">
+                        Buy
+                    </button>
+                </td>
+            </tr>
         `;
     }).join('');
 }
 
-/**
- * Helper to determine flag ISO code from country data
- */
+function renderCountries(countriesList) {
+    // Select tbody or fallback grid element
+    const container = document.getElementById('countries-grid') || document.querySelector('tbody');
+    if (!container) return;
+    
+    const activeService = typeof selectedServiceCode !== 'undefined' ? selectedServiceCode : '';
+    container.innerHTML = renderCountriesListHtml(activeService, countriesList);
+}
+
+
 function getCountryFlagCode(countryData) {
+    if (!countryData) return 'un';
     if (countryData.code && countryData.code.length === 2) {
         return countryData.code.toLowerCase();
     }
@@ -1146,12 +1127,10 @@ function getCountryFlagCode(countryData) {
     if (COUNTRY_FLAG_MAP[cleanName]) {
         return COUNTRY_FLAG_MAP[cleanName];
     }
-    
     const matchedKey = Object.keys(COUNTRY_FLAG_MAP).find(key => cleanName.includes(key));
     if (matchedKey) {
         return COUNTRY_FLAG_MAP[matchedKey];
     }
-    
     return countryId.length === 2 ? countryId : 'un';
 }
 

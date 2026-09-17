@@ -958,6 +958,7 @@ async function fetchServices() {
     }
 }
 
+// Dynamic Table Renderer with Country & Price Tiers Dropdown
 function renderServicesTable(servicesToRender) {
     const tableBody = document.getElementById('services-table-body');
     if (!tableBody) return;
@@ -974,29 +975,98 @@ function renderServicesTable(servicesToRender) {
 
     tableBody.innerHTML = servicesToRender.map(service => {
         const serviceName = service.name || service.serviceName || 'Service';
-        const countryName = service.countryName || service.country || 'Global';
-        const price = service.price ? `₦${service.price}` : 'N/A';
-        const stock = service.stock !== undefined ? service.stock : (service.count || 'Available');
         const serviceCode = service.code || service.id || '';
-        const countryCode = service.countryCode || '';
+        
+        // Extract array of countries/rates attached to this service
+        const countries = Array.isArray(service.countries) && service.countries.length > 0 
+            ? service.countries 
+            : [{
+                name: service.countryName || service.country || 'Global',
+                code: service.countryCode || 'global',
+                price: service.price || 0,
+                stock: service.stock !== undefined ? service.stock : (service.count || 'Available')
+              }];
+
+        const defaultCountry = countries[0];
+        const initialPrice = defaultCountry.price ? `₦${defaultCountry.price}` : 'N/A';
+        const initialStock = defaultCountry.stock !== undefined ? defaultCountry.stock : 'Available';
+
+        // Render country options with data attributes for instant DOM updates
+        const countryOptionsHtml = countries.map((c, index) => {
+            const cName = c.name || c.country || 'Unknown Country';
+            const cCode = c.code || c.countryCode || 'global';
+            const cPrice = c.price ? `₦${c.price}` : 'N/A';
+            const cStock = c.stock !== undefined ? c.stock : 'Available';
+            
+            return `<option value="${cCode}" 
+                            data-price="${cPrice}" 
+                            data-stock="${cStock}" 
+                            data-raw-price="${c.price || 0}"
+                            ${index === 0 ? 'selected' : ''}>
+                        ${cName} (${cPrice})
+                    </option>`;
+        }).join('');
 
         return `
-            <tr class="hover:bg-sky-50/50 transition border-b border-sky-100">
-                <td class="p-3.5 font-semibold text-sky-950 flex items-center gap-2">
-                    <span>${serviceName}</span>
+            <tr class="hover:bg-sky-50/50 transition border-b border-sky-100" id="row-${serviceCode}">
+                <!-- SERVICE NAME -->
+                <td class="p-3.5 font-semibold text-sky-950">
+                    ${serviceName}
                 </td>
-                <td class="p-3.5 text-gray-600 font-medium">${countryName}</td>
-                <td class="p-3.5 font-bold text-emerald-600">${price}</td>
-                <td class="p-3.5 text-gray-500 font-mono text-xs">${stock}</td>
+
+                <!-- COUNTRY DROPDOWN -->
+                <td class="p-3.5">
+                    <select onchange="SMSGlobeApp.onTableCountryChange(this, '${serviceCode}')" 
+                            class="country-select w-full max-w-[180px] bg-white border border-sky-200 text-sky-900 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium cursor-pointer shadow-2xs">
+                        ${countryOptionsHtml}
+                    </select>
+                </td>
+
+                <!-- DYNAMIC PRICE -->
+                <td class="p-3.5 font-bold text-emerald-600 price-display">
+                    ${initialPrice}
+                </td>
+
+                <!-- DYNAMIC STOCK -->
+                <td class="p-3.5 text-gray-500 font-mono text-xs stock-display">
+                    ${initialStock}
+                </td>
+
+                <!-- BUY ACTION -->
                 <td class="p-3.5 text-right">
-                    <button onclick="SMSGlobeApp.buyServiceCountry('${serviceCode}', '${countryCode}')" 
-                            class="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold rounded-lg transition shadow-2xs">
+                    <button id="buy-btn-${serviceCode}" 
+                            onclick="SMSGlobeApp.buyServiceCountry('${serviceCode}', '${defaultCountry.code || defaultCountry.name}')" 
+                            class="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white text-xs font-semibold rounded-lg transition shadow-2xs">
                         Buy Number
                     </button>
                 </td>
             </tr>
         `;
     }).join('');
+}
+
+function onTableCountryChange(selectElement, serviceCode) {
+    const selectedOption = selectElement.options[selectElement.selectedIndex];
+    const row = document.getElementById(`row-${serviceCode}`);
+    if (!row) return;
+
+    // Read attributes from selected option
+    const newPrice = selectedOption.getAttribute('data-price') || 'N/A';
+    const newStock = selectedOption.getAttribute('data-stock') || 'Available';
+    const countryCode = selectElement.value;
+
+    // Update Price and Stock displays
+    const priceDisplay = row.querySelector('.price-display');
+    const stockDisplay = row.querySelector('.stock-display');
+    const buyBtn = document.getElementById(`buy-btn-${serviceCode}`);
+
+    if (priceDisplay) priceDisplay.textContent = newPrice;
+    if (stockDisplay) stockDisplay.textContent = newStock;
+
+    // Update Buy button click handler with the newly selected country code
+    if (buyBtn) {
+        buyBtn.setAttribute('onclick', `SMSGlobeApp.buyServiceCountry('${serviceCode}', '${countryCode}')`);
+    }
 }
 
 async function selectService(serviceCode) {
@@ -1734,6 +1804,7 @@ async function fetchUserHistory() {
       fetchUserProfile,
         fetchServices,
         renderServicesTable,
+        onTableCountryChange,
         selectService,
         renderCountries,
         selectCountry,

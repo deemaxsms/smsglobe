@@ -988,55 +988,64 @@ async function fetchServices() {
     }
 
 function renderServicesTable(servicesToRender) {
-        const tableBody = document.getElementById('services-table-body');
-        if (!tableBody) return;
+    const tableBody = document.getElementById('services-table-body');
+    if (!tableBody) return;
 
-        if (!servicesToRender || servicesToRender.length === 0) {
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="5" class="text-center py-8 text-gray-500 text-sm">
-                        No matching services found.
-                    </td>
-                </tr>`;
-            return;
-        }
+    if (!servicesToRender || servicesToRender.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center py-8 text-gray-500 text-sm">
+                    No matching services found.
+                </td>
+            </tr>`;
+        return;
+    }
 
-        tableBody.innerHTML = servicesToRender.map(service => {
-            const serviceName = service.name || service.serviceName || 'Service';
-            const serviceCode = service.code || service.id || '';
+    tableBody.innerHTML = servicesToRender.map(service => {
+        const serviceName = service.name || service.serviceName || 'Service';
+        const serviceCode = service.code || service.id || '';
 
-            return `
-                <tr class="hover:bg-sky-50/50 transition border-b border-sky-100" id="row-${serviceCode}">
-                    <td class="p-3.5 font-semibold text-sky-950">
-                        ${serviceName}
-                    </td>
-                    <td class="p-3.5">
+        return `
+            <tr class="hover:bg-sky-50/50 transition border-b border-sky-100" id="row-${serviceCode}">
+                <td class="p-3.5 font-semibold text-sky-950">
+                    ${serviceName}
+                </td>
+                <td class="p-3.5">
+                    <div class="flex items-center gap-2">
+                        <!-- Flag Preview image dynamically updated on selection -->
+                        <img id="flag-${serviceCode}" 
+                             src="https://flagcdn.com/w40/un.png" 
+                             class="w-5 h-3.5 object-cover rounded-xs border border-sky-200 shrink-0" 
+                             alt="Flag" 
+                             onerror="this.src='https://flagcdn.com/w40/un.png'">
+
                         <select id="select-${serviceCode}"
                                 onchange="SMSGlobeApp.onTableCountryChange(this, '${serviceCode}')" 
                                 class="country-select w-full max-w-[180px] bg-white border border-sky-200 text-sky-900 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium cursor-pointer shadow-2xs">
                             <option value="" disabled selected>Loading countries...</option>
                         </select>
-                    </td>
-                    <td class="p-3.5 font-bold text-emerald-600 price-display" id="price-${serviceCode}">
-                        <i class="fa-solid fa-spinner fa-spin text-xs text-sky-400"></i>
-                    </td>
-                    <td class="p-3.5 text-gray-500 font-mono text-xs stock-display" id="stock-${serviceCode}">
-                        --
-                    </td>
-                    <td class="p-3.5 text-right">
-                        <button id="buy-btn-${serviceCode}" 
-                                disabled
-                                class="px-3.5 py-1.5 bg-gray-300 text-gray-500 text-xs font-semibold rounded-lg transition cursor-not-allowed shadow-2xs">
-                            Buy Number
-                        </button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    }
+                    </div>
+                </td>
+                <td class="p-3.5 font-bold text-emerald-600 price-display" id="price-${serviceCode}">
+                    <i class="fa-solid fa-spinner fa-spin text-xs text-sky-400"></i>
+                </td>
+                <td class="p-3.5 text-gray-500 font-mono text-xs stock-display" id="stock-${serviceCode}">
+                    --
+                </td>
+                <td class="p-3.5 text-right">
+                    <button id="buy-btn-${serviceCode}" 
+                            disabled
+                            class="px-3.5 py-1.5 bg-gray-300 text-gray-500 text-xs font-semibold rounded-lg transition cursor-not-allowed shadow-2xs">
+                        Buy Number
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
 
   async function populateAllServiceCountries(servicesList) {
-    const CONCURRENCY_LIMIT = 3; // Maximum requests to fire at once
+    const CONCURRENCY_LIMIT = 10; 
 
     // Process array in chunks of CONCURRENCY_LIMIT
     for (let i = 0; i < servicesList.length; i += CONCURRENCY_LIMIT) {
@@ -1097,13 +1106,17 @@ async function fetchAndFillRowCountries(serviceCode) {
             const rawPrice = c.price?.amount || c.price || 0;
             const cPrice = rawPrice ? `₦${Number(rawPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : 'N/A';
             const cStock = c.count ?? c.stock ?? 'Available';
+            
+            // Resolve flag code using helper
+            const flagCode = getCountryFlagCode(c);
 
             return `<option value="${cId}" 
                             data-price="${cPrice}" 
                             data-raw-price="${rawPrice}"
                             data-stock="${cStock}" 
+                            data-flag="${flagCode}"
                             ${index === 0 ? 'selected' : ''}>
-                        ${cName} (${cPrice})
+                        ${cName}
                     </option>`;
         }).join('');
 
@@ -1119,28 +1132,38 @@ async function fetchAndFillRowCountries(serviceCode) {
 
 
 function onTableCountryChange(selectElement, serviceCode) {
-        const selectedOption = selectElement.options[selectElement.selectedIndex];
-        const row = document.getElementById(`row-${serviceCode}`);
-        if (!row || !selectedOption) return;
+    const selectedOption = selectElement.options[selectElement.selectedIndex];
+    const row = document.getElementById(`row-${serviceCode}`);
+    if (!row || !selectedOption) return;
 
-        const newPrice = selectedOption.getAttribute('data-price') || 'N/A';
-        const rawPrice = parseFloat(selectedOption.getAttribute('data-raw-price') || '0');
-        const newStock = selectedOption.getAttribute('data-stock') || 'Available';
-        const countryId = selectElement.value;
+    const newPrice = selectedOption.getAttribute('data-price') || 'N/A';
+    const rawPrice = parseFloat(selectedOption.getAttribute('data-raw-price') || '0');
+    const newStock = selectedOption.getAttribute('data-stock') || 'Available';
+    const flagCode = selectedOption.getAttribute('data-flag') || 'un';
+    const countryId = selectElement.value;
 
-        const priceDisplay = row.querySelector('.price-display');
-        const stockDisplay = row.querySelector('.stock-display');
-        const buyBtn = document.getElementById(`buy-btn-${serviceCode}`);
+    const priceDisplay = row.querySelector('.price-display');
+    const stockDisplay = row.querySelector('.stock-display');
+    const buyBtn = document.getElementById(`buy-btn-${serviceCode}`);
+    const flagImg = document.getElementById(`flag-${serviceCode}`);
 
-        if (priceDisplay) priceDisplay.textContent = newPrice;
-        if (stockDisplay) stockDisplay.textContent = `${newStock} pcs`;
-
-        if (buyBtn && countryId) {
-            buyBtn.disabled = false;
-            buyBtn.className = "px-3.5 py-1.5 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white text-xs font-semibold rounded-lg transition shadow-2xs cursor-pointer";
-            buyBtn.setAttribute('onclick', `SMSGlobeApp.buyServiceCountry('${serviceCode}', '${countryId}', ${rawPrice})`);
-        }
+    // 1. Update Flag icon beside dropdown
+    if (flagImg) {
+        flagImg.src = `https://flagcdn.com/w40/${flagCode}.png`;
     }
+
+    // 2. Update Price and Stock columns
+    if (priceDisplay) priceDisplay.textContent = newPrice;
+    if (stockDisplay) stockDisplay.textContent = `${newStock} pcs`;
+
+    // 3. Update Buy Button State
+    if (buyBtn && countryId) {
+        buyBtn.disabled = false;
+        buyBtn.className = "px-3.5 py-1.5 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white text-xs font-semibold rounded-lg transition shadow-2xs cursor-pointer";
+        buyBtn.setAttribute('onclick', `SMSGlobeApp.buyServiceCountry('${serviceCode}', '${countryId}', ${rawPrice})`);
+    }
+}
+
 
 async function selectService(serviceCode) {
     expandedServiceCode = serviceCode;

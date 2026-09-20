@@ -398,6 +398,11 @@
     let selectedServiceCode = null;
     let selectedCountryId = null;
     let countrySearchTerm = '';
+    let mobileItemsPerPage = 10;
+let currentVisibleCount = mobileItemsPerPage;
+let currentServicesList = [];
+
+
 
     const PRIORITY_ICONS = {
         'wa': 'https://api.iconify.design/logos:whatsapp-icon.svg', 'tg': 'https://api.iconify.design/logos:telegram.svg', 'gg': 'https://api.iconify.design/logos:google-icon.svg',
@@ -916,6 +921,13 @@
         window.location.href = 'login.html';
       }
 
+      /**
+ * Checks if current viewport is mobile (< 640px)
+ */
+function isMobileView() {
+    return window.innerWidth < 640;
+}
+
  window.switchTab = function(mode) {
     currentMode = mode;
     const numbersSection = document.getElementById('numbers-section');
@@ -1062,21 +1074,35 @@ async function fetchServices() {
         }
     }
 
+/**
+ * Main rendering function for the services table
+ */
 function renderServicesTable(servicesToRender) {
     const tableBody = document.getElementById('services-table-body');
     if (!tableBody) return;
 
-    if (!servicesToRender || servicesToRender.length === 0) {
+    // Save active dataset reference
+    cachedServicesList = servicesToRender || [];
+
+    if (cachedServicesList.length === 0) {
         tableBody.innerHTML = `
             <tr>
                 <td colspan="5" class="text-center py-8 text-gray-500 text-xs sm:text-sm">
                     No matching services found.
                 </td>
             </tr>`;
+        removeShowMoreButton();
         return;
     }
 
-    tableBody.innerHTML = servicesToRender.map(service => {
+    // Determine slice batch based on viewport
+    const isMobile = isMobileView();
+    const visibleServices = isMobile 
+        ? cachedServicesList.slice(0, currentVisibleCount) 
+        : cachedServicesList;
+
+    // Render active batch of table rows
+    tableBody.innerHTML = visibleServices.map(service => {
         const serviceName = service.name || service.serviceName || 'Service';
         const serviceCode = service.code || service.id || '';
 
@@ -1125,7 +1151,66 @@ function renderServicesTable(servicesToRender) {
             </tr>
         `;
     }).join('');
+
+    // Dynamically inject/update or hide the "Show More" button
+    updateShowMoreControls(isMobile && currentVisibleCount < cachedServicesList.length);
 }
+
+/**
+ * Updates or injects the "Show More" UI element
+ */
+function updateShowMoreControls(shouldRender) {
+    let container = document.getElementById('show-more-container');
+
+    if (!shouldRender) {
+        removeShowMoreButton();
+        return;
+    }
+
+    if (!container) {
+        const tableWrapper = document.querySelector('.responsive-table').closest('.overflow-x-auto');
+        container = document.createElement('div');
+        container.id = 'show-more-container';
+        container.className = 'text-center pt-3 pb-1 sm:hidden';
+        tableWrapper.parentNode.insertBefore(container, tableWrapper.nextSibling);
+    }
+
+    const remaining = cachedServicesList.length - currentVisibleCount;
+    const nextChunk = Math.min(mobileItemsPerPage, remaining);
+
+    container.innerHTML = `
+        <button onclick="handleShowMoreServices()" class="w-full py-2.5 px-4 bg-sky-50 hover:bg-sky-100 active:bg-sky-200 text-sky-700 text-xs font-bold rounded-xl border border-sky-200 transition shadow-2xs flex items-center justify-center gap-2">
+            <span>Show More (${nextChunk} of ${remaining} remaining)</span>
+            <i class="fa-solid fa-chevron-down text-[10px]"></i>
+        </button>
+    `;
+}
+
+/**
+ * Click event handler for loading the next batch of 10 items
+ */
+function handleShowMoreServices() {
+    currentVisibleCount += mobileItemsPerPage;
+    renderServicesTable(cachedServicesList);
+}
+
+/**
+ * Removes the button element when unnecessary
+ */
+function removeShowMoreButton() {
+    const container = document.getElementById('show-more-container');
+    if (container) container.remove();
+}
+
+/**
+ * Reset count back to 10 when user types in search or alters filters
+ */
+function resetAndRenderServices(filteredList) {
+    currentVisibleCount = mobileItemsPerPage;
+    renderServicesTable(filteredList);
+}
+
+
 
   async function populateAllServiceCountries(servicesList) {
     const CONCURRENCY_LIMIT = 10; 
@@ -1960,6 +2045,12 @@ async function fetchUserHistory() {
     }
 }
 
+// Window resize listener to recalculate slices when orientation/screen width changes
+window.addEventListener('resize', () => {
+    if (cachedServicesList.length > 0) {
+        renderServicesTable(cachedServicesList);
+    }
+});
     // Event Listeners setup on initial load
 document.addEventListener('DOMContentLoaded', () => {
     if (typeof fetchUserProfile === 'function') fetchUserProfile();

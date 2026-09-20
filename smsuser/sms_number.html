@@ -394,8 +394,9 @@
     let selectedCountryId = null;
     let countrySearchTerm = '';
   let mobileItemsPerPage = 10;
-let currentVisibleCount = mobileItemsPerPage;
 let cachedServicesList = [];
+let currentVisibleCount = 10;
+const PAGE_INCREMENT = 10;
 
 
     const PRIORITY_ICONS = {
@@ -908,6 +909,11 @@ let cachedServicesList = [];
     '1333': 'sy', '1010': 'sd'
 };
 
+const TOP_PRIORITY_SERVICES = [
+    'whatsapp', 'wa', 'telegram', 'tg', 'facebook', 'fb', 'instagram', 'ig', 'gmail', 'google', 'go', 'snapchat', 'snap',
+    'tinder', 'yahoo', 'mb', 'netflix', 'nf'
+];
+
       function logout() {
         localStorage.removeItem('userToken');
         localStorage.removeItem('dashboard_cache');
@@ -1069,29 +1075,30 @@ async function fetchServices() {
     }
 
 /**
- * Render function for 3-column table across both Desktop and Mobile
+ * Main rendering function for the 3-column table
  */
 function renderServicesTable(servicesToRender) {
     const tableBody = document.getElementById('services-table-body');
     if (!tableBody) return;
 
-    cachedServicesList = servicesToRender || [];
+    // Save and prioritize active dataset reference
+    if (servicesToRender && servicesToRender !== cachedServicesList) {
+        cachedServicesList = prioritizeServices(servicesToRender);
+    }
 
-    if (cachedServicesList.length === 0) {
+    if (!cachedServicesList || cachedServicesList.length === 0) {
         tableBody.innerHTML = `
             <tr>
                 <td colspan="3" class="text-center py-8 text-gray-500 text-xs sm:text-sm font-medium">
                     No matching services found.
                 </td>
             </tr>`;
-        if (typeof removeShowMoreButton === 'function') removeShowMoreButton();
+        removeShowMoreButton();
         return;
     }
 
-    const isMobile = typeof isMobileView === 'function' ? isMobileView() : window.innerWidth < 640;
-    const visibleServices = isMobile 
-        ? cachedServicesList.slice(0, typeof currentVisibleCount !== 'undefined' ? currentVisibleCount : 15) 
-        : cachedServicesList;
+    // Slice current batch of 10, 20, 30... items
+    const visibleServices = cachedServicesList.slice(0, currentVisibleCount);
 
     tableBody.innerHTML = visibleServices.map(service => {
         const serviceName = service.name || service.serviceName || 'Service';
@@ -1105,7 +1112,7 @@ function renderServicesTable(servicesToRender) {
                     ${serviceName}
                 </td>
 
-                <!-- 2. COUNTRIES COLUMN (Dropdown + Price & Stock underneath) -->
+                <!-- 2. COUNTRIES COLUMN -->
                 <td class="p-2.5 sm:p-3.5">
                     <div class="flex flex-col gap-1.5 max-w-[210px] sm:max-w-xs">
                         
@@ -1151,14 +1158,45 @@ function renderServicesTable(servicesToRender) {
         `;
     }).join('');
 
-    if (typeof updateShowMoreControls === 'function') {
-        updateShowMoreControls(isMobile && currentVisibleCount < cachedServicesList.length);
-    }
+    // Fetch countries only for the newly rendered visible rows
+    populateVisibleServiceCountries(visibleServices);
+
+    // Render or hide "View More" button depending on remaining items
+    updateShowMoreControls(currentVisibleCount < cachedServicesList.length);
 }
 
-/**
- * Updates or injects the "Show More" UI element
- */
+function prioritizeServices(services) {
+    if (!Array.isArray(services)) return [];
+
+    return [...services].sort((a, b) => {
+        const codeA = String(a.code || a.id || '').toLowerCase().trim();
+        const nameA = String(a.name || a.serviceName || '').toLowerCase().trim();
+
+        const codeB = String(b.code || b.id || '').toLowerCase().trim();
+        const nameB = String(b.name || b.serviceName || '').toLowerCase().trim();
+
+        const getPriorityScore = (code, name) => {
+            for (let i = 0; i < TOP_PRIORITY_SERVICES.length; i++) {
+                const target = TOP_PRIORITY_SERVICES[i];
+                if (code === target || name.includes(target)) {
+                    return i; // Lower index = higher priority
+                }
+            }
+            return 999; // Non-priority items go to bottom
+        };
+
+        const scoreA = getPriorityScore(codeA, nameA);
+        const scoreB = getPriorityScore(codeB, nameB);
+
+        if (scoreA !== scoreB) {
+            return scoreA - scoreB;
+        }
+
+        // Secondary alphabetical sort for tied scores
+        return nameA.localeCompare(nameB);
+    });
+}
+
 function updateShowMoreControls(shouldRender) {
     let container = document.getElementById('show-more-container');
 
@@ -1168,28 +1206,27 @@ function updateShowMoreControls(shouldRender) {
     }
 
     if (!container) {
-        const tableWrapper = document.querySelector('.responsive-table')?.closest('.overflow-x-auto');
+        const tableWrapper = document.querySelector('.overflow-x-auto');
         if (!tableWrapper) return;
 
         container = document.createElement('div');
         container.id = 'show-more-container';
-        container.className = 'text-center pt-3 pb-1 sm:hidden';
+        container.className = 'text-center pt-4 pb-2';
         tableWrapper.parentNode.insertBefore(container, tableWrapper.nextSibling);
     }
 
     const remaining = cachedServicesList.length - currentVisibleCount;
-    const nextChunk = Math.min(mobileItemsPerPage, remaining);
+    const nextChunk = Math.min(PAGE_INCREMENT, remaining);
 
     container.innerHTML = `
         <button id="btn-show-more-services" 
                 type="button"
-                class="w-full py-2.5 px-4 bg-sky-50 hover:bg-sky-100 active:bg-sky-200 text-sky-700 text-xs font-bold rounded-xl border border-sky-200 transition shadow-2xs flex items-center justify-center gap-2 cursor-pointer">
-            <span>Show More (${nextChunk} of ${remaining} remaining)</span>
+                class="w-full sm:w-auto px-6 py-2.5 bg-sky-50 hover:bg-sky-100 active:bg-sky-200 text-sky-700 text-xs font-bold rounded-xl border border-sky-200 transition shadow-2xs flex items-center justify-center gap-2 cursor-pointer mx-auto">
+            <span>View More Services (${nextChunk} of ${remaining} remaining)</span>
             <i class="fa-solid fa-chevron-down text-[10px]"></i>
         </button>
     `;
 
-    // Direct event listener binding (bypasses inline onclick scope issues)
     const btn = document.getElementById('btn-show-more-services');
     if (btn) {
         btn.onclick = handleShowMoreServices;
@@ -1197,53 +1234,49 @@ function updateShowMoreControls(shouldRender) {
 }
 
 /**
- * Increases visible count by pagination batch
+ * Expands view count by 10 and re-renders
  */
 function handleShowMoreServices() {
-    currentVisibleCount += mobileItemsPerPage;
+    currentVisibleCount += PAGE_INCREMENT;
     renderServicesTable(cachedServicesList);
 }
 
 /**
- * Removes the container element when pagination finishes or on desktop view
+ * Removes "View More" container when end of list is reached
  */
 function removeShowMoreButton() {
     const container = document.getElementById('show-more-container');
     if (container) container.remove();
 }
 
-/**
- * Resets mobile pagination count when active filter/search changes
- */
 function resetAndRenderServices(filteredList) {
-    currentVisibleCount = mobileItemsPerPage;
-    renderServicesTable(filteredList);
+    currentVisibleCount = PAGE_INCREMENT;
+    // Apply sorting so top services appear in the first 10
+    cachedServicesList = prioritizeServices(filteredList || []);
+    renderServicesTable(cachedServicesList);
 }
 
-// Global Namespace Exports
-window.SMSGlobeApp = window.SMSGlobeApp || {};
-window.SMSGlobeApp.handleShowMoreServices = handleShowMoreServices;
-window.handleShowMoreServices = handleShowMoreServices;
+/**
+ * Fetches country rates dynamically for visible services
+ */
+async function populateVisibleServiceCountries(visibleServicesList) {
+    const CONCURRENCY_LIMIT = 5; 
 
-// Window resize listener to recalculate slices when orientation/screen width changes
-window.addEventListener('resize', () => {
-    if (cachedServicesList.length > 0) {
-        renderServicesTable(cachedServicesList);
-    }
-});
-
-  async function populateAllServiceCountries(servicesList) {
-    const CONCURRENCY_LIMIT = 10; 
-
-    // Process array in chunks of CONCURRENCY_LIMIT
-    for (let i = 0; i < servicesList.length; i += CONCURRENCY_LIMIT) {
-        const chunk = servicesList.slice(i, i + CONCURRENCY_LIMIT);
+    for (let i = 0; i < visibleServicesList.length; i += CONCURRENCY_LIMIT) {
+        const chunk = visibleServicesList.slice(i, i + CONCURRENCY_LIMIT);
         
         await Promise.all(
             chunk.map(async (service) => {
                 const serviceCode = service.code || service.id;
                 if (!serviceCode) return;
-                await fetchAndFillRowCountries(serviceCode);
+
+                const selectElem = document.getElementById(`select-${serviceCode}`);
+                // Only fetch if countries haven't been populated yet
+                if (selectElem && selectElem.options.length <= 1) {
+                    if (typeof fetchAndFillRowCountries === 'function') {
+                        await fetchAndFillRowCountries(serviceCode);
+                    }
+                }
             })
         );
     }
@@ -2096,6 +2129,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
+    }
+});
+
+window.SMSGlobeApp = window.SMSGlobeApp || {};
+window.SMSGlobeApp.handleShowMoreServices = handleShowMoreServices;
+window.handleShowMoreServices = handleShowMoreServices;
+window.resetAndRenderServices = resetAndRenderServices;
+
+window.addEventListener('resize', () => {
+    if (cachedServicesList.length > 0) {
+        renderServicesTable(cachedServicesList);
     }
 });
 

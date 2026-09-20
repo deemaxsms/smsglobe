@@ -28,7 +28,11 @@ cloudinary.config({
 // Global in-memory cache shared across settings requests
 let cachedSettings = null;
 let lastFetchTime = 0;
-const CACHE_TTL = 60000; // 1 minute cache duration
+const CACHE_TTL = 60000;
+
+let cachedCountriesMeta = null;
+let lastMetaFetchTime = 0;
+const META_CACHE_TTL = 3600000; // 1 hour
 
 
 const storage = new CloudinaryStorage({
@@ -456,6 +460,23 @@ const connectDB = async () => {
         throw err;
     }
 };
+
+async function getCountriesMeta() {
+    const NOW = Date.now();
+    if (cachedCountriesMeta && (NOW - lastMetaFetchTime < META_CACHE_TTL)) {
+        return cachedCountriesMeta;
+    }
+    
+    try {
+        const response = await smsBowerClient.get('', { params: { action: 'getCountries' } });
+        cachedCountriesMeta = response?.data;
+        lastMetaFetchTime = NOW;
+        return cachedCountriesMeta;
+    } catch (err) {
+        if (cachedCountriesMeta) return cachedCountriesMeta;
+        throw err;
+    }
+}
 
 // --- 4. HELPERS ---
 async function verifyRecaptcha(token) {

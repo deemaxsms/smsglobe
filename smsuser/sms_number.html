@@ -398,10 +398,9 @@
     let selectedServiceCode = null;
     let selectedCountryId = null;
     let countrySearchTerm = '';
-    let mobileItemsPerPage = 10;
+  let mobileItemsPerPage = 10;
 let currentVisibleCount = mobileItemsPerPage;
-let currentServicesList = [];
-
+let cachedServicesList = [];
 
 
     const PRIORITY_ICONS = {
@@ -1182,32 +1181,55 @@ function updateShowMoreControls(shouldRender) {
 
     container.innerHTML = `
         <button id="btn-show-more-services" 
-                onclick="SMSGlobeApp.handleShowMoreServices()" 
+                type="button"
                 class="w-full py-2.5 px-4 bg-sky-50 hover:bg-sky-100 active:bg-sky-200 text-sky-700 text-xs font-bold rounded-xl border border-sky-200 transition shadow-2xs flex items-center justify-center gap-2 cursor-pointer">
             <span>Show More (${nextChunk} of ${remaining} remaining)</span>
             <i class="fa-solid fa-chevron-down text-[10px]"></i>
         </button>
     `;
+
+    // Direct event listener binding (bypasses inline onclick scope issues)
+    const btn = document.getElementById('btn-show-more-services');
+    if (btn) {
+        btn.onclick = handleShowMoreServices;
+    }
 }
 
-window.SMSGlobeApp = window.SMSGlobeApp || {};
-
-SMSGlobeApp.handleShowMoreServices = function() {
+/**
+ * Increases visible count by pagination batch
+ */
+function handleShowMoreServices() {
     currentVisibleCount += mobileItemsPerPage;
     renderServicesTable(cachedServicesList);
-};
+}
 
-window.handleShowMoreServices = SMSGlobeApp.handleShowMoreServices;
-
+/**
+ * Removes the container element when pagination finishes or on desktop view
+ */
 function removeShowMoreButton() {
     const container = document.getElementById('show-more-container');
     if (container) container.remove();
 }
 
+/**
+ * Resets mobile pagination count when active filter/search changes
+ */
 function resetAndRenderServices(filteredList) {
     currentVisibleCount = mobileItemsPerPage;
     renderServicesTable(filteredList);
 }
+
+// Global Namespace Exports
+window.SMSGlobeApp = window.SMSGlobeApp || {};
+window.SMSGlobeApp.handleShowMoreServices = handleShowMoreServices;
+window.handleShowMoreServices = handleShowMoreServices;
+
+// Window resize listener to recalculate slices when orientation/screen width changes
+window.addEventListener('resize', () => {
+    if (cachedServicesList.length > 0) {
+        renderServicesTable(cachedServicesList);
+    }
+});
 
   async function populateAllServiceCountries(servicesList) {
     const CONCURRENCY_LIMIT = 10; 
@@ -2042,12 +2064,6 @@ async function fetchUserHistory() {
     }
 }
 
-// Window resize listener to recalculate slices when orientation/screen width changes
-window.addEventListener('resize', () => {
-    if (cachedServicesList.length > 0) {
-        renderServicesTable(cachedServicesList);
-    }
-});
     // Event Listeners setup on initial load
 document.addEventListener('DOMContentLoaded', () => {
     if (typeof fetchUserProfile === 'function') fetchUserProfile();

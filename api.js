@@ -25,6 +25,12 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_SECRET
 });
 
+// Global in-memory cache shared across settings requests
+let cachedSettings = null;
+let lastFetchTime = 0;
+const CACHE_TTL = 60000; // 1 minute cache duration
+
+
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
@@ -3806,9 +3812,6 @@ async function handleGetCountries(req, res) {
     res.setHeader('Content-Type', 'application/json');
 
     try {
-        // Ensure database connection is active before firing queries
-        await connectDB();
-
         const serviceCode = req.query.service || req.params?.service || req.body?.service;
 
         if (!serviceCode) {
@@ -3817,6 +3820,11 @@ async function handleGetCountries(req, res) {
 
         const cleanServiceCode = String(serviceCode).trim().toLowerCase();
 
+        // 1. Instant lookup from Node memory (0ms DB delay)
+        const systemSettings = await getSystemSettingsCached();
+        const smsMarkup = systemSettings?.smsMarkupPercentage || 0;
+
+        // 2. Fetch upstream vendor endpoints concurrently
         const [countriesMetaResponse, pricesResponse] = await Promise.all([
             smsBowerClient.get('', { 
                 params: { action: 'getCountries' } 
@@ -3854,15 +3862,6 @@ async function handleGetCountries(req, res) {
             });
         }
 
-        // Fail-safe SystemSettings fetch: times out quickly if DB stalls and falls back to 0% markup
-        let smsMarkup = 0;
-        try {
-            const settings = await SystemSettings.findOne().maxTimeMS(2000).exec();
-            smsMarkup = settings?.smsMarkupPercentage || 0;
-        } catch (dbErr) {
-            console.warn("Could not fetch SystemSettings (using default markup 0%):", dbErr.message);
-        }
-
         const exchangeRateToNgn = 1400; 
 
         let formattedCountries = [];
@@ -3877,7 +3876,7 @@ async function handleGetCountries(req, res) {
                 const resolvedName = vendorMeta.name || countryKey.toUpperCase();
                 const resolvedCode = (vendorMeta.code || countryKey).toLowerCase();
 
-                // 1. Skip US Virtual for WhatsApp / wa
+                // Skip US Virtual for WhatsApp / wa
                 if (cleanServiceCode === 'whatsapp' || cleanServiceCode === 'wa') {
                     const keyString = String(countryKey).trim().toLowerCase();
                     const nameLower = resolvedName.toLowerCase();
@@ -3918,7 +3917,7 @@ async function handleGetCountries(req, res) {
 
                             if (rawCostUsd <= 0 || rawCostUsd > 10000) return;
 
-                            // Base price calculation using exchange rate and general markup
+                            // Base price calculation using exchange rate and cached markup
                             const rawPriceInNgn = rawCostUsd * exchangeRateToNgn;
                             let baseAmountNgn = Number((rawPriceInNgn * (1 + smsMarkup / 100)).toFixed(2));
 
@@ -4772,34 +4771,75 @@ async function handleAdminResetPassword(req, res) {
     }
 }
 
+// Shared Helper Function for Backend Routes (e.g., handleGetCountries)
+async function getSystemSettingsCached() {
+    const now = Date.now();
+    if (cachedSettings && (now - lastFetchTime < CACHE_TTL)) {
+        return cachedSettings;
+    }
+
+    try {
+        await connectDB();
+        const settings = await SystemSettings.findOne().maxTimeMS(2000).lean().exec();
+        
+        if (settings) {
+            cachedSettings = settings;
+            lastFetchTime = now;
+        }
+    } catch (err) {
+        console.warn("SystemSettings cache lookup failed, falling back to existing cache or defaults:", err.message);
+    }
+
+    return cachedSettings || {};
+}
+
+
 // 1. GET settings (For Admin Page)
 async function handleGetSystemSettings(req, res) {
+    res.setHeader('Content-Type', 'application/json');
+
     try {
-        // Use SystemSettings to match your schema variable
-        let settings = await SystemSettings.findOne();
+        await connectDB();
+
+        let settings = await SystemSettings.findOne().maxTimeMS(3000).lean().exec();
+
         if (!settings) {
             // Create default document if the collection is empty
-            settings = await SystemSettings.create({}); 
+            const created = await SystemSettings.create({});
+            settings = created.toObject();
         }
-        res.json({ success: true, settings });
+
+        // Update in-memory cache
+        cachedSettings = settings;
+        lastFetchTime = Date.now();
+
+        return res.status(200).json({ success: true, settings });
     } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
+        console.error("Get System Settings Error:", err);
+        return res.status(500).json({ success: false, message: err.message });
     }
 }
 
+
 // 2. UPDATE settings (From Admin Page)
 async function handleUpdateSystemSettings(req, res) {
+    res.setHeader('Content-Type', 'application/json');
+
     try {
+        await connectDB();
         const updateData = req.body;
 
-        // "upsert: true" is perfect here—it creates the doc if it doesn't exist
         const updated = await SystemSettings.findOneAndUpdate(
             {}, 
             { $set: updateData }, 
-            { upsert: true, new: true }
-        );
+            { upsert: true, new: true, runValidators: true }
+        ).lean().exec();
 
-        return res.json({ 
+        // ⚠️ CRITICAL: Immediately invalidate/update in-memory cache
+        cachedSettings = updated;
+        lastFetchTime = Date.now();
+
+        return res.status(200).json({ 
             success: true, 
             message: "System configuration updated.", 
             settings: updated 
@@ -4810,30 +4850,24 @@ async function handleUpdateSystemSettings(req, res) {
     }
 }
 
+
 // 3. PUBLIC status check (For User Frontend / Login Page)
 async function handleGetSystemStatus(req, res) {
+    res.setHeader('Content-Type', 'application/json');
+
     try {
-        // Safety check to ensure the model is defined and connected
-        if (typeof SystemSettings === 'undefined' || !SystemSettings.findOne) {
-            return res.json({ 
-                success: true, 
-                maintenanceMode: false, 
-                noticeBar: "" 
-            });
-        }
+        // Fast path: pull from memory cache first if fresh
+        const settings = await getSystemSettingsCached();
 
-        // Added .lean() for faster performance on public pings
-        const settings = await SystemSettings.findOne().select('maintenanceMode noticeBarText').lean();
-
-        return res.json({ 
+        return res.status(200).json({ 
             success: true, 
-            maintenanceMode: settings?.maintenanceMode || false,
+            maintenanceMode: Boolean(settings?.maintenanceMode),
             noticeBar: settings?.noticeBarText || "" 
         });
     } catch (err) {
         console.error("System Status Error:", err.message);
-        // Always respond with valid JSON so the frontend never crashes with a SyntaxError
-        return res.json({ 
+        // Responds safely so client logic never crashes
+        return res.status(200).json({ 
             success: true, 
             maintenanceMode: false, 
             noticeBar: "" 

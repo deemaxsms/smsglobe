@@ -1035,13 +1035,22 @@ function renderServicesTable(servicesToRender) {
         }).join('');
     }
 
-    async function populateAllServiceCountries(servicesList) {
-        for (const service of servicesList) {
-            const serviceCode = service.code || service.id;
-            if (!serviceCode) continue;
-            fetchAndFillRowCountries(serviceCode);
-        }
+  async function populateAllServiceCountries(servicesList) {
+    const CONCURRENCY_LIMIT = 3; // Maximum requests to fire at once
+
+    // Process array in chunks of CONCURRENCY_LIMIT
+    for (let i = 0; i < servicesList.length; i += CONCURRENCY_LIMIT) {
+        const chunk = servicesList.slice(i, i + CONCURRENCY_LIMIT);
+        
+        await Promise.all(
+            chunk.map(async (service) => {
+                const serviceCode = service.code || service.id;
+                if (!serviceCode) return;
+                await fetchAndFillRowCountries(serviceCode);
+            })
+        );
     }
+}
 
 async function fetchAndFillRowCountries(serviceCode) {
     const selectElem = document.getElementById(`select-${serviceCode}`);

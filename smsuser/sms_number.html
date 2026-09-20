@@ -1043,58 +1043,70 @@ function renderServicesTable(servicesToRender) {
         }
     }
 
-    async function fetchAndFillRowCountries(serviceCode) {
-        const selectElem = document.getElementById(`select-${serviceCode}`);
-        const priceElem = document.getElementById(`price-${serviceCode}`);
-        const stockElem = document.getElementById(`stock-${serviceCode}`);
+async function fetchAndFillRowCountries(serviceCode) {
+    const selectElem = document.getElementById(`select-${serviceCode}`);
+    const priceElem = document.getElementById(`price-${serviceCode}`);
+    const stockElem = document.getElementById(`stock-${serviceCode}`);
 
-        try {
-            let countriesList = serviceCountriesCache[serviceCode];
+    try {
+        let countriesList = serviceCountriesCache[serviceCode];
 
-            if (!countriesList) {
-                const targetUrl = `${API_BASE_URL}/service-countries?service=${encodeURIComponent(serviceCode)}`;
-                const response = await fetch(targetUrl);
-                const result = await response.json();
-                
-                const rawInput = result.countries || result.data || result;
-                countriesList = Array.isArray(rawInput) ? rawInput : Object.entries(rawInput).map(([k, v]) => ({ countryId: k, ...v }));
-                serviceCountriesCache[serviceCode] = countriesList;
+        if (!countriesList) {
+            const targetUrl = `${API_BASE_URL}/countries?service=${encodeURIComponent(serviceCode)}`;
+            const response = await fetch(targetUrl);
+
+            if (!response.ok) {
+                throw new Error(`Server returned HTTP ${response.status}`);
             }
 
-            if (!selectElem) return;
+            const result = await response.json();
+            const rawInput = result.countries ?? result.data ?? result;
 
-            if (!countriesList || countriesList.length === 0) {
-                selectElem.innerHTML = `<option value="">No countries available</option>`;
-                if (priceElem) priceElem.textContent = 'N/A';
-                if (stockElem) stockElem.textContent = '0';
-                return;
+            if (Array.isArray(rawInput)) {
+                countriesList = rawInput;
+            } else if (rawInput && typeof rawInput === 'object') {
+                countriesList = Object.entries(rawInput).map(([k, v]) => ({ countryId: k, ...v }));
+            } else {
+                countriesList = [];
             }
 
-            selectElem.innerHTML = countriesList.map((c, index) => {
-                const cName = c.countryName || c.name || c.eng || 'Unknown Country';
-                const cId = String(c.countryId || c.id || '');
-                const rawPrice = c.price?.amount || c.price || 0;
-                const cPrice = rawPrice ? `₦${Number(rawPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : 'N/A';
-                const cStock = c.count ?? c.stock ?? 'Available';
+            serviceCountriesCache[serviceCode] = countriesList;
+        }
 
-                return `<option value="${cId}" 
-                                data-price="${cPrice}" 
-                                data-raw-price="${rawPrice}"
-                                data-stock="${cStock}" 
-                                ${index === 0 ? 'selected' : ''}>
-                            ${cName} (${cPrice})
-                        </option>`;
-            }).join('');
+        if (!selectElem) return;
 
-            onTableCountryChange(selectElem, serviceCode);
-
-        } catch (err) {
-            console.error(`Failed to load countries for service ${serviceCode}:`, err);
-            if (selectElem) selectElem.innerHTML = `<option value="">Unavailable</option>`;
+        if (!countriesList || countriesList.length === 0) {
+            selectElem.innerHTML = `<option value="">No countries available</option>`;
             if (priceElem) priceElem.textContent = 'N/A';
             if (stockElem) stockElem.textContent = '0';
+            return;
         }
+
+        selectElem.innerHTML = countriesList.map((c, index) => {
+            const cName = c.countryName || c.name || c.eng || 'Unknown Country';
+            const cId = String(c.countryId || c.id || '');
+            const rawPrice = c.price?.amount || c.price || 0;
+            const cPrice = rawPrice ? `₦${Number(rawPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : 'N/A';
+            const cStock = c.count ?? c.stock ?? 'Available';
+
+            return `<option value="${cId}" 
+                            data-price="${cPrice}" 
+                            data-raw-price="${rawPrice}"
+                            data-stock="${cStock}" 
+                            ${index === 0 ? 'selected' : ''}>
+                        ${cName} (${cPrice})
+                    </option>`;
+        }).join('');
+
+        onTableCountryChange(selectElem, serviceCode);
+
+    } catch (err) {
+        console.error(`Failed to load countries for service ${serviceCode}:`, err);
+        if (selectElem) selectElem.innerHTML = `<option value="">Unavailable</option>`;
+        if (priceElem) priceElem.textContent = 'N/A';
+        if (stockElem) stockElem.textContent = '0';
     }
+}
 
 
 function onTableCountryChange(selectElement, serviceCode) {

@@ -3806,6 +3806,9 @@ async function handleGetCountries(req, res) {
     res.setHeader('Content-Type', 'application/json');
 
     try {
+        // Ensure database connection is active before firing queries
+        await connectDB();
+
         const serviceCode = req.query.service || req.params?.service || req.body?.service;
 
         if (!serviceCode) {
@@ -3851,8 +3854,15 @@ async function handleGetCountries(req, res) {
             });
         }
 
-        const settings = await SystemSettings.findOne();
-        const smsMarkup = settings?.smsMarkupPercentage || 0; 
+        // Fail-safe SystemSettings fetch: times out quickly if DB stalls and falls back to 0% markup
+        let smsMarkup = 0;
+        try {
+            const settings = await SystemSettings.findOne().maxTimeMS(2000).exec();
+            smsMarkup = settings?.smsMarkupPercentage || 0;
+        } catch (dbErr) {
+            console.warn("Could not fetch SystemSettings (using default markup 0%):", dbErr.message);
+        }
+
         const exchangeRateToNgn = 1400; 
 
         let formattedCountries = [];
@@ -3911,37 +3921,38 @@ async function handleGetCountries(req, res) {
                             // Base price calculation using exchange rate and general markup
                             const rawPriceInNgn = rawCostUsd * exchangeRateToNgn;
                             let baseAmountNgn = Number((rawPriceInNgn * (1 + smsMarkup / 100)).toFixed(2));
-// 2. Custom Service Pricing Rules
-if (cleanServiceCode === 'whatsapp' || cleanServiceCode === 'wa') {
-    if (baseAmountNgn <= 2000) {
-        baseAmountNgn = 3000; 
-    } else {
-        baseAmountNgn = baseAmountNgn + 1000; 
-    }
-} else if (cleanServiceCode === 'telegram' || cleanServiceCode === 'tg') {
-    if (baseAmountNgn <= 2000) {
-        baseAmountNgn = 3000; 
-    } else {
-        baseAmountNgn = baseAmountNgn + 1000; 
-    }
-} else if (cleanServiceCode === 'facebook' || cleanServiceCode === 'fb') {
-    baseAmountNgn = 850; 
-} else if (cleanServiceCode === 'instagram' || cleanServiceCode === 'ig') {
-    baseAmountNgn = 850; 
-} else if (cleanServiceCode === 'tinder') {
-    baseAmountNgn = 1050; 
-} else if (cleanServiceCode === 'snapchat' || cleanServiceCode === 'snap') {
-    baseAmountNgn = 1100; 
-} else if (cleanServiceCode === 'discord' || cleanServiceCode === 'dc') {
-    baseAmountNgn = 700; 
-} else {
-    // Catch-all rule for all other services
-    if (baseAmountNgn <= 500) {
-        baseAmountNgn = 900; 
-    } else {
-        baseAmountNgn = baseAmountNgn + 450; 
-    }
-}
+
+                            // Custom Service Pricing Rules
+                            if (cleanServiceCode === 'whatsapp' || cleanServiceCode === 'wa') {
+                                if (baseAmountNgn <= 2000) {
+                                    baseAmountNgn = 3000; 
+                                } else {
+                                    baseAmountNgn = baseAmountNgn + 1000; 
+                                }
+                            } else if (cleanServiceCode === 'telegram' || cleanServiceCode === 'tg') {
+                                if (baseAmountNgn <= 2000) {
+                                    baseAmountNgn = 3000; 
+                                } else {
+                                    baseAmountNgn = baseAmountNgn + 1000; 
+                                }
+                            } else if (cleanServiceCode === 'facebook' || cleanServiceCode === 'fb') {
+                                baseAmountNgn = 850; 
+                            } else if (cleanServiceCode === 'instagram' || cleanServiceCode === 'ig') {
+                                baseAmountNgn = 850; 
+                            } else if (cleanServiceCode === 'tinder') {
+                                baseAmountNgn = 1050; 
+                            } else if (cleanServiceCode === 'snapchat' || cleanServiceCode === 'snap') {
+                                baseAmountNgn = 1100; 
+                            } else if (cleanServiceCode === 'discord' || cleanServiceCode === 'dc') {
+                                baseAmountNgn = 700; 
+                            } else {
+                                // Catch-all rule for all other services
+                                if (baseAmountNgn <= 500) {
+                                    baseAmountNgn = 900; 
+                                } else {
+                                    baseAmountNgn = baseAmountNgn + 450; 
+                                }
+                            }
 
                             const rawRank = (v && typeof v === 'object' && (v.rank || v.tier)) || providerKey || 'Standard';
                             const formattedRank = String(rawRank).charAt(0).toUpperCase() + String(rawRank).slice(1).toLowerCase();

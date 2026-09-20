@@ -909,10 +909,20 @@ const PAGE_INCREMENT = 10;
     '1333': 'sy', '1010': 'sd'
 };
 
+// Exact 10 Top Priority Services aligned with your vendor IDs/keys
 const TOP_PRIORITY_SERVICES = [
-    'whatsapp', 'wa', 'telegram', 'tg', 'facebook', 'fb', 'instagram', 'ig', 'gmail', 'google', 'go', 'snapchat', 'snap',
-    'tinder', 'yahoo', 'mb', 'netflix', 'nf'
+    'wa',     // WhatsApp
+    'tg',     // Telegram
+    'fb',     // Facebook
+    'ig',     // Instagram
+    'go',     // Google, Gmail, Youtube
+    'oi',     // Tinder
+    'nf',     // Netflix
+    'lf',     // Tiktok
+    'mb',     // Yahoo
+    'mm'      // Microsoft
 ];
+
 
       function logout() {
         localStorage.removeItem('userToken');
@@ -1251,7 +1261,6 @@ function removeShowMoreButton() {
 
 function resetAndRenderServices(filteredList) {
     currentVisibleCount = PAGE_INCREMENT;
-    // Apply sorting so top services appear in the first 10
     cachedServicesList = prioritizeServices(filteredList || []);
     renderServicesTable(cachedServicesList);
 }

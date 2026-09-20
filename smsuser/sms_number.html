@@ -1061,7 +1061,7 @@ async function fetchServices() {
 
             window.services = services;
             renderServicesTable(services);
-            populateAllServiceCountries(services);
+           populateVisibleServiceCountries(services);
 
         } catch (err) {
             console.error("Failed to load services:", err);
@@ -1260,6 +1260,7 @@ function resetAndRenderServices(filteredList) {
 window.SMSGlobeApp = window.SMSGlobeApp || {};
 window.SMSGlobeApp.handleShowMoreServices = handleShowMoreServices;
 window.handleShowMoreServices = handleShowMoreServices;
+window.resetAndRenderServices = resetAndRenderServices;
 
 // Window resize listener to recalculate slices when orientation/screen width changes
 window.addEventListener('resize', () => {
@@ -1268,8 +1269,8 @@ window.addEventListener('resize', () => {
     }
 });
 
-  async function populateAllServiceCountries(servicesList) {
-   const CONCURRENCY_LIMIT = 5; 
+ async function populateVisibleServiceCountries(visibleServicesList) {
+    const CONCURRENCY_LIMIT = 5; 
 
     for (let i = 0; i < visibleServicesList.length; i += CONCURRENCY_LIMIT) {
         const chunk = visibleServicesList.slice(i, i + CONCURRENCY_LIMIT);

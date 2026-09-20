@@ -1168,7 +1168,9 @@ function updateShowMoreControls(shouldRender) {
     }
 
     if (!container) {
-        const tableWrapper = document.querySelector('.responsive-table').closest('.overflow-x-auto');
+        const tableWrapper = document.querySelector('.responsive-table')?.closest('.overflow-x-auto');
+        if (!tableWrapper) return;
+
         container = document.createElement('div');
         container.id = 'show-more-container';
         container.className = 'text-center pt-3 pb-1 sm:hidden';
@@ -1179,38 +1181,33 @@ function updateShowMoreControls(shouldRender) {
     const nextChunk = Math.min(mobileItemsPerPage, remaining);
 
     container.innerHTML = `
-        <button onclick="handleShowMoreServices()" class="w-full py-2.5 px-4 bg-sky-50 hover:bg-sky-100 active:bg-sky-200 text-sky-700 text-xs font-bold rounded-xl border border-sky-200 transition shadow-2xs flex items-center justify-center gap-2">
+        <button id="btn-show-more-services" 
+                onclick="SMSGlobeApp.handleShowMoreServices()" 
+                class="w-full py-2.5 px-4 bg-sky-50 hover:bg-sky-100 active:bg-sky-200 text-sky-700 text-xs font-bold rounded-xl border border-sky-200 transition shadow-2xs flex items-center justify-center gap-2 cursor-pointer">
             <span>Show More (${nextChunk} of ${remaining} remaining)</span>
             <i class="fa-solid fa-chevron-down text-[10px]"></i>
         </button>
     `;
 }
 
-/**
- * Click event handler for loading the next batch of 10 items
- */
-function handleShowMoreServices() {
+window.SMSGlobeApp = window.SMSGlobeApp || {};
+
+SMSGlobeApp.handleShowMoreServices = function() {
     currentVisibleCount += mobileItemsPerPage;
     renderServicesTable(cachedServicesList);
-}
+};
 
-/**
- * Removes the button element when unnecessary
- */
+window.handleShowMoreServices = SMSGlobeApp.handleShowMoreServices;
+
 function removeShowMoreButton() {
     const container = document.getElementById('show-more-container');
     if (container) container.remove();
 }
 
-/**
- * Reset count back to 10 when user types in search or alters filters
- */
 function resetAndRenderServices(filteredList) {
     currentVisibleCount = mobileItemsPerPage;
     renderServicesTable(filteredList);
 }
-
-
 
   async function populateAllServiceCountries(servicesList) {
     const CONCURRENCY_LIMIT = 10; 

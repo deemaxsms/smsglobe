@@ -805,6 +805,35 @@
     };
 
 
+    const SMSBOWER_ID_TO_ISO = {
+    '0': 'ru',    '1': 'ua',    '2': 'kz',    '3': 'cn',    '4': 'ph',    '5': 'mm',    '6': 'id',    '7': 'my',
+    '8': 'ke',    '9': 'tz',    '10': 'vn',   '11': 'kg',   '12': 'us',   '13': 'il',   '14': 'hk',   '15': 'pl',
+    '16': 'gb',   '17': 'mg',   '18': 'cd',   '19': 'ng',   '20': 'mo',   '21': 'eg',   '22': 'in',   '23': 'ie',
+    '24': 'kh',   '25': 'la',   '26': 'ht',   '27': 'ci',   '28': 'gm',   '29': 'rs',   '30': 'ye',   '31': 'za',
+    '32': 'ro',   '33': 'co',   '34': 'ee',   '35': 'az',   '36': 'ca',   '37': 'ma',   '38': 'gh',   '39': 'ar',
+    '40': 'uz',   '41': 'cm',   '42': 'td',   '43': 'de',   '44': 'lt',   '45': 'hr',   '46': 'se',   '47': 'iq',
+    '48': 'nl',   '49': 'lv',   '50': 'at',   '51': 'by',   '52': 'th',   '53': 'sa',   '54': 'mx',   '55': 'tw',
+    '56': 'es',   '57': 'ir',   '58': 'dz',   '59': 'si',   '60': 'bd',   '61': 'sn',   '62': 'tr',   '63': 'cz',
+    '64': 'lk',   '65': 'pe',   '66': 'pk',   '67': 'nz',   '68': 'gn',   '69': 'ml',   '70': 've',   '71': 'et',
+    '72': 'mn',   '73': 'br',   '74': 'af',   '75': 'ug',   '76': 'ao',   '77': 'cy',   '78': 'fr',   '79': 'pg',
+    '80': 'mz',   '81': 'np',   '82': 'be',   '83': 'bg',   '84': 'hu',   '85': 'md',   '86': 'it',   '87': 'py',
+    '88': 'hn',   '89': 'tn',   '90': 'ni',   '91': 'tl',   '92': 'bo',   '93': 'cr',   '94': 'gt',   '95': 'ae',
+    '96': 'zw',   '97': 'pr',   '99': 'tg',   '100': 'kw',  '101': 'sv',  '102': 'ly',  '103': 'jm',  '104': 'tt',
+    '105': 'ec',  '106': 'sz',  '107': 'om',  '108': 'ba',  '109': 'do',  '111': 'qa',  '112': 'pa',  '113': 'cu',
+    '114': 'mr',  '115': 'sl',  '116': 'jo',  '117': 'pt',  '118': 'bb',  '119': 'bi',  '120': 'bj',  '121': 'bn',
+    '122': 'bs',  '123': 'bw',  '124': 'bz',  '125': 'cf',  '126': 'dm',  '127': 'gd',  '128': 'ge',  '129': 'gr',
+    '130': 'gw',  '131': 'gy',  '132': 'is',  '133': 'km',  '134': 'kn',  '135': 'lr',  '136': 'ls',  '137': 'mw',
+    '138': 'na',  '139': 'ne',  '140': 'rw',  '141': 'sk',  '142': 'sr',  '143': 'tj',  '144': 'mc',  '145': 'bh',
+    '146': 're',  '147': 'zm',  '148': 'am',  '149': 'so',  '150': 'cg',  '151': 'cl',  '152': 'bf',  '153': 'lb',
+    '154': 'ga',  '155': 'al',  '156': 'uy',  '157': 'mu',  '158': 'bt',  '159': 'mv',  '160': 'gp',  '161': 'tm',
+    '162': 'gf',  '163': 'fi',  '164': 'lc',  '165': 'lu',  '166': 'vc',  '167': 'gq',  '168': 'dj',  '169': 'ag',
+    '170': 'ky',  '171': 'me',  '172': 'dk',  '173': 'ch',  '174': 'no',  '175': 'au',  '176': 'er',  '177': 'ss',
+    '178': 'st',  '179': 'aw',  '180': 'ms',  '181': 'ai',  '183': 'mk',  '184': 'sc',  '185': 'nc',  '186': 'cv',
+    '187': 'us',  '188': 'ps',  '189': 'fj',  '196': 'sg',  '199': 'mt',  '201': 'gi',  '204': 'nu',  '1001': 'jp',
+    '1002': 'kr', '1003': 'bm', '1004': 'xk', '1005': 'li', '1006': 'sx', '1007': 'vu', '1008': 'gl', '1011': 'mq',
+    '1333': 'sy', '1010': 'sd'
+};
+
       function logout() {
         localStorage.removeItem('userToken');
         localStorage.removeItem('dashboard_cache');
@@ -1219,21 +1248,30 @@ function renderCountries(countriesList) {
 
 function getCountryFlagCode(countryData) {
     if (!countryData) return 'un';
-    if (countryData.code && countryData.code.length === 2) {
-        return countryData.code.toLowerCase();
+    const directCode = String(countryData.code || countryData.countryCode || countryData.iso || countryData.shortCode || '').toLowerCase().trim();
+    if (directCode.length === 2 && !/^\d+$/.test(directCode)) {
+        return directCode;
     }
-    const countryId = String(countryData.countryId || '').toLowerCase();
-    const cleanName = (countryData.countryName || countryData.name || '').toLowerCase().trim();
-
+    const countryId = String(countryData.countryId || countryData.id || '').trim();
+    if (SMSBOWER_ID_TO_ISO[countryId]) {
+        return SMSBOWER_ID_TO_ISO[countryId];
+    }
+    const cleanName = String(countryData.countryName || countryData.name || countryData.eng || countryData.country || '').toLowerCase().trim();
     if (COUNTRY_FLAG_MAP[cleanName]) {
         return COUNTRY_FLAG_MAP[cleanName];
     }
-    const matchedKey = Object.keys(COUNTRY_FLAG_MAP).find(key => cleanName.includes(key));
+    const matchedKey = Object.keys(COUNTRY_FLAG_MAP)
+        .sort((a, b) => b.length - a.length)
+        .find(key => cleanName.includes(key));
+
     if (matchedKey) {
         return COUNTRY_FLAG_MAP[matchedKey];
     }
-    return countryId.length === 2 ? countryId : 'un';
+
+    // 5. Normal a fallback
+    return (countryId.length === 2 && !/^\d+$/.test(countryId)) ? countryId.toLowerCase() : 'un';
 }
+
 
 function toggleCountryExpand(serviceCode, countryId) {
     const list = serviceCountriesCache[serviceCode];
@@ -1499,7 +1537,7 @@ window.cancelActiveOrder = async function(orderId) {
 
         Swal.close();
 
-        if (res && res.status === 401) return logout();
+        if (res && res.status === 401 && typeof logout === 'function') return logout();
 
         if (data && data.success) {
             Swal.fire({
@@ -1538,7 +1576,7 @@ window.manualRecheckSms = async function(orderId) {
         
         const token = localStorage.getItem('userToken');
 
-        const response = await safeFetch(`/api/recheck-sms`, {
+        const { res, data } = await safeFetch(`/api/recheck-sms`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
@@ -1547,13 +1585,13 @@ window.manualRecheckSms = async function(orderId) {
             body: JSON.stringify({ id: orderId })
         });
         
-        const data = response.data || response;
+        const payload = data || res;
         Swal.close();
 
-        if (data && data.success && data.code) {
-            Swal.fire({ icon: 'success', title: 'OTP Received!', text: `Code: ${data.code}`, timer: 2000 });
+        if (payload && payload.success && payload.code) {
+            Swal.fire({ icon: 'success', title: 'OTP Received!', text: `Code: ${payload.code}`, timer: 2000 });
         } else {
-            Swal.fire({ icon: 'info', title: 'Still Waiting', text: (data && data.message) || 'No SMS code arrived yet.', timer: 2000 });
+            Swal.fire({ icon: 'info', title: 'Still Waiting', text: (payload && payload.message) || 'No SMS code arrived yet.', timer: 2000 });
         }
         
         if (typeof fetchUserHistory === 'function') fetchUserHistory();
@@ -1569,8 +1607,11 @@ async function fetchUserHistory() {
     const historyGrid = document.getElementById('history-grid');
     if (!historyGrid) return;
 
-    // Reset interval timer prior to execution
-    if (window.historyTimerInterval) clearInterval(window.historyTimerInterval);
+    // Clear any active history timer interval to prevent memory leaks or overlapping timers
+    if (window.historyTimerInterval) {
+        clearInterval(window.historyTimerInterval);
+        window.historyTimerInterval = null;
+    }
 
     try {
         const fetchMethod = typeof safeFetch === 'function' ? safeFetch : async (url, opts) => {
@@ -1580,10 +1621,10 @@ async function fetchUserHistory() {
                 headers: { ...opts?.headers, 'Authorization': `Bearer ${token}` }
             });
             const data = await r.json();
-            return { data };
+            return { res: r, data };
         };
 
-        const listResponse = await fetchMethod(`${API_BASE_URL}/user-orders`, {
+        const listResponse = await fetchMethod(`${typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : ''}/user-orders`, {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' }
         });
@@ -1601,7 +1642,7 @@ async function fetchUserHistory() {
             if (!orderId) return orderItem;
 
             try {
-                const response = await fetchMethod(`${API_BASE_URL}/order-details?id=${orderId}`, {
+                const response = await fetchMethod(`${typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : ''}/order-details?id=${orderId}`, {
                     method: 'GET',
                     headers: { 'Content-Type': 'application/json' }
                 });
@@ -1769,36 +1810,39 @@ async function fetchUserHistory() {
     }
 }
 
-      document.addEventListener('DOMContentLoaded', () => {
-        fetchUserProfile();
-        fetchServices();
+    // Event Listeners setup on initial load
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof fetchUserProfile === 'function') fetchUserProfile();
+    if (typeof fetchServices === 'function') fetchServices();
 
-        const serviceSearchInput = document.getElementById('service-search-input');
-        if (serviceSearchInput) {
-          serviceSearchInput.addEventListener('input', (e) => {
+    const serviceSearchInput = document.getElementById('service-search-input');
+    if (serviceSearchInput) {
+        serviceSearchInput.addEventListener('input', (e) => {
             const term = e.target.value.toLowerCase().trim();
             if (!term) {
-              renderServices(services);
-              return;
+                if (typeof renderServices === 'function') renderServices(services);
+                return;
             }
             const filtered = services.filter(s => 
-              (s.name && s.name.toLowerCase().includes(term)) || 
-              (s.code && s.code.toLowerCase().includes(term))
+                (s.name && s.name.toLowerCase().includes(term)) || 
+                (s.code && s.code.toLowerCase().includes(term))
             );
-            renderServices(filtered);
-          });
-        }
+            if (typeof renderServices === 'function') renderServices(filtered);
+        });
+    }
 
-        const countrySearchInput = document.getElementById('country-search-input');
-        if (countrySearchInput) {
-          countrySearchInput.addEventListener('input', (e) => {
+    const countrySearchInput = document.getElementById('country-search-input');
+    if (countrySearchInput) {
+        countrySearchInput.addEventListener('input', (e) => {
             countrySearchTerm = e.target.value.toLowerCase().trim();
             if (selectedServiceCode && serviceCountriesCache[selectedServiceCode]) {
-              renderCountries(serviceCountriesCache[selectedServiceCode]);
+                if (typeof renderCountries === 'function') {
+                    renderCountries(serviceCountriesCache[selectedServiceCode]);
+                }
             }
-          });
-        }
-      });
+        });
+    }
+});
 
      return {
       fetchUserProfile,

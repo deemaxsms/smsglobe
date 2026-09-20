@@ -1256,11 +1256,20 @@ function resetAndRenderServices(filteredList) {
     renderServicesTable(cachedServicesList);
 }
 
-/**
- * Fetches country rates dynamically for visible services
- */
-async function populateVisibleServiceCountries(visibleServicesList) {
-    const CONCURRENCY_LIMIT = 5; 
+// Global Namespace Exports
+window.SMSGlobeApp = window.SMSGlobeApp || {};
+window.SMSGlobeApp.handleShowMoreServices = handleShowMoreServices;
+window.handleShowMoreServices = handleShowMoreServices;
+
+// Window resize listener to recalculate slices when orientation/screen width changes
+window.addEventListener('resize', () => {
+    if (cachedServicesList.length > 0) {
+        renderServicesTable(cachedServicesList);
+    }
+});
+
+  async function populateAllServiceCountries(servicesList) {
+   const CONCURRENCY_LIMIT = 5; 
 
     for (let i = 0; i < visibleServicesList.length; i += CONCURRENCY_LIMIT) {
         const chunk = visibleServicesList.slice(i, i + CONCURRENCY_LIMIT);
@@ -2129,17 +2138,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
-    }
-});
-
-window.SMSGlobeApp = window.SMSGlobeApp || {};
-window.SMSGlobeApp.handleShowMoreServices = handleShowMoreServices;
-window.handleShowMoreServices = handleShowMoreServices;
-window.resetAndRenderServices = resetAndRenderServices;
-
-window.addEventListener('resize', () => {
-    if (cachedServicesList.length > 0) {
-        renderServicesTable(cachedServicesList);
     }
 });
 

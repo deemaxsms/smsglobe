@@ -311,18 +311,18 @@
     if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleSidebar);
  
 
-        window.SMSGlobeApp = (() => {
-          const API_BASE_URL = '/api';
+     window.SMSGlobeApp = (() => {
+    const API_BASE_URL = '/api';
 
-      let currentMode = 'Number';
-      let services = [];
-      let expandedServiceCode = null;
-      let serviceCountriesCache = {}; 
-      let userBalance = 0;
-      let userBonusBalance = 0;
-      let selectedServiceCode = null;
-      let selectedCountryId = null;
-      let countrySearchTerm = '';
+    let currentMode = 'Number';
+    let services = [];
+    let expandedServiceCode = null;
+    let serviceCountriesCache = {}; 
+    let userBalance = 0;
+    let userBonusBalance = 0;
+    let selectedServiceCode = null;
+    let selectedCountryId = null;
+    let countrySearchTerm = '';
 
     const PRIORITY_ICONS = {
         'wa': 'https://api.iconify.design/logos:whatsapp-icon.svg', 'tg': 'https://api.iconify.design/logos:telegram.svg', 'gg': 'https://api.iconify.design/logos:google-icon.svg',
@@ -939,164 +939,187 @@
         }
       }
 
-    // Updated Table-Based Services Fetching & Rendering Pipeline
 async function fetchServices() {
-    const tableBody = document.getElementById('services-table-body');
-    if (!tableBody) return;
+        const tableBody = document.getElementById('services-table-body');
+        if (!tableBody) return;
 
-    tableBody.innerHTML = `
-        <tr>
-            <td colspan="5" class="text-center py-12 text-sky-600 font-medium">
-                <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Loading available services & rates...
-            </td>
-        </tr>`;
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center py-12 text-sky-600 font-medium">
+                    <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Loading available services & rates...
+                </td>
+            </tr>`;
 
-    try {
-        const fetchMethod = typeof safeFetch === 'function' ? safeFetch : async (url) => {
-            const token = localStorage.getItem('userToken');
-            const r = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-            const data = await r.json();
-            return { data };
-        };
+        try {
+            const fetchMethod = typeof safeFetch === 'function' ? safeFetch : async (url) => {
+                const token = localStorage.getItem('userToken');
+                const r = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                const data = await r.json();
+                return { data };
+            };
 
-        const response = await fetchMethod(`${API_BASE_URL}/services`);
-        const data = response.data || response;
-        const servicesList = data?.services || data?.data || (Array.isArray(data) ? data : []);
+            const response = await fetchMethod(`${API_BASE_URL}/services`);
+            const data = response.data || response;
+            services = data?.services || data?.data || (Array.isArray(data) ? data : []);
 
-        if (!servicesList || servicesList.length === 0) {
+            if (!services || services.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center py-8 text-gray-500 text-sm">
+                            No available services found.
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            window.services = services;
+            renderServicesTable(services);
+            populateAllServiceCountries(services);
+
+        } catch (err) {
+            console.error("Failed to load services:", err);
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center py-8 text-red-500 text-sm font-medium">
+                        Failed to load available services & rates. Please refresh or try again.
+                    </td>
+                </tr>`;
+        }
+    }
+
+function renderServicesTable(servicesToRender) {
+        const tableBody = document.getElementById('services-table-body');
+        if (!tableBody) return;
+
+        if (!servicesToRender || servicesToRender.length === 0) {
             tableBody.innerHTML = `
                 <tr>
                     <td colspan="5" class="text-center py-8 text-gray-500 text-sm">
-                        No available services found.
+                        No matching services found.
                     </td>
                 </tr>`;
             return;
         }
 
-        window.services = servicesList;
-        renderServicesTable(servicesList);
+        tableBody.innerHTML = servicesToRender.map(service => {
+            const serviceName = service.name || service.serviceName || 'Service';
+            const serviceCode = service.code || service.id || '';
 
-    } catch (err) {
-        console.error("Failed to load services:", err);
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="5" class="text-center py-8 text-red-500 text-sm font-medium">
-                    Failed to load available services & rates. Please refresh or try again.
-                </td>
-            </tr>`;
-    }
-}
-
-// Dynamic Table Renderer with Country & Price Tiers Dropdown
-function renderServicesTable(servicesToRender) {
-    const tableBody = document.getElementById('services-table-body');
-    if (!tableBody) return;
-
-    if (!servicesToRender || servicesToRender.length === 0) {
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="5" class="text-center py-8 text-gray-500 text-sm">
-                    No matching services found.
-                </td>
-            </tr>`;
-        return;
-    }
-
-    tableBody.innerHTML = servicesToRender.map(service => {
-        const serviceName = service.name || service.serviceName || 'Service';
-        const serviceCode = service.code || service.id || '';
-        
-        // Extract array of countries/rates attached to this service
-        const countries = Array.isArray(service.countries) && service.countries.length > 0 
-            ? service.countries 
-            : [{
-                name: service.countryName || service.country || 'Global',
-                code: service.countryCode || 'global',
-                price: service.price || 0,
-                stock: service.stock !== undefined ? service.stock : (service.count || 'Available')
-              }];
-
-        const defaultCountry = countries[0];
-        const initialPrice = defaultCountry.price ? `₦${defaultCountry.price}` : 'N/A';
-        const initialStock = defaultCountry.stock !== undefined ? defaultCountry.stock : 'Available';
-
-        // Render country options with data attributes for instant DOM updates
-        const countryOptionsHtml = countries.map((c, index) => {
-            const cName = c.name || c.country || 'Unknown Country';
-            const cCode = c.code || c.countryCode || 'global';
-            const cPrice = c.price ? `₦${c.price}` : 'N/A';
-            const cStock = c.stock !== undefined ? c.stock : 'Available';
-            
-            return `<option value="${cCode}" 
-                            data-price="${cPrice}" 
-                            data-stock="${cStock}" 
-                            data-raw-price="${c.price || 0}"
-                            ${index === 0 ? 'selected' : ''}>
-                        ${cName} (${cPrice})
-                    </option>`;
+            return `
+                <tr class="hover:bg-sky-50/50 transition border-b border-sky-100" id="row-${serviceCode}">
+                    <td class="p-3.5 font-semibold text-sky-950">
+                        ${serviceName}
+                    </td>
+                    <td class="p-3.5">
+                        <select id="select-${serviceCode}"
+                                onchange="SMSGlobeApp.onTableCountryChange(this, '${serviceCode}')" 
+                                class="country-select w-full max-w-[180px] bg-white border border-sky-200 text-sky-900 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium cursor-pointer shadow-2xs">
+                            <option value="" disabled selected>Loading countries...</option>
+                        </select>
+                    </td>
+                    <td class="p-3.5 font-bold text-emerald-600 price-display" id="price-${serviceCode}">
+                        <i class="fa-solid fa-spinner fa-spin text-xs text-sky-400"></i>
+                    </td>
+                    <td class="p-3.5 text-gray-500 font-mono text-xs stock-display" id="stock-${serviceCode}">
+                        --
+                    </td>
+                    <td class="p-3.5 text-right">
+                        <button id="buy-btn-${serviceCode}" 
+                                disabled
+                                class="px-3.5 py-1.5 bg-gray-300 text-gray-500 text-xs font-semibold rounded-lg transition cursor-not-allowed shadow-2xs">
+                            Buy Number
+                        </button>
+                    </td>
+                </tr>
+            `;
         }).join('');
+    }
 
-        return `
-            <tr class="hover:bg-sky-50/50 transition border-b border-sky-100" id="row-${serviceCode}">
-                <!-- SERVICE NAME -->
-                <td class="p-3.5 font-semibold text-sky-950">
-                    ${serviceName}
-                </td>
+    async function populateAllServiceCountries(servicesList) {
+        for (const service of servicesList) {
+            const serviceCode = service.code || service.id;
+            if (!serviceCode) continue;
+            fetchAndFillRowCountries(serviceCode);
+        }
+    }
 
-                <!-- COUNTRY DROPDOWN -->
-                <td class="p-3.5">
-                    <select onchange="SMSGlobeApp.onTableCountryChange(this, '${serviceCode}')" 
-                            class="country-select w-full max-w-[180px] bg-white border border-sky-200 text-sky-900 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium cursor-pointer shadow-2xs">
-                        ${countryOptionsHtml}
-                    </select>
-                </td>
+    async function fetchAndFillRowCountries(serviceCode) {
+        const selectElem = document.getElementById(`select-${serviceCode}`);
+        const priceElem = document.getElementById(`price-${serviceCode}`);
+        const stockElem = document.getElementById(`stock-${serviceCode}`);
 
-                <!-- DYNAMIC PRICE -->
-                <td class="p-3.5 font-bold text-emerald-600 price-display">
-                    ${initialPrice}
-                </td>
+        try {
+            let countriesList = serviceCountriesCache[serviceCode];
 
-                <!-- DYNAMIC STOCK -->
-                <td class="p-3.5 text-gray-500 font-mono text-xs stock-display">
-                    ${initialStock}
-                </td>
+            if (!countriesList) {
+                const targetUrl = `${API_BASE_URL}/service-countries?service=${encodeURIComponent(serviceCode)}`;
+                const response = await fetch(targetUrl);
+                const result = await response.json();
+                
+                const rawInput = result.countries || result.data || result;
+                countriesList = Array.isArray(rawInput) ? rawInput : Object.entries(rawInput).map(([k, v]) => ({ countryId: k, ...v }));
+                serviceCountriesCache[serviceCode] = countriesList;
+            }
 
-                <!-- BUY ACTION -->
-                <td class="p-3.5 text-right">
-                    <button id="buy-btn-${serviceCode}" 
-                            onclick="SMSGlobeApp.buyServiceCountry('${serviceCode}', '${defaultCountry.code || defaultCountry.name}')" 
-                            class="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white text-xs font-semibold rounded-lg transition shadow-2xs">
-                        Buy Number
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
+            if (!selectElem) return;
+
+            if (!countriesList || countriesList.length === 0) {
+                selectElem.innerHTML = `<option value="">No countries available</option>`;
+                if (priceElem) priceElem.textContent = 'N/A';
+                if (stockElem) stockElem.textContent = '0';
+                return;
+            }
+
+            selectElem.innerHTML = countriesList.map((c, index) => {
+                const cName = c.countryName || c.name || c.eng || 'Unknown Country';
+                const cId = String(c.countryId || c.id || '');
+                const rawPrice = c.price?.amount || c.price || 0;
+                const cPrice = rawPrice ? `₦${Number(rawPrice).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : 'N/A';
+                const cStock = c.count ?? c.stock ?? 'Available';
+
+                return `<option value="${cId}" 
+                                data-price="${cPrice}" 
+                                data-raw-price="${rawPrice}"
+                                data-stock="${cStock}" 
+                                ${index === 0 ? 'selected' : ''}>
+                            ${cName} (${cPrice})
+                        </option>`;
+            }).join('');
+
+            onTableCountryChange(selectElem, serviceCode);
+
+        } catch (err) {
+            console.error(`Failed to load countries for service ${serviceCode}:`, err);
+            if (selectElem) selectElem.innerHTML = `<option value="">Unavailable</option>`;
+            if (priceElem) priceElem.textContent = 'N/A';
+            if (stockElem) stockElem.textContent = '0';
+        }
+    }
+
 
 function onTableCountryChange(selectElement, serviceCode) {
-    const selectedOption = selectElement.options[selectElement.selectedIndex];
-    const row = document.getElementById(`row-${serviceCode}`);
-    if (!row) return;
+        const selectedOption = selectElement.options[selectElement.selectedIndex];
+        const row = document.getElementById(`row-${serviceCode}`);
+        if (!row || !selectedOption) return;
 
-    // Read attributes from selected option
-    const newPrice = selectedOption.getAttribute('data-price') || 'N/A';
-    const newStock = selectedOption.getAttribute('data-stock') || 'Available';
-    const countryCode = selectElement.value;
+        const newPrice = selectedOption.getAttribute('data-price') || 'N/A';
+        const rawPrice = parseFloat(selectedOption.getAttribute('data-raw-price') || '0');
+        const newStock = selectedOption.getAttribute('data-stock') || 'Available';
+        const countryId = selectElement.value;
 
-    // Update Price and Stock displays
-    const priceDisplay = row.querySelector('.price-display');
-    const stockDisplay = row.querySelector('.stock-display');
-    const buyBtn = document.getElementById(`buy-btn-${serviceCode}`);
+        const priceDisplay = row.querySelector('.price-display');
+        const stockDisplay = row.querySelector('.stock-display');
+        const buyBtn = document.getElementById(`buy-btn-${serviceCode}`);
 
-    if (priceDisplay) priceDisplay.textContent = newPrice;
-    if (stockDisplay) stockDisplay.textContent = newStock;
+        if (priceDisplay) priceDisplay.textContent = newPrice;
+        if (stockDisplay) stockDisplay.textContent = `${newStock} pcs`;
 
-    // Update Buy button click handler with the newly selected country code
-    if (buyBtn) {
-        buyBtn.setAttribute('onclick', `SMSGlobeApp.buyServiceCountry('${serviceCode}', '${countryCode}')`);
+        if (buyBtn && countryId) {
+            buyBtn.disabled = false;
+            buyBtn.className = "px-3.5 py-1.5 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white text-xs font-semibold rounded-lg transition shadow-2xs cursor-pointer";
+            buyBtn.setAttribute('onclick', `SMSGlobeApp.buyServiceCountry('${serviceCode}', '${countryId}', ${rawPrice})`);
+        }
     }
-}
 
 async function selectService(serviceCode) {
     expandedServiceCode = serviceCode;
@@ -1844,21 +1867,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-     return {
-      fetchUserProfile,
+    return {
+        fetchUserProfile,
+        
         fetchServices,
         renderServicesTable,
         onTableCountryChange,
+        buyServiceCountry,
+
+        fetchUserHistory,
+        cancelActiveOrder,
+        manualRecheckSms,
+
         selectService,
         renderCountries,
         selectCountry,
         switchCountryPriceTierAndSelect,
-        toggleCountryExpand,
-        buyServiceCountry,
-        fetchUserHistory,
-        cancelActiveOrder,
-        manualRecheckSms
-      };
+        toggleCountryExpand
+    };
     })();
   </script>
 </body>

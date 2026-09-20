@@ -48,6 +48,28 @@
       }
     }
   </script>
+  <style type="text/tailwindcss">
+  @layer utilities {
+    @media (max-width: 639px) {
+      .responsive-table thead {
+        @apply hidden;
+      }
+      .responsive-table tr {
+        @apply block p-3 mb-3 bg-white border border-sky-100 rounded-xl shadow-2xs;
+      }
+      .responsive-table td {
+        @apply flex justify-between items-center py-1.5 px-0 border-b border-dashed border-sky-50;
+      }
+      .responsive-table td:last-child {
+        @apply border-b-0 pt-2 justify-end;
+      }
+      .responsive-table td::before {
+        content: attr(data-label);
+        @apply font-semibold text-[0.7rem] uppercase text-sky-700;
+      }
+    }
+  }
+</style>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="bg-[#f0f7ff] min-h-screen text-gray-800 font-sans antialiased">
@@ -185,107 +207,108 @@
     </div>
   </header>
 
-  <!-- ================= MAIN CONTENT CONTAINER (Offset on Desktop) ================= -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:ml-64 transition-all">
-    <div class="space-y-6">
+ <!-- ================= MAIN CONTENT CONTAINER (Offset on Desktop) ================= -->
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:ml-64 transition-all">
+  <div class="space-y-6">
 
-      <!-- Tab Switcher Header -->
-      <div class="bg-sky-200/80 p-1.5 rounded-xl flex shadow-xs max-w-xs border border-sky-300/60">
-        <button id="btn-tab-number" onclick="switchTab('Number')" class="flex-1 bg-white text-sky-900 font-bold py-2 rounded-lg text-xs shadow-xs text-center transition">
-          Numbers
-        </button>
-        <button id="btn-tab-history" onclick="switchTab('History')" class="flex-1 text-sky-700 hover:text-sky-950 font-bold py-2 rounded-lg text-xs text-center transition">
-          HISTORY
-        </button>
+    <!-- Tab Switcher Header -->
+    <div class="bg-sky-200/80 p-1.5 rounded-xl flex shadow-xs max-w-xs border border-sky-300/60">
+      <button id="btn-tab-number" onclick="switchTab('Number')" class="flex-1 bg-white text-sky-900 font-bold py-2 rounded-lg text-xs shadow-xs text-center transition">
+        Numbers
+      </button>
+      <button id="btn-tab-history" onclick="switchTab('History')" class="flex-1 text-sky-700 hover:text-sky-950 font-bold py-2 rounded-lg text-xs text-center transition">
+        HISTORY
+      </button>
+    </div>
+
+    <!-- ================= VIEW 1: SPREADSHEET ROW TABLE SECTION ================= -->
+    <div id="numbers-section" class="space-y-4">
+      
+      <div class="bg-white border border-sky-200 rounded-2xl p-3 sm:p-5 shadow-xs space-y-4">
+        
+        <!-- Filter & Search Toolbar -->
+        <div class="flex flex-col md:flex-row gap-3 justify-between items-center pb-2">
+          <!-- Search Service Input -->
+          <div class="relative w-full md:w-80">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-sky-400">
+              <i class="fa-solid fa-magnifying-glass text-xs"></i>
+            </span>
+            <input type="text" id="service-search-input" placeholder="Search service..." class="w-full bg-sky-50 text-sky-900 placeholder-sky-400 text-xs sm:text-sm rounded-xl pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 border border-sky-200">
+          </div>
+
+          <!-- Country Filter Dropdown -->
+          <div class="relative w-full md:w-64">
+            <select id="country-select-filter" class="w-full bg-sky-50 text-sky-900 text-xs sm:text-sm rounded-xl pl-4 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 border border-sky-200 appearance-none font-medium cursor-pointer">
+              <option value="">All Countries</option>
+              <!-- Populated dynamically via JS -->
+            </select>
+            <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-sky-400">
+              <i class="fa-solid fa-chevron-down text-xs"></i>
+            </span>
+          </div>
+        </div>
+
+        <!-- Unified Row Table Container -->
+        <div class="overflow-x-auto rounded-xl border border-sky-200 sm:bg-sky-50/20 bg-transparent">
+          <!-- Added responsive-table class here -->
+          <table class="responsive-table w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-sky-100/70 border-b border-sky-200 text-sky-950 text-xs font-bold uppercase tracking-wider">
+                <th class="p-3.5">Service</th>
+                <th class="p-3.5">Country</th>
+                <th class="p-3.5">Price</th>
+                <th class="p-3.5">Stock</th>
+                <th class="p-3.5 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="services-table-body" class="sm:divide-y divide-sky-100 text-xs sm:text-sm text-gray-700">
+              <!-- Rendered dynamically by JavaScript -->
+              <tr>
+                <td colspan="5" class="text-center py-12 text-sky-600 font-medium">
+                  <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Loading available services & rates...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="text-center pt-2">
+          <a href="#" class="text-xs text-sky-600 hover:underline">Didn't find the right service or country? Write to <span class="underline font-semibold">support</span></a>
+        </div>
+
       </div>
 
-      <!-- ================= VIEW 1: SPREADSHEET ROW TABLE SECTION ================= -->
-      <div id="numbers-section" class="space-y-4">
+    </div><!-- End Numbers Section -->
+
+
+    <!-- ================= VIEW 2: HISTORY SECTION ================= -->
+    <div id="history-section" class="hidden space-y-5">
+      <div class="bg-white border border-sky-200 rounded-2xl p-5 sm:p-6 shadow-xs">
         
-        <div class="bg-white border border-sky-200 rounded-2xl p-5 shadow-xs space-y-4">
-          
-          <!-- Filter & Search Toolbar -->
-          <div class="flex flex-col md:flex-row gap-3 justify-between items-center pb-2">
-            <!-- Search Service Input -->
-            <div class="relative w-full md:w-80">
-              <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-sky-400">
-                <i class="fa-solid fa-magnifying-glass text-xs"></i>
-              </span>
-              <input type="text" id="service-search-input" placeholder="Search service..." class="w-full bg-sky-50 text-sky-900 placeholder-sky-400 text-sm rounded-xl pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 border border-sky-200">
-            </div>
-
-            <!-- Country Filter Dropdown -->
-            <div class="relative w-full md:w-64">
-              <select id="country-select-filter" class="w-full bg-sky-50 text-sky-900 text-sm rounded-xl pl-4 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500 border border-sky-200 appearance-none font-medium">
-                <option value="">All Countries</option>
-                <!-- Populated dynamically via JS -->
-              </select>
-              <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-sky-400">
-                <i class="fa-solid fa-chevron-down text-xs"></i>
-              </span>
-            </div>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5 pb-4 border-b border-sky-100">
+          <div>
+            <h3 class="font-bold text-lg tracking-tight text-sky-950">Purchase History</h3>
+            <p class="text-xs text-sky-600">Track and manage your requested SMS verification numbers</p>
           </div>
-
-          <!-- Unified Row Table Container -->
-          <div class="overflow-x-auto rounded-xl border border-sky-200 bg-sky-50/20">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="bg-sky-100/70 border-b border-sky-200 text-sky-950 text-xs font-bold uppercase tracking-wider">
-                  <th class="p-3.5">Service</th>
-                  <th class="p-3.5">Country</th>
-                  <th class="p-3.5">Price</th>
-                  <th class="p-3.5">Stock</th>
-                  <th class="p-3.5 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody id="services-table-body" class="divide-y divide-sky-100 text-sm text-gray-700">
-                <!-- Rendered dynamically by JavaScript -->
-                <tr>
-                  <td colspan="5" class="text-center py-12 text-sky-600 font-medium">
-                    <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Loading available services & rates...
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="flex items-center space-x-2">
+            <button onclick="fetchUserHistory()" class="px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-semibold rounded-lg border border-sky-200 transition">
+              <i class="fa-solid fa-rotate mr-1"></i> Refresh
+            </button>
           </div>
-
-          <div class="text-center pt-2">
-            <a href="#" class="text-xs text-sky-600 hover:underline">Didn't find the right service or country? Write to <span class="underline font-semibold">support</span></a>
-          </div>
-
         </div>
 
-      </div><!-- End Numbers Section -->
-
-
-      <!-- ================= VIEW 2: HISTORY SECTION ================= -->
-      <div id="history-section" class="hidden space-y-5">
-        <div class="bg-white border border-sky-200 rounded-2xl p-5 sm:p-6 shadow-xs">
-          
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5 pb-4 border-b border-sky-100">
-            <div>
-              <h3 class="font-bold text-lg tracking-tight text-sky-950">Purchase History</h3>
-              <p class="text-xs text-sky-600">Track and manage your requested SMS verification numbers</p>
-            </div>
-            <div class="flex items-center space-x-2">
-              <button onclick="fetchUserHistory()" class="px-3 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-semibold rounded-lg border border-sky-200 transition">
-                <i class="fa-solid fa-rotate mr-1"></i> Refresh
-              </button>
-            </div>
+        <!-- Redesigned Table Wrapper -->
+        <div class="overflow-x-auto rounded-xl border border-sky-200 bg-sky-50/40">
+          <div id="history-grid" class="space-y-2 p-2">
+            <p class="text-sm text-sky-700 text-center py-8 font-medium">Loading orders history...</p>
           </div>
-
-          <!-- Redesigned Table Wrapper -->
-          <div class="overflow-x-auto rounded-xl border border-sky-200 bg-sky-50/40">
-            <div id="history-grid" class="space-y-2 p-2">
-              <p class="text-sm text-sky-700 text-center py-8 font-medium">Loading orders history...</p>
-            </div>
-          </div>
-
         </div>
-      </div><!-- End History Section -->
 
-    </div>
-  </main>
+      </div>
+    </div><!-- End History Section -->
+
+  </div>
+</main>
 
   <!-- Support Widget Button -->
   <div class="fixed bottom-6 right-6 flex items-center space-x-3 z-30">
@@ -994,7 +1017,7 @@ function renderServicesTable(servicesToRender) {
     if (!servicesToRender || servicesToRender.length === 0) {
         tableBody.innerHTML = `
             <tr>
-                <td colspan="5" class="text-center py-8 text-gray-500 text-sm">
+                <td colspan="5" class="text-center py-8 text-gray-500 text-xs sm:text-sm">
                     No matching services found.
                 </td>
             </tr>`;
@@ -1007,35 +1030,43 @@ function renderServicesTable(servicesToRender) {
 
         return `
             <tr class="hover:bg-sky-50/50 transition border-b border-sky-100" id="row-${serviceCode}">
-                <td class="p-3.5 font-semibold text-sky-950">
+                <!-- Service Name -->
+                <td data-label="Service" class="p-2.5 sm:p-3.5 font-semibold text-sky-950 text-xs sm:text-sm">
                     ${serviceName}
                 </td>
-                <td class="p-3.5">
-                    <div class="flex items-center gap-2">
-                        <!-- Flag Preview image dynamically updated on selection -->
+
+                <!-- Country Dropdown -->
+                <td data-label="Country" class="p-2.5 sm:p-3.5 text-xs">
+                    <div class="flex items-center gap-1.5 sm:gap-2">
                         <img id="flag-${serviceCode}" 
                              src="https://flagcdn.com/w40/un.png" 
-                             class="w-5 h-3.5 object-cover rounded-xs border border-sky-200 shrink-0" 
+                             class="w-4 h-3 sm:w-5 sm:h-3.5 object-cover rounded-xs border border-sky-200 shrink-0" 
                              alt="Flag" 
                              onerror="this.src='https://flagcdn.com/w40/un.png'">
 
                         <select id="select-${serviceCode}"
                                 onchange="SMSGlobeApp.onTableCountryChange(this, '${serviceCode}')" 
-                                class="country-select w-full max-w-[180px] bg-white border border-sky-200 text-sky-900 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium cursor-pointer shadow-2xs">
+                                class="country-select w-full max-w-[140px] sm:max-w-[180px] bg-white border border-sky-200 text-sky-900 text-[11px] sm:text-xs rounded-md sm:rounded-lg px-2 py-1 sm:px-2.5 sm:py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium cursor-pointer shadow-2xs">
                             <option value="" disabled selected>Loading countries...</option>
                         </select>
                     </div>
                 </td>
-                <td class="p-3.5 font-bold text-emerald-600 price-display" id="price-${serviceCode}">
+
+                <!-- Price -->
+                <td data-label="Price" class="p-2.5 sm:p-3.5 font-bold text-emerald-600 text-xs sm:text-sm price-display" id="price-${serviceCode}">
                     <i class="fa-solid fa-spinner fa-spin text-xs text-sky-400"></i>
                 </td>
-                <td class="p-3.5 text-gray-500 font-mono text-xs stock-display" id="stock-${serviceCode}">
+
+                <!-- Stock -->
+                <td data-label="Stock" class="p-2.5 sm:p-3.5 text-gray-500 font-mono text-[11px] sm:text-xs stock-display" id="stock-${serviceCode}">
                     --
                 </td>
-                <td class="p-3.5 text-right">
+
+                <!-- Action Button -->
+                <td data-label="" class="p-2.5 sm:p-3.5 text-right">
                     <button id="buy-btn-${serviceCode}" 
                             disabled
-                            class="px-3.5 py-1.5 bg-gray-300 text-gray-500 text-xs font-semibold rounded-lg transition cursor-not-allowed shadow-2xs">
+                            class="w-full sm:w-auto px-3 py-1.5 sm:px-3.5 sm:py-1.5 bg-gray-300 text-gray-500 text-[11px] sm:text-xs font-semibold rounded-md sm:rounded-lg transition cursor-not-allowed shadow-2xs">
                         Buy Number
                     </button>
                 </td>

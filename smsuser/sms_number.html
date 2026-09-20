@@ -909,20 +909,18 @@ const PAGE_INCREMENT = 10;
     '1333': 'sy', '1010': 'sd'
 };
 
-// Exact 10 Top Priority Services aligned with your vendor IDs/keys
-const TOP_PRIORITY_SERVICES = [
-    'wa',     // WhatsApp
-    'tg',     // Telegram
-    'fb',     // Facebook
-    'ig',     // Instagram
-    'go',     // Google, Gmail, Youtube
-    'oi',     // Tinder
-    'nf',     // Netflix
-    'lf',     // Tiktok
-    'mb',     // Yahoo
-    'mm'      // Microsoft
+const POPULAR_SERVICE_KEYWORDS = [
+    { keys: ['whatsapp', 'wa'], name: 'whatsapp' },
+    { keys: ['telegram', 'tg'], name: 'telegram' },
+    { keys: ['facebook', 'fb'], name: 'facebook' },
+    { keys: ['instagram', 'ig'], name: 'instagram' },
+    { keys: ['gmail', 'google', 'go'], name: 'google' },
+    { keys: ['tinder', 'oi'], name: 'tinder' },
+    { keys: ['netflix', 'nf'], name: 'netflix' },
+    { keys: ['tiktok', 'lf'], name: 'tiktok' },
+    { keys: ['yahoo', 'mb'], name: 'yahoo' },
+    { keys: ['microsoft', 'mm'], name: 'microsoft' }
 ];
-
 
       function logout() {
         localStorage.removeItem('userToken');
@@ -1186,13 +1184,15 @@ function prioritizeServices(services) {
         const nameB = String(b.name || b.serviceName || '').toLowerCase().trim();
 
         const getPriorityScore = (code, name) => {
-            for (let i = 0; i < TOP_PRIORITY_SERVICES.length; i++) {
-                const target = TOP_PRIORITY_SERVICES[i];
-                if (code === target || name.includes(target)) {
-                    return i; // Lower index = higher priority
+            for (let i = 0; i < POPULAR_SERVICE_KEYWORDS.length; i++) {
+                const group = POPULAR_SERVICE_KEYWORDS[i];
+                // Check if the item's code matches or its name contains any alias key
+                const isMatch = group.keys.some(k => code === k || name.includes(k));
+                if (isMatch) {
+                    return i; // Returns index 0 through 9 for top services
                 }
             }
-            return 999; // Non-priority items go to bottom
+            return 999; // Non-priority items go to the bottom
         };
 
         const scoreA = getPriorityScore(codeA, nameA);

@@ -1637,21 +1637,28 @@ async function handlePurchaseWithWallet(req, res) {
         const user = await User.findById(decoded.id);
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-        const recentOrder = await Order.findOne({
-    userId: user._id,
-    createdAt: { $gt: new Date(Date.now() - 20000) },
-    $or: [
-        { productType: itemType },
-        { "metadata.serviceCode": metadata?.serviceCode }
-    ]
-});
+     const recentOrder = await Order.findOne({
+            userId: user._id,
+            createdAt: { $gt: new Date(Date.now() - 20000) },
+            $or: [
+                { productType: itemType },
+                { "metadata.serviceCode": metadata?.serviceCode }
+            ]
+        });
 
-if (recentOrder) {
-    return res.status(429).json({ 
-        success: false, 
-        message: "Duplicate request detected for this service. Please wait 20 seconds." 
-    });
-}
+        if (recentOrder) {
+            // If it's a VPN or Proxy that incremented stock, make sure to roll it back before returning!
+            if (vpnId) await VPN.findByIdAndUpdate(vpnId, { $inc: { stock: 1 } });
+            if (proxyId) await Proxy.findByIdAndUpdate(proxyId, { $inc: { stock: 1 } });
+
+            return res.status(429).json({ 
+                success: false, 
+                message: "Duplicate request detected for this service. Please wait 20 seconds." 
+            });
+        }
+
+        const mainBal = Number(user.balance || 0);
+
         let itemType;
         let costNGN = 0;
         let productDetails = { name: "", plan: "" };

@@ -1117,7 +1117,7 @@ function renderServicesTable(servicesToRender) {
 
     const visibleServices = cachedServicesList.slice(0, currentVisibleCount);
 
- tableBody.innerHTML = visibleServices.map(service => {
+    tableBody.innerHTML = visibleServices.map(service => {
         const serviceName = service.name || service.serviceName || 'Service';
         const serviceCode = service.code || service.id || '';
         
@@ -1181,11 +1181,77 @@ function renderServicesTable(servicesToRender) {
                 </td>
 
             </tr>
+
+            <!-- DYNAMIC EXPANDED SUB-ROW FOR PURCHASED NUMBER & OTP -->
+            <tr id="expansion-row-${serviceCode}" class="hidden bg-sky-50/70 border-b border-sky-200">
+                <td colspan="3" class="p-3 sm:p-4">
+                    <div class="bg-brandBlue-900/90 text-white p-3.5 sm:p-4 rounded-xl border border-brandBlue-700/60 space-y-2.5 shadow-md">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="min-w-0">
+                                <div class="flex items-center space-x-2">
+                                    <p class="text-[11px] sm:text-xs text-brandBlue-200 font-semibold truncate">Active Purchase</p>
+                                    <span class="text-[9px] sm:text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-full border border-amber-500/30 font-mono flex items-center shrink-0">
+                                        <i class="fa-regular fa-clock mr-1"></i> <span class="order-timer" id="timer-${serviceCode}">05:00</span>
+                                    </span>
+                                </div>
+                                <div class="flex items-center space-x-2 mt-0.5">
+                                    <p class="text-sm sm:text-lg font-bold tracking-wide text-white truncate" id="purchased-phone-${serviceCode}">N/A</p>
+                                    <button onclick="copyPurchasedNumber('${serviceCode}')" class="p-1.5 bg-brandBlue-800 hover:bg-brandBlue-700 text-gray-300 hover:text-white rounded-lg text-xs transition border border-brandBlue-700/50 shrink-0" title="Copy Number">
+                                        <i class="fa-regular fa-copy"></i>
+                                    </button>
+                                </div>
+                                <p class="text-[10px] sm:text-[11px] text-gray-300 mt-1 flex items-center space-x-1.5">
+                                    <span id="expansion-flag-${serviceCode}">🌐</span>
+                                    <span class="font-medium text-white truncate" id="purchased-country-${serviceCode}">Selected Country</span>
+                                </p>
+                            </div>
+                            <div class="shrink-0">
+                                <span id="purchased-badge-${serviceCode}" class="px-2.5 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs font-bold rounded-full uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                    Active
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="bg-brandBlue-950/80 border border-brandBlue-700/50 p-2 sm:p-2.5 rounded-lg flex items-center justify-between">
+                            <span class="text-[11px] sm:text-xs text-gray-300 font-medium">OTP Code:</span>
+                            <span id="purchased-otp-${serviceCode}" class="text-xs sm:text-sm font-mono font-bold text-emerald-400 tracking-wider">Waiting for code...</span>
+                        </div>
+
+                        <div class="flex items-center justify-end space-x-1.5 pt-1">
+                            <button id="resend-btn-${serviceCode}" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-brandBlue-800 hover:bg-brandBlue-700 text-gray-200 border border-brandBlue-600/40 text-[11px] sm:text-xs font-semibold rounded-lg transition">
+                                <i class="fa-solid fa-rotate mr-1"></i>Resend Sms
+                            </button>
+                            <button id="cancel-btn-${serviceCode}" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-[11px] sm:text-xs font-semibold rounded-lg transition">
+                                <i class="fa-solid fa-ban mr-1"></i> Cancel
+                            </button>
+                        </div>
+                    </div>
+                </td>
+            </tr>
         `;
     }).join('');
 
     populateVisibleServiceCountries(visibleServices);
     updateShowMoreControls(currentVisibleCount < cachedServicesList.length);
+}
+
+function showExpandedOrder(serviceCode, orderData) {
+    const expansionRow = document.getElementById(`expansion-row-${serviceCode}`);
+    if (!expansionRow) return;
+
+    expansionRow.classList.remove('hidden');
+
+    document.getElementById(`purchased-phone-${serviceCode}`).textContent = orderData.phoneNumber || orderData.number || 'N/A';
+    document.getElementById(`purchased-country-${serviceCode}`).textContent = orderData.countryName || 'Selected Country';
+    document.getElementById(`purchased-otp-${serviceCode}`).textContent = orderData.smsCode || 'Waiting for code...';
+        const orderId = orderData.id || orderData._id;
+    document.getElementById(`cancel-btn-${serviceCode}`).setAttribute('onclick', `cancelActiveOrder('${orderId}')`);
+    document.getElementById(`resend-btn-${serviceCode}`).setAttribute('onclick', `manualRecheckSms('${orderId}')`);
+    
+    // Start polling for this specific order
+    if (typeof startPersistentSmsPolling === 'function' && orderId) {
+        startPersistentSmsPolling(orderId);
+    }
 }
 
 function prioritizeServices(services) {

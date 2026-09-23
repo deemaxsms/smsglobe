@@ -3955,8 +3955,6 @@ async function handleGetCountries(req, res) {
                                 } else {
                                     baseAmountNgn = baseAmountNgn + 1000; 
                                 }
-                            } else if (cleanServiceCode === 'facebook' || cleanServiceCode === 'fb') {
-                                baseAmountNgn = 850; 
                             } else if (cleanServiceCode === 'instagram' || cleanServiceCode === 'ig') {
                                 baseAmountNgn = 850; 
                             } else if (cleanServiceCode === 'tinder') {

@@ -357,13 +357,16 @@
   </div>
 </main>
 
-  <!-- Support Widget Button -->
-  <div class="fixed bottom-6 right-6 flex items-center space-x-3 z-30">
-    <button class="w-12 h-12 bg-sky-600 hover:bg-sky-700 text-white rounded-full shadow-lg flex items-center justify-center transition transform hover:scale-105">
-      <i class="fa-solid fa-comment text-sm"></i>
-    </button>
-  </div>
-
+ <button onclick="toggleSupportMenu()" 
+        id="supportTrigger"
+        class="w-14 h-14 bg-white rounded-full shadow-2xl flex flex-col items-center justify-center border-2 border-brand-blue transition-all hover:scale-105 active:scale-90 overflow-hidden">
+    
+    <img src="/assets/logo.png" 
+         alt="SMSG Logo" 
+         class="w-7 h-7 object-contain mb-0.5">
+    
+    <span class="text-[7px] font-black uppercase leading-none text-brand-blue tracking-tighter">Support</span>
+</button>
 
 <script>
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
@@ -1178,9 +1181,12 @@ function renderServicesTable(servicesToRender) {
         const serviceCode = service.code || service.id || '';
         const iconUrl = getServiceIconUrl(serviceCode, serviceName);
 
-        // Check if this service had an open expansion row previously to maintain state
+        // 1. Check if this service had an open expansion row previously
         const existingExpansionRow = document.getElementById(`expansion-row-${serviceCode}`);
         const isCurrentlyExpanded = existingExpansionRow && !existingExpansionRow.classList.contains('hidden');
+        
+        // 2. Capture existing active order cards inside the container so they don't get wiped out on re-render
+        const existingContainerContent = document.getElementById(`expansion-container-${serviceCode}`)?.innerHTML || '';
 
         return `
             <tr class="hover:bg-sky-50/50 transition border-b border-sky-100 align-middle" id="row-${serviceCode}">
@@ -1240,16 +1246,16 @@ function renderServicesTable(servicesToRender) {
 
             </tr>
 
-            <!-- DYNAMIC EXPANDED CONTAINER ROW WITH CLOSE/CANCEL CONTROL -->
+            <!-- DYNAMIC EXPANDED CONTAINER ROW WITH PRESERVED STATE -->
             <tr id="expansion-row-${serviceCode}" class="${isCurrentlyExpanded ? '' : 'hidden'} bg-sky-50/70 border-b border-sky-200">
                 <td colspan="3" class="p-3 sm:p-4">
                     <div class="flex justify-end mb-1">
-                        <button onclick="hideExpandedOrder('${serviceCode}')" class="text-xs text-gray-500 hover:text-red-600 font-semibold px-2 py-1 rounded transition flex items-center gap-1">
+                        <button type="button" onclick="hideExpandedOrder('${serviceCode}')" class="text-xs text-gray-500 hover:text-red-600 font-semibold px-2 py-1 rounded transition flex items-center gap-1 cursor-pointer">
                             <i class="fa-solid fa-xmark"></i> Close Active Order View
                         </button>
                     </div>
                     <div id="expansion-container-${serviceCode}" class="space-y-3">
-                        <!-- Multiple order cards will be dynamically appended here -->
+                        ${isCurrentlyExpanded ? existingContainerContent : ''}
                     </div>
                 </td>
             </tr>
@@ -1287,7 +1293,16 @@ function hideExpandedOrder(serviceCode) {
     if (container) container.innerHTML = '';
 }
 
-function showExpandedOrder(serviceCode, orderData) {
+// 1. Attach hideExpandedOrder to the global window scope
+window.hideExpandedOrder = function(serviceCode) {
+    const expansionRow = document.getElementById(`expansion-row-${serviceCode}`);
+    const container = document.getElementById(`expansion-container-${serviceCode}`);
+    if (expansionRow) expansionRow.classList.add('hidden');
+    if (container) container.innerHTML = '';
+};
+
+// 2. Attach showExpandedOrder to the global window scope
+window.showExpandedOrder = function(serviceCode, orderData) {
     const expansionRow = document.getElementById(`expansion-row-${serviceCode}`);
     const container = document.getElementById(`expansion-container-${serviceCode}`);
     if (!expansionRow || !container) return;
@@ -1315,7 +1330,7 @@ function showExpandedOrder(serviceCode, orderData) {
                     <!-- Phone Number & Copy Button -->
                     <div class="flex items-center space-x-2 mt-0.5">
                         <p class="text-sm sm:text-lg font-bold tracking-wide text-white truncate">${phoneNumber}</p>
-                        <button onclick="navigator.clipboard.writeText('${phoneNumber}')" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white rounded-lg text-xs transition border border-slate-700 shrink-0" title="Copy Number">
+                        <button type="button" onclick="navigator.clipboard.writeText('${phoneNumber}')" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white rounded-lg text-xs transition border border-slate-700 shrink-0" title="Copy Number">
                             <i class="fa-regular fa-copy"></i>
                         </button>
                     </div>
@@ -1343,10 +1358,10 @@ function showExpandedOrder(serviceCode, orderData) {
             </div>
 
             <div class="flex items-center justify-end space-x-1.5 pt-1">
-                <button onclick="manualRecheckSms('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-gray-200 border border-slate-700 text-[11px] sm:text-xs font-semibold rounded-lg transition">
+                <button type="button" onclick="manualRecheckSms('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-gray-200 border border-slate-700 text-[11px] sm:text-xs font-semibold rounded-lg transition">
                     <i class="fa-solid fa-rotate mr-1"></i>Resend Sms
                 </button>
-                <button onclick="cancelActiveOrder('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-[11px] sm:text-xs font-semibold rounded-lg transition">
+                <button type="button" onclick="cancelActiveOrder('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-[11px] sm:text-xs font-semibold rounded-lg transition">
                     <i class="fa-solid fa-ban mr-1"></i> Cancel
                 </button>
             </div>
@@ -1358,7 +1373,7 @@ function showExpandedOrder(serviceCode, orderData) {
     if (typeof startPersistentSmsPolling === 'function' && orderId) {
         startPersistentSmsPolling(orderId);
     }
-}
+};
 
 function prioritizeServices(services) {
     if (!Array.isArray(services)) return [];
@@ -2313,6 +2328,25 @@ async function fetchUserHistory() {
         historyGrid.innerHTML = `<p class="text-xs sm:text-sm text-red-500 text-center py-6">Failed to load history records.</p>`;
     }
 }
+
+  function toggleSupportMenu() {
+        const menu = document.getElementById('supportMenu');
+        const isHidden = menu.classList.contains('hidden');
+        
+        if (isHidden) {
+            menu.classList.remove('hidden');
+            // Small timeout to allow transition to trigger
+            setTimeout(() => {
+                menu.classList.remove('translate-y-10', 'opacity-0', 'scale-95');
+            }, 10);
+        } else {
+            menu.classList.add('translate-y-10', 'opacity-0', 'scale-95');
+            setTimeout(() => {
+                menu.classList.add('hidden');
+            }, 300);
+        }
+    }
+
 
     // Event Listeners setup on initial load
 document.addEventListener('DOMContentLoaded', () => {

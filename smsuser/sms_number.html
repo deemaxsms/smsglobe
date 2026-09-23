@@ -1184,10 +1184,19 @@ function prioritizeServices(services) {
         const nameB = String(b.name || b.serviceName || '').toLowerCase().trim();
 
         const getPriorityScore = (code, name) => {
+            // Split name into words to prevent partial substring false positives (e.g., "wa" in "rewards")
+            const nameWords = name.split(/[\s-_]+/);
+
             for (let i = 0; i < POPULAR_SERVICE_KEYWORDS.length; i++) {
                 const group = POPULAR_SERVICE_KEYWORDS[i];
-                // Check if the item's code matches or its name contains any alias key
-                const isMatch = group.keys.some(k => code === k || name.includes(k));
+                
+                // Match exact code, exact word in name, or full keyword if it's long enough (> 3 chars)
+                const isMatch = group.keys.some(k => {
+                    return code === k || 
+                           nameWords.includes(k) || 
+                           (k.length > 3 && name.includes(k));
+                });
+
                 if (isMatch) {
                     return i; // Returns index 0 through 9 for top services
                 }

@@ -1083,46 +1083,55 @@ function isMobileView() {
             console.error("Failed to fetch profile details:", err);
         }
       }
-
 async function fetchServices() {
-        const tableBody = document.getElementById('services-table-body');
-        if (!tableBody) return;
+    const tableBody = document.getElementById('services-table-body');
+    if (!tableBody) return;
 
+    // Only show the full loading spinner if the table is completely empty
+    if (!cachedServicesList || cachedServicesList.length === 0) {
         tableBody.innerHTML = `
             <tr>
                 <td colspan="5" class="text-center py-12 text-sky-600 font-medium">
                     <i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Loading available services & rates...
                 </td>
             </tr>`;
+    }
 
-        try {
-            const fetchMethod = typeof safeFetch === 'function' ? safeFetch : async (url) => {
-                const token = localStorage.getItem('userToken');
-                const r = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-                const data = await r.json();
-                return { data };
-            };
+    try {
+        const fetchMethod = typeof safeFetch === 'function' ? safeFetch : async (url) => {
+            const token = localStorage.getItem('userToken');
+            const r = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            const data = await r.json();
+            return { data };
+        };
 
-            const response = await fetchMethod(`${API_BASE_URL}/services`);
-            const data = response.data || response;
-            services = data?.services || data?.data || (Array.isArray(data) ? data : []);
+        const response = await fetchMethod(`${API_BASE_URL}/services`);
+        const data = response.data || response;
+        const freshServices = data?.services || data?.data || (Array.isArray(data) ? data : []);
 
-            if (!services || services.length === 0) {
+        if (!freshServices || freshServices.length === 0) {
+            if (!cachedServicesList || cachedServicesList.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="5" class="text-center py-8 text-gray-500 text-sm">
                             No available services found.
                         </td>
                     </tr>`;
-                return;
             }
+            return;
+        }
 
-            window.services = services;
-            renderServicesTable(services);
-           populateVisibleServiceCountries(services);
+        // Only re-render if the service list changed to prevent mobile UI re-trigger loops
+        const isInitialLoad = !cachedServicesList || cachedServicesList.length === 0;
+        window.services = freshServices;
+        
+        if (isInitialLoad || JSON.stringify(freshServices) !== JSON.stringify(window.services)) {
+            renderServicesTable(freshServices);
+        }
 
-        } catch (err) {
-            console.error("Failed to load services:", err);
+    } catch (err) {
+        console.error("Failed to load services:", err);
+        if (!cachedServicesList || cachedServicesList.length === 0) {
             tableBody.innerHTML = `
                 <tr>
                     <td colspan="5" class="text-center py-8 text-red-500 text-sm font-medium">
@@ -1131,16 +1140,13 @@ async function fetchServices() {
                 </tr>`;
         }
     }
+}
 
-    function getServiceIconUrl(serviceCode, serviceName) {
+function getServiceIconUrl(serviceCode, serviceName) {
     const cleanCode = String(serviceCode || '').toLowerCase().trim();
-    
-    // Check if it exists in your frontend PRIORITY_ICONS map
     if (typeof PRIORITY_ICONS !== 'undefined' && PRIORITY_ICONS[cleanCode]) {
         return PRIORITY_ICONS[cleanCode];
     }
-    
-    // Fallback to your backend proxy image endpoint
     return `${API_BASE_URL}/service-image?id=${cleanCode}`;
 }
 
@@ -1170,9 +1176,11 @@ function renderServicesTable(servicesToRender) {
     tableBody.innerHTML = visibleServices.map(service => {
         const serviceName = service.name || service.serviceName || 'Service';
         const serviceCode = service.code || service.id || '';
-        
-        // Resolve the correct icon URL
         const iconUrl = getServiceIconUrl(serviceCode, serviceName);
+
+        // Check if this service had an open expansion row previously to maintain state
+        const existingExpansionRow = document.getElementById(`expansion-row-${serviceCode}`);
+        const isCurrentlyExpanded = existingExpansionRow && !existingExpansionRow.classList.contains('hidden');
 
         return `
             <tr class="hover:bg-sky-50/50 transition border-b border-sky-100 align-middle" id="row-${serviceCode}">
@@ -1232,9 +1240,14 @@ function renderServicesTable(servicesToRender) {
 
             </tr>
 
-            <!-- DYNAMIC EXPANDED CONTAINER ROW FOR MULTIPLE PURCHASED NUMBERS & OTPS -->
-            <tr id="expansion-row-${serviceCode}" class="hidden bg-sky-50/70 border-b border-sky-200">
+            <!-- DYNAMIC EXPANDED CONTAINER ROW WITH CLOSE/CANCEL CONTROL -->
+            <tr id="expansion-row-${serviceCode}" class="${isCurrentlyExpanded ? '' : 'hidden'} bg-sky-50/70 border-b border-sky-200">
                 <td colspan="3" class="p-3 sm:p-4">
+                    <div class="flex justify-end mb-1">
+                        <button onclick="hideExpandedOrder('${serviceCode}')" class="text-xs text-gray-500 hover:text-red-600 font-semibold px-2 py-1 rounded transition flex items-center gap-1">
+                            <i class="fa-solid fa-xmark"></i> Close Active Order View
+                        </button>
+                    </div>
                     <div id="expansion-container-${serviceCode}" class="space-y-3">
                         <!-- Multiple order cards will be dynamically appended here -->
                     </div>
@@ -1254,23 +1267,26 @@ function resolveCountryDetailsWithDialCode(orderData) {
     let iso = 'un';
     let name = rawName || 'Selected Country';
 
-    // Find ISO via ID mapper first, then fallback to name map
-    if (SMSBOWER_ID_TO_ISO[rawId]) {
+    if (typeof SMSBOWER_ID_TO_ISO !== 'undefined' && SMSBOWER_ID_TO_ISO[rawId]) {
         iso = SMSBOWER_ID_TO_ISO[rawId];
     } else if (rawName) {
         const lookupKey = rawName.toLowerCase();
-        if (COUNTRY_FLAG_MAP[lookupKey]) {
+        if (typeof COUNTRY_FLAG_MAP !== 'undefined' && COUNTRY_FLAG_MAP[lookupKey]) {
             iso = COUNTRY_FLAG_MAP[lookupKey];
         }
     }
 
-    // Grab dialing code prefix using the resolved ISO code
-    const dialCode = COUNTRY_DIAL_CODES[iso] || '';
-
+    const dialCode = (typeof COUNTRY_DIAL_CODES !== 'undefined' && COUNTRY_DIAL_CODES[iso]) || '';
     return { iso, name, dialCode };
 }
 
-// 3. Updated expansion render function with Dial Code displayed
+function hideExpandedOrder(serviceCode) {
+    const expansionRow = document.getElementById(`expansion-row-${serviceCode}`);
+    const container = document.getElementById(`expansion-container-${serviceCode}`);
+    if (expansionRow) expansionRow.classList.add('hidden');
+    if (container) container.innerHTML = '';
+}
+
 function showExpandedOrder(serviceCode, orderData) {
     const expansionRow = document.getElementById(`expansion-row-${serviceCode}`);
     const container = document.getElementById(`expansion-container-${serviceCode}`);
@@ -1283,15 +1299,14 @@ function showExpandedOrder(serviceCode, orderData) {
     const smsCode = orderData.smsCode || 'Waiting for code...';
     const uniqueCardId = `order-card-${orderId || Math.random().toString(36).substr(2, 9)}`;
 
-    // Resolve Country Details including the Dial Code prefix
     const { iso, name, dialCode } = resolveCountryDetailsWithDialCode(orderData);
 
     const orderCardHtml = `
-        <div id="${uniqueCardId}" class="bg-brandBlue-900/90 text-white p-3.5 sm:p-4 rounded-xl border border-brandBlue-700/60 space-y-2.5 shadow-md">
+        <div id="${uniqueCardId}" class="bg-slate-900 text-white p-3.5 sm:p-4 rounded-xl border border-slate-700 space-y-2.5 shadow-md">
             <div class="flex items-center justify-between gap-2">
                 <div class="min-w-0">
                     <div class="flex items-center space-x-2">
-                        <p class="text-[11px] sm:text-xs text-brandBlue-200 font-semibold truncate">Active Purchase</p>
+                        <p class="text-[11px] sm:text-xs text-sky-300 font-semibold truncate">Active Purchase</p>
                         <span class="text-[9px] sm:text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded-full border border-amber-500/30 font-mono flex items-center shrink-0">
                             <i class="fa-regular fa-clock mr-1"></i> <span class="order-timer" id="timer-${orderId}">05:00</span>
                         </span>
@@ -1300,7 +1315,7 @@ function showExpandedOrder(serviceCode, orderData) {
                     <!-- Phone Number & Copy Button -->
                     <div class="flex items-center space-x-2 mt-0.5">
                         <p class="text-sm sm:text-lg font-bold tracking-wide text-white truncate">${phoneNumber}</p>
-                        <button onclick="navigator.clipboard.writeText('${phoneNumber}')" class="p-1.5 bg-brandBlue-800 hover:bg-brandBlue-700 text-gray-300 hover:text-white rounded-lg text-xs transition border border-brandBlue-700/50 shrink-0" title="Copy Number">
+                        <button onclick="navigator.clipboard.writeText('${phoneNumber}')" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white rounded-lg text-xs transition border border-slate-700 shrink-0" title="Copy Number">
                             <i class="fa-regular fa-copy"></i>
                         </button>
                     </div>
@@ -1312,7 +1327,7 @@ function showExpandedOrder(serviceCode, orderData) {
                              alt="${name}" 
                              onerror="this.src='https://flagcdn.com/w40/un.png'">
                         <span class="font-medium text-white truncate">${name}</span>
-                        ${dialCode ? `<span class="bg-brandBlue-800 text-emerald-300 px-1.5 py-0.2 rounded font-mono text-[10px] border border-brandBlue-700/50">${dialCode}</span>` : ''}
+                        ${dialCode ? `<span class="bg-slate-800 text-emerald-300 px-1.5 py-0.5 rounded font-mono text-[10px] border border-slate-700">${dialCode}</span>` : ''}
                     </p>
                 </div>
                 <div class="shrink-0">
@@ -1322,13 +1337,13 @@ function showExpandedOrder(serviceCode, orderData) {
                 </div>
             </div>
 
-            <div class="bg-brandBlue-950/80 border border-brandBlue-700/50 p-2 sm:p-2.5 rounded-lg flex items-center justify-between">
+            <div class="bg-slate-950 border border-slate-800 p-2 sm:p-2.5 rounded-lg flex items-center justify-between">
                 <span class="text-[11px] sm:text-xs text-gray-300 font-medium">OTP Code:</span>
                 <span id="otp-${orderId}" class="text-xs sm:text-sm font-mono font-bold text-emerald-400 tracking-wider">${smsCode}</span>
             </div>
 
             <div class="flex items-center justify-end space-x-1.5 pt-1">
-                <button onclick="manualRecheckSms('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-brandBlue-800 hover:bg-brandBlue-700 text-gray-200 border border-brandBlue-600/40 text-[11px] sm:text-xs font-semibold rounded-lg transition">
+                <button onclick="manualRecheckSms('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-gray-200 border border-slate-700 text-[11px] sm:text-xs font-semibold rounded-lg transition">
                     <i class="fa-solid fa-rotate mr-1"></i>Resend Sms
                 </button>
                 <button onclick="cancelActiveOrder('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 text-[11px] sm:text-xs font-semibold rounded-lg transition">

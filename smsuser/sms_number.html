@@ -1082,6 +1082,18 @@ async function fetchServices() {
         }
     }
 
+    function getServiceIconUrl(serviceCode, serviceName) {
+    const cleanCode = String(serviceCode || '').toLowerCase().trim();
+    
+    // Check if it exists in your frontend PRIORITY_ICONS map
+    if (typeof PRIORITY_ICONS !== 'undefined' && PRIORITY_ICONS[cleanCode]) {
+        return PRIORITY_ICONS[cleanCode];
+    }
+    
+    // Fallback to your backend proxy image endpoint
+    return `${API_BASE_URL}/service-image?id=${cleanCode}`;
+}
+
 /**
  * Main rendering function for the 3-column table
  */
@@ -1089,11 +1101,9 @@ function renderServicesTable(servicesToRender) {
     const tableBody = document.getElementById('services-table-body');
     if (!tableBody) return;
 
-    // Save and prioritize active dataset reference
     if (servicesToRender && servicesToRender !== cachedServicesList) {
         cachedServicesList = prioritizeServices(servicesToRender);
     }
-
     if (!cachedServicesList || cachedServicesList.length === 0) {
         tableBody.innerHTML = `
             <tr>
@@ -1105,20 +1115,22 @@ function renderServicesTable(servicesToRender) {
         return;
     }
 
-    // Slice current batch of 10, 20, 30... items
     const visibleServices = cachedServicesList.slice(0, currentVisibleCount);
 
-   tableBody.innerHTML = visibleServices.map(service => {
+ tableBody.innerHTML = visibleServices.map(service => {
         const serviceName = service.name || service.serviceName || 'Service';
         const serviceCode = service.code || service.id || '';
+        
+        // Resolve the correct icon URL
+        const iconUrl = getServiceIconUrl(serviceCode, serviceName);
 
         return `
             <tr class="hover:bg-sky-50/50 transition border-b border-sky-100 align-middle" id="row-${serviceCode}">
                 
-                <!-- 1. SERVICE COLUMN WITH BACKEND PROXY ICON -->
+                <!-- 1. SERVICE COLUMN WITH ICON -->
                 <td class="p-2.5 sm:p-3.5 font-semibold text-sky-950 text-xs sm:text-sm">
                     <div class="flex items-center gap-2.5">
-                        <img src="${API_BASE_URL}/service-image?id=${serviceCode}" 
+                        <img src="${iconUrl}" 
                              class="w-6 h-6 object-contain rounded-full border border-sky-100 shrink-0 bg-sky-50" 
                              alt="" 
                              onerror="this.src='https://api.iconify.design/lucide:globe.svg'">

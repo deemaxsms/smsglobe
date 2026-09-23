@@ -1632,23 +1632,26 @@ async function handlePurchaseWithWallet(req, res) {
     const token = authHeader && authHeader.split(' ')[1];
 
     try {
-        if (!token) return res.status(401).json({ success: false, message: "Unauthorized" });
-        
+        if (!token) return res.status(401).json({ success: false, message: "Unauthorized" })
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        
-        // FETCH FRESH USER DATA
         const user = await User.findById(decoded.id);
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-        // IDEMPOTENCY CHECK
         const recentOrder = await Order.findOne({
-            userId: user._id,
-            createdAt: { $gt: new Date(Date.now() - 20000) } 
-        });
-        if (recentOrder) {
-            return res.status(429).json({ success: false, message: "Duplicate request detected. Please wait 20 seconds." });
-        }
+    userId: user._id,
+    createdAt: { $gt: new Date(Date.now() - 20000) },
+    $or: [
+        { productType: itemType },
+        { "metadata.serviceCode": metadata?.serviceCode }
+    ]
+});
 
+if (recentOrder) {
+    return res.status(429).json({ 
+        success: false, 
+        message: "Duplicate request detected for this service. Please wait 20 seconds." 
+    });
+}
         let itemType;
         let costNGN = 0;
         let productDetails = { name: "", plan: "" };

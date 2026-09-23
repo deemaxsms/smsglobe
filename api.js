@@ -1636,18 +1636,9 @@ async function handlePurchaseWithWallet(req, res) {
         
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
-        // FETCH FRESH USER DATA
+     // FETCH FRESH USER DATA
         const user = await User.findById(decoded.id);
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
-
-        // IDEMPOTENCY CHECK
-        const recentOrder = await Order.findOne({
-            userId: user._id,
-            createdAt: { $gt: new Date(Date.now() - 20000) } 
-        });
-        if (recentOrder) {
-            return res.status(429).json({ success: false, message: "Duplicate request detected. Please wait 20 seconds." });
-        }
 
         let itemType;
         let costNGN = 0;
@@ -1655,6 +1646,30 @@ async function handlePurchaseWithWallet(req, res) {
         let orderSpecifics = {};
         let isOnlineSimFlow = false; // Flag to execute downstream vendor calls safely
 
+        // NOTE: Extract your serviceCode or product identifiers early from req.body 
+        // so the idempotency check can inspect them.
+        const targetServiceCode = req.body.metadata?.serviceCode || req.body.serviceCode;
+
+        // REFINED IDEMPOTENCY CHECK
+        // Blocks rapid duplicates ONLY if it's the exact same service code or product within 20s
+        const recentOrder = await Order.findOne({
+            userId: user._id,
+            createdAt: { $gt: new Date(Date.now() - 20000) },
+            $or: [
+                ...(targetServiceCode ? [{ "metadata.serviceCode": targetServiceCode }] : []),
+                ...(req.body.vpnId ? [{ productType: "VPN" }] : []),
+                ...(req.body.proxyId ? [{ productType: "Proxy" }] : []),
+                ...(req.body.rdpId ? [{ productType: "RDP" }] : [])
+            ]
+        });
+
+        if (recentOrder) {
+            return res.status(429).json({ 
+                success: false, 
+                message: "Duplicate request detected for this specific service. Please wait 20 seconds." 
+            });
+        }
+        
         if (vpnId) {
             const vpnLookup = await VPN.findById(vpnId).select('+phoneAccounts +pcAccounts');
             if (!vpnLookup || (vpnLookup.stock || 0) <= 0) {

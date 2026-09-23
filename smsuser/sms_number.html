@@ -2096,6 +2096,7 @@ async function fetchUserHistory() {
     const historyGrid = document.getElementById('history-grid');
     if (!historyGrid) return;
 
+    // Clear any active history timer interval to prevent memory leaks or overlapping timers
     if (window.historyTimerInterval) {
         clearInterval(window.historyTimerInterval);
         window.historyTimerInterval = null;
@@ -2161,10 +2162,19 @@ async function fetchUserHistory() {
         const sortedHistory = historyList.sort((a, b) => {
             const statusA = String(a.status || '').toLowerCase();
             const statusB = String(b.status || '').toLowerCase();
+
             const isActiveA = statusA === 'active' || statusA === 'pending' || statusA === 'waiting for sms...' ? 0 : 1;
             const isActiveB = statusB === 'active' || statusB === 'pending' || statusB === 'waiting for sms...' ? 0 : 1;
+
             return isActiveA - isActiveB;
         });
+
+        const getCountryFlagEmoji = (countryCode) => {
+            if (!countryCode || countryCode.length !== 2) return '🌐';
+            return countryCode.toUpperCase().replace(/./g, char => 
+                String.fromCodePoint(127397 + char.charCodeAt(0))
+            );
+        };
 
         historyGrid.innerHTML = sortedHistory.map(item => {
             const statusLower = String(item.status || 'pending').toLowerCase();
@@ -2182,9 +2192,13 @@ async function fetchUserHistory() {
             const displayPhoneNumber = item.phoneNumber || item.number || item.targetNumber || 'N/A';
             const displayServiceName = item.serviceName || item.serviceCode || 'Service';
             
-            // Resolve Flag, Country Name, and Dial Code
-            const { iso, name, dialCode } = resolveOrderCountry(item);
-            const flagElement = `<img src="https://flagcdn.com/w40/${iso}.png" class="w-4 h-3 object-cover rounded-2xs inline-block shrink-0 shadow-2xs border border-sky-200/40" alt="${name}" onerror="this.src='https://flagcdn.com/w40/un.png'">`;
+            const displayCountryName = item.countryName || item.country || 'Selected Country';
+            const displayCountryShortCode = (item.countryCode || item.shortCode || '').toUpperCase();
+            
+            const flagUrl = item.countryFlag || item.flag || item.flagUrl || item.icon || '';
+            const flagElement = flagUrl && flagUrl.startsWith('http')
+                ? `<img src="${flagUrl}" class="w-4 h-3 object-cover rounded-2xs inline-block shrink-0 shadow-2xs" alt="flag">`
+                : `<span class="text-xs">${getCountryFlagEmoji(displayCountryShortCode || (displayCountryName.length === 2 ? displayCountryName : ''))}</span>`;
 
             let expirationTime;
             const baseCreatedAt = item.createdAt ? new Date(item.createdAt).getTime() : Date.now();
@@ -2233,12 +2247,10 @@ async function fetchUserHistory() {
                                     </button>
                                 ` : ''}
                             </div>
-                            
-                            <!-- Country Flag, Name, and Dial Code Prefix Display -->
                             <p class="text-[10px] sm:text-[11px] text-gray-500 mt-1 flex items-center space-x-1.5">
                                 ${flagElement}
-                                <span class="font-medium text-sky-900 truncate">${name}</span>
-                                ${dialCode ? `<span class="text-emerald-700 font-mono text-[9px] sm:text-[10px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-bold shrink-0">${dialCode}</span>` : ''}
+                                <span class="font-medium text-sky-900 truncate">${displayCountryName}</span>
+                                ${displayCountryShortCode ? `<span class="text-sky-700 font-mono text-[9px] sm:text-[10px] bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200 shrink-0">(${displayCountryShortCode})</span>` : ''}
                             </p>
                         </div>
                         <div class="shrink-0">

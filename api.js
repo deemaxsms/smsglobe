@@ -1636,7 +1636,7 @@ async function handlePurchaseWithWallet(req, res) {
         
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
-     // FETCH FRESH USER DATA
+// FETCH FRESH USER DATA
         const user = await User.findById(decoded.id);
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
@@ -1651,10 +1651,10 @@ async function handlePurchaseWithWallet(req, res) {
         const targetServiceCode = req.body.metadata?.serviceCode || req.body.serviceCode;
 
         // REFINED IDEMPOTENCY CHECK
-        // Blocks rapid duplicates ONLY if it's the exact same service code or product within 20s
+        // Blocks rapid duplicates ONLY if it's the exact same service code or product within 5s
         const recentOrder = await Order.findOne({
             userId: user._id,
-            createdAt: { $gt: new Date(Date.now() - 20000) },
+            createdAt: { $gt: new Date(Date.now() - 5000) },
             $or: [
                 ...(targetServiceCode ? [{ "metadata.serviceCode": targetServiceCode }] : []),
                 ...(req.body.vpnId ? [{ productType: "VPN" }] : []),
@@ -1666,7 +1666,7 @@ async function handlePurchaseWithWallet(req, res) {
         if (recentOrder) {
             return res.status(429).json({ 
                 success: false, 
-                message: "Duplicate request detected for this specific service. Please wait 20 seconds." 
+                message: "Duplicate request detected for this specific service. Please wait 5 seconds." 
             });
         }
         

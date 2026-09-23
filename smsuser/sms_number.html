@@ -1847,16 +1847,16 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
         const res = response.data || response;
 
         if (res && res.success) {
-            const orderId = res.order?._id || res.order?.id || res.orderId;
+            const orderData = res.order || res.data || res;
+            const orderId = orderData._id || orderData.id || res.orderId;
 
             if (typeof renderActiveOrdersDashboard === 'function') renderActiveOrdersDashboard();
-            if (typeof startPersistentSmsPolling === 'function' && orderId) startPersistentSmsPolling(orderId);
             if (typeof fetchUserProfile === 'function') fetchUserProfile();
 
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
                     title: 'Number Provisioned!',
-                    text: 'Redirecting to your active history grid...',
+                    text: 'Your number is ready below.',
                     icon: 'success',
                     background: '#0B132B',
                     color: '#F8FAFC',
@@ -1865,11 +1865,8 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
                 });
             }
 
-            if (typeof switchTab === 'function') {
-                switchTab('History');
-            } else if (typeof fetchUserHistory === 'function') {
-                fetchUserHistory();
-            }
+            // Expand the row inline instead of switching to History tab
+            showExpandedOrder(serviceCode, orderData);
         } else {
             if (typeof Swal !== 'undefined') {
                 Swal.fire({

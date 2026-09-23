@@ -1632,32 +1632,22 @@ async function handlePurchaseWithWallet(req, res) {
     const token = authHeader && authHeader.split(' ')[1];
 
     try {
-        if (!token) return res.status(401).json({ success: false, message: "Unauthorized" })
+        if (!token) return res.status(401).json({ success: false, message: "Unauthorized" });
+        
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        // FETCH FRESH USER DATA
         const user = await User.findById(decoded.id);
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-     const recentOrder = await Order.findOne({
+        // IDEMPOTENCY CHECK
+        const recentOrder = await Order.findOne({
             userId: user._id,
-            createdAt: { $gt: new Date(Date.now() - 20000) },
-            $or: [
-                { productType: itemType },
-                { "metadata.serviceCode": metadata?.serviceCode }
-            ]
+            createdAt: { $gt: new Date(Date.now() - 20000) } 
         });
-
         if (recentOrder) {
-            // If it's a VPN or Proxy that incremented stock, make sure to roll it back before returning!
-            if (vpnId) await VPN.findByIdAndUpdate(vpnId, { $inc: { stock: 1 } });
-            if (proxyId) await Proxy.findByIdAndUpdate(proxyId, { $inc: { stock: 1 } });
-
-            return res.status(429).json({ 
-                success: false, 
-                message: "Duplicate request detected for this service. Please wait 20 seconds." 
-            });
+            return res.status(429).json({ success: false, message: "Duplicate request detected. Please wait 20 seconds." });
         }
-
-        const mainBal = Number(user.balance || 0);
 
         let itemType;
         let costNGN = 0;

@@ -3938,7 +3938,6 @@ async function handleGetCountries(req, res) {
 
                             if (rawCostUsd <= 0 || rawCostUsd > 10000) return;
 
-                            // Base price calculation using exchange rate and cached markup
                             const rawPriceInNgn = rawCostUsd * exchangeRateToNgn;
                             let baseAmountNgn = Number((rawPriceInNgn * (1 + smsMarkup / 100)).toFixed(2));
 
@@ -3949,28 +3948,7 @@ async function handleGetCountries(req, res) {
                                 } else {
                                     baseAmountNgn = baseAmountNgn + 1000; 
                                 }
-                            } else if (cleanServiceCode === 'telegram' || cleanServiceCode === 'tg') {
-                                if (baseAmountNgn <= 2000) {
-                                    baseAmountNgn = 3000; 
-                                } else {
-                                    baseAmountNgn = baseAmountNgn + 1000; 
-                                }
-                            } else if (cleanServiceCode === 'instagram' || cleanServiceCode === 'ig') {
-                                baseAmountNgn = 850; 
-                            } else if (cleanServiceCode === 'tinder') {
-                                baseAmountNgn = 1050; 
-                            } else if (cleanServiceCode === 'snapchat' || cleanServiceCode === 'snap') {
-                                baseAmountNgn = 1100; 
-                            } else if (cleanServiceCode === 'discord' || cleanServiceCode === 'dc') {
-                                baseAmountNgn = 700; 
-                            } else {
-                                // Catch-all rule for all other services
-                                if (baseAmountNgn <= 500) {
-                                    baseAmountNgn = 900; 
-                                } else {
-                                    baseAmountNgn = baseAmountNgn + 450; 
-                                }
-                            }
+                            } 
 
                             const rawRank = (v && typeof v === 'object' && (v.rank || v.tier)) || providerKey || 'Standard';
                             const formattedRank = String(rawRank).charAt(0).toUpperCase() + String(rawRank).slice(1).toLowerCase();

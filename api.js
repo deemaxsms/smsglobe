@@ -1636,7 +1636,6 @@ async function handlePurchaseWithWallet(req, res) {
         
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
-// FETCH FRESH USER DATA
         const user = await User.findById(decoded.id);
         if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
@@ -1645,16 +1644,11 @@ async function handlePurchaseWithWallet(req, res) {
         let productDetails = { name: "", plan: "" };
         let orderSpecifics = {};
         let isOnlineSimFlow = false; // Flag to execute downstream vendor calls safely
-
-        // NOTE: Extract your serviceCode or product identifiers early from req.body 
-        // so the idempotency check can inspect them.
         const targetServiceCode = req.body.metadata?.serviceCode || req.body.serviceCode;
 
-        // REFINED IDEMPOTENCY CHECK
-        // Blocks rapid duplicates ONLY if it's the exact same service code or product within 5s
         const recentOrder = await Order.findOne({
             userId: user._id,
-            createdAt: { $gt: new Date(Date.now() - 5000) },
+            createdAt: { $gt: new Date(Date.now() - 1500) }, // 1.5 seconds prevents double-clicks, allows fast multi-buys
             $or: [
                 ...(targetServiceCode ? [{ "metadata.serviceCode": targetServiceCode }] : []),
                 ...(req.body.vpnId ? [{ productType: "VPN" }] : []),
@@ -1666,10 +1660,10 @@ async function handlePurchaseWithWallet(req, res) {
         if (recentOrder) {
             return res.status(429).json({ 
                 success: false, 
-                message: "Duplicate request detected for this specific service. Please wait 5 seconds." 
+                message: "Duplicate submission detected. Please wait a moment." 
             });
         }
-        
+
         if (vpnId) {
             const vpnLookup = await VPN.findById(vpnId).select('+phoneAccounts +pcAccounts');
             if (!vpnLookup || (vpnLookup.stock || 0) <= 0) {

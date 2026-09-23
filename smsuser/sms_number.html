@@ -1108,16 +1108,22 @@ function renderServicesTable(servicesToRender) {
     // Slice current batch of 10, 20, 30... items
     const visibleServices = cachedServicesList.slice(0, currentVisibleCount);
 
-    tableBody.innerHTML = visibleServices.map(service => {
+   tableBody.innerHTML = visibleServices.map(service => {
         const serviceName = service.name || service.serviceName || 'Service';
         const serviceCode = service.code || service.id || '';
 
         return `
             <tr class="hover:bg-sky-50/50 transition border-b border-sky-100 align-middle" id="row-${serviceCode}">
                 
-                <!-- 1. SERVICE COLUMN -->
+                <!-- 1. SERVICE COLUMN WITH BACKEND PROXY ICON -->
                 <td class="p-2.5 sm:p-3.5 font-semibold text-sky-950 text-xs sm:text-sm">
-                    ${serviceName}
+                    <div class="flex items-center gap-2.5">
+                        <img src="${API_BASE_URL}/service-image?id=${serviceCode}" 
+                             class="w-6 h-6 object-contain rounded-full border border-sky-100 shrink-0 bg-sky-50" 
+                             alt="" 
+                             onerror="this.src='https://api.iconify.design/lucide:globe.svg'">
+                        <span>${serviceName}</span>
+                    </div>
                 </td>
 
                 <!-- 2. COUNTRIES COLUMN -->
@@ -1166,10 +1172,7 @@ function renderServicesTable(servicesToRender) {
         `;
     }).join('');
 
-    // Fetch countries only for the newly rendered visible rows
     populateVisibleServiceCountries(visibleServices);
-
-    // Render or hide "View More" button depending on remaining items
     updateShowMoreControls(currentVisibleCount < cachedServicesList.length);
 }
 

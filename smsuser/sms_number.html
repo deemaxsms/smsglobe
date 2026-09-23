@@ -879,6 +879,56 @@ const PAGE_INCREMENT = 10;
         'tonga': 'to', 'marshall islands': 'mh', 'palau': 'pw', 'tuvalu': 'tv', 'nauru': 'nr', 'french guiana': 'gf', 'niue': 'nu'
     };
 
+    const COUNTRY_DIAL_CODES = {
+    // North America & Caribbean
+    'us': '+1', 'ca': '+1', 'mx': '+52', 'cu': '+53', 'do': '+1-809', 'pr': '+1',
+    'gt': '+502', 'hn': '+504', 'sv': '+503', 'ni': '+505', 'cr': '+506', 'pa': '+507',
+    'ht': '+509', 'jm': '+1-876', 'tt': '+1-868', 'bs': '+1-242', 'bb': '+1-246',
+    'bz': '+501', 'dm': '+1-767', 'gd': '+1-473', 'gy': '+592', 'kn': '+1-869',
+    'lc': '+1-758', 'vc': '+1-784', 'ag': '+1-268', 'ky': '+345', 'aw': '+297',
+    'ms': '+1-664', 'ai': '+1-264', 'bm': '+1-441', 'sx': '+1-721', 'mq': '+596',
+    'gp': '+590', 'gf': '+594', 're': '+262', 'bn': '+673',
+
+    // South America
+    'br': '+55', 'ar': '+54', 'co': '+57', 'cl': '+56', 'pe': '+51', 've': '+58',
+    'ec': '+593', 'bo': '+591', 'py': '+595', 'uy': '+598', 'sr': '+597',
+
+    // Europe
+    'gb': '+44', 'de': '+49', 'fr': '+33', 'it': '+39', 'es': '+34', 'ua': '+380',
+    'ru': '+7', 'pl': '+48', 'ro': '+40', 'nl': '+31', 'be': '+32', 'gr': '+30',
+    'cz': '+420', 'pt': '+351', 'se': '+46', 'hu': '+36', 'by': '+375', 'at': '+43',
+    'ch': '+41', 'bg': '+359', 'rs': '+381', 'dk': '+45', 'fi': '+358', 'sk': '+421',
+    'no': '+47', 'ie': '+353', 'hr': '+385', 'md': '+373', 'ba': '+387', 'al': '+355',
+    'lt': '+370', 'mk': '+389', 'si': '+386', 'lv': '+371', 'ee': '+372', 'me': '+382',
+    'lu': '+352', 'mt': '+356', 'is': '+354', 'ad': '+376', 'mc': '+377', 'li': '+423',
+    'sm': '+378', 'va': '+379', 'cy': '+357', 'xk': '+383', 'fo': '+298', 'gi': '+350',
+
+    // Africa & Middle East
+    'ng': '+234', 'eg': '+20', 'za': '+27', 'ke': '+254', 'gh': '+233', 'cm': '+237',
+    'gn': '+224', 'et': '+251', 'tz': '+255', 'dz': '+213', 'ma': '+212', 'ug': '+256',
+    'sd': '+249', 'ao': '+244', 'mz': '+258', 'ci': '+225', 'mg': '+261', 'zm': '+260',
+    'zw': '+263', 'sn': '+221', 'ml': '+223', 'rw': '+250', 'so': '+252', 'tn': '+216',
+    'td': '+235', 'bj': '+229', 'bi': '+257', 'ss': '+211', 'er': '+291', 'na': '+264',
+    'gm': '+220', 'bw': '+267', 'ga': '+241', 'ls': '+266', 'gw': '+245', 'gq': '+240',
+    'mu': '+230', 'sz': '+268', 'dj': '+253', 'km': '+269', 'cv': '+238', 'st': '+239',
+    'sc': '+248', 'tg': '+228', 'mr': '+222', 'cf': '+236', 'bf': '+226', 'lr': '+231',
+    'cd': '+243', 'cg': '+242', 'ly': '+218', 'sl': '+232', 'ne': '+227', 'il': '+972',
+    'tr': '+90', 'ir': '+98', 'iq': '+964', 'sa': '+966', 'ye': '+967', 'sy': '+963',
+    'jo': '+962', 'ae': '+971', 'lb': '+961', 'ps': '+970', 'om': '+968', 'kw': '+965',
+    'qa': '+974', 'bh': '+973',
+
+    // Asia & Oceania
+    'cn': '+86', 'in': '+91', 'vn': '+84', 'id': '+62', 'pk': '+92', 'bd': '+880',
+    'jp': '+81', 'hk': '+852', 'ph': '+63', 'th': '+66', 'mm': '+95', 'kr': '+82',
+    'af': '+93', 'uz': '+998', 'my': '+60', 'np': '+977', 'kp': '+850', 'lk': '+94',
+    'kz': '+7', 'kh': '+855', 'az': '+994', 'tj': '+992', 'tm': '+993', 'kg': '+996',
+    'sg': '+65', 'ge': '+995', 'mn': '+976', 'am': '+374', 'tl': '+670', 'bt': '+975',
+    'mv': '+960', 'mo': '+853', 'la': '+856', 'tw': '+886', 'au': '+61', 'nz': '+64',
+    'fj': '+679', 'sb': '+677', 'vu': '+678', 'ws': '+685', 'ki': '+686', 'fm': '+691',
+    'to': '+676', 'mh': '+692', 'pw': '+680', 'tv': '+688', 'nr': '+674', 'nc': '+687',
+    'nu': '+683'
+};
+
 
     const SMSBOWER_ID_TO_ISO = {
     '0': 'ru',    '1': 'ua',    '2': 'kz',    '3': 'cn',    '4': 'ph',    '5': 'mm',    '6': 'id',    '7': 'my',
@@ -1197,22 +1247,45 @@ function renderServicesTable(servicesToRender) {
     updateShowMoreControls(currentVisibleCount < cachedServicesList.length);
 }
 
+function resolveCountryDetailsWithDialCode(orderData) {
+    const rawName = (orderData.countryName || orderData.country || '').trim();
+    const rawId = String(orderData.countryCode || orderData.countryId || '');
+    
+    let iso = 'un';
+    let name = rawName || 'Selected Country';
+
+    // Find ISO via ID mapper first, then fallback to name map
+    if (SMSBOWER_ID_TO_ISO[rawId]) {
+        iso = SMSBOWER_ID_TO_ISO[rawId];
+    } else if (rawName) {
+        const lookupKey = rawName.toLowerCase();
+        if (COUNTRY_FLAG_MAP[lookupKey]) {
+            iso = COUNTRY_FLAG_MAP[lookupKey];
+        }
+    }
+
+    // Grab dialing code prefix using the resolved ISO code
+    const dialCode = COUNTRY_DIAL_CODES[iso] || '';
+
+    return { iso, name, dialCode };
+}
+
+// 3. Updated expansion render function with Dial Code displayed
 function showExpandedOrder(serviceCode, orderData) {
     const expansionRow = document.getElementById(`expansion-row-${serviceCode}`);
     const container = document.getElementById(`expansion-container-${serviceCode}`);
     if (!expansionRow || !container) return;
 
-    // Reveal the main expansion row if hidden
     expansionRow.classList.remove('hidden');
 
     const orderId = orderData.id || orderData._id;
     const phoneNumber = orderData.phoneNumber || orderData.number || 'N/A';
-    const countryName = orderData.countryName || orderData.country || 'Selected Country';
-    const countryCode = (orderData.countryCode || orderData.countryId || 'un').toLowerCase();
     const smsCode = orderData.smsCode || 'Waiting for code...';
     const uniqueCardId = `order-card-${orderId || Math.random().toString(36).substr(2, 9)}`;
 
-    // Build a distinct card template for each individual purchase with correct country flag & name
+    // Resolve Country Details including the Dial Code prefix
+    const { iso, name, dialCode } = resolveCountryDetailsWithDialCode(orderData);
+
     const orderCardHtml = `
         <div id="${uniqueCardId}" class="bg-brandBlue-900/90 text-white p-3.5 sm:p-4 rounded-xl border border-brandBlue-700/60 space-y-2.5 shadow-md">
             <div class="flex items-center justify-between gap-2">
@@ -1232,13 +1305,14 @@ function showExpandedOrder(serviceCode, orderData) {
                         </button>
                     </div>
 
-                    <!-- Correct Country Name & Flag Display -->
+                    <!-- Flag, Country Name, and Explicit Dial Code Prefix Display -->
                     <p class="text-[10px] sm:text-[11px] text-gray-300 mt-1 flex items-center space-x-1.5">
-                        <img src="https://flagcdn.com/w40/${countryCode}.png" 
+                        <img src="https://flagcdn.com/w40/${iso}.png" 
                              class="w-4 h-3 object-cover rounded-2xs border border-sky-200/40 shrink-0" 
-                             alt="" 
+                             alt="${name}" 
                              onerror="this.src='https://flagcdn.com/w40/un.png'">
-                        <span class="font-medium text-white truncate">${countryName}</span>
+                        <span class="font-medium text-white truncate">${name}</span>
+                        ${dialCode ? `<span class="bg-brandBlue-800 text-emerald-300 px-1.5 py-0.2 rounded font-mono text-[10px] border border-brandBlue-700/50">${dialCode}</span>` : ''}
                     </p>
                 </div>
                 <div class="shrink-0">
@@ -2022,7 +2096,6 @@ async function fetchUserHistory() {
     const historyGrid = document.getElementById('history-grid');
     if (!historyGrid) return;
 
-    // Clear any active history timer interval to prevent memory leaks or overlapping timers
     if (window.historyTimerInterval) {
         clearInterval(window.historyTimerInterval);
         window.historyTimerInterval = null;
@@ -2088,19 +2161,10 @@ async function fetchUserHistory() {
         const sortedHistory = historyList.sort((a, b) => {
             const statusA = String(a.status || '').toLowerCase();
             const statusB = String(b.status || '').toLowerCase();
-
             const isActiveA = statusA === 'active' || statusA === 'pending' || statusA === 'waiting for sms...' ? 0 : 1;
             const isActiveB = statusB === 'active' || statusB === 'pending' || statusB === 'waiting for sms...' ? 0 : 1;
-
             return isActiveA - isActiveB;
         });
-
-        const getCountryFlagEmoji = (countryCode) => {
-            if (!countryCode || countryCode.length !== 2) return '🌐';
-            return countryCode.toUpperCase().replace(/./g, char => 
-                String.fromCodePoint(127397 + char.charCodeAt(0))
-            );
-        };
 
         historyGrid.innerHTML = sortedHistory.map(item => {
             const statusLower = String(item.status || 'pending').toLowerCase();
@@ -2118,13 +2182,9 @@ async function fetchUserHistory() {
             const displayPhoneNumber = item.phoneNumber || item.number || item.targetNumber || 'N/A';
             const displayServiceName = item.serviceName || item.serviceCode || 'Service';
             
-            const displayCountryName = item.countryName || item.country || 'Selected Country';
-            const displayCountryShortCode = (item.countryCode || item.shortCode || '').toUpperCase();
-            
-            const flagUrl = item.countryFlag || item.flag || item.flagUrl || item.icon || '';
-            const flagElement = flagUrl && flagUrl.startsWith('http')
-                ? `<img src="${flagUrl}" class="w-4 h-3 object-cover rounded-2xs inline-block shrink-0 shadow-2xs" alt="flag">`
-                : `<span class="text-xs">${getCountryFlagEmoji(displayCountryShortCode || (displayCountryName.length === 2 ? displayCountryName : ''))}</span>`;
+            // Resolve Flag, Country Name, and Dial Code
+            const { iso, name, dialCode } = resolveOrderCountry(item);
+            const flagElement = `<img src="https://flagcdn.com/w40/${iso}.png" class="w-4 h-3 object-cover rounded-2xs inline-block shrink-0 shadow-2xs border border-sky-200/40" alt="${name}" onerror="this.src='https://flagcdn.com/w40/un.png'">`;
 
             let expirationTime;
             const baseCreatedAt = item.createdAt ? new Date(item.createdAt).getTime() : Date.now();
@@ -2173,10 +2233,12 @@ async function fetchUserHistory() {
                                     </button>
                                 ` : ''}
                             </div>
+                            
+                            <!-- Country Flag, Name, and Dial Code Prefix Display -->
                             <p class="text-[10px] sm:text-[11px] text-gray-500 mt-1 flex items-center space-x-1.5">
                                 ${flagElement}
-                                <span class="font-medium text-sky-900 truncate">${displayCountryName}</span>
-                                ${displayCountryShortCode ? `<span class="text-sky-700 font-mono text-[9px] sm:text-[10px] bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200 shrink-0">(${displayCountryShortCode})</span>` : ''}
+                                <span class="font-medium text-sky-900 truncate">${name}</span>
+                                ${dialCode ? `<span class="text-emerald-700 font-mono text-[9px] sm:text-[10px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-bold shrink-0">${dialCode}</span>` : ''}
                             </p>
                         </div>
                         <div class="shrink-0">

@@ -2168,7 +2168,6 @@ async function fetchUserHistory() {
     const historyGrid = document.getElementById('history-grid');
     if (!historyGrid) return;
 
-    // Clear any active history timer interval to prevent memory leaks or overlapping timers
     if (window.historyTimerInterval) {
         clearInterval(window.historyTimerInterval);
         window.historyTimerInterval = null;
@@ -2249,6 +2248,36 @@ async function fetchUserHistory() {
             );
         };
 
+        // SMSBower Country ID Map provided by you
+        const smsBowerMap = {
+            '0': 'ru', '1': 'ua', '2': 'kz', '3': 'cn', '4': 'ph', '5': 'mm', '6': 'id', '7': 'my',
+            '8': 'ke', '9': 'tz', '10': 'vn', '11': 'kg', '12': 'us', '13': 'il', '14': 'hk', '15': 'pl',
+            '16': 'gb', '17': 'mg', '18': 'cd', '19': 'ng', '20': 'mo', '21': 'eg', '22': 'in', '23': 'ie',
+            '24': 'kh', '25': 'la', '26': 'ht', '27': 'ci', '28': 'gm', '29': 'rs', '30': 'ye', '31': 'za',
+            '32': 'ro', '33': 'co', '34': 'ee', '35': 'az', '36': 'ca', '37': 'ma', '38': 'gh', '39': 'ar',
+            '40': 'uz', '41': 'cm', '42': 'td', '43': 'de', '44': 'lt', '45': 'hr', '46': 'se', '47': 'iq',
+            '48': 'nl', '49': 'lv', '50': 'at', '51': 'by', '52': 'th', '53': 'sa', '54': 'mx', '55': 'tw',
+            '56': 'es', '57': 'ir', '58': 'dz', '59': 'si', '60': 'bd', '61': 'sn', '62': 'tr', '63': 'cz',
+            '64': 'lk', '65': 'pe', '66': 'pk', '67': 'nz', '68': 'gn', '69': 'ml', '70': 've', '71': 'et',
+            '72': 'mn', '73': 'br', '74': 'af', '75': 'ug', '76': 'ao', '77': 'cy', '78': 'fr', '79': 'pg',
+            '80': 'mz', '81': 'np', '82': 'be', '83': 'bg', '84': 'hu', '85': 'md', '86': 'it', '87': 'py',
+            '88': 'hn', '89': 'tn', '90': 'ni', '91': 'tl', '92': 'bo', '93': 'cr', '94': 'gt', '95': 'ae',
+            '96': 'zw', '97': 'pr', '99': 'tg', '100': 'kw', '101': 'sv', '102': 'ly', '103': 'jm', '104': 'tt',
+            '105': 'ec', '106': 'sz', '107': 'om', '108': 'ba', '109': 'do', '111': 'qa', '112': 'pa', '113': 'cu',
+            '114': 'mr', '115': 'sl', '116': 'jo', '117': 'pt', '118': 'bb', '119': 'bi', '120': 'bj', '121': 'bn',
+            '122': 'bs', '123': 'bw', '124': 'bz', '125': 'cf', '126': 'dm', '127': 'gd', '128': 'ge', '129': 'gr',
+            '130': 'gw', '131': 'gy', '132': 'is', '133': 'km', '134': 'kn', '135': 'lr', '136': 'ls', '137': 'mw',
+            '138': 'na', '139': 'ne', '140': 'rw', '141': 'sk', '142': 'sr', '143': 'tj', '144': 'mc', '145': 'bh',
+            '146': 're', '147': 'zm', '148': 'am', '149': 'so', '150': 'cg', '151': 'cl', '152': 'bf', '153': 'lb',
+            '154': 'ga', '155': 'al', '156': 'uy', '157': 'mu', '158': 'bt', '159': 'mv', '160': 'gp', '161': 'tm',
+            '162': 'gf', '163': 'fi', '164': 'lc', '165': 'lu', '166': 'vc', '167': 'gq', '168': 'dj', '169': 'ag',
+            '170': 'ky', '171': 'me', '172': 'dk', '173': 'ch', '174': 'no', '175': 'au', '176': 'er', '177': 'ss',
+            '178': 'st', '179': 'aw', '180': 'ms', '181': 'ai', '183': 'mk', '184': 'sc', '185': 'nc', '186': 'cv',
+            '187': 'us', '188': 'ps', '189': 'fj', '196': 'sg', '199': 'mt', '201': 'gi', '204': 'nu', '1001': 'jp',
+            '1002': 'kr', '1003': 'bm', '1004': 'xk', '1005': 'li', '1006': 'sx', '1007': 'vu', '1008': 'gl', '1011': 'mq',
+            '1333': 'sy', '1010': 'sd'
+        };
+
         historyGrid.innerHTML = sortedHistory.map(item => {
             const statusLower = String(item.status || 'pending').toLowerCase();
             const isCancelled = statusLower === 'cancelled' || statusLower === 'canceled';
@@ -2264,21 +2293,34 @@ async function fetchUserHistory() {
             const orderId = item.id || item._id;
             const displayPhoneNumber = item.phoneNumber || item.number || item.targetNumber || 'N/A';
             
-            // FIXED: Safely check if item.service is an object before reading .name
-            const serviceObjName = (typeof item.service === 'object' && item.service !== null) ? (item.service.name || item.service.serviceName || '') : '';
-            const displayServiceName = item.serviceName || item.service_name || serviceObjName || item.serviceCode || item.service_code || (typeof item.service === 'string' ? item.service : '') || 'Virtual Number';
-            
-            const resolvedCountryName = item.countryName || item.country_name || item.country || '';
-            const displayCountryName = typeof resolvedCountryName === 'string' && resolvedCountryName.trim() !== '' 
-                ? resolvedCountryName 
-                : `Country (${item.countryId || item.country_id || 'N/A'})`;
-            
-            const countryCodeRaw = item.countryCode || item.country_code || item.iso || '';
-            const displayCountryShortCode = countryCodeRaw.toLowerCase();
-            const dialCode = item.dialCode || item.dial_code || '';
+            // --- 1. RESOLVE SERVICE NAME ---
+            const rawServiceCode = String(item.serviceCode || item.service_code || item.service || '');
+            let resolvedServiceName = '';
+            if (typeof item.service === 'object' && item.service !== null) {
+                resolvedServiceName = item.service.name || item.service.serviceName || '';
+            } else if (typeof window.availableServices !== 'undefined' && Array.isArray(window.availableServices)) {
+                const foundSvc = window.availableServices.find(s => String(s.code) === rawServiceCode || String(s.id) === rawServiceCode);
+                if (foundSvc) resolvedServiceName = foundSvc.name;
+            }
+            // Fallback map for common codes if availableServices isn't globally populated on this page
+            const commonServiceMap = { 'tg': 'Telegram', 'wa': 'WhatsApp', 'go': 'Google / Gmail', 'fb': 'Facebook', 'ig': 'Instagram', 'tw': 'Twitter', 'nf': 'Netflix', 'ub': 'Uber' };
+            const displayServiceName = item.serviceName || item.service_name || resolvedServiceName || commonServiceMap[rawServiceCode.toLowerCase()] || (rawServiceCode && isNaN(rawServiceCode) ? rawServiceCode.toUpperCase() : (rawServiceCode ? `Service (${rawServiceCode})` : 'Virtual Number'));
 
-            // FIXED: Properly define flagElement before returning the template literal
-            const flagElement = countryCodeRaw ? `<span class="text-sm">${getCountryFlagEmoji(countryCodeRaw)}</span>` : `<span class="text-sm">🌐</span>`;
+            // --- 2. RESOLVE COUNTRY CODE, FLAG & NAME ---
+            const rawCountryId = String(item.countryCode || item.country_code || item.iso || item.countryId || item.country_id || '');
+            
+            // Map numeric SMSBower ID to ISO string if applicable
+            let countryIso = smsBowerMap[rawCountryId] || rawCountryId.toLowerCase();
+            let countryNameVal = item.countryName || item.country_name || '';
+
+            if (typeof COUNTRY_FLAG_MAP !== 'undefined' && COUNTRY_FLAG_MAP[rawCountryId]) {
+                countryIso = COUNTRY_FLAG_MAP[rawCountryId].iso || COUNTRY_FLAG_MAP[rawCountryId].code || countryIso;
+                if (!countryNameVal) countryNameVal = COUNTRY_FLAG_MAP[rawCountryId].name;
+            }
+
+            const displayCountryName = countryNameVal.trim() !== '' ? countryNameVal : (countryIso ? countryIso.toUpperCase() : `Country (${rawCountryId})`);
+            const flagElement = countryIso && countryIso.length === 2 ? `<span class="text-sm">${getCountryFlagEmoji(countryIso)}</span>` : `<span class="text-sm">🌐</span>`;
+            const dialCode = item.dialCode || item.dial_code || (typeof COUNTRY_DIAL_CODES !== 'undefined' ? COUNTRY_DIAL_CODES[rawCountryId] || COUNTRY_DIAL_CODES[countryIso] : '') || '';
 
             let expirationTime;
             const baseCreatedAt = item.createdAt || item.created_at || item.timestamp ? new Date(item.createdAt || item.created_at || item.timestamp).getTime() : Date.now();
@@ -2329,7 +2371,7 @@ async function fetchUserHistory() {
                             <p class="text-[10px] sm:text-[11px] text-gray-500 mt-1 flex items-center space-x-1.5">
                                 ${flagElement}
                                 <span class="font-medium text-sky-900 truncate">${displayCountryName}</span>
-                                ${dialCode ? `<span class="bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded font-mono text-[9px] sm:text-[10px] border border-sky-200 shrink-0">${dialCode}</span>` : ''}
+                                ${dialCode ? `<span class="bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded font-mono text-[9px] sm:text-[10px] border border-sky-200 shrink-0">+${dialCode}</span>` : ''}
                             </p>
                         </div>
                         <div class="shrink-0">
@@ -2377,7 +2419,6 @@ async function fetchUserHistory() {
         historyGrid.innerHTML = `<p class="text-xs sm:text-sm text-red-500 text-center py-6">Failed to load history records.</p>`;
     }
 }
-
 
 window.startPersistentSmsPolling = function(orderId, createdAtOrExpiresAt) {
     const timerElement = document.getElementById(`timer-${orderId}`);

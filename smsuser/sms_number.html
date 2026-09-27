@@ -2263,9 +2263,7 @@ historyGrid.innerHTML = sortedHistory.map(item => {
     const orderId = item.id || item._id;
     const displayPhoneNumber = item.phoneNumber || item.number || item.targetNumber || 'N/A';
     
-const serviceObjName = (typeof item.service === 'object' && item.service !== null) ? (item.service.name || item.service.serviceName || '') : '';
-const displayServiceName = item.serviceName || serviceObjName || item.serviceCode || item.service_code || (typeof item.service === 'string' ? item.service : '') || 'Service';
-
+    const displayServiceName = item.serviceName || item.service_name || item.serviceCode || item.service_code || item.service || 'Virtual Number';
         const resolvedCountryName = item.countryName || item.country_name || item.country || '';
     const displayCountryName = typeof resolvedCountryName === 'string' && resolvedCountryName.trim() !== '' 
         ? resolvedCountryName 

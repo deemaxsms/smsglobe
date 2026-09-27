@@ -1086,6 +1086,7 @@ function isMobileView() {
             console.error("Failed to fetch profile details:", err);
         }
       }
+
 async function fetchServices() {
     const tableBody = document.getElementById('services-table-body');
     if (!tableBody) return;
@@ -1181,12 +1182,12 @@ function renderServicesTable(servicesToRender) {
         const serviceCode = service.code || service.id || '';
         const iconUrl = getServiceIconUrl(serviceCode, serviceName);
 
-        // 1. Check if this service had an open expansion row previously
-        const existingExpansionRow = document.getElementById(`expansion-row-${serviceCode}`);
-        const isCurrentlyExpanded = existingExpansionRow && !existingExpansionRow.classList.contains('hidden');
+        // Check our global tracking state instead of querying ephemeral DOM elements
+        const isCurrentlyExpanded = window.activeExpandedServices && window.activeExpandedServices.has(serviceCode);
         
-        // 2. Capture existing active order cards inside the container so they don't get wiped out on re-render
-        const existingContainerContent = document.getElementById(`expansion-container-${serviceCode}`)?.innerHTML || '';
+        // Grab existing content from our memory cache
+        window.activeExpansionContents = window.activeExpansionContents || {};
+        const existingContainerContent = window.activeExpansionContents[serviceCode] || '';
 
         return `
             <tr class="hover:bg-sky-50/50 transition border-b border-sky-100 align-middle" id="row-${serviceCode}">
@@ -1286,23 +1287,25 @@ function resolveCountryDetailsWithDialCode(orderData) {
     return { iso, name, dialCode };
 }
 
+// Global persistent tracking set for expanded services
+window.activeExpandedServices = window.activeExpandedServices || new Set();
+
 function hideExpandedOrder(serviceCode) {
+    window.activeExpandedServices.delete(serviceCode);
+    if (window.activeExpansionContents) {
+        delete window.activeExpansionContents[serviceCode];
+    }
     const expansionRow = document.getElementById(`expansion-row-${serviceCode}`);
     const container = document.getElementById(`expansion-container-${serviceCode}`);
     if (expansionRow) expansionRow.classList.add('hidden');
     if (container) container.innerHTML = '';
 }
 
-// 1. Attach hideExpandedOrder to the global window scope
-window.hideExpandedOrder = function(serviceCode) {
-    const expansionRow = document.getElementById(`expansion-row-${serviceCode}`);
-    const container = document.getElementById(`expansion-container-${serviceCode}`);
-    if (expansionRow) expansionRow.classList.add('hidden');
-    if (container) container.innerHTML = '';
-};
+window.hideExpandedOrder = hideExpandedOrder;
 
-// 2. Attach showExpandedOrder to the global window scope
 window.showExpandedOrder = function(serviceCode, orderData) {
+    window.activeExpandedServices.add(serviceCode);
+    
     const expansionRow = document.getElementById(`expansion-row-${serviceCode}`);
     const container = document.getElementById(`expansion-container-${serviceCode}`);
     if (!expansionRow || !container) return;
@@ -1327,7 +1330,6 @@ window.showExpandedOrder = function(serviceCode, orderData) {
                         </span>
                     </div>
                     
-                    <!-- Phone Number & Copy Button -->
                     <div class="flex items-center space-x-2 mt-0.5">
                         <p class="text-sm sm:text-lg font-bold tracking-wide text-white truncate">${phoneNumber}</p>
                         <button type="button" onclick="navigator.clipboard.writeText('${phoneNumber}')" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-gray-300 hover:text-white rounded-lg text-xs transition border border-slate-700 shrink-0" title="Copy Number">
@@ -1335,7 +1337,6 @@ window.showExpandedOrder = function(serviceCode, orderData) {
                         </button>
                     </div>
 
-                    <!-- Flag, Country Name, and Explicit Dial Code Prefix Display -->
                     <p class="text-[10px] sm:text-[11px] text-gray-300 mt-1 flex items-center space-x-1.5">
                         <img src="https://flagcdn.com/w40/${iso}.png" 
                              class="w-4 h-3 object-cover rounded-2xs border border-sky-200/40 shrink-0" 
@@ -1368,7 +1369,11 @@ window.showExpandedOrder = function(serviceCode, orderData) {
         </div>
     `;
 
-    container.insertAdjacentHTML('beforeend', orderCardHtml);
+    // Cache the generated HTML and inject it into the container
+    window.activeExpansionContents = window.activeExpansionContents || {};
+    window.activeExpansionContents[serviceCode] = orderCardHtml;
+
+    container.innerHTML = orderCardHtml;
     
     if (typeof startPersistentSmsPolling === 'function' && orderId) {
         startPersistentSmsPolling(orderId);
@@ -1854,7 +1859,7 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
 
     const serviceObj = (typeof services !== 'undefined' ? services : []).find(s => (s.code || '').toLowerCase() === serviceCode.toLowerCase());
     const countriesList = (typeof serviceCountriesCache !== 'undefined' && serviceCountriesCache[serviceCode]) || [];
-    const countryObj = countriesList.find(c => String(c.countryId) === String(countryId));
+    const countryObj = countriesList.find(c => String(c.countryId) === String(countryId) || String(c.id) === String(countryId));
 
     // Resolve active provider tier
     let activeProviderId = providerId;
@@ -1869,8 +1874,12 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
     }
 
     let isConfirmed = false;
-    const serviceName = serviceObj?.name || serviceCode.toUpperCase();
-    const countryName = countryObj?.countryName || countryObj?.name || 'Selected Country';
+    
+    // Safely resolve clean Service Name and Country Name/Code
+    const serviceName = serviceObj?.name || serviceObj?.serviceName || serviceCode.toUpperCase();
+    const resolvedCountryName = countryObj?.countryName || countryObj?.name || countryObj?.text || '';
+    const resolvedCountryCode = countryObj?.countryCode || countryObj?.iso || countryId;
+    const countryName = resolvedCountryName || `Country (${countryId})`;
 
     // Dark-theme confirmation modal matching application styles
     if (typeof Swal !== 'undefined') {
@@ -1926,9 +1935,9 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
         return;
     }
 
-    // Unique nonce/timestamp added to bypass strict backend duplicate request checks for rapid sequential orders
     const payload = {
         serviceCode: serviceCode,
+        serviceName: serviceName, // Explicitly pass service name to backend payload
         countryId: countryId,
         providerId: activeProviderId,
         planAmount: itemPrice,
@@ -1938,7 +1947,8 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
             serviceType: 'virtual_number',
             serviceCode: serviceCode,
             serviceName: serviceName,
-            countryCode: countryId,
+            countryCode: resolvedCountryCode,
+            countryName: countryName,
             provider: 'smsbower',
             timestamp: Date.now()
         }
@@ -1970,12 +1980,13 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
 
         const res = response.data || response;
 
-      if (res && res.success) {
+        if (res && res.success) {
             const orderData = res.order || res.data || res;
+            
+            // Explicitly enforce resolved service name and country attributes for frontend history rendering
+            orderData.serviceName = orderData.serviceName || serviceName;
             orderData.countryName = orderData.countryName || countryName;
-            orderData.countryCode = orderData.countryCode || countryId;
-
-            const orderId = orderData._id || orderData.id || res.orderId;
+            orderData.countryCode = orderData.countryCode || resolvedCountryCode;
 
             if (typeof renderActiveOrdersDashboard === 'function') renderActiveOrdersDashboard();
             if (typeof fetchUserProfile === 'function') fetchUserProfile();
@@ -1992,8 +2003,7 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
                 });
             }
             showExpandedOrder(serviceCode, orderData);
-        }
-         else {
+        } else {
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
                     title: 'Order Failed',
@@ -2178,17 +2188,16 @@ async function fetchUserHistory() {
             historyGrid.innerHTML = `<p class="text-xs sm:text-sm text-gray-500 text-center py-6">No purchased numbers found.</p>`;
             return;
         }
-
-        historyList.forEach(item => {
-            const statusLower = String(item.status || 'pending').toLowerCase();
-            const isActive = statusLower === 'active' || statusLower === 'pending' || statusLower === 'waiting for sms...';
-            const orderId = item.id || item._id;
-            
-            if (isActive && orderId && typeof startPersistentSmsPolling === 'function') {
-                startPersistentSmsPolling(orderId);
-            }
-        });
-
+historyList.forEach(item => {
+    const statusLower = String(item.status || 'pending').toLowerCase();
+    const isActive = statusLower === 'active' || statusLower === 'pending' || statusLower === 'waiting for sms...';
+    const orderId = item.id || item._id;
+        const orderTimestamp = item.createdAt || item.created_at || item.timestamp;
+    
+    if (isActive && orderId && typeof startPersistentSmsPolling === 'function') {
+        startPersistentSmsPolling(orderId, orderTimestamp);
+    }
+});
         const sortedHistory = historyList.sort((a, b) => {
             const statusA = String(a.status || '').toLowerCase();
             const statusB = String(b.status || '').toLowerCase();
@@ -2206,108 +2215,104 @@ async function fetchUserHistory() {
             );
         };
 
-        historyGrid.innerHTML = sortedHistory.map(item => {
-            const statusLower = String(item.status || 'pending').toLowerCase();
-            const isCancelled = statusLower === 'cancelled' || statusLower === 'canceled';
-            const isExpired = statusLower === 'expired';
-            const isActive = !isCancelled && !isExpired && (statusLower === 'active' || statusLower === 'pending' || statusLower === 'waiting for sms...');
-            
-            const badgeClass = isActive 
-                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
-                : (isCancelled || isExpired 
-                    ? 'bg-red-50 text-red-600 border border-red-200' 
-                    : 'bg-gray-100 text-gray-600 border border-gray-200');
-            
-            const orderId = item.id || item._id;
-            const displayPhoneNumber = item.phoneNumber || item.number || item.targetNumber || 'N/A';
-            const displayServiceName = item.serviceName || item.serviceCode || 'Service';
-            
-            const displayCountryName = item.countryName || item.country || 'Selected Country';
-            const displayCountryShortCode = (item.countryCode || item.shortCode || '').toUpperCase();
-            
-            const flagUrl = item.countryFlag || item.flag || item.flagUrl || item.icon || '';
-            const flagElement = flagUrl && flagUrl.startsWith('http')
-                ? `<img src="${flagUrl}" class="w-4 h-3 object-cover rounded-2xs inline-block shrink-0 shadow-2xs" alt="flag">`
-                : `<span class="text-xs">${getCountryFlagEmoji(displayCountryShortCode || (displayCountryName.length === 2 ? displayCountryName : ''))}</span>`;
 
-            let expirationTime;
-            const baseCreatedAt = item.createdAt ? new Date(item.createdAt).getTime() : Date.now();
-            
-            if (item.expiresAt) {
-                expirationTime = new Date(item.expiresAt).getTime();
-            } else if (item.expiresIn) {
-                expirationTime = baseCreatedAt + (Number(item.expiresIn) * 1000);
-            } else {
-                expirationTime = baseCreatedAt + (5 * 60 * 1000);
-            }
+historyGrid.innerHTML = sortedHistory.map(item => {
+    const statusLower = String(item.status || 'pending').toLowerCase();
+    const isCancelled = statusLower === 'cancelled' || statusLower === 'canceled';
+    const isExpired = statusLower === 'expired';
+    const isActive = !isCancelled && !isExpired && (statusLower === 'active' || statusLower === 'pending' || statusLower === 'waiting for sms...');
+    
+    const badgeClass = isActive 
+        ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
+        : (isCancelled || isExpired 
+            ? 'bg-red-50 text-red-600 border border-red-200' 
+            : 'bg-gray-100 text-gray-600 border border-gray-200');
+    
+    const orderId = item.id || item._id;
+    const displayPhoneNumber = item.phoneNumber || item.number || item.targetNumber || 'N/A';
+    
+    const displayServiceName = item.serviceName || item.serviceCode || item.service || 'Service';
+    const { iso: displayCountryShortCode, name: displayCountryName, dialCode } = resolveCountryDetailsWithDialCode(item);
+    const flagElement = `<img src="https://flagcdn.com/w40/${displayCountryShortCode}.png" class="w-4 h-3 object-cover rounded-2xs border border-sky-200/40 shrink-0 inline-block shadow-2xs" alt="${displayCountryName}" onerror="this.src='https://flagcdn.com/w40/un.png'">`;
 
-            const timeLeft = Math.max(0, Math.floor((expirationTime - Date.now()) / 1000));
-            const minutes = Math.floor(timeLeft / 60);
-            const seconds = timeLeft % 60;
-            const formattedTimeLeft = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    let expirationTime;
+    const baseCreatedAt = item.createdAt ? new Date(item.createdAt).getTime() : Date.now();
+    
+    if (item.expiresAt) {
+        expirationTime = new Date(item.expiresAt).getTime();
+    } else if (item.expiresIn) {
+        expirationTime = baseCreatedAt + (Number(item.expiresIn) * 1000);
+    } else {
+        expirationTime = baseCreatedAt + (5 * 60 * 1000);
+    }
 
-            let otpDisplayHtml = '';
-            if (isCancelled) {
-                otpDisplayHtml = `<span class="text-xs sm:text-sm font-medium text-red-600 tracking-wider">Number Cancelled</span>`;
-            } else if (isExpired) {
-                otpDisplayHtml = `<span class="text-xs sm:text-sm font-medium text-amber-600 tracking-wider">Order Expired</span>`;
-            } else if (item.smsCode) {
-                otpDisplayHtml = `<span class="text-xs sm:text-sm font-mono font-bold text-emerald-600 tracking-wider">${item.smsCode}</span>`;
-            } else {
-                otpDisplayHtml = `<span class="text-xs sm:text-sm font-mono font-bold text-emerald-600 tracking-wider">Waiting for code...</span>`;
-            }
+    const timeLeft = Math.max(0, Math.floor((expirationTime - Date.now()) / 1000));
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    const formattedTimeLeft = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
-            return `
-                <div class="bg-white p-3.5 sm:p-4 rounded-xl border border-sky-200 space-y-2.5 transition hover:border-sky-400 shadow-2xs" id="persistent-order-${orderId}">
-                    <div class="flex items-center justify-between gap-2">
-                        <div class="min-w-0">
-                            <div class="flex items-center space-x-2">
-                                <p class="text-[11px] sm:text-xs text-sky-700 font-bold truncate">${displayServiceName}</p>
-                                ${isActive ? `
-                                    <span class="text-[9px] sm:text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-full border border-amber-200 font-mono flex items-center shrink-0">
-                                        <i class="fa-regular fa-clock mr-1"></i> <span class="order-timer" data-expiration="${expirationTime}">${formattedTimeLeft}</span>
-                                    </span>
-                                ` : ''}
-                            </div>
-                            <div class="flex items-center space-x-2 mt-0.5">
-                                <p class="text-sm sm:text-lg font-bold tracking-wide text-sky-950 truncate">${displayPhoneNumber}</p>
-                                ${displayPhoneNumber !== 'N/A' ? `
-                                    <button onclick="navigator.clipboard.writeText('${displayPhoneNumber}'); const btn = this; btn.innerHTML = '<i class=\\'fa-solid fa-check text-emerald-600\\'></i>'; setTimeout(() => btn.innerHTML = '<i class=\\'fa-regular fa-copy\\'></i>', 1500);" class="p-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg text-xs transition border border-sky-200 shrink-0" title="Copy Number">
-                                        <i class="fa-regular fa-copy"></i>
-                                    </button>
-                                ` : ''}
-                            </div>
-                            <p class="text-[10px] sm:text-[11px] text-gray-500 mt-1 flex items-center space-x-1.5">
-                                ${flagElement}
-                                <span class="font-medium text-sky-900 truncate">${displayCountryName}</span>
-                                ${displayCountryShortCode ? `<span class="text-sky-700 font-mono text-[9px] sm:text-[10px] bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200 shrink-0">(${displayCountryShortCode})</span>` : ''}
-                            </p>
-                        </div>
-                        <div class="shrink-0">
-                            <span class="px-2.5 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs font-bold rounded-full uppercase tracking-wider ${badgeClass}">
-                                ${item.status || 'pending'}
+    let otpDisplayHtml = '';
+    if (isCancelled) {
+        otpDisplayHtml = `<span class="text-xs sm:text-sm font-medium text-red-600 tracking-wider">Number Cancelled</span>`;
+    } else if (isExpired) {
+        otpDisplayHtml = `<span class="text-xs sm:text-sm font-medium text-amber-600 tracking-wider">Order Expired</span>`;
+    } else if (item.smsCode) {
+        otpDisplayHtml = `<span class="text-xs sm:text-sm font-mono font-bold text-emerald-600 tracking-wider">${item.smsCode}</span>`;
+    } else {
+        otpDisplayHtml = `<span class="text-xs sm:text-sm font-mono font-bold text-emerald-600 tracking-wider">Waiting for code...</span>`;
+    }
+
+    return `
+        <div class="bg-white p-3.5 sm:p-4 rounded-xl border border-sky-200 space-y-2.5 transition hover:border-sky-400 shadow-2xs" id="persistent-order-${orderId}">
+            <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                    <div class="flex items-center space-x-2">
+                        <p class="text-[11px] sm:text-xs text-sky-700 font-bold uppercase tracking-wider">${displayServiceName}</p>
+                        ${isActive ? `
+                            <span class="text-[9px] sm:text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-full border border-amber-200 font-mono flex items-center shrink-0">
+                                <i class="fa-regular fa-clock mr-1"></i> <span class="order-timer" data-expiration="${expirationTime}">${formattedTimeLeft}</span>
                             </span>
-                        </div>
+                        ` : ''}
                     </div>
-
-                    <div class="bg-sky-50/80 border border-sky-200 p-2 sm:p-2.5 rounded-lg flex items-center justify-between">
-                        <span class="text-[11px] sm:text-xs text-sky-900 font-semibold">OTP Code:</span>
-                        ${otpDisplayHtml}
+                    <div class="flex items-center space-x-2 mt-0.5">
+                        <p class="text-sm sm:text-lg font-bold tracking-wide text-sky-950 truncate">${displayPhoneNumber}</p>
+                        ${displayPhoneNumber !== 'N/A' ? `
+                            <button onclick="navigator.clipboard.writeText('${displayPhoneNumber}'); const btn = this; btn.innerHTML = '<i class=\\'fa-solid fa-check text-emerald-600\\'></i>'; setTimeout(() => btn.innerHTML = '<i class=\\'fa-regular fa-copy\\'></i>', 1500);" class="p-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg text-xs transition border border-sky-200 shrink-0" title="Copy Number">
+                                <i class="fa-regular fa-copy"></i>
+                            </button>
+                        ` : ''}
                     </div>
-
-                    ${isActive ? `
-                        <div class="flex items-center justify-end space-x-1.5 pt-1">
-                            <button onclick="manualRecheckSms('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-sky-100 hover:bg-sky-200 text-sky-800 border border-sky-300 text-[11px] sm:text-xs font-semibold rounded-lg transition">
-                                <i class="fa-solid fa-rotate mr-1"></i>Resend Sms
-                            </button>
-                            <button onclick="cancelActiveOrder('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-[11px] sm:text-xs font-semibold rounded-lg transition">
-                                <i class="fa-solid fa-ban mr-1"></i> Cancel
-                            </button>
-                        </div>
-                    ` : ''}
+                    <p class="text-[10px] sm:text-[11px] text-gray-500 mt-1 flex items-center space-x-1.5">
+                        ${flagElement}
+                        <span class="font-medium text-sky-900 truncate">${displayCountryName}</span>
+                        ${dialCode ? `<span class="bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded font-mono text-[9px] sm:text-[10px] border border-sky-200 shrink-0">${dialCode}</span>` : ''}
+                    </p>
                 </div>
-            `;
-        }).join('');
+                <div class="shrink-0">
+                    <span class="px-2.5 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs font-bold rounded-full uppercase tracking-wider ${badgeClass}">
+                        ${item.status || 'pending'}
+                    </span>
+                </div>
+            </div>
+
+            <div class="bg-sky-50/80 border border-sky-200 p-2 sm:p-2.5 rounded-lg flex items-center justify-between">
+                <span class="text-[11px] sm:text-xs text-sky-900 font-semibold">OTP Code:</span>
+                ${otpDisplayHtml}
+            </div>
+
+            ${isActive ? `
+                <div class="flex items-center justify-end space-x-1.5 pt-1">
+                    <button onclick="manualRecheckSms('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-sky-100 hover:bg-sky-200 text-sky-800 border border-sky-300 text-[11px] sm:text-xs font-semibold rounded-lg transition">
+                        <i class="fa-solid fa-rotate mr-1"></i>Resend Sms
+                    </button>
+                    <button onclick="cancelActiveOrder('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-[11px] sm:text-xs font-semibold rounded-lg transition">
+                        <i class="fa-solid fa-ban mr-1"></i> Cancel
+                    </button>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}).join('');
 
         window.historyTimerInterval = setInterval(() => {
             const timerElements = document.querySelectorAll('.order-timer');
@@ -2329,6 +2334,23 @@ async function fetchUserHistory() {
     }
 }
 
+
+window.startPersistentSmsPolling = function(orderId, createdAtOrExpiresAt) {
+    const timerElement = document.getElementById(`timer-${orderId}`);
+    if (!timerElement) return;
+
+    // Determine target time (15 minutes from creation or now)
+    let targetTime;
+    if (createdAtOrExpiresAt) {
+        const baseTime = new Date(createdAtOrExpiresAt).getTime();
+        targetTime = baseTime + (15 * 60 * 1000); // 15 minutes window
+    } else {
+        targetTime = Date.now() + (15 * 60 * 1000);
+    }
+
+    // Attach the expiration timestamp to the element for your global interval loop
+    timerElement.setAttribute('data-expiration', targetTime);
+};
   function toggleSupportMenu() {
         const menu = document.getElementById('supportMenu');
         const isHidden = menu.classList.contains('hidden');
@@ -2353,21 +2375,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof fetchUserProfile === 'function') fetchUserProfile();
     if (typeof fetchServices === 'function') fetchServices();
 
-    const serviceSearchInput = document.getElementById('service-search-input');
-    if (serviceSearchInput) {
-        serviceSearchInput.addEventListener('input', (e) => {
-            const term = e.target.value.toLowerCase().trim();
-            if (!term) {
-                if (typeof renderServices === 'function') renderServices(services);
-                return;
-            }
-            const filtered = services.filter(s => 
-                (s.name && s.name.toLowerCase().includes(term)) || 
-                (s.code && s.code.toLowerCase().includes(term))
-            );
-            if (typeof renderServices === 'function') renderServices(filtered);
-        });
-    }
+   const serviceSearchInput = document.getElementById('service-search-input');
+if (serviceSearchInput) {
+    serviceSearchInput.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase().trim();
+        const sourceList = window.services || cachedServicesList || [];
+        if (!term) {
+            if (typeof renderServicesTable === 'function') renderServicesTable(sourceList);
+            return;
+        }
+        const filtered = sourceList.filter(s => 
+            (s.name && s.name.toLowerCase().includes(term)) || 
+            (s.code && s.code.toLowerCase().includes(term))
+        );
+
+        if (typeof renderServicesTable === 'function') {
+            renderServicesTable(filtered);
+        }
+    });
+}
 
     const countrySearchInput = document.getElementById('country-search-input');
     if (countrySearchInput) {

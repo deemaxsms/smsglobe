@@ -2220,16 +2220,18 @@ async function fetchUserHistory() {
             historyGrid.innerHTML = `<p class="text-xs sm:text-sm text-gray-500 text-center py-6">No purchased numbers found.</p>`;
             return;
         }
-historyList.forEach(item => {
-    const statusLower = String(item.status || 'pending').toLowerCase();
-    const isActive = statusLower === 'active' || statusLower === 'pending' || statusLower === 'waiting for sms...';
-    const orderId = item.id || item._id;
-        const orderTimestamp = item.createdAt || item.created_at || item.timestamp;
-    
-    if (isActive && orderId && typeof startPersistentSmsPolling === 'function') {
-        startPersistentSmsPolling(orderId, orderTimestamp);
-    }
-});
+
+        historyList.forEach(item => {
+            const statusLower = String(item.status || 'pending').toLowerCase();
+            const isActive = statusLower === 'active' || statusLower === 'pending' || statusLower === 'waiting for sms...';
+            const orderId = item.id || item._id;
+            const orderTimestamp = item.createdAt || item.created_at || item.timestamp;
+            
+            if (isActive && orderId && typeof startPersistentSmsPolling === 'function') {
+                startPersistentSmsPolling(orderId, orderTimestamp);
+            }
+        });
+
         const sortedHistory = historyList.sort((a, b) => {
             const statusA = String(a.status || '').toLowerCase();
             const statusB = String(b.status || '').toLowerCase();
@@ -2247,110 +2249,114 @@ historyList.forEach(item => {
             );
         };
 
+        historyGrid.innerHTML = sortedHistory.map(item => {
+            const statusLower = String(item.status || 'pending').toLowerCase();
+            const isCancelled = statusLower === 'cancelled' || statusLower === 'canceled';
+            const isExpired = statusLower === 'expired';
+            const isActive = !isCancelled && !isExpired && (statusLower === 'active' || statusLower === 'pending' || statusLower === 'waiting for sms...');
+            
+            const badgeClass = isActive 
+                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
+                : (isCancelled || isExpired 
+                    ? 'bg-red-50 text-red-600 border border-red-200' 
+                    : 'bg-gray-100 text-gray-600 border border-gray-200');
+            
+            const orderId = item.id || item._id;
+            const displayPhoneNumber = item.phoneNumber || item.number || item.targetNumber || 'N/A';
+            
+            // FIXED: Safely check if item.service is an object before reading .name
+            const serviceObjName = (typeof item.service === 'object' && item.service !== null) ? (item.service.name || item.service.serviceName || '') : '';
+            const displayServiceName = item.serviceName || item.service_name || serviceObjName || item.serviceCode || item.service_code || (typeof item.service === 'string' ? item.service : '') || 'Virtual Number';
+            
+            const resolvedCountryName = item.countryName || item.country_name || item.country || '';
+            const displayCountryName = typeof resolvedCountryName === 'string' && resolvedCountryName.trim() !== '' 
+                ? resolvedCountryName 
+                : `Country (${item.countryId || item.country_id || 'N/A'})`;
+            
+            const countryCodeRaw = item.countryCode || item.country_code || item.iso || '';
+            const displayCountryShortCode = countryCodeRaw.toLowerCase();
+            const dialCode = item.dialCode || item.dial_code || '';
 
-historyGrid.innerHTML = sortedHistory.map(item => {
-    const statusLower = String(item.status || 'pending').toLowerCase();
-    const isCancelled = statusLower === 'cancelled' || statusLower === 'canceled';
-    const isExpired = statusLower === 'expired';
-    const isActive = !isCancelled && !isExpired && (statusLower === 'active' || statusLower === 'pending' || statusLower === 'waiting for sms...');
-    
-    const badgeClass = isActive 
-        ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
-        : (isCancelled || isExpired 
-            ? 'bg-red-50 text-red-600 border border-red-200' 
-            : 'bg-gray-100 text-gray-600 border border-gray-200');
-    
-    const orderId = item.id || item._id;
-    const displayPhoneNumber = item.phoneNumber || item.number || item.targetNumber || 'N/A';
-    
-    const displayServiceName = item.serviceName || item.service_name || item.serviceCode || item.service_code || item.service || 'Virtual Number';
-        const resolvedCountryName = item.countryName || item.country_name || item.country || '';
-    const displayCountryName = typeof resolvedCountryName === 'string' && resolvedCountryName.trim() !== '' 
-        ? resolvedCountryName 
-        : `Country (${item.countryId || item.country_id || 'N/A'})`;
-    
-    const countryCodeRaw = item.countryCode || item.country_code || item.iso || '';
-    const displayCountryShortCode = countryCodeRaw.toLowerCase();
-    const dialCode = item.dialCode || item.dial_code || '';
+            // FIXED: Properly define flagElement before returning the template literal
+            const flagElement = countryCodeRaw ? `<span class="text-sm">${getCountryFlagEmoji(countryCodeRaw)}</span>` : `<span class="text-sm">🌐</span>`;
 
-    let expirationTime;
-    const baseCreatedAt = item.createdAt || item.created_at || item.timestamp ? new Date(item.createdAt || item.created_at || item.timestamp).getTime() : Date.now();
-    
-    if (item.expiresAt || item.expires_at) {
-        expirationTime = new Date(item.expiresAt || item.expires_at).getTime();
-    } else if (item.expiresIn || item.expires_in) {
-        expirationTime = baseCreatedAt + (Number(item.expiresIn || item.expires_in) * 1000);
-    } else {
-        // FIXED: Changed from 5 minutes to 15 minutes (15 * 60 * 1000)
-        expirationTime = baseCreatedAt + (15 * 60 * 1000);
-    }
-    const timeLeft = Math.max(0, Math.floor((expirationTime - Date.now()) / 1000));
-    const minutes = Math.floor(timeLeft / 60);
-    const seconds = timeLeft % 60;
-    const formattedTimeLeft = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            let expirationTime;
+            const baseCreatedAt = item.createdAt || item.created_at || item.timestamp ? new Date(item.createdAt || item.created_at || item.timestamp).getTime() : Date.now();
+            
+            if (item.expiresAt || item.expires_at) {
+                expirationTime = new Date(item.expiresAt || item.expires_at).getTime();
+            } else if (item.expiresIn || item.expires_in) {
+                expirationTime = baseCreatedAt + (Number(item.expiresIn || item.expires_in) * 1000);
+            } else {
+                expirationTime = baseCreatedAt + (15 * 60 * 1000);
+            }
+            const timeLeft = Math.max(0, Math.floor((expirationTime - Date.now()) / 1000));
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            const formattedTimeLeft = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
-    let otpDisplayHtml = '';
-    if (isCancelled) {
-        otpDisplayHtml = `<span class="text-xs sm:text-sm font-medium text-red-600 tracking-wider">Number Cancelled</span>`;
-    } else if (isExpired) {
-        otpDisplayHtml = `<span class="text-xs sm:text-sm font-medium text-amber-600 tracking-wider">Order Expired</span>`;
-    } else if (item.smsCode) {
-        otpDisplayHtml = `<span class="text-xs sm:text-sm font-mono font-bold text-emerald-600 tracking-wider">${item.smsCode}</span>`;
-    } else {
-        otpDisplayHtml = `<span class="text-xs sm:text-sm font-mono font-bold text-emerald-600 tracking-wider">Waiting for code...</span>`;
-    }
+            let otpDisplayHtml = '';
+            if (isCancelled) {
+                otpDisplayHtml = `<span class="text-xs sm:text-sm font-medium text-red-600 tracking-wider">Number Cancelled</span>`;
+            } else if (isExpired) {
+                otpDisplayHtml = `<span class="text-xs sm:text-sm font-medium text-amber-600 tracking-wider">Order Expired</span>`;
+            } else if (item.smsCode) {
+                otpDisplayHtml = `<span class="text-xs sm:text-sm font-mono font-bold text-emerald-600 tracking-wider">${item.smsCode}</span>`;
+            } else {
+                otpDisplayHtml = `<span class="text-xs sm:text-sm font-mono font-bold text-emerald-600 tracking-wider">Waiting for code...</span>`;
+            }
 
-    return `
-        <div class="bg-white p-3.5 sm:p-4 rounded-xl border border-sky-200 space-y-2.5 transition hover:border-sky-400 shadow-2xs" id="persistent-order-${orderId}">
-            <div class="flex items-center justify-between gap-2">
-                <div class="min-w-0">
-                    <div class="flex items-center space-x-2">
-                        <p class="text-[11px] sm:text-xs text-sky-700 font-bold uppercase tracking-wider">${displayServiceName}</p>
-                        ${isActive ? `
-                            <span class="text-[9px] sm:text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-full border border-amber-200 font-mono flex items-center shrink-0">
-                                <i class="fa-regular fa-clock mr-1"></i> <span class="order-timer" data-expiration="${expirationTime}">${formattedTimeLeft}</span>
+            return `
+                <div class="bg-white p-3.5 sm:p-4 rounded-xl border border-sky-200 space-y-2.5 transition hover:border-sky-400 shadow-2xs" id="persistent-order-${orderId}">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <div class="flex items-center space-x-2">
+                                <p class="text-[11px] sm:text-xs text-sky-700 font-bold uppercase tracking-wider">${displayServiceName}</p>
+                                ${isActive ? `
+                                    <span class="text-[9px] sm:text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-full border border-amber-200 font-mono flex items-center shrink-0">
+                                        <i class="fa-regular fa-clock mr-1"></i> <span class="order-timer" data-expiration="${expirationTime}">${formattedTimeLeft}</span>
+                                    </span>
+                                ` : ''}
+                            </div>
+                            <div class="flex items-center space-x-2 mt-0.5">
+                                <p class="text-sm sm:text-lg font-bold tracking-wide text-sky-950 truncate">${displayPhoneNumber}</p>
+                                ${displayPhoneNumber !== 'N/A' ? `
+                                    <button onclick="navigator.clipboard.writeText('${displayPhoneNumber}'); const btn = this; btn.innerHTML = '<i class=\\'fa-solid fa-check text-emerald-600\\'></i>'; setTimeout(() => btn.innerHTML = '<i class=\\'fa-regular fa-copy\\'></i>', 1500);" class="p-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg text-xs transition border border-sky-200 shrink-0" title="Copy Number">
+                                        <i class="fa-regular fa-copy"></i>
+                                    </button>
+                                ` : ''}
+                            </div>
+                            <p class="text-[10px] sm:text-[11px] text-gray-500 mt-1 flex items-center space-x-1.5">
+                                ${flagElement}
+                                <span class="font-medium text-sky-900 truncate">${displayCountryName}</span>
+                                ${dialCode ? `<span class="bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded font-mono text-[9px] sm:text-[10px] border border-sky-200 shrink-0">${dialCode}</span>` : ''}
+                            </p>
+                        </div>
+                        <div class="shrink-0">
+                            <span class="px-2.5 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs font-bold rounded-full uppercase tracking-wider ${badgeClass}">
+                                ${item.status || 'pending'}
                             </span>
-                        ` : ''}
+                        </div>
                     </div>
-                    <div class="flex items-center space-x-2 mt-0.5">
-                        <p class="text-sm sm:text-lg font-bold tracking-wide text-sky-950 truncate">${displayPhoneNumber}</p>
-                        ${displayPhoneNumber !== 'N/A' ? `
-                            <button onclick="navigator.clipboard.writeText('${displayPhoneNumber}'); const btn = this; btn.innerHTML = '<i class=\\'fa-solid fa-check text-emerald-600\\'></i>'; setTimeout(() => btn.innerHTML = '<i class=\\'fa-regular fa-copy\\'></i>', 1500);" class="p-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg text-xs transition border border-sky-200 shrink-0" title="Copy Number">
-                                <i class="fa-regular fa-copy"></i>
+
+                    <div class="bg-sky-50/80 border border-sky-200 p-2 sm:p-2.5 rounded-lg flex items-center justify-between">
+                        <span class="text-[11px] sm:text-xs text-sky-900 font-semibold">OTP Code:</span>
+                        ${otpDisplayHtml}
+                    </div>
+
+                    ${isActive ? `
+                        <div class="flex items-center justify-end space-x-1.5 pt-1">
+                            <button onclick="manualRecheckSms('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-sky-100 hover:bg-sky-200 text-sky-800 border border-sky-300 text-[11px] sm:text-xs font-semibold rounded-lg transition">
+                                <i class="fa-solid fa-rotate mr-1"></i>Resend Sms
                             </button>
-                        ` : ''}
-                    </div>
-                    <p class="text-[10px] sm:text-[11px] text-gray-500 mt-1 flex items-center space-x-1.5">
-                        ${flagElement}
-                        <span class="font-medium text-sky-900 truncate">${displayCountryName}</span>
-                        ${dialCode ? `<span class="bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded font-mono text-[9px] sm:text-[10px] border border-sky-200 shrink-0">${dialCode}</span>` : ''}
-                    </p>
+                            <button onclick="cancelActiveOrder('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-[11px] sm:text-xs font-semibold rounded-lg transition">
+                                <i class="fa-solid fa-ban mr-1"></i> Cancel
+                            </button>
+                        </div>
+                    ` : ''}
                 </div>
-                <div class="shrink-0">
-                    <span class="px-2.5 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs font-bold rounded-full uppercase tracking-wider ${badgeClass}">
-                        ${item.status || 'pending'}
-                    </span>
-                </div>
-            </div>
-
-            <div class="bg-sky-50/80 border border-sky-200 p-2 sm:p-2.5 rounded-lg flex items-center justify-between">
-                <span class="text-[11px] sm:text-xs text-sky-900 font-semibold">OTP Code:</span>
-                ${otpDisplayHtml}
-            </div>
-
-            ${isActive ? `
-                <div class="flex items-center justify-end space-x-1.5 pt-1">
-                    <button onclick="manualRecheckSms('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-sky-100 hover:bg-sky-200 text-sky-800 border border-sky-300 text-[11px] sm:text-xs font-semibold rounded-lg transition">
-                        <i class="fa-solid fa-rotate mr-1"></i>Resend Sms
-                    </button>
-                    <button onclick="cancelActiveOrder('${orderId}')" class="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-[11px] sm:text-xs font-semibold rounded-lg transition">
-                        <i class="fa-solid fa-ban mr-1"></i> Cancel
-                    </button>
-                </div>
-            ` : ''}
-        </div>
-    `;
-}).join('');
+            `;
+        }).join('');
 
         window.historyTimerInterval = setInterval(() => {
             const timerElements = document.querySelectorAll('.order-timer');

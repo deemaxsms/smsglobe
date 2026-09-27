@@ -1247,10 +1247,14 @@ function renderServicesTable(servicesToRender) {
 
             </tr>
 
-            <!-- DYNAMIC EXPANDED CONTAINER ROW WITH PRESERVED STATE -->
-            <tr id="expansion-row-${serviceCode}" class="${isCurrentlyExpanded ? '' : 'hidden'} bg-sky-50/70 border-b border-sky-200">
+          <tr id="expansion-row-${serviceCode}" class="${isCurrentlyExpanded ? '' : 'hidden'} bg-sky-50/70 border-b border-sky-200">
                 <td colspan="3" class="p-3 sm:p-4">
-                    <div class="flex justify-end mb-1">
+                    <div class="flex justify-between items-center mb-1">
+                        <!-- NEW: "View Again" quick button if they want to toggle/reopen easily -->
+                        <button type="button" onclick="toggleActiveOrderView('${serviceCode}')" class="text-xs text-emerald-600 hover:text-emerald-700 font-semibold px-2 py-1 rounded transition flex items-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-eye"></i> View Active Order
+                        </button>
+
                         <button type="button" onclick="hideExpandedOrder('${serviceCode}')" class="text-xs text-gray-500 hover:text-red-600 font-semibold px-2 py-1 rounded transition flex items-center gap-1 cursor-pointer">
                             <i class="fa-solid fa-xmark"></i> Close Active Order View
                         </button>
@@ -1301,6 +1305,24 @@ function hideExpandedOrder(serviceCode) {
     if (container) container.innerHTML = '';
 }
 
+window.toggleActiveOrderView = function(serviceCode) {
+    const expansionRow = document.getElementById(`expansion-row-${serviceCode}`);
+    if (!expansionRow) return; 
+
+    if (expansionRow.classList.contains('hidden')) {
+        // If it's hidden, check if we have cached order data to show it again
+        const activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
+        const targetOrder = activeOrders.find(o => o.serviceCode === serviceCode || o.service === serviceCode);
+        
+        if (targetOrder && typeof window.showExpandedOrder === 'function') {
+            window.showExpandedOrder(serviceCode, targetOrder);
+        } else {
+            expansionRow.classList.remove('hidden');
+        }
+    } else {
+        hideExpandedOrder(serviceCode);
+    }
+};
 window.hideExpandedOrder = hideExpandedOrder;
 
 window.showExpandedOrder = function(serviceCode, orderData) {
@@ -1379,6 +1401,7 @@ window.showExpandedOrder = function(serviceCode, orderData) {
         startPersistentSmsPolling(orderId);
     }
 };
+
 
 function prioritizeServices(services) {
     if (!Array.isArray(services)) return [];
@@ -2240,7 +2263,9 @@ historyGrid.innerHTML = sortedHistory.map(item => {
     const orderId = item.id || item._id;
     const displayPhoneNumber = item.phoneNumber || item.number || item.targetNumber || 'N/A';
     
-    const displayServiceName = item.serviceName || item.service.name || item.serviceCode || item.service_code || item.service || 'Service';
+const serviceObjName = (typeof item.service === 'object' && item.service !== null) ? (item.service.name || item.service.serviceName || '') : '';
+const displayServiceName = item.serviceName || serviceObjName || item.serviceCode || item.service_code || (typeof item.service === 'string' ? item.service : '') || 'Service';
+
         const resolvedCountryName = item.countryName || item.country_name || item.country || '';
     const displayCountryName = typeof resolvedCountryName === 'string' && resolvedCountryName.trim() !== '' 
         ? resolvedCountryName 

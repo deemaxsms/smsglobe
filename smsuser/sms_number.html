@@ -1980,16 +1980,25 @@ async function buyServiceCountry(serviceCode, countryId, price, rank, providerId
 
         const res = response.data || response;
 
-        if (res && res.success) {
-            const orderData = res.order || res.data || res;
-            
-            // Explicitly enforce resolved service name and country attributes for frontend history rendering
-            orderData.serviceName = orderData.serviceName || serviceName;
-            orderData.countryName = orderData.countryName || countryName;
-            orderData.countryCode = orderData.countryCode || resolvedCountryCode;
+       if (res && res.success) {
+    const orderData = res.order || res.data || res;
+    
+    orderData.serviceName = orderData.serviceName || serviceName;
+    orderData.countryName = orderData.countryName || countryName;
+    orderData.countryCode = orderData.countryCode || resolvedCountryCode;
 
-            if (typeof renderActiveOrdersDashboard === 'function') renderActiveOrdersDashboard();
-            if (typeof fetchUserProfile === 'function') fetchUserProfile();
+    try {
+        const activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
+        const orderId = orderData._id || orderData.id || orderData.tzid;
+        const filtered = activeOrders.filter(o => (o._id !== orderId && o.id !== orderId && o.tzid !== orderId));
+        filtered.push({ ...orderData, serviceCode });
+        localStorage.setItem('sms_active_orders', JSON.stringify(filtered));
+    } catch (e) {
+        console.error("Failed to cache active order:", e);
+    }
+
+    if (typeof renderActiveOrdersDashboard === 'function') renderActiveOrdersDashboard();
+    if (typeof fetchUserProfile === 'function') fetchUserProfile();
 
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
@@ -2231,21 +2240,27 @@ historyGrid.innerHTML = sortedHistory.map(item => {
     const orderId = item.id || item._id;
     const displayPhoneNumber = item.phoneNumber || item.number || item.targetNumber || 'N/A';
     
-    const displayServiceName = item.serviceName || item.serviceCode || item.service || 'Service';
-    const { iso: displayCountryShortCode, name: displayCountryName, dialCode } = resolveCountryDetailsWithDialCode(item);
-    const flagElement = `<img src="https://flagcdn.com/w40/${displayCountryShortCode}.png" class="w-4 h-3 object-cover rounded-2xs border border-sky-200/40 shrink-0 inline-block shadow-2xs" alt="${displayCountryName}" onerror="this.src='https://flagcdn.com/w40/un.png'">`;
+    const displayServiceName = item.serviceName || item.service.name || item.serviceCode || item.service_code || item.service || 'Service';
+        const resolvedCountryName = item.countryName || item.country_name || item.country || '';
+    const displayCountryName = typeof resolvedCountryName === 'string' && resolvedCountryName.trim() !== '' 
+        ? resolvedCountryName 
+        : `Country (${item.countryId || item.country_id || 'N/A'})`;
+    
+    const countryCodeRaw = item.countryCode || item.country_code || item.iso || '';
+    const displayCountryShortCode = countryCodeRaw.toLowerCase();
+    const dialCode = item.dialCode || item.dial_code || '';
 
     let expirationTime;
-    const baseCreatedAt = item.createdAt ? new Date(item.createdAt).getTime() : Date.now();
+    const baseCreatedAt = item.createdAt || item.created_at || item.timestamp ? new Date(item.createdAt || item.created_at || item.timestamp).getTime() : Date.now();
     
-    if (item.expiresAt) {
-        expirationTime = new Date(item.expiresAt).getTime();
-    } else if (item.expiresIn) {
-        expirationTime = baseCreatedAt + (Number(item.expiresIn) * 1000);
+    if (item.expiresAt || item.expires_at) {
+        expirationTime = new Date(item.expiresAt || item.expires_at).getTime();
+    } else if (item.expiresIn || item.expires_in) {
+        expirationTime = baseCreatedAt + (Number(item.expiresIn || item.expires_in) * 1000);
     } else {
-        expirationTime = baseCreatedAt + (5 * 60 * 1000);
+        // FIXED: Changed from 5 minutes to 15 minutes (15 * 60 * 1000)
+        expirationTime = baseCreatedAt + (15 * 60 * 1000);
     }
-
     const timeLeft = Math.max(0, Math.floor((expirationTime - Date.now()) / 1000));
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
@@ -2369,6 +2384,24 @@ window.startPersistentSmsPolling = function(orderId, createdAtOrExpiresAt) {
         }
     }
 
+    function restoreActiveOrdersOnLoad() {
+    try {
+        const activeOrders = JSON.parse(localStorage.getItem('sms_active_orders') || '[]');
+        if (activeOrders.length === 0) return;
+
+        // Give the DOM a tiny moment to render the services list/table first
+        setTimeout(() => {
+            activeOrders.forEach(order => {
+                const serviceCode = order.serviceCode;
+                if (serviceCode && typeof showExpandedOrder === 'function') {
+                    showExpandedOrder(serviceCode, order);
+                }
+            });
+        }, 500);
+    } catch (err) {
+        console.error("Error restoring active orders on load:", err);
+    }
+}
 
     // Event Listeners setup on initial load
 document.addEventListener('DOMContentLoaded', () => {
@@ -2408,6 +2441,9 @@ if (serviceSearchInput) {
     }
 });
 
+window.addEventListener('DOMContentLoaded', () => {
+    restoreActiveOrdersOnLoad();
+});
     return {
         fetchUserProfile,
         
@@ -2419,6 +2455,7 @@ if (serviceSearchInput) {
         fetchUserHistory,
         cancelActiveOrder,
         manualRecheckSms,
+        restoreActiveOrdersOnLoad,
 
         selectService,
         renderCountries,
